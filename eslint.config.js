@@ -15,6 +15,7 @@ module.exports = defineConfig([
       'metro.config.js',
       'jest.config.js',
       'eslint.config.js',
+      'tailwind.config.js',
       'scripts/**',
     ],
   },
