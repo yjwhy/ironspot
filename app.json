@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "IronSpot",
+    "slug": "iron-spot",
+    "scheme": "ironspot",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFBEB"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "주변 헬스장을 찾기 위해 위치 정보가 필요합니다"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.ironspot.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.ironspot.app"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(pnpm *)",
+      "Bash(pnpm expo *)",
+      "Bash(pnpm exec *)",
+      "Bash(git *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(cat *)"
+    ],
+    "deny": ["Bash(npm install *)", "Bash(yarn *)", "Bash(npm add *)"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | (read file_path; if [ -n \"$file_path\" ] && echo \"$file_path\" | grep -qE '^.*/iron-spot/(ios|android)/'; then echo '{\"decision\":\"block\",\"reason\":\"Do not edit ios/ or android/ directories — Expo managed workflow. Use app.json or app.config.ts instead.\"}'; fi)"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | (read file_path; if [ -n \"$file_path\" ] && echo \"$file_path\" | grep -qE '\\.(ts|tsx|js|jsx|json|md)$' && [ -f \"$(dirname \"$(pwd)\")/iron-spot/node_modules/.bin/prettier\" ]; then cd /Users/yj-you/Desktop/personal/development/project/iron-spot && pnpm exec prettier --write \"$file_path\" 2>/dev/null || true; fi)"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | (read file_path; if [ -n \"$file_path\" ] && echo \"$file_path\" | grep -qE '\\.(ts|tsx)$' && [ -f \"/Users/yj-you/Desktop/personal/development/project/iron-spot/tsconfig.json\" ]; then cd /Users/yj-you/Desktop/personal/development/project/iron-spot && pnpm exec tsc --noEmit 2>&1 | head -30 || true; fi)"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | (read file_path; if [ -n \"$file_path\" ] && echo \"$file_path\" | grep -qE '/src/.*\\.(ts|tsx)$' && ! echo \"$file_path\" | grep -qE '\\.test\\.(ts|tsx)$' && [ -f \"/Users/yj-you/Desktop/personal/development/project/iron-spot/jest.config.js\" ]; then cd /Users/yj-you/Desktop/personal/development/project/iron-spot && test_dir=\"$(dirname \"$file_path\")/__tests__\"; base_name=\"$(basename \"$file_path\" | sed -E 's/\\.(ts|tsx)$//')\"; test_file=\"$test_dir/$base_name.test.ts\"; [ ! -f \"$test_file\" ] && test_file=\"$test_dir/$base_name.test.tsx\"; if [ -f \"$test_file\" ]; then pnpm exec jest \"$test_file\" --silent 2>&1 | tail -10 || true; fi; fi)"
+          }
+        ]
+      }
+    ]
+  }
+}
