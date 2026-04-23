@@ -40,5 +40,8 @@ yarn-error.*
 # Logs
 *.log
 
+# Coverage
+coverage/
+
 # TypeScript
 *.tsbuildinfo

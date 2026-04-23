@@ -1,5 +1,6 @@
 const { defineConfig } = require('eslint/config');
 const expoConfig = require('eslint-config-expo/flat');
+const tseslint = require('typescript-eslint');
 const reactNative = require('eslint-plugin-react-native');
 const prettierConfig = require('eslint-config-prettier');
 
@@ -9,6 +10,7 @@ module.exports = defineConfig([
       'node_modules/**',
       '.expo/**',
       'dist/**',
+      'coverage/**',
       'babel.config.js',
       'metro.config.js',
       'jest.config.js',
@@ -17,6 +19,8 @@ module.exports = defineConfig([
     ],
   },
   expoConfig,
+  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
   prettierConfig,
   {
     files: ['**/*.{ts,tsx}'],
