@@ -4,12 +4,12 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Task 1 complete. GitHub repo live at https://github.com/yjwhy/ironspot.
+Task 2 complete. PR #1 open for review.
 
 ## Task Checklist
 
 - [x] Task 1: Project Initialization
-- [ ] Task 2: Design Tokens
+- [x] Task 2: Design Tokens
 - [ ] Task 3: Pretendard Font Setup
 - [ ] Task 4: Supabase Client + Database Types + Query Key Factory
 - [ ] Task 5: Upload Real Seed Photos (manual)
@@ -36,9 +36,10 @@ Task 1 complete. GitHub repo live at https://github.com/yjwhy/ironspot.
 
 ## Completed Tasks Log
 
-| Task | Commit  | Date       | Notes                                                                             |
-| ---- | ------- | ---------- | --------------------------------------------------------------------------------- |
-| 1    | 0df1c25 | 2026-04-20 | Expo SDK 54 scaffolded, tooling configured, GitHub repo created + pushed to main. |
+| Task | Commit  | Date       | Notes                                                                                |
+| ---- | ------- | ---------- | ------------------------------------------------------------------------------------ |
+| 1    | 0df1c25 | 2026-04-20 | Expo SDK 54 scaffolded, tooling configured, GitHub repo created + pushed to main.    |
+| 2    | cb45104 | 2026-04-24 | Design tokens (colors/typography/spacing/radius/animation) + Tailwind config. PR #1. |
 
 ## Blockers
 
