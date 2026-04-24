@@ -4,14 +4,14 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Task 3 complete. PR open for review.
+Task 4 complete. PR open for review.
 
 ## Task Checklist
 
 - [x] Task 1: Project Initialization
 - [x] Task 2: Design Tokens
 - [x] Task 3: Pretendard Font Setup
-- [ ] Task 4: Supabase Client + Database Types + Query Key Factory
+- [x] Task 4: Supabase Client + Database Types + Query Key Factory
 - [ ] Task 5: Upload Real Seed Photos (manual)
 - [ ] Task 6: Shared UI Components
   - [ ] Task 6.1: Button
@@ -41,6 +41,7 @@ Task 3 complete. PR open for review.
 | 1    | 0df1c25 | 2026-04-20 | Expo SDK 54 scaffolded, tooling configured, GitHub repo created + pushed to main.    |
 | 2    | cb45104 | 2026-04-24 | Design tokens (colors/typography/spacing/radius/animation) + Tailwind config. PR #1. |
 | 3    | d3b7b34 | 2026-04-24 | Pretendard v1.3.9 OTF (Regular/Medium/SemiBold/Bold) + useAppFonts hook.             |
+| 4    | 019c721 | 2026-04-24 | Supabase client (MMKV storage), database types, query key factories. PR #3.          |
 
 ## Blockers
 

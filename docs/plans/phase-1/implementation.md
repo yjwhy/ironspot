@@ -857,6 +857,9 @@ export interface User {
   updated_at: string;
 }
 
+// NOTE: This `Gym` type describes the `search_gyms_in_bounds` RPC output
+// (lat/lng already decomposed). The raw `gyms` table stores `location
+// geography(Point)` instead — see architecture-design.md §6.
 export interface Gym {
   id: string;
   name: string;
