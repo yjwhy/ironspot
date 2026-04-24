@@ -11,6 +11,12 @@ export interface User {
   updated_at: string;
 }
 
+/**
+ * RPC output shape returned by `search_gyms_in_bounds` (lat/lng already
+ * decomposed via ST_Y/ST_X). NOT the raw `gyms` table row, which stores
+ * `location geography(Point)` as a single PostGIS column. See
+ * docs/plans/architecture-design.md §6 for the underlying table schema.
+ */
 export interface Gym {
   id: string;
   name: string;
