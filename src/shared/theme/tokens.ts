@@ -33,4 +33,5 @@ export const ANIMATION = {
   stagger: 60,
   microDuration: 250,
   transitionDuration: 400,
+  shimmerDuration: 800,
 } as const;
