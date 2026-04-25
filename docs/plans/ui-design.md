@@ -252,6 +252,8 @@ Tab bar icon: 24px icon + 44px tap area
 - Each machine row: name + quantity badge (if >1, show "x2") + photo count -> tap for gallery
 - Quantity badge only shown when quantity >= 2 (single machine = no badge, cleaner)
 
+> Note: this mockup is a design target, not a snapshot of current seed data. As of 2026-04-25, Fitness Factory's seed has two repointed gym_machine rows (`Panatta Low Row` and `Hammer Strength Lat Pull Down` were both repointed to a new `Hammer Strength Low Row` template by `docs/plans/phase-1/task-5-seed-photos.sql`). Other rows in this mockup are illustrative.
+
 ## 7. Photo Gallery
 
 ```
