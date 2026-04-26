@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { ANIMATION, colors } from '@/shared/theme/tokens';
+import { ANIMATION, TOUCH_CLASSES, colors } from '@/shared/theme/tokens';
 
 interface ChipProps {
   label: string;
@@ -17,6 +17,8 @@ interface ChipProps {
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const CONTAINER_CLASS = `${TOUCH_CLASSES.small} rounded-full items-center justify-center`;
 
 function ChipImpl({ label, selected, onPress, testID }: ChipProps) {
   const progress = useDerivedValue(() =>
@@ -31,6 +33,8 @@ function ChipImpl({ label, selected, onPress, testID }: ChipProps) {
     ),
   }));
 
+  const textClass = selected ? 'text-text-inverse' : 'text-text-secondary';
+
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -38,15 +42,9 @@ function ChipImpl({ label, selected, onPress, testID }: ChipProps) {
       accessibilityRole="button"
       accessibilityState={{ selected }}
       style={animatedStyle}
-      className="h-9 px-4 rounded-full items-center justify-center"
+      className={CONTAINER_CLASS}
     >
-      <Text
-        className={`font-medium text-body-sm ${
-          selected ? 'text-text-inverse' : 'text-text-secondary'
-        }`}
-      >
-        {label}
-      </Text>
+      <Text className={`font-medium text-body-sm ${textClass}`}>{label}</Text>
     </AnimatedPressable>
   );
 }

@@ -16,7 +16,6 @@ interface EmptyStateProps {
 }
 
 const ICON_SIZE = 48;
-const ICON_TEST_ID_SUFFIX = '-icon';
 
 function buildA11yLabel(title: string, description?: string): string {
   return description ? `${title}. ${description}` : title;
@@ -30,13 +29,13 @@ function EmptyStateImpl({ icon, title, description, action, testID }: EmptyState
       accessibilityLabel={buildA11yLabel(title, description)}
       className="items-center justify-center px-6 py-8"
     >
-      <View
-        testID={testID ? `${testID}${ICON_TEST_ID_SUFFIX}` : undefined}
+      <MaterialIcons
+        name={icon}
+        size={ICON_SIZE}
+        color={colors.text.tertiary}
         importantForAccessibility="no"
         accessibilityElementsHidden={true}
-      >
-        <MaterialIcons name={icon} size={ICON_SIZE} color={colors.text.tertiary} />
-      </View>
+      />
       <Text className="mt-4 text-heading-md text-text-primary text-center">{title}</Text>
       {description ? (
         <Text className="mt-2 text-body-sm text-text-secondary text-center">{description}</Text>

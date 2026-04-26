@@ -1,14 +1,14 @@
 import { memo } from 'react';
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 
-import { colors } from '@/shared/theme/tokens';
+import { TOUCH_CLASSES, colors } from '@/shared/theme/tokens';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 export type ButtonSize = 'md' | 'sm';
 
 interface ButtonProps {
   label: string;
-  onPress: () => void;
+  onPress?: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
@@ -18,7 +18,7 @@ interface ButtonProps {
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   md: 'h-12 px-6',
-  sm: 'h-9 px-4',
+  sm: TOUCH_CLASSES.small,
 };
 
 const VARIANT_BG: Record<ButtonVariant, string> = {
@@ -53,7 +53,7 @@ function ButtonImpl({
     'items-center justify-center rounded-md',
     SIZE_CLASSES[size],
     VARIANT_BG[variant],
-    isInactive ? 'opacity-50' : '',
+    isInactive && 'opacity-50',
   ]
     .filter(Boolean)
     .join(' ');

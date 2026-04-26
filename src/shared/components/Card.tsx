@@ -12,6 +12,9 @@ interface CardProps {
   testID?: string;
 }
 
+// Mirrors `tokens.spacing` (sm=8, md=12, lg=16). Tailwind's default scale
+// happens to match (`p-2`=8, `p-3`=12, `p-4`=16). If `tailwind.config.js`
+// ever overrides `spacing`, update this map in lockstep.
 const PADDING_CLASSES: Record<CardPadding, string> = {
   none: '',
   sm: 'p-2',
@@ -47,7 +50,7 @@ function CardImpl({ children, onPress, padding = 'lg', testID }: CardProps) {
   }
 
   return (
-    <View testID={testID} className={className}>
+    <View testID={testID} accessibilityRole="none" className={className}>
       {children}
     </View>
   );

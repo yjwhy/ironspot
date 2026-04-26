@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { ANIMATION } from '@/shared/theme/tokens';
+import { ANIMATION, radius } from '@/shared/theme/tokens';
 
 interface SkeletonRectangleProps {
   variant?: 'rectangle';
@@ -28,7 +28,6 @@ export type SkeletonProps = (SkeletonRectangleProps | SkeletonCircleProps) & Ske
 
 const SHIMMER_MIN_OPACITY = 0.4;
 const SHIMMER_MAX_OPACITY = 1;
-const RECTANGLE_RADIUS = 8;
 
 function getDimensions(props: SkeletonProps): {
   width: number;
@@ -38,12 +37,14 @@ function getDimensions(props: SkeletonProps): {
   if (props.variant === 'circle') {
     return { width: props.size, height: props.size, borderRadius: props.size / 2 };
   }
-  return { width: props.width, height: props.height, borderRadius: RECTANGLE_RADIUS };
+  return { width: props.width, height: props.height, borderRadius: radius.sm };
 }
 
 function SkeletonImpl(props: SkeletonProps) {
   const opacity = useSharedValue(SHIMMER_MAX_OPACITY);
 
+  // opacity is a reanimated shared value with a stable reference, so this
+  // effect only runs on mount and unmount.
   useEffect(() => {
     opacity.value = withRepeat(
       withTiming(SHIMMER_MIN_OPACITY, { duration: ANIMATION.shimmerDuration }),

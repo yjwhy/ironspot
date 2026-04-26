@@ -1,3 +1,4 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { fireEvent, render } from '@testing-library/react-native';
 
 import { Button } from '../Button';
@@ -22,11 +23,9 @@ describe('EmptyState', () => {
     expect(queryByText('필터를 조정해보세요')).toBeNull();
   });
 
-  it('renders the icon glyph (mounted via testID, hidden from a11y)', () => {
-    const { getByTestId } = render(
-      <EmptyState testID="empty" icon="search-off" title="비어 있어요" />,
-    );
-    expect(getByTestId('empty-icon', { includeHiddenElements: true })).toBeTruthy();
+  it('mounts the MaterialIcons glyph passed via the icon prop', () => {
+    const { UNSAFE_queryAllByType } = render(<EmptyState icon="search-off" title="비어 있어요" />);
+    expect(UNSAFE_queryAllByType(MaterialIcons)).toHaveLength(1);
   });
 
   it('does not render an action wrapper when action prop is omitted', () => {
