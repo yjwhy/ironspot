@@ -5,7 +5,7 @@
 export const colors = {
   accent: { DEFAULT: '#F59E0B', light: '#FCD34D', dark: '#D97706', 50: '#FFFBEB' },
   text: { primary: '#0F172A', secondary: '#475569', tertiary: '#94A3B8', inverse: '#FFFFFF' },
-  bg: { base: '#FFFFFF', subtle: '#F8FAFC', muted: '#F1F5F9' },
+  bg: { base: '#FFFFFF', elevated: '#FFFFFF', subtle: '#F8FAFC', muted: '#F1F5F9' },
   border: { DEFAULT: '#E2E8F0', focus: '#F59E0B' },
   success: '#22C55E',
   error: '#EF4444',
@@ -33,4 +33,12 @@ export const ANIMATION = {
   stagger: 60,
   microDuration: 250,
   transitionDuration: 400,
+  shimmerDuration: 800,
+} as const;
+
+// NativeWind className tokens for shared touch-target sizes. Used by any
+// component that needs to match the small-button / filter-chip footprint
+// (currently Button size="sm" and Chip).
+export const TOUCH_CLASSES = {
+  small: 'h-9 px-4',
 } as const;
