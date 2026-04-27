@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Task 7 complete. PR #8 open for review.
+Task 8 complete. PR open for review.
 
 ## Task Checklist
 
@@ -25,7 +25,7 @@ Task 7 complete. PR #8 open for review.
   - [x] Task 7.2: Gym Search
   - [x] Task 7.3: Gym Detail + Machines
   - [x] Task 7.4: Photo List
-- [ ] Task 8: Location Hooks
+- [x] Task 8: Location Hooks
 - [ ] Task 9: Expo Router Setup
 - [ ] Task 10: Gym Bottom Sheet + Cards
 - [ ] Task 11: Photo Gallery + Detail
@@ -45,6 +45,7 @@ Task 7 complete. PR #8 open for review.
 | 5    | 1c78c9d | 2026-04-25 | 4 real machine photos uploaded to `machine-photos/seed/` (Panatta High Row × 2 angles, Hammer Strength Low Row × 2 angles). Created new `Hammer Strength Low Row` template, repointed 2 gym_machines, updated 5 photo URLs. SQL recorded in `task-5-seed-photos.sql`. PR #4.                                                                                                                                                                                                                                                                                                                                           |
 | 6    | 9ee66c4 | 2026-04-25 | 6 shared UI components TDD'd on `src/shared/components/`: Button (variants/sizes/loading/disabled), Chip (animated bg via reanimated interpolateColor), Card (pressable + padding scale), Skeleton (shimmer with cancelAnimation cleanup), EmptyState (icon + a11y grouping), ErrorBoundary (react-error-boundary wrapper with onReset/onError). All memoized leaves, NativeWind v4 className typing wired via `nativewind-env.d.ts`. 35 new tests, 65 total passing.                                                                                                                                                  |
 | 7    | d61a53e | 2026-04-27 | Data layer: 4 sub-tasks TDD'd. 7.1 brands/categories services + hooks (staleTime Infinity) + centralised `unwrapList<T>`/`unwrapSingle<T>` helper. 7.2 `searchGymsInBounds` RPC + `useGymSearch` (no `!`, defensive narrow) + `useFilters` local state. 7.3 `getGymMachines` joined select + `useGymMachines` hardened against `undefined` id, structural assertions on `SELECT_WITH_DETAILS`. 7.4 `getMachinePhotos` ordered upvote_count desc + `useMachinePhotos`. Shared test utils: `createQueryWrapper` (gcTime 0), chained supabase mocks, `makeGymMachineWithDetails` factory. 51 new tests, 116 total. PR #8. |
+| 8    | aab0ff8 | 2026-04-27 | Location hooks: `useCurrentLocation` (foreground permission → coords / Gangnam Station fallback with Korean error / silent fallback on GPS rejection) and `usePermissionStatus` (passive read on mount, stable `request()` to prompt). Both effects use `AbortController` + an `isAborted()` getter to bypass TS narrowing on `signal.aborted` while staying unmount-safe. Exports `Coordinate` type and `GANGNAM_STATION` constant for downstream Map screen. 9 new tests, 125 total.                                                                                                                                 |
 
 ## Blockers
 
