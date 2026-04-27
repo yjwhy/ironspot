@@ -10,14 +10,15 @@ Building the environment where an AI coding agent can produce high-quality work 
 
 ### Context Layer
 
-| File                                   | Purpose                                       | Auto-loaded?          |
-| -------------------------------------- | --------------------------------------------- | --------------------- |
-| `CLAUDE.md`                            | Project conventions, tech stack, coding rules | ✅ Yes, every session |
-| `docs/plans/architecture-design.md`    | System architecture                           | On reference          |
-| `docs/plans/ui-design.md`              | Design tokens + wireframes                    | On reference          |
-| `docs/plans/phase-1/implementation.md` | Task-by-task implementation                   | On reference          |
-| `docs/plans/phase-1/PROGRESS.md`       | Live task completion state                    | On reference          |
-| `docs/adrs/*.md`                       | Decision records (short, scannable)           | On reference          |
+| File                                   | Purpose                                        | Auto-loaded?                        |
+| -------------------------------------- | ---------------------------------------------- | ----------------------------------- |
+| `CLAUDE.md`                            | Project conventions, tech stack, coding rules  | ✅ Yes, every session               |
+| `docs/plans/architecture-design.md`    | System architecture                            | On reference                        |
+| `docs/plans/ui-design.md`              | Design tokens + wireframes                     | On reference                        |
+| `docs/plans/phase-1/implementation.md` | Task-by-task implementation                    | On reference                        |
+| `docs/plans/phase-1/PROGRESS.md`       | Live task completion state                     | On reference                        |
+| `docs/harness/lessons.md`              | Session gotchas not caught by lint/types/tests | On reference, scanned at task start |
+| `docs/adrs/*.md`                       | Decision records (short, scannable)            | On reference                        |
 
 ### Automation Layer (Hooks)
 

@@ -9,6 +9,7 @@ IronSpot: A React Native (Expo) mobile app for finding gym equipment at nearby g
 1. **Read in this order:**
    - `docs/plans/phase-1/PROGRESS.md` — current state
    - `docs/plans/phase-1/implementation.md` — find the specified Task
+   - `docs/harness/lessons.md` — known gotchas not caught by lint/types/tests
    - This CLAUDE.md's "Execution Workflow" section below
 
 2. **Follow subagent-driven development:**
@@ -41,6 +42,7 @@ All architectural and UI decisions are documented. Read these before making chan
 | Phase 3 (planned)      | `docs/plans/phase-3/README.md`                                                |
 | ADR Index              | `docs/adrs/README.md` (short decision records, portfolio/interview reference) |
 | Harness Setup          | `docs/harness/README.md` (hooks, commands, context layers)                    |
+| Session Lessons        | `docs/harness/lessons.md` (gotchas not caught by lint/types/tests)            |
 | Phase 1 Progress       | `docs/plans/phase-1/PROGRESS.md` (live task completion state)                 |
 
 ## Tech Stack
