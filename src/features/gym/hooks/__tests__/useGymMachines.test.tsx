@@ -1,6 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 
 import type { GymMachineWithDetails } from '@/shared/types/database';
+import { makeGymMachineWithDetails } from '@/test/utils/factories/gym-machine';
 import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
 import { getGymMachines } from '../../services/gym-detail';
@@ -11,28 +12,7 @@ jest.mock('../../services/gym-detail', () => ({
 }));
 
 const fixture: GymMachineWithDetails[] = [
-  {
-    id: 'gm-1',
-    gym_id: 'g-1',
-    template_id: 't-1',
-    quantity: 1,
-    is_custom: false,
-    custom_name: null,
-    last_verified_at: null,
-    created_at: '2026-04-01',
-    template: {
-      id: 't-1',
-      brand_id: 'b-1',
-      category_id: 'c-1',
-      name: 'High Row',
-      loading_type: 'plate',
-      is_approved: true,
-      created_at: '2026-04-01',
-      brand: { id: 'b-1', name: 'Panatta' },
-      category: { id: 'c-1', name: 'Back' },
-    },
-    photos: [],
-  },
+  makeGymMachineWithDetails({ machine: { gym_id: 'g-1' } }),
 ];
 
 describe('useGymMachines', () => {
@@ -40,11 +20,21 @@ describe('useGymMachines', () => {
     jest.clearAllMocks();
   });
 
-  it('is disabled when gymId is empty and does not call the service', () => {
+  it('is disabled when gymId is an empty string and does not call the service', () => {
     const mockGet = getGymMachines as jest.MockedFunction<typeof getGymMachines>;
     const { Wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useGymMachines(''), { wrapper: Wrapper });
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  it('is disabled when gymId is undefined and does not crash before enabled is read', () => {
+    const mockGet = getGymMachines as jest.MockedFunction<typeof getGymMachines>;
+    const { Wrapper } = createQueryWrapper();
+
+    const { result } = renderHook(() => useGymMachines(undefined), { wrapper: Wrapper });
 
     expect(result.current.fetchStatus).toBe('idle');
     expect(mockGet).not.toHaveBeenCalled();

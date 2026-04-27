@@ -1,4 +1,5 @@
 import type { GymMachineWithDetails } from '@/shared/types/database';
+import { makeGymMachineWithDetails } from '@/test/utils/factories/gym-machine';
 import { mockFromEqOrderResult } from '@/test/utils/supabase-mocks';
 
 import { getGymMachines, SELECT_WITH_DETAILS } from '../gym-detail';
@@ -11,28 +12,7 @@ jest.mock('@/shared/lib/supabase', () => ({
   },
 }));
 
-const sampleMachine: GymMachineWithDetails = {
-  id: 'gm-1',
-  gym_id: 'gym-1',
-  template_id: 't-1',
-  quantity: 1,
-  is_custom: false,
-  custom_name: null,
-  last_verified_at: null,
-  created_at: '2026-04-01',
-  template: {
-    id: 't-1',
-    brand_id: 'b-1',
-    category_id: 'c-1',
-    name: 'High Row',
-    loading_type: 'plate',
-    is_approved: true,
-    created_at: '2026-04-01',
-    brand: { id: 'b-1', name: 'Panatta' },
-    category: { id: 'c-1', name: 'Back' },
-  },
-  photos: [],
-};
+const sampleMachine: GymMachineWithDetails = makeGymMachineWithDetails();
 
 describe('getGymMachines', () => {
   beforeEach(() => {
@@ -69,5 +49,14 @@ describe('getGymMachines', () => {
     });
 
     await expect(getGymMachines('gym-1')).rejects.toThrow('permission denied');
+  });
+});
+
+describe('SELECT_WITH_DETAILS', () => {
+  it('joins template, brand, category, and photos', () => {
+    expect(SELECT_WITH_DETAILS).toMatch(/template:machine_templates/);
+    expect(SELECT_WITH_DETAILS).toMatch(/brand:brands/);
+    expect(SELECT_WITH_DETAILS).toMatch(/category:categories/);
+    expect(SELECT_WITH_DETAILS).toMatch(/photos:machine_photos/);
   });
 });

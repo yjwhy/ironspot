@@ -10,7 +10,7 @@ export const SELECT_WITH_DETAILS = `
     category:categories (*)
   ),
   photos:machine_photos (*)
-` as const;
+`;
 
 export async function getGymMachines(gymId: string): Promise<GymMachineWithDetails[]> {
   const response = await supabase
