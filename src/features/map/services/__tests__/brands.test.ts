@@ -1,4 +1,5 @@
 import type { Brand } from '@/shared/types/database';
+import { mockFromOrderResult } from '@/test/utils/supabase-mocks';
 
 import { fetchBrands } from '../brands';
 
@@ -10,21 +11,9 @@ jest.mock('@/shared/lib/supabase', () => ({
   },
 }));
 
-interface OrderResult {
-  data: Brand[] | null;
-  error: { message: string } | null;
-}
-
-function mockFromOrderResult(result: OrderResult) {
-  const order = jest.fn().mockResolvedValue(result);
-  const select = jest.fn().mockReturnValue({ order });
-  mockFrom.mockReturnValue({ select });
-  return { select, order };
-}
-
 describe('fetchBrands', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockFrom.mockReset();
   });
 
   it('queries the brands table with select(*) ordered by name', async () => {
@@ -32,7 +21,10 @@ describe('fetchBrands', () => {
       { id: 'b1', name: 'Panatta' },
       { id: 'b2', name: 'Technogym' },
     ];
-    const { select, order } = mockFromOrderResult({ data: brands, error: null });
+    const { select, order } = mockFromOrderResult<Brand>(mockFrom, {
+      data: brands,
+      error: null,
+    });
 
     const result = await fetchBrands();
 
@@ -43,13 +35,16 @@ describe('fetchBrands', () => {
   });
 
   it('throws an Error containing the supabase error message on failure', async () => {
-    mockFromOrderResult({ data: null, error: { message: 'permission denied' } });
+    mockFromOrderResult<Brand>(mockFrom, {
+      data: null,
+      error: { message: 'permission denied' },
+    });
 
     await expect(fetchBrands()).rejects.toThrow('permission denied');
   });
 
   it('returns [] when supabase returns null data with no error', async () => {
-    mockFromOrderResult({ data: null, error: null });
+    mockFromOrderResult<Brand>(mockFrom, { data: null, error: null });
 
     const result = await fetchBrands();
 

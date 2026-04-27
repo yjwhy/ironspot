@@ -1,8 +1,7 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react-native';
-import type { ReactNode } from 'react';
 
 import type { Brand } from '@/shared/types/database';
+import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
 import { fetchBrands } from '../../services/brands';
 import { useBrands } from '../useBrands';
@@ -10,14 +9,6 @@ import { useBrands } from '../useBrands';
 jest.mock('../../services/brands', () => ({
   fetchBrands: jest.fn(),
 }));
-
-function createWrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  }
-  return Wrapper;
-}
 
 describe('useBrands', () => {
   beforeEach(() => {
@@ -31,8 +22,9 @@ describe('useBrands', () => {
     ];
     const mockFetch = fetchBrands as jest.MockedFunction<typeof fetchBrands>;
     mockFetch.mockResolvedValue(brands);
+    const { Wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(() => useBrands(), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useBrands(), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -45,8 +37,9 @@ describe('useBrands', () => {
   it('exposes an error state when the service throws', async () => {
     const mockFetch = fetchBrands as jest.MockedFunction<typeof fetchBrands>;
     mockFetch.mockRejectedValue(new Error('boom'));
+    const { Wrapper } = createQueryWrapper();
 
-    const { result } = renderHook(() => useBrands(), { wrapper: createWrapper() });
+    const { result } = renderHook(() => useBrands(), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);

@@ -1,4 +1,5 @@
 import type { Category } from '@/shared/types/database';
+import { mockFromOrderResult } from '@/test/utils/supabase-mocks';
 
 import { fetchCategories } from '../categories';
 
@@ -10,21 +11,9 @@ jest.mock('@/shared/lib/supabase', () => ({
   },
 }));
 
-interface OrderResult {
-  data: Category[] | null;
-  error: { message: string } | null;
-}
-
-function mockFromOrderResult(result: OrderResult) {
-  const order = jest.fn().mockResolvedValue(result);
-  const select = jest.fn().mockReturnValue({ order });
-  mockFrom.mockReturnValue({ select });
-  return { select, order };
-}
-
 describe('fetchCategories', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockFrom.mockReset();
   });
 
   it('queries the categories table with select(*) ordered by name', async () => {
@@ -32,7 +21,10 @@ describe('fetchCategories', () => {
       { id: 'c1', name: 'Row' },
       { id: 'c2', name: 'Squat' },
     ];
-    const { select, order } = mockFromOrderResult({ data: categories, error: null });
+    const { select, order } = mockFromOrderResult<Category>(mockFrom, {
+      data: categories,
+      error: null,
+    });
 
     const result = await fetchCategories();
 
@@ -43,13 +35,16 @@ describe('fetchCategories', () => {
   });
 
   it('throws an Error containing the supabase error message on failure', async () => {
-    mockFromOrderResult({ data: null, error: { message: 'network down' } });
+    mockFromOrderResult<Category>(mockFrom, {
+      data: null,
+      error: { message: 'network down' },
+    });
 
     await expect(fetchCategories()).rejects.toThrow('network down');
   });
 
   it('returns [] when supabase returns null data with no error', async () => {
-    mockFromOrderResult({ data: null, error: null });
+    mockFromOrderResult<Category>(mockFrom, { data: null, error: null });
 
     const result = await fetchCategories();
 
