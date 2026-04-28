@@ -6,17 +6,16 @@ export type LocationPermissionStatus = Location.PermissionStatus;
 export function usePermissionStatus() {
   const [status, setStatus] = useState<LocationPermissionStatus | null>(null);
 
-  useEffect(() => {
+  useEffect(function readPermissionOnMount() {
     const controller = new AbortController();
-    const isAborted = () => controller.signal.aborted;
 
-    async function load() {
+    async function apply() {
       const response = await Location.getForegroundPermissionsAsync();
-      if (isAborted()) return;
+      if (controller.signal.aborted) return;
       setStatus(response.status);
     }
 
-    void load();
+    void apply();
 
     return () => {
       controller.abort();
