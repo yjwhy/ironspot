@@ -186,11 +186,11 @@ Performance is the highest priority. Every implementation decision should optimi
 
 **Rendering:**
 
-- Memoize list items with `React.memo` — always
-- Use `useCallback` for all event handlers passed as props
-- Use `useMemo` for expensive computations and derived data
-- Avoid inline objects/arrays in JSX (creates new references every render)
-- Extract functions outside render — never define functions inside JSX
+- React Compiler is enabled (see ADR 0018). Do not hand-roll `useCallback` / `useMemo` for stable references — RC auto-memoises function/object/array literals and component bodies. Lint rule `react-compiler/react-compiler` flags patterns RC has to bail out on.
+- Still use `React.memo` on heavy list-item components — RC memoises hooks and bodies, not component identities across renders.
+- Avoid inline objects/arrays in JSX **only when** RC has bailed out (`'use no memo'` directive or impure code). In RC-compiled code, inline literals are auto-cached and free.
+- Reanimated worklets, Bottom Sheet `useAnimatedStyle`, and similar hot paths must stay annotated with `'worklet'` and may need `'use no memo'` if RC interferes — verify with the lint rule.
+- Extract heavy or impure functions outside render — RC will not memoise impure code paths.
 
 **Lists:**
 

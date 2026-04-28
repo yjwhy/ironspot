@@ -126,6 +126,7 @@ pnpm add -D @typescript-eslint/eslint-plugin @typescript-eslint/parser
 pnpm add -D eslint-config-expo
 pnpm add -D eslint-plugin-import eslint-import-resolver-typescript
 pnpm add -D eslint-plugin-react-native
+pnpm add -D eslint-plugin-react-compiler  # React Compiler — see ADR 0018
 
 # Pre-commit hooks
 pnpm add -D husky lint-staged
@@ -223,7 +224,8 @@ module.exports = withNativeWind(config, { input: './global.css' });
       ]
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "reactCompiler": true
     },
     "ios": {
       "bundleIdentifier": "com.ironspot.app",
@@ -249,7 +251,7 @@ module.exports = {
     'plugin:import/typescript',
     'prettier',
   ],
-  plugins: ['@typescript-eslint', 'react-hooks', 'import', 'react-native'],
+  plugins: ['@typescript-eslint', 'react-hooks', 'react-compiler', 'import', 'react-native'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     project: './tsconfig.json',
@@ -265,6 +267,9 @@ module.exports = {
     // React hooks
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'error',
+
+    // React Compiler — surfaces RC bail-out patterns at lint time (ADR 0018)
+    'react-compiler/react-compiler': 'error',
 
     // TypeScript strictness
     '@typescript-eslint/no-explicit-any': 'error',

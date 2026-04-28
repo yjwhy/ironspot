@@ -23,6 +23,7 @@
 | [0015](./0015-naver-maps.md)              | 한국 시장 타겟이므로 네이버 지도 SDK 사용                 | Accepted |
 | [0016](./0016-expo-router.md)             | 네비게이션은 React Navigation 대신 Expo Router            | Accepted |
 | [0017](./0017-harness-engineering.md)     | AI 에이전트 Harness Engineering 적용                      | Accepted |
+| [0018](./0018-react-compiler.md)          | React Compiler를 Phase 1 도중 활성화                      | Accepted |
 
 ## 포맷
 

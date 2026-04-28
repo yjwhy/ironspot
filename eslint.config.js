@@ -2,6 +2,7 @@ const { defineConfig } = require('eslint/config');
 const expoConfig = require('eslint-config-expo/flat');
 const tseslint = require('typescript-eslint');
 const reactNative = require('eslint-plugin-react-native');
+const reactCompiler = require('eslint-plugin-react-compiler');
 const prettierConfig = require('eslint-config-prettier');
 
 module.exports = defineConfig([
@@ -27,6 +28,7 @@ module.exports = defineConfig([
     files: ['**/*.{ts,tsx}'],
     plugins: {
       'react-native': reactNative,
+      'react-compiler': reactCompiler,
     },
     languageOptions: {
       parserOptions: {
@@ -43,6 +45,7 @@ module.exports = defineConfig([
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
+      'react-compiler/react-compiler': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
