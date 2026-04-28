@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 
 import type { LoadingType, SearchFilters } from '@/shared/types/database';
 
@@ -11,21 +11,21 @@ export const INITIAL_FILTERS: SearchFilters = {
 export function useFilters() {
   const [filters, setFilters] = useState<SearchFilters>(INITIAL_FILTERS);
 
-  const setBrand = useCallback((brandId: string | null) => {
+  function setBrand(brandId: string | null) {
     setFilters((prev) => ({ ...prev, brandId }));
-  }, []);
+  }
 
-  const setCategory = useCallback((categoryId: string | null) => {
+  function setCategory(categoryId: string | null) {
     setFilters((prev) => ({ ...prev, categoryId }));
-  }, []);
+  }
 
-  const setLoadingType = useCallback((loadingType: LoadingType | null) => {
+  function setLoadingType(loadingType: LoadingType | null) {
     setFilters((prev) => ({ ...prev, loadingType }));
-  }, []);
+  }
 
-  const clear = useCallback(() => {
+  function clear() {
     setFilters(INITIAL_FILTERS);
-  }, []);
+  }
 
   return { filters, setBrand, setCategory, setLoadingType, clear };
 }

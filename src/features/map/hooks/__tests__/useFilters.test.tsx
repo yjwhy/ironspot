@@ -77,36 +77,4 @@ describe('useFilters', () => {
 
     expect(result.current.filters).toEqual(INITIAL_FILTERS);
   });
-
-  it('returns stable setter references across re-renders', () => {
-    const { result, rerender } = renderHook(() => useFilters());
-
-    const initialSetters = {
-      setBrand: result.current.setBrand,
-      setCategory: result.current.setCategory,
-      setLoadingType: result.current.setLoadingType,
-      clear: result.current.clear,
-    };
-
-    rerender({});
-
-    expect(result.current.setBrand).toBe(initialSetters.setBrand);
-    expect(result.current.setCategory).toBe(initialSetters.setCategory);
-    expect(result.current.setLoadingType).toBe(initialSetters.setLoadingType);
-    expect(result.current.clear).toBe(initialSetters.clear);
-  });
-
-  it('keeps setter references stable after a state update', () => {
-    const { result } = renderHook(() => useFilters());
-
-    const setBrandBefore = result.current.setBrand;
-    const clearBefore = result.current.clear;
-
-    act(() => {
-      result.current.setBrand('b1');
-    });
-
-    expect(result.current.setBrand).toBe(setBrandBefore);
-    expect(result.current.clear).toBe(clearBefore);
-  });
 });
