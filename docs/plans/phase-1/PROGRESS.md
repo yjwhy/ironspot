@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Task 8 complete. PR open for review.
+Task 9 complete. PR #12 open for review.
 
 ## Task Checklist
 
@@ -26,7 +26,7 @@ Task 8 complete. PR open for review.
   - [x] Task 7.3: Gym Detail + Machines
   - [x] Task 7.4: Photo List
 - [x] Task 8: Location Hooks
-- [ ] Task 9: Expo Router Setup
+- [x] Task 9: Expo Router Setup
 - [ ] Task 10: Gym Bottom Sheet + Cards
 - [ ] Task 11: Photo Gallery + Detail
 - [ ] Task 12: Empty States + Loading States
@@ -46,6 +46,7 @@ Task 8 complete. PR open for review.
 | 6    | 9ee66c4 | 2026-04-25 | 6 shared UI components TDD'd on `src/shared/components/`: Button (variants/sizes/loading/disabled), Chip (animated bg via reanimated interpolateColor), Card (pressable + padding scale), Skeleton (shimmer with cancelAnimation cleanup), EmptyState (icon + a11y grouping), ErrorBoundary (react-error-boundary wrapper with onReset/onError). All memoized leaves, NativeWind v4 className typing wired via `nativewind-env.d.ts`. 35 new tests, 65 total passing.                                                                                                                                                  |
 | 7    | d61a53e | 2026-04-27 | Data layer: 4 sub-tasks TDD'd. 7.1 brands/categories services + hooks (staleTime Infinity) + centralised `unwrapList<T>`/`unwrapSingle<T>` helper. 7.2 `searchGymsInBounds` RPC + `useGymSearch` (no `!`, defensive narrow) + `useFilters` local state. 7.3 `getGymMachines` joined select + `useGymMachines` hardened against `undefined` id, structural assertions on `SELECT_WITH_DETAILS`. 7.4 `getMachinePhotos` ordered upvote_count desc + `useMachinePhotos`. Shared test utils: `createQueryWrapper` (gcTime 0), chained supabase mocks, `makeGymMachineWithDetails` factory. 51 new tests, 116 total. PR #8. |
 | 8    | aab0ff8 | 2026-04-27 | Location hooks: `useCurrentLocation` (foreground permission → coords / Gangnam Station fallback with Korean error / silent fallback on GPS rejection) and `usePermissionStatus` (passive read on mount, stable `request()` to prompt). Both effects use `AbortController` + an `isAborted()` getter to bypass TS narrowing on `signal.aborted` while staying unmount-safe. Exports `Coordinate` type and `GANGNAM_STATION` constant for downstream Map screen. 9 new tests, 125 total.                                                                                                                                 |
+| 9    | 1a41c80 | 2026-04-29 | Expo Router scaffold: root layout wires `ErrorBoundary` + `GestureHandlerRootView` + `QueryClientProvider`, gates render until fonts resolve (loaded or error so the splash never strands users on a font load failure), and registers `(tabs)` / `gym/[id]/machine/[machineId]` / `photo/[id]` (modal). Tab layout exposes 지도/마이 with tints from `tokens.ts` (no literal duplication, FF cohesion 🔴 auto-applied). Map and Me tabs plus the two dynamic routes ship as stubs to be filled in by Tasks 10/11/13. 5 new tests, 130 total. PR #12.                                                                  |
 
 ## Blockers
 
