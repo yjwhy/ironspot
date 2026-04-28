@@ -1,4 +1,3 @@
-import { memo } from 'react';
 import { Pressable, Text } from 'react-native';
 import Animated, {
   interpolateColor,
@@ -20,7 +19,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const CONTAINER_CLASS = `${TOUCH_CLASSES.small} rounded-full items-center justify-center`;
 
-function ChipImpl({ label, selected, onPress, testID }: ChipProps) {
+export function Chip({ label, selected, onPress, testID }: ChipProps) {
   const progress = useDerivedValue(() =>
     withTiming(selected ? 1 : 0, { duration: ANIMATION.microDuration }),
   );
@@ -48,5 +47,3 @@ function ChipImpl({ label, selected, onPress, testID }: ChipProps) {
     </AnimatedPressable>
   );
 }
-
-export const Chip = memo(ChipImpl);

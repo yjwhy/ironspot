@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export type LocationPermissionStatus = Location.PermissionStatus;
 
@@ -22,11 +22,11 @@ export function usePermissionStatus() {
     };
   }, []);
 
-  const request = useCallback(async (): Promise<LocationPermissionStatus> => {
+  async function request(): Promise<LocationPermissionStatus> {
     const response = await Location.requestForegroundPermissionsAsync();
     setStatus(response.status);
     return response.status;
-  }, []);
+  }
 
   return { status, request } as const;
 }

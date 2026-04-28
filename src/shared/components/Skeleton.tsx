@@ -1,4 +1,4 @@
-import { memo, useEffect } from 'react';
+import { useEffect } from 'react';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -40,7 +40,7 @@ function getDimensions(props: SkeletonProps): {
   return { width: props.width, height: props.height, borderRadius: radius.sm };
 }
 
-function SkeletonImpl(props: SkeletonProps) {
+export function Skeleton(props: SkeletonProps) {
   const opacity = useSharedValue(SHIMMER_MAX_OPACITY);
 
   // opacity is a reanimated shared value with a stable reference, so this
@@ -69,5 +69,3 @@ function SkeletonImpl(props: SkeletonProps) {
     />
   );
 }
-
-export const Skeleton = memo(SkeletonImpl);

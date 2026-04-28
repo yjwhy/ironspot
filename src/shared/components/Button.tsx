@@ -1,4 +1,3 @@
-import { memo } from 'react';
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 
 import { TOUCH_CLASSES, colors } from '@/shared/theme/tokens';
@@ -39,7 +38,7 @@ const SPINNER_COLOR: Record<ButtonVariant, string> = {
   ghost: colors.accent.DEFAULT,
 };
 
-function ButtonImpl({
+export function Button({
   label,
   onPress,
   variant = 'primary',
@@ -75,5 +74,3 @@ function ButtonImpl({
     </Pressable>
   );
 }
-
-export const Button = memo(ButtonImpl);
