@@ -23,7 +23,8 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "reactCompiler": true
     },
     "ios": {
       "bundleIdentifier": "com.ironspot.app",
