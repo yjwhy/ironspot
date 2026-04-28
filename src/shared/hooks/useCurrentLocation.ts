@@ -11,46 +11,48 @@ export const GANGNAM_STATION: Coordinate = {
   longitude: 127.0276,
 };
 
-const PERMISSION_DENIED_MESSAGE = '위치 권한이 거부되었습니다';
+export const PERMISSION_DENIED_MESSAGE = '위치 권한이 거부되었습니다';
 
-interface LocationResolution {
-  readonly location: Coordinate;
-  readonly error: string | null;
-}
+export type FallbackReason = 'permission_denied' | 'gps_error';
 
-async function resolveCurrentLocation(): Promise<LocationResolution> {
+export type LocationState =
+  | { readonly status: 'loading' }
+  | { readonly status: 'ready'; readonly location: Coordinate }
+  | { readonly status: 'fallback'; readonly location: Coordinate; readonly reason: FallbackReason };
+
+type ResolvedLocationState = Exclude<LocationState, { status: 'loading' }>;
+
+async function acquireCurrentLocation(): Promise<ResolvedLocationState> {
   const permission = await Location.requestForegroundPermissionsAsync();
 
   if (permission.status !== Location.PermissionStatus.GRANTED) {
-    return { location: GANGNAM_STATION, error: PERMISSION_DENIED_MESSAGE };
+    return { status: 'fallback', location: GANGNAM_STATION, reason: 'permission_denied' };
   }
 
   try {
     const current = await Location.getCurrentPositionAsync();
     return {
+      status: 'ready',
       location: {
         latitude: current.coords.latitude,
         longitude: current.coords.longitude,
       },
-      error: null,
     };
   } catch {
-    return { location: GANGNAM_STATION, error: null };
+    return { status: 'fallback', location: GANGNAM_STATION, reason: 'gps_error' };
   }
 }
 
-export function useCurrentLocation() {
-  const [location, setLocation] = useState<Coordinate | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function useCurrentLocation(): LocationState {
+  const [state, setState] = useState<LocationState>({ status: 'loading' });
 
   useEffect(function loadOnMount() {
     const controller = new AbortController();
 
     async function apply() {
-      const result = await resolveCurrentLocation();
+      const result = await acquireCurrentLocation();
       if (controller.signal.aborted) return;
-      setLocation(result.location);
-      setError(result.error);
+      setState(result);
     }
 
     void apply();
@@ -60,5 +62,5 @@ export function useCurrentLocation() {
     };
   }, []);
 
-  return { location, error } as const;
+  return state;
 }
