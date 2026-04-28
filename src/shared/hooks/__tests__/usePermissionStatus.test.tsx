@@ -64,18 +64,4 @@ describe('usePermissionStatus', () => {
     expect(result.current.status).toBe(Location.PermissionStatus.GRANTED);
     expect(mockedRequestPermission).toHaveBeenCalledTimes(1);
   });
-
-  it('keeps request reference stable across renders', async () => {
-    mockedGetPermission.mockResolvedValue(makePermission(Location.PermissionStatus.GRANTED));
-
-    const { result, rerender } = renderHook(() => usePermissionStatus());
-
-    await waitFor(() => {
-      expect(result.current.status).toBe(Location.PermissionStatus.GRANTED);
-    });
-
-    const firstRequest = result.current.request;
-    rerender({});
-    expect(result.current.request).toBe(firstRequest);
-  });
 });

@@ -1,4 +1,3 @@
-import { memo } from 'react';
 import type { ReactNode } from 'react';
 import type { PressableStateCallbackType } from 'react-native';
 import { Pressable, View } from 'react-native';
@@ -32,7 +31,7 @@ function pressedOpacity({ pressed }: PressableStateCallbackType) {
   return { opacity: pressed ? 0.8 : 1 };
 }
 
-function CardImpl({ children, onPress, padding = 'lg', testID }: CardProps) {
+export function Card({ children, onPress, padding = 'lg', testID }: CardProps) {
   const className = buildClassName(padding);
 
   if (onPress) {
@@ -55,5 +54,3 @@ function CardImpl({ children, onPress, padding = 'lg', testID }: CardProps) {
     </View>
   );
 }
-
-export const Card = memo(CardImpl);

@@ -1,5 +1,4 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { memo } from 'react';
 import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
@@ -21,7 +20,7 @@ function buildA11yLabel(title: string, description?: string): string {
   return description ? `${title}. ${description}` : title;
 }
 
-function EmptyStateImpl({ icon, title, description, action, testID }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action, testID }: EmptyStateProps) {
   return (
     <View
       testID={testID}
@@ -44,5 +43,3 @@ function EmptyStateImpl({ icon, title, description, action, testID }: EmptyState
     </View>
   );
 }
-
-export const EmptyState = memo(EmptyStateImpl);
