@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-export default function MePage() {
+export default function ProfileScreen() {
   return (
     <View className="flex-1 items-center justify-center bg-bg-base">
       <Text className="font-bold text-heading-md text-text-primary">마이페이지</Text>
