@@ -45,3 +45,7 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
+
+# Tooling runtime artifacts
+.claude/scheduled_tasks.lock
+.playwright-mcp/
