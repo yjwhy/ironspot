@@ -9,6 +9,7 @@ interface CardProps {
   onPress?: () => void;
   padding?: CardPadding;
   testID?: string;
+  accessibilityLabel?: string;
 }
 
 // Mirrors `tokens.spacing` (sm=8, md=12, lg=16). Tailwind's default scale
@@ -31,7 +32,7 @@ function pressedOpacity({ pressed }: PressableStateCallbackType) {
   return { opacity: pressed ? 0.8 : 1 };
 }
 
-export function Card({ children, onPress, padding = 'lg', testID }: CardProps) {
+export function Card({ children, onPress, padding = 'lg', testID, accessibilityLabel }: CardProps) {
   const className = buildClassName(padding);
 
   if (onPress) {
@@ -40,6 +41,7 @@ export function Card({ children, onPress, padding = 'lg', testID }: CardProps) {
         onPress={onPress}
         testID={testID}
         accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
         style={pressedOpacity}
         className={className}
       >
@@ -49,7 +51,12 @@ export function Card({ children, onPress, padding = 'lg', testID }: CardProps) {
   }
 
   return (
-    <View testID={testID} accessibilityRole="none" className={className}>
+    <View
+      testID={testID}
+      accessibilityRole="none"
+      accessibilityLabel={accessibilityLabel}
+      className={className}
+    >
       {children}
     </View>
   );

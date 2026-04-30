@@ -77,4 +77,13 @@ describe('Card', () => {
     );
     expect(getByTestId('none')).toHaveProp('className', expect.not.stringMatching(/\bp-\d/));
   });
+
+  it('forwards accessibilityLabel to the pressable shell', () => {
+    const { getByRole } = render(
+      <Card onPress={() => undefined} accessibilityLabel="가나다, 0.3km">
+        <Text>x</Text>
+      </Card>,
+    );
+    expect(getByRole('button', { name: '가나다, 0.3km' })).toBeTruthy();
+  });
 });
