@@ -14,7 +14,7 @@ const panatta = makeBrand({ id: 'b-pan', name: 'Panatta' });
 const hammer = makeBrand({ id: 'b-ham', name: 'Hammer Strength' });
 const back = makeCategory({ id: 'c-back', name: 'Back' });
 
-const panattaHigh = makeGymMachineWithDetails({
+const panattaHighRow = makeGymMachineWithDetails({
   machine: { id: 'gm-1', quantity: 1 },
   brand: panatta,
   category: back,
@@ -22,7 +22,7 @@ const panattaHigh = makeGymMachineWithDetails({
   photos: [makeMachinePhoto({ id: 'p-1' }), makeMachinePhoto({ id: 'p-2' })],
 });
 
-const panattaLow = makeGymMachineWithDetails({
+const panattaLowRow = makeGymMachineWithDetails({
   machine: { id: 'gm-2', quantity: 3 },
   brand: panatta,
   category: back,
@@ -30,7 +30,7 @@ const panattaLow = makeGymMachineWithDetails({
   photos: [],
 });
 
-const hammerLat = makeGymMachineWithDetails({
+const hammerLatPullDown = makeGymMachineWithDetails({
   machine: { id: 'gm-3', quantity: 1 },
   brand: hammer,
   category: back,
@@ -38,7 +38,7 @@ const hammerLat = makeGymMachineWithDetails({
   photos: [makeMachinePhoto({ id: 'p-3' })],
 });
 
-const all = [panattaHigh, panattaLow, hammerLat];
+const all = [panattaHighRow, panattaLowRow, hammerLatPullDown];
 
 describe('MachineList', () => {
   it('renders one header per brand', () => {
@@ -64,7 +64,7 @@ describe('MachineList', () => {
 
   it('omits the quantity badge when quantity === 1', () => {
     const { queryByText } = render(
-      <MachineList machines={[panattaHigh]} onPressMachine={() => undefined} />,
+      <MachineList machines={[panattaHighRow]} onPressMachine={() => undefined} />,
     );
     expect(queryByText(/^x\d/)).toBeNull();
   });
