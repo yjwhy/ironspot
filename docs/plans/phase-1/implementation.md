@@ -1450,7 +1450,7 @@ Test by mocking `expo-location`.
 - Create: `app/_layout.tsx` (root: providers, fonts, splash)
 - Create: `app/(tabs)/_layout.tsx` (tab navigator)
 - Create: `app/(tabs)/index.tsx` (Map tab entry)
-- Create: `app/(tabs)/me.tsx` (My Page stub)
+- Create: `app/(tabs)/profile.tsx` (My Page stub)
 - Create: `app/gym/[id]/machine/[machineId].tsx` (photo gallery route)
 - Create: `app/photo/[id].tsx` (photo detail modal)
 
@@ -1522,7 +1522,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="me"
+        name="profile"
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="person" size={size} color={color} />
@@ -1535,12 +1535,12 @@ export default function TabLayout() {
 }
 ```
 
-### Step 3: `app/(tabs)/me.tsx` (Phase 2 stub)
+### Step 3: `app/(tabs)/profile.tsx` (Phase 2 stub)
 
 ```tsx
 import { View, Text } from 'react-native';
 
-export default function MePage() {
+export default function ProfileScreen() {
   return (
     <View className="flex-1 items-center justify-center bg-bg-base">
       <Text className="text-heading-md text-text-primary">마이페이지</Text>
