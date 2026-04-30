@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Task 9 complete. PR #12 open for review.
+Task 10 complete. PR open for review.
 
 ## Task Checklist
 
@@ -27,7 +27,7 @@ Task 9 complete. PR #12 open for review.
   - [x] Task 7.4: Photo List
 - [x] Task 8: Location Hooks
 - [x] Task 9: Expo Router Setup
-- [ ] Task 10: Gym Bottom Sheet + Cards
+- [x] Task 10: Gym Bottom Sheet + Cards
 - [ ] Task 11: Photo Gallery + Detail
 - [ ] Task 12: Empty States + Loading States
 - [ ] Task 13: Map Screen (Naver Maps) — ⚠️ blocked on API key
