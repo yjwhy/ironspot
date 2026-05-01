@@ -70,9 +70,9 @@ module.exports = defineConfig([
       ],
       'import/no-duplicates': 'error',
       'import/no-cycle': 'error',
-      // AccentChip wraps its children in <Text> internally; the rule can't see
-      // that, so list it as a known text-wrapper. Add other shared text wrappers here.
-      'react-native/no-raw-text': ['error', { skip: ['AccentChip'] }],
+      // AppText / AccentChip wrap their children in <Text> internally; the rule
+      // can't see that, so list known text-wrappers. Add others here as needed.
+      'react-native/no-raw-text': ['error', { skip: ['AppText', 'AccentChip'] }],
       'react-native/no-inline-styles': 'off',
       'react-native/no-unused-styles': 'off',
       'react-native/no-color-literals': 'off',

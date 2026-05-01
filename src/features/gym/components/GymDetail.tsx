@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { AccentChip } from '@/shared/components/AccentChip';
+import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Skeleton } from '@/shared/components/Skeleton';
 import { formatVerifiedDate } from '@/shared/lib/format';
@@ -34,9 +35,9 @@ export function GymDetail({ gym, onPressMachine }: GymDetailProps) {
 function GymHeader({ gym }: { gym: Gym }) {
   return (
     <View className="gap-1">
-      <Text accessibilityRole="header" className="text-heading-lg text-text-primary">
+      <AppText accessibilityRole="header" className="text-heading-lg text-text-primary">
         {gym.name}
-      </Text>
+      </AppText>
       <MetaLine>{gym.address}</MetaLine>
       {gym.phone ? <MetaLine>{gym.phone}</MetaLine> : null}
       {gym.operating_hours ? <MetaLine>{gym.operating_hours}</MetaLine> : null}
@@ -50,7 +51,7 @@ function GymHeader({ gym }: { gym: Gym }) {
 }
 
 function MetaLine({ children }: { children: ReactNode }) {
-  return <Text className="font-sans text-body-sm text-text-secondary">{children}</Text>;
+  return <AppText className="text-body-sm text-text-secondary">{children}</AppText>;
 }
 
 interface MachinesBodyProps {
