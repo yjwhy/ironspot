@@ -46,6 +46,11 @@ module.exports = defineConfig([
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
       'react-compiler/react-compiler': 'error',
+      // Block `arr.length && <X/>` / `str && <X/>` style leaks where a falsy
+      // number/string would render as raw text in RN ("Text strings must be
+      // rendered within a <Text> component"). Pure `boolean && <X/>` stays
+      // valid via the `coerce` + `ternary` strategies.
+      'react/jsx-no-leaked-render': ['error', { validStrategies: ['coerce', 'ternary'] }],
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
@@ -65,7 +70,9 @@ module.exports = defineConfig([
       ],
       'import/no-duplicates': 'error',
       'import/no-cycle': 'error',
-      'react-native/no-raw-text': 'error',
+      // AccentChip wraps its children in <Text> internally; the rule can't see
+      // that, so list it as a known text-wrapper. Add other shared text wrappers here.
+      'react-native/no-raw-text': ['error', { skip: ['AccentChip'] }],
       'react-native/no-inline-styles': 'off',
       'react-native/no-unused-styles': 'off',
       'react-native/no-color-literals': 'off',
