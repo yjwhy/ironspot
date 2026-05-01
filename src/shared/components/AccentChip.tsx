@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+
+import { AppText } from './AppText';
 
 interface AccentChipProps {
   children: ReactNode;
@@ -9,7 +11,7 @@ interface AccentChipProps {
 export function AccentChip({ children, testID }: AccentChipProps) {
   return (
     <View testID={testID} className="self-start rounded-full bg-accent-50 px-2 py-0.5">
-      <Text className="font-medium text-body-sm text-accent-dark">{children}</Text>
+      <AppText className="font-medium text-body-sm text-accent-dark">{children}</AppText>
     </View>
   );
 }

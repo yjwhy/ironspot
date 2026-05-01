@@ -1,7 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetFlashList, BottomSheetView } from '@gorhom/bottom-sheet';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
 import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
 import { haversineKm } from '@/shared/lib/geo';
@@ -107,7 +108,7 @@ function DetailMode({ selectedGym, onCloseDetail, onPressMachine }: DetailModePr
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         />
-        <Text className="font-medium text-body-sm text-text-secondary">목록</Text>
+        <AppText className="font-medium text-body-sm text-text-secondary">목록</AppText>
       </Pressable>
       <GymDetail gym={selectedGym} onPressMachine={onPressMachine} />
     </View>

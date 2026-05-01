@@ -1,6 +1,8 @@
-import { ActivityIndicator, Pressable, Text } from 'react-native';
+import { ActivityIndicator, Pressable } from 'react-native';
 
 import { TOUCH_CLASSES, colors } from '@/shared/theme/tokens';
+
+import { AppText } from './AppText';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 export type ButtonSize = 'md' | 'sm';
@@ -69,7 +71,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={SPINNER_COLOR[variant]} />
       ) : (
-        <Text className={`font-semibold ${VARIANT_TEXT[variant]}`}>{label}</Text>
+        <AppText className={`font-semibold ${VARIANT_TEXT[variant]}`}>{label}</AppText>
       )}
     </Pressable>
   );

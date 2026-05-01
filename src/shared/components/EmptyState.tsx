@@ -1,8 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { colors } from '@/shared/theme/tokens';
+
+import { AppText } from './AppText';
 
 type MaterialIconName = keyof typeof MaterialIcons.glyphMap;
 
@@ -35,9 +37,11 @@ export function EmptyState({ icon, title, description, action, testID }: EmptySt
         importantForAccessibility="no"
         accessibilityElementsHidden={true}
       />
-      <Text className="mt-4 text-heading-md text-text-primary text-center">{title}</Text>
+      <AppText className="mt-4 text-heading-md text-text-primary text-center">{title}</AppText>
       {description ? (
-        <Text className="mt-2 text-body-sm text-text-secondary text-center">{description}</Text>
+        <AppText className="mt-2 text-body-sm text-text-secondary text-center">
+          {description}
+        </AppText>
       ) : null}
       {action ? <View className="mt-6">{action}</View> : null}
     </View>

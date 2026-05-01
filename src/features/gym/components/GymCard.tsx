@@ -1,9 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import { AccentChip } from '@/shared/components/AccentChip';
+import { AppText } from '@/shared/components/AppText';
 import { Card } from '@/shared/components/Card';
 import { formatDistanceKm, formatVerifiedDate } from '@/shared/lib/format';
 import { ANIMATION, colors } from '@/shared/theme/tokens';
@@ -64,19 +65,19 @@ export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID 
           </View>
           <View className="flex-1 justify-between">
             <View className="gap-1">
-              <Text className="text-heading-sm text-text-primary" numberOfLines={1}>
+              <AppText className="text-heading-sm text-text-primary" numberOfLines={1}>
                 {gym.name}
-              </Text>
+              </AppText>
               <View className="flex-row items-center gap-1">
                 <MaterialIcons name="place" size={14} color={colors.text.secondary} />
-                <Text className="font-sans text-body-sm text-text-secondary">{distanceLabel}</Text>
+                <AppText className="text-body-sm text-text-secondary">{distanceLabel}</AppText>
               </View>
               <AccentChip>기구 {gym.machine_count}대</AccentChip>
             </View>
             {verifiedLabel ? (
-              <Text className="self-end font-sans text-body-sm text-text-tertiary">
+              <AppText className="self-end text-body-sm text-text-tertiary">
                 {verifiedLabel}
-              </Text>
+              </AppText>
             ) : null}
           </View>
         </View>

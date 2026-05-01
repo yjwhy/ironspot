@@ -1,4 +1,4 @@
-import { Pressable, Text } from 'react-native';
+import { Pressable } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -7,6 +7,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ANIMATION, TOUCH_CLASSES, colors } from '@/shared/theme/tokens';
+
+import { AppText } from './AppText';
 
 interface ChipProps {
   label: string;
@@ -43,7 +45,7 @@ export function Chip({ label, selected, onPress, testID }: ChipProps) {
       style={animatedStyle}
       className={CONTAINER_CLASS}
     >
-      <Text className={`font-medium text-body-sm ${textClass}`}>{label}</Text>
+      <AppText className={`font-medium text-body-sm ${textClass}`}>{label}</AppText>
     </AnimatedPressable>
   );
 }

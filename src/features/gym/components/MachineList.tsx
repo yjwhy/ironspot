@@ -1,7 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { AppText } from '@/shared/components/AppText';
 import { colors } from '@/shared/theme/tokens';
 import type { GymMachineWithDetails } from '@/shared/types/database';
 
@@ -41,9 +42,9 @@ export function MachineList({ machines, onPressMachine }: MachineListProps) {
               className="flex-row items-center justify-between"
               style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
             >
-              <Text accessibilityRole="header" className="text-heading-sm text-text-primary">
+              <AppText accessibilityRole="header" className="text-heading-sm text-text-primary">
                 {group.brand.name}
-              </Text>
+              </AppText>
               <MaterialIcons
                 name={isCollapsed ? 'expand-more' : 'expand-less'}
                 size={20}
@@ -90,12 +91,12 @@ function MachineRow({ machine, onPress }: MachineRowProps) {
       style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
     >
       <View className="flex-row items-center gap-2">
-        <Text className="font-sans text-body text-text-primary">{name}</Text>
+        <AppText className="text-body text-text-primary">{name}</AppText>
         {showQuantity ? (
           <View className="rounded-full bg-bg-muted px-2">
-            <Text className="font-medium text-body-sm text-text-secondary">
+            <AppText className="font-medium text-body-sm text-text-secondary">
               x{String(machine.quantity)}
-            </Text>
+            </AppText>
           </View>
         ) : null}
       </View>
@@ -107,7 +108,7 @@ function MachineRow({ machine, onPress }: MachineRowProps) {
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         />
-        <Text className="font-sans text-body-sm text-text-tertiary">사진 {String(photoCount)}</Text>
+        <AppText className="text-body-sm text-text-tertiary">사진 {String(photoCount)}</AppText>
       </View>
     </Pressable>
   );
