@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
+import { AccentChip } from '@/shared/components/AccentChip';
 import { Card } from '@/shared/components/Card';
 import { formatDistanceKm, formatVerifiedDate } from '@/shared/lib/format';
 import { ANIMATION, colors } from '@/shared/theme/tokens';
@@ -70,11 +71,7 @@ export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID 
                 <MaterialIcons name="place" size={14} color={colors.text.secondary} />
                 <Text className="font-sans text-body-sm text-text-secondary">{distanceLabel}</Text>
               </View>
-              <View className="self-start rounded-full bg-accent-50 px-2 py-0.5">
-                <Text className="font-medium text-body-sm text-accent-dark">
-                  기구 {gym.machine_count}대
-                </Text>
-              </View>
+              <AccentChip>기구 {gym.machine_count}대</AccentChip>
             </View>
             {verifiedLabel ? (
               <Text className="self-end font-sans text-body-sm text-text-tertiary">

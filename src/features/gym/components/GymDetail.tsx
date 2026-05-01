@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
+import { AccentChip } from '@/shared/components/AccentChip';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Skeleton } from '@/shared/components/Skeleton';
 import { formatVerifiedDate } from '@/shared/lib/format';
@@ -35,22 +37,20 @@ function GymHeader({ gym }: { gym: Gym }) {
       <Text accessibilityRole="header" className="text-heading-lg text-text-primary">
         {gym.name}
       </Text>
-      <Text className="font-sans text-body-sm text-text-secondary">{gym.address}</Text>
-      {gym.phone ? (
-        <Text className="font-sans text-body-sm text-text-secondary">{gym.phone}</Text>
-      ) : null}
-      {gym.operating_hours ? (
-        <Text className="font-sans text-body-sm text-text-secondary">{gym.operating_hours}</Text>
-      ) : null}
+      <MetaLine>{gym.address}</MetaLine>
+      {gym.phone ? <MetaLine>{gym.phone}</MetaLine> : null}
+      {gym.operating_hours ? <MetaLine>{gym.operating_hours}</MetaLine> : null}
       {gym.last_verified_at ? (
-        <View className="mt-1 self-start rounded-full bg-accent-50 px-2 py-0.5">
-          <Text className="font-medium text-body-sm text-accent-dark">
-            확인일 {formatVerifiedDate(gym.last_verified_at)}
-          </Text>
+        <View className="mt-1">
+          <AccentChip>확인일 {formatVerifiedDate(gym.last_verified_at)}</AccentChip>
         </View>
       ) : null}
     </View>
   );
+}
+
+function MetaLine({ children }: { children: ReactNode }) {
+  return <Text className="font-sans text-body-sm text-text-secondary">{children}</Text>;
 }
 
 interface MachinesBodyProps {
