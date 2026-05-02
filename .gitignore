@@ -49,3 +49,6 @@ coverage/
 # Tooling runtime artifacts
 .claude/scheduled_tasks.lock
 .playwright-mcp/
+
+# Local screenshots from scripts/snap.sh (AI-assisted dev workflow)
+.tmp/

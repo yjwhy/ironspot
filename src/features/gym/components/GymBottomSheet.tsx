@@ -6,6 +6,7 @@ import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
 import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
 import { haversineKm } from '@/shared/lib/geo';
+import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { GymWithMachineCount } from '@/shared/types/database';
 
@@ -99,7 +100,7 @@ function DetailMode({ selectedGym, onCloseDetail, onPressMachine }: DetailModePr
         accessibilityRole="button"
         accessibilityLabel="목록으로 돌아가기"
         className="flex-row items-center gap-1 px-4 py-3"
-        style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+        style={pressedOpacity}
       >
         <MaterialIcons
           name="arrow-back"

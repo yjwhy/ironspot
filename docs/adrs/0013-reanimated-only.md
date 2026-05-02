@@ -30,6 +30,7 @@
 
 - 일부 복잡한 효과는 Lottie 대비 코드가 많음
 - Shared element 전환은 reanimated에서 실험적 — 폴백 플랜 필요
+- **2026-05-02 업데이트:** reanimated v4.1.7이 `SharedTransition` API를 완전히 제거. Phase 1은 모달 slide-up으로 fallback. 자세한 내용은 [ADR 0019](./0019-sharedtransition-deferred.md) 참조.
 
 ## 구현 규칙
 

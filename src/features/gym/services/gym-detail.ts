@@ -1,6 +1,6 @@
 import { supabase } from '@/shared/lib/supabase';
-import { unwrapList } from '@/shared/lib/supabase-helpers';
-import type { GymMachineWithDetails } from '@/shared/types/database';
+import { unwrapList, unwrapSingle } from '@/shared/lib/supabase-helpers';
+import type { Gym, GymMachineWithDetails } from '@/shared/types/database';
 
 export const SELECT_WITH_DETAILS = `
   *,
@@ -19,4 +19,9 @@ export async function getGymMachines(gymId: string): Promise<GymMachineWithDetai
     .eq('gym_id', gymId)
     .order('template_id');
   return unwrapList<GymMachineWithDetails>(response);
+}
+
+export async function getGymById(gymId: string): Promise<Gym | null> {
+  const response = await supabase.from('gyms').select('*').eq('id', gymId).maybeSingle();
+  return unwrapSingle<Gym>(response);
 }

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
+import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { GymMachineWithDetails } from '@/shared/types/database';
 
@@ -40,7 +41,7 @@ export function MachineList({ machines, onPressMachine }: MachineListProps) {
               accessibilityRole="button"
               accessibilityLabel={headerLabel}
               className="flex-row items-center justify-between"
-              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+              style={pressedOpacity}
             >
               <AppText accessibilityRole="header" className="text-heading-sm text-text-primary">
                 {group.brand.name}
@@ -88,7 +89,7 @@ function MachineRow({ machine, onPress }: MachineRowProps) {
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       className="flex-row items-center justify-between rounded-md bg-bg-subtle px-3 py-2"
-      style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+      style={pressedOpacity}
     >
       <View className="flex-row items-center gap-2">
         <AppText className="text-body text-text-primary">{name}</AppText>

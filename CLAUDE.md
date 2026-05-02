@@ -289,7 +289,21 @@ pnpm jest                          # Run all tests
 pnpm jest --testPathPattern=<path> # Run specific tests
 pnpm expo start --clear            # Clear cache and start
 pnpm install                       # Install dependencies
+pnpm snap                          # Capture booted iOS simulator screen (AI dev workflow)
 ```
+
+## Visually verifying simulator state (AI workflow)
+
+When the user asks Claude to verify a UI change visually, **Claude takes the screenshot itself** instead of asking the user to copy-paste one. The pattern:
+
+1. User performs whatever interaction is needed in the simulator (deep link, tap, navigation).
+2. Claude runs `pnpm snap` (or `./scripts/snap.sh`) — captures the booted simulator to `.tmp/snaps/<HHMMSS>.png` and prints the absolute path.
+3. Claude reads the path with the Read tool — image is rendered inline in Claude's context.
+4. Claude reports findings.
+
+The `.tmp/` directory is gitignored. Simulator must be booted; if not, the script prints a helpful error.
+
+**Limit:** `xcrun simctl` only captures screens — it cannot tap, swipe, or type. The user still drives interactions for now. Full automation (tap / swipe / text input) lands when Task 9.5 ships Maestro and `maestro test ...` flows. Until then: user interacts, Claude observes.
 
 ## Boundaries
 

@@ -37,6 +37,15 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
+jest.mock('react-native-safe-area-context', () => {
+  const RN = jest.requireActual<typeof ReactNativeModule>('react-native');
+  return {
+    SafeAreaProvider: ({ children }: ComponentProps<typeof RN.View>) => (
+      <RN.View testID="safe-area-provider">{children}</RN.View>
+    ),
+  };
+});
+
 jest.mock('@/shared/theme/fonts', () => ({
   useAppFonts: jest.fn(),
 }));

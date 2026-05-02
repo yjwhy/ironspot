@@ -12,6 +12,7 @@
     "test:coverage": "jest --coverage --passWithNoTests",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "snap": "./scripts/snap.sh",
     "prepare": "husky"
   },
   "dependencies": {
