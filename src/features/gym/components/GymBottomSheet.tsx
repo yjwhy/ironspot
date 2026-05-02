@@ -12,12 +12,14 @@ import { colors } from '@/shared/theme/tokens';
 import type { GymWithMachineCount } from '@/shared/types/database';
 
 import { GymCard } from './GymCard';
+import { GymCardSkeleton } from './GymCardSkeleton';
 import { GymDetail } from './GymDetail';
 
 interface GymBottomSheetProps {
   gyms: readonly GymWithMachineCount[];
   userLocation: Coordinate;
   selectedGym: GymWithMachineCount | null;
+  isLoading: boolean;
   onSelectGym: (gymId: string) => void;
   onCloseDetail: () => void;
   onPressMachine: (gymMachineId: string) => void;
@@ -27,6 +29,8 @@ interface GymBottomSheetProps {
 const SNAP_POINTS = ['10%', '50%', '90%'];
 
 const LIST_CONTENT_STYLE = { padding: 16 };
+
+const SKELETON_INDEXES = [0, 1, 2] as const;
 
 export function GymBottomSheet(props: GymBottomSheetProps) {
   return (
@@ -42,6 +46,7 @@ export function GymBottomSheet(props: GymBottomSheetProps) {
           <ListMode
             gyms={props.gyms}
             userLocation={props.userLocation}
+            isLoading={props.isLoading}
             onSelectGym={props.onSelectGym}
             onClearFilters={props.onClearFilters}
           />
@@ -54,11 +59,21 @@ export function GymBottomSheet(props: GymBottomSheetProps) {
 interface ListModeProps {
   gyms: readonly GymWithMachineCount[];
   userLocation: Coordinate;
+  isLoading: boolean;
   onSelectGym: (gymId: string) => void;
   onClearFilters: () => void;
 }
 
-function ListMode({ gyms, userLocation, onSelectGym, onClearFilters }: ListModeProps) {
+function ListMode({ gyms, userLocation, isLoading, onSelectGym, onClearFilters }: ListModeProps) {
+  if (isLoading) {
+    return (
+      <View className="gap-3 p-4">
+        {SKELETON_INDEXES.map((i) => (
+          <GymCardSkeleton key={i} />
+        ))}
+      </View>
+    );
+  }
   return (
     <BottomSheetFlashList
       data={gyms}

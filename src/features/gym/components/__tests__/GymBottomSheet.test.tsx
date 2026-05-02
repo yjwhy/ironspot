@@ -66,6 +66,7 @@ describe('GymBottomSheet (list mode)', () => {
         gyms={[fitnessFactory, strengthGym]}
         userLocation={userLocation}
         selectedGym={null}
+        isLoading={false}
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
@@ -82,6 +83,7 @@ describe('GymBottomSheet (list mode)', () => {
         gyms={[fitnessFactory]}
         userLocation={userLocation}
         selectedGym={null}
+        isLoading={false}
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
@@ -99,6 +101,7 @@ describe('GymBottomSheet (list mode)', () => {
         gyms={[fitnessFactory, strengthGym]}
         userLocation={userLocation}
         selectedGym={null}
+        isLoading={false}
         onSelectGym={onSelectGym}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
@@ -115,6 +118,7 @@ describe('GymBottomSheet (list mode)', () => {
         gyms={[]}
         userLocation={userLocation}
         selectedGym={null}
+        isLoading={false}
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
@@ -131,6 +135,7 @@ describe('GymBottomSheet (list mode)', () => {
         gyms={[]}
         userLocation={userLocation}
         selectedGym={null}
+        isLoading={false}
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
@@ -147,6 +152,7 @@ describe('GymBottomSheet (list mode)', () => {
         gyms={[]}
         userLocation={userLocation}
         selectedGym={null}
+        isLoading={false}
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
@@ -155,6 +161,41 @@ describe('GymBottomSheet (list mode)', () => {
     );
     fireEvent.press(getByRole('button', { name: '필터 초기화' }));
     expect(onClearFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders three gym-card skeletons while isLoading is true', () => {
+    const { getAllByTestId, queryByText } = render(
+      <GymBottomSheet
+        gyms={[]}
+        userLocation={userLocation}
+        selectedGym={null}
+        isLoading
+        onSelectGym={() => undefined}
+        onCloseDetail={() => undefined}
+        onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
+      />,
+    );
+    expect(getAllByTestId('gym-card-skeleton')).toHaveLength(3);
+    // The empty-state copy must not show during loading — it would race with the
+    // skeleton and double-message the user.
+    expect(queryByText('조건에 맞는 헬스장이 없어요')).toBeNull();
+  });
+
+  it('does not render skeletons when isLoading is false and gyms exist', () => {
+    const { queryAllByTestId } = render(
+      <GymBottomSheet
+        gyms={[fitnessFactory]}
+        userLocation={userLocation}
+        selectedGym={null}
+        isLoading={false}
+        onSelectGym={() => undefined}
+        onCloseDetail={() => undefined}
+        onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
+      />,
+    );
+    expect(queryAllByTestId('gym-card-skeleton')).toHaveLength(0);
   });
 });
 
@@ -176,12 +217,30 @@ describe('GymBottomSheet (detail mode)', () => {
         gyms={[fitnessFactory]}
         userLocation={userLocation}
         selectedGym={fitnessFactory}
+        isLoading={false}
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
         onClearFilters={() => undefined}
       />,
     );
+    expect(getByRole('header', { name: 'Fitness Factory' })).toBeTruthy();
+  });
+
+  it('renders detail mode (not skeletons) when selectedGym is set even while isLoading', () => {
+    const { queryAllByTestId, getByRole } = render(
+      <GymBottomSheet
+        gyms={[fitnessFactory]}
+        userLocation={userLocation}
+        selectedGym={fitnessFactory}
+        isLoading
+        onSelectGym={() => undefined}
+        onCloseDetail={() => undefined}
+        onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
+      />,
+    );
+    expect(queryAllByTestId('gym-card-skeleton')).toHaveLength(0);
     expect(getByRole('header', { name: 'Fitness Factory' })).toBeTruthy();
   });
 
@@ -192,6 +251,7 @@ describe('GymBottomSheet (detail mode)', () => {
         gyms={[fitnessFactory]}
         userLocation={userLocation}
         selectedGym={fitnessFactory}
+        isLoading={false}
         onSelectGym={() => undefined}
         onCloseDetail={onCloseDetail}
         onPressMachine={() => undefined}
