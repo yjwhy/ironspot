@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { toast } from 'burnt';
 import { router } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useGymDetail } from '@/features/gym/hooks/useGymDetail';
 import { useGymMachines } from '@/features/gym/hooks/useGymMachines';
@@ -20,12 +21,14 @@ interface MachinePhotoGalleryScreenProps {
   machineId: string | undefined;
 }
 
-const SCROLL_PADDING = { padding: 16, paddingBottom: 96 };
+const SCROLL_HORIZONTAL_PADDING = 16;
+const SCROLL_BOTTOM_PADDING = 96;
 const SKELETON_HERO_WIDTH = 320;
 const SKELETON_HERO_HEIGHT = 200;
 const SKELETON_CELL_SIZE = 100;
 
 export function MachinePhotoGalleryScreen({ gymId, machineId }: MachinePhotoGalleryScreenProps) {
+  const insets = useSafeAreaInsets();
   const gym = useGymDetail(gymId);
   const machines = useGymMachines(gymId);
   const photos = useMachinePhotos(machineId);
@@ -51,7 +54,11 @@ export function MachinePhotoGalleryScreen({ gymId, machineId }: MachinePhotoGall
   return (
     <View className="flex-1 bg-bg-base">
       <ScrollView
-        contentContainerStyle={SCROLL_PADDING}
+        contentContainerStyle={{
+          paddingTop: insets.top + SCROLL_HORIZONTAL_PADDING,
+          paddingHorizontal: SCROLL_HORIZONTAL_PADDING,
+          paddingBottom: SCROLL_BOTTOM_PADDING,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={photos.isFetching || gym.isFetching || machines.isFetching}
