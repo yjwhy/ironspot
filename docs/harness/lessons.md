@@ -87,6 +87,30 @@ function RetryHarness() {
 
 ---
 
+### 2026-05-02 / Task 11.5 — `PressableStateCallbackType` augmentation drifts between local and CI
+
+CI typecheck failed on `pressedOpacity` test arguments because Expo augments
+`PressableStateCallbackType` in `node_modules/expo/types/react-native-web.d.ts`
+(adds `hovered: boolean`) only when its augmentation file is loaded. That
+load order differs between local pnpm install and CI's `--frozen-lockfile`
+fresh install, so locally `hovered` was required, on CI it didn't exist.
+**Do not type test helpers that take Pressable state with the imported
+`PressableStateCallbackType`** — use a structural narrower type and rely on
+function-arg contravariance so callers (Pressable's actual `style` prop)
+still typecheck.
+
+```ts
+// Wrong — environment-dependent type drift
+export function pressedOpacity({ pressed }: PressableStateCallbackType) { ... }
+
+// Correct — structural shape, no augmentation dependency
+export function pressedOpacity({ pressed }: { pressed: boolean }) { ... }
+```
+
+Tests then pass `{ pressed: true }` directly with no extra fields.
+
+---
+
 ### 2026-05-02 / Task 11.4 — reanimated v4 dropped the SharedTransition API
 
 `ui-design.md` calls for a hero / shared-element morph between the photo grid

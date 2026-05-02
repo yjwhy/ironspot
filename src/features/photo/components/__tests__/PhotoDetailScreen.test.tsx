@@ -1,5 +1,4 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { toast } from 'burnt';
 import { router } from 'expo-router';
 
 import type { MachinePhoto } from '@/shared/types/database';
@@ -11,7 +10,6 @@ import { PhotoDetailScreen } from '../PhotoDetailScreen';
 jest.mock('../../hooks/useMachinePhotos', () => ({
   useMachinePhotos: jest.fn(),
 }));
-jest.mock('burnt', () => ({ toast: jest.fn() }));
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), push: jest.fn() },
 }));
@@ -76,10 +74,9 @@ describe('PhotoDetailScreen', () => {
     expect(router.back).toHaveBeenCalledTimes(1);
   });
 
-  it('exposes a report button that shows a Phase 2 toast when tapped', () => {
-    const { getByLabelText } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
-    fireEvent.press(getByLabelText('신고'));
-    expect(toast).toHaveBeenCalledWith({ title: 'Phase 2에서 제공 예정' });
+  it('renders the report button as disabled (Phase 1 — non-interactive)', () => {
+    const { getByRole } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
+    expect(getByRole('button', { name: '신고', disabled: true })).toBeTruthy();
   });
 
   it('renders an error EmptyState when the photo query errors', () => {

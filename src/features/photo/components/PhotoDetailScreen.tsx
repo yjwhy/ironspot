@@ -1,5 +1,4 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { toast } from 'burnt';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -17,10 +16,10 @@ import { PhotoPager } from './PhotoPager';
 import { useMachinePhotos } from '../hooks/useMachinePhotos';
 
 const ANONYMOUS_LABEL = '익명';
-const REPORT_TOAST = 'Phase 2에서 제공 예정';
 const TOP_BAR_GUTTER = 8;
 const FOOTER_GUTTER = 16;
 const SKELETON_SIZE = 300;
+const DISABLED_OPACITY = 0.4;
 
 interface PhotoDetailScreenProps {
   photoId: string | undefined;
@@ -46,17 +45,13 @@ export function PhotoDetailScreen({ photoId, machineId }: PhotoDetailScreenProps
     router.back();
   }
 
-  function handleReport() {
-    toast({ title: REPORT_TOAST });
-  }
-
   return (
     <View className="flex-1 bg-black">
       <View
         className="absolute left-0 right-0 top-0 z-10 px-4"
         style={{ paddingTop: insets.top + TOP_BAR_GUTTER }}
       >
-        <TopBar onClose={handleClose} onReport={handleReport} />
+        <TopBar onClose={handleClose} />
       </View>
 
       {showError ? <ErrorView /> : null}
@@ -79,41 +74,62 @@ export function PhotoDetailScreen({ photoId, machineId }: PhotoDetailScreenProps
 
 interface TopBarProps {
   onClose: () => void;
-  onReport: () => void;
 }
 
-function TopBar({ onClose, onReport }: TopBarProps) {
+function TopBar({ onClose }: TopBarProps) {
   return (
     <View className="flex-row items-center justify-between">
-      <CircleButton icon="close" label="닫기" onPress={onClose} />
-      <CircleButton icon="flag" label="신고" onPress={onReport} />
+      <CloseButton onPress={onClose} />
+      <ReportButtonDisabled />
     </View>
   );
 }
 
-interface CircleButtonProps {
-  icon: 'close' | 'flag';
-  label: string;
+interface CloseButtonProps {
   onPress: () => void;
 }
 
-function CircleButton({ icon, label, onPress }: CircleButtonProps) {
+function CloseButton({ onPress }: CloseButtonProps) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel="닫기"
       style={pressedOpacity}
       className="h-10 w-10 items-center justify-center rounded-full bg-black/50"
     >
       <MaterialIcons
-        name={icon}
+        name="close"
         size={20}
         color="#fff"
         importantForAccessibility="no"
         accessibilityElementsHidden
       />
     </Pressable>
+  );
+}
+
+// Phase 1: report is intentionally non-interactive (spec: "Report button
+// top-right (disabled Phase 1)"). Rendered as a visually disabled icon so
+// the affordance is communicated; full implementation lands in Phase 2.
+function ReportButtonDisabled() {
+  return (
+    <View
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel="신고"
+      accessibilityState={{ disabled: true }}
+      style={{ opacity: DISABLED_OPACITY }}
+      className="h-10 w-10 items-center justify-center rounded-full bg-black/50"
+    >
+      <MaterialIcons
+        name="flag"
+        size={20}
+        color="#fff"
+        importantForAccessibility="no"
+        accessibilityElementsHidden
+      />
+    </View>
   );
 }
 
