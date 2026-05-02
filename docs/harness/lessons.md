@@ -87,6 +87,24 @@ function RetryHarness() {
 
 ---
 
+### 2026-05-02 / Task 11.4 — reanimated v4 dropped the SharedTransition API
+
+`ui-design.md` calls for a hero / shared-element morph between the photo grid
+and the photo detail modal (`Photo grid → Photo detail: Hero/shared element`).
+Reanimated v3 implemented this via `sharedTransitionTag` on `Animated.*`
+components. The installed reanimated (4.1.7) no longer ships the API or its
+type definitions, so the prop is rejected at compile time. **Do not
+re-attempt with reanimated alone.**
+
+When revisiting (Phase 2 polish), the supported path is
+`react-native-screens` v4+ native shared elements (`screensEnableExperimentalNativeStackV5`
+
+- matching `tag` props) once expo-router exposes the necessary plumbing.
+  Phase 1 falls back to the modal slide-up (`presentation: 'modal'` in
+  `app/_layout.tsx`). Breadcrumb left in `PhotoGrid.tsx` BestCutCard.
+
+---
+
 ### 2026-04-25 / Task 6 — `@expo/vector-icons` testID does not propagate to a host node
 
 A `<MaterialIcons testID="x" />` does not produce a node queryable by `getByTestId('x')`; the testID lives on a non-host React class instance. Either wrap in `<View testID="x">` (which leaks an internal contract to tests) or query by component type via `UNSAFE_queryAllByType(MaterialIcons)`. Prefer the latter for decorative icons.

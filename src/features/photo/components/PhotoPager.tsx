@@ -1,3 +1,4 @@
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { Dimensions, FlatList, View } from 'react-native';
 
 import type { MachinePhoto } from '@/shared/types/database';
@@ -10,14 +11,35 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface PhotoPagerProps {
   photos: readonly MachinePhoto[];
   initialIndex: number;
+  onIndexChange?: (index: number) => void;
 }
 
-export function PhotoPager({ photos, initialIndex }: PhotoPagerProps) {
+export function PhotoPager({ photos, initialIndex, onIndexChange }: PhotoPagerProps) {
   if (photos.length === 0) {
     return <View />;
   }
 
   const safeIndex = clampIndex(initialIndex, photos.length);
+
+  function handleMomentumScrollEnd(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    if (!onIndexChange || SCREEN_WIDTH <= 0) return;
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const next = Math.round(offsetX / SCREEN_WIDTH);
+    onIndexChange(clampIndex(next, photos.length));
+  }
+
+  function renderItem({ item, index }: { item: MachinePhoto; index: number }) {
+    return (
+      <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center' }}>
+        <ZoomableImage
+          uri={item.photo_url}
+          width={SCREEN_WIDTH}
+          height={SCREEN_HEIGHT}
+          accessibilityLabel={`사진 ${String(index + 1)}`}
+        />
+      </View>
+    );
+  }
 
   return (
     <FlatList
@@ -29,20 +51,8 @@ export function PhotoPager({ photos, initialIndex }: PhotoPagerProps) {
       initialScrollIndex={safeIndex}
       getItemLayout={getItemLayout}
       renderItem={renderItem}
+      onMomentumScrollEnd={handleMomentumScrollEnd}
     />
-  );
-}
-
-function renderItem({ item, index }: { item: MachinePhoto; index: number }) {
-  return (
-    <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center' }}>
-      <ZoomableImage
-        uri={item.photo_url}
-        width={SCREEN_WIDTH}
-        height={SCREEN_HEIGHT}
-        accessibilityLabel={`사진 ${String(index + 1)}`}
-      />
-    </View>
   );
 }
 

@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 import { queryClient } from '@/shared/lib/query-client';
@@ -35,20 +36,22 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <QueryClientProvider client={queryClient}>
-          <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="gym/[id]/machine/[machineId]" />
-            <Stack.Screen
-              name="photo/[id]"
-              options={{
-                presentation: 'modal',
-                contentStyle: { backgroundColor: '#000' },
-              }}
-            />
-          </Stack>
-        </QueryClientProvider>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <StatusBar style="dark" />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="gym/[id]/machine/[machineId]" />
+              <Stack.Screen
+                name="photo/[id]"
+                options={{
+                  presentation: 'modal',
+                  contentStyle: { backgroundColor: '#000' },
+                }}
+              />
+            </Stack>
+          </QueryClientProvider>
+        </SafeAreaProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>
   );

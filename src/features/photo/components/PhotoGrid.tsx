@@ -58,6 +58,10 @@ function BestCutCard({ photo, onPress }: BestCutCardProps) {
           <AppText className="font-semibold text-body-sm text-accent-dark">Best Cut</AppText>
           <AppText className="text-body-sm text-accent-dark">{upvoteLabel}</AppText>
         </View>
+        {/* Shared element morph (grid → detail) deferred: reanimated v4 dropped
+            the SharedTransition API. Phase 1 falls back to the modal slide-up
+            already configured in app/_layout.tsx. Revisit when react-native-
+            screens v4+ exposes a stable native shared-element API. */}
         <Image
           source={{ uri: photo.photo_url }}
           style={{ width: '100%', aspectRatio: 16 / 10 }}
