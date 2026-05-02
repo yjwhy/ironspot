@@ -1,0 +1,16 @@
+# Smoke test — runs on every PR.
+# Verifies the app boots into the Map tab stub and no fatal error overlay
+# blocks the user. Sub-30s by design.
+#
+# NOTE: tab bar labels ("지도" / "마이") are exposed only via
+# accessibilityText "지도, tab, 1 of 2" which Maestro's substring matcher
+# does not pick up reliably. The body text "지도 화면" is rendered as a
+# proper Text node and is what we assert against. Replace with explicit
+# tab assertions when Task 13 ships and the tab labels graduate to real
+# Text nodes (or via id selectors).
+appId: com.ironspot.app
+---
+- launchApp
+- assertVisible: '지도 화면'
+- assertVisible: 'Task 13에서 구현'
+- assertNotVisible: 'Error'

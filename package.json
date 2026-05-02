@@ -13,6 +13,9 @@
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "snap": "./scripts/snap.sh",
+    "e2e:smoke": "maestro test .maestro/flows/smoke.yaml",
+    "e2e:flow": "maestro test",
+    "e2e:all": "maestro test .maestro",
     "prepare": "husky"
   },
   "dependencies": {

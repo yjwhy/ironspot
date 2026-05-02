@@ -1,0 +1,13 @@
+# Gym detail flow (BottomSheet expansion → MachineList).
+#
+# STATUS: pending Task 13 (Map screen + bottom-sheet docking with seeded
+# gyms). Bottom sheet itself shipped in Task 10 but its host screen does
+# not exist yet, so this flow can only run end-to-end after Task 13.
+appId: com.ironspot.app
+---
+- launchApp
+- tapOn: '이 지역 재검색'
+- tapOn:
+    text: 'Fitness Factory'
+    index: 0
+- assertVisible: 'High Row'

@@ -1,0 +1,8 @@
+# Workspace config used by `maestro test .maestro/` (full Phase 1 suite).
+# Smoke + photo flows run today; gym-search / gym-detail are gated on Task 13.
+flows:
+  - flows/smoke.yaml
+  - flows/gym-search.yaml
+  - flows/gym-detail.yaml
+  - flows/photo-gallery.yaml
+  - flows/photo-detail.yaml
