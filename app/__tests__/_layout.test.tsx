@@ -50,6 +50,12 @@ jest.mock('@/shared/theme/fonts', () => ({
   useAppFonts: jest.fn(),
 }));
 
+// OfflineBanner has its own unit tests; mock it here to keep this suite focused
+// on RootLayout's font / provider plumbing instead of NetInfo + safe-area glue.
+jest.mock('@/shared/components/OfflineBanner', () => ({
+  OfflineBanner: () => null,
+}));
+
 jest.mock('@/shared/lib/query-client', () => ({
   queryClient: { mount: () => undefined, unmount: () => undefined },
 }));
