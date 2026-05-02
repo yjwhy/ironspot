@@ -1,0 +1,10 @@
+# Gym search flow.
+#
+# STATUS: pending Task 13 (Map screen with "이 지역 재검색" button).
+# Will fail until the map UI lands. Kept here so the suite is complete and
+# `maestro test .maestro/` lights up the moment Task 13 ships.
+appId: com.ironspot.app
+---
+- launchApp
+- tapOn: '이 지역 재검색'
+- assertVisible: '헬스장'

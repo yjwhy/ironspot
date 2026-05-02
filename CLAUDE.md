@@ -290,6 +290,9 @@ pnpm jest --testPathPattern=<path> # Run specific tests
 pnpm expo start --clear            # Clear cache and start
 pnpm install                       # Install dependencies
 pnpm snap                          # Capture booted iOS simulator screen (AI dev workflow)
+pnpm e2e:smoke                     # Maestro smoke test (sub-30s, runs every PR)
+pnpm e2e:flow .maestro/flows/X     # Run a single Maestro flow
+pnpm e2e:all                       # Run the full Maestro suite (Phase 1 verification)
 ```
 
 ## Visually verifying simulator state (AI workflow)
@@ -303,7 +306,22 @@ When the user asks Claude to verify a UI change visually, **Claude takes the scr
 
 The `.tmp/` directory is gitignored. Simulator must be booted; if not, the script prints a helpful error.
 
-**Limit:** `xcrun simctl` only captures screens — it cannot tap, swipe, or type. The user still drives interactions for now. Full automation (tap / swipe / text input) lands when Task 9.5 ships Maestro and `maestro test ...` flows. Until then: user interacts, Claude observes.
+**Limit:** `xcrun simctl` only captures screens — it cannot tap, swipe, or type. For automated interactions Claude uses Maestro flows (Task 9.5, see `.maestro/flows/`); for ad-hoc inspection of arbitrary screens, use `pnpm snap` and Read the captured PNG.
+
+## Maestro E2E (Task 9.5)
+
+Pre-requisites for any `pnpm e2e:*` command:
+
+1. iOS simulator booted with the IronSpot dev build installed (`pnpm expo run:ios` once is enough; subsequent runs only need `pnpm expo start --dev-client`).
+2. Metro bundler running in the background (`pnpm expo start --dev-client`).
+3. Maestro CLI on PATH (`curl -Ls "https://get.maestro.mobile.dev" | bash`).
+
+The Task → flow mapping lives in `docs/harness/e2e-strategy.md`. Flow yamls in `.maestro/flows/`.
+
+**Maestro selector lessons:**
+
+- Bottom-tab labels (e.g. `tabBarLabel: '지도'`) surface as accessibilityText `"지도, tab, 1 of 2"`. Maestro's substring matcher does not pick up "지도" reliably — assert against the screen body text instead (e.g. `"지도 화면"`), or use an `id:` selector.
+- React Native `<Pressable accessible accessibilityLabel="...">` swallows child Text nodes into the parent label, so the visible inner Text is invisible to Maestro. For these cards, query by `id: <testID>` instead of by visible text. PhotoGrid's Best Cut card already exposes `testID="photo-grid-best-cut"` for this reason.
 
 ## Boundaries
 
