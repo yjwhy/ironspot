@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import type { PressableStateCallbackType } from 'react-native';
 import { Pressable, View } from 'react-native';
+
+import { pressedOpacity } from '@/shared/lib/pressable';
 
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
@@ -26,10 +27,6 @@ const BASE_CLASS = 'bg-bg-elevated rounded-lg shadow-md';
 
 function buildClassName(padding: CardPadding): string {
   return [BASE_CLASS, PADDING_CLASSES[padding]].filter(Boolean).join(' ');
-}
-
-function pressedOpacity({ pressed }: PressableStateCallbackType) {
-  return { opacity: pressed ? 0.8 : 1 };
 }
 
 export function Card({ children, onPress, padding = 'lg', testID, accessibilityLabel }: CardProps) {

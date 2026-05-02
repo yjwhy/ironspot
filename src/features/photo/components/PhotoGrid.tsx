@@ -1,10 +1,10 @@
 import { Image } from 'expo-image';
-import type { PressableStateCallbackType } from 'react-native';
 import { Pressable, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { AppText } from '@/shared/components/AppText';
 import { formatVerifiedDate } from '@/shared/lib/format';
+import { pressedOpacity } from '@/shared/lib/pressable';
 import { ANIMATION } from '@/shared/theme/tokens';
 import type { MachinePhoto } from '@/shared/types/database';
 
@@ -137,8 +137,4 @@ function PhotoCell({ photo, index, onPress }: PhotoCellProps) {
 
 function sortByCreatedAtDesc(photos: readonly MachinePhoto[]): readonly MachinePhoto[] {
   return [...photos].sort((a, b) => b.created_at.localeCompare(a.created_at));
-}
-
-function pressedOpacity({ pressed }: PressableStateCallbackType) {
-  return { opacity: pressed ? 0.8 : 1 };
 }
