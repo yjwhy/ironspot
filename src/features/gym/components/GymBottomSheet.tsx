@@ -3,6 +3,7 @@ import BottomSheet, { BottomSheetFlashList, BottomSheetView } from '@gorhom/bott
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
+import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
 import { haversineKm } from '@/shared/lib/geo';
@@ -20,6 +21,7 @@ interface GymBottomSheetProps {
   onSelectGym: (gymId: string) => void;
   onCloseDetail: () => void;
   onPressMachine: (gymMachineId: string) => void;
+  onClearFilters: () => void;
 }
 
 const SNAP_POINTS = ['10%', '50%', '90%'];
@@ -41,6 +43,7 @@ export function GymBottomSheet(props: GymBottomSheetProps) {
             gyms={props.gyms}
             userLocation={props.userLocation}
             onSelectGym={props.onSelectGym}
+            onClearFilters={props.onClearFilters}
           />
         )}
       </BottomSheetView>
@@ -52,9 +55,10 @@ interface ListModeProps {
   gyms: readonly GymWithMachineCount[];
   userLocation: Coordinate;
   onSelectGym: (gymId: string) => void;
+  onClearFilters: () => void;
 }
 
-function ListMode({ gyms, userLocation, onSelectGym }: ListModeProps) {
+function ListMode({ gyms, userLocation, onSelectGym, onClearFilters }: ListModeProps) {
   return (
     <BottomSheetFlashList
       data={gyms}
@@ -65,8 +69,9 @@ function ListMode({ gyms, userLocation, onSelectGym }: ListModeProps) {
       ListEmptyComponent={
         <EmptyState
           icon="search-off"
-          title="주변에 헬스장이 없어요"
-          description="검색 영역을 옮겨보세요"
+          title="조건에 맞는 헬스장이 없어요"
+          description="필터를 조정해보세요"
+          action={<Button label="필터 초기화" variant="secondary" onPress={onClearFilters} />}
         />
       }
       renderItem={({ item, index }) => (

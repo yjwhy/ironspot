@@ -69,6 +69,7 @@ describe('GymBottomSheet (list mode)', () => {
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
       />,
     );
     expect(getByText('Fitness Factory')).toBeTruthy();
@@ -84,6 +85,7 @@ describe('GymBottomSheet (list mode)', () => {
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
       />,
     );
     // Fitness Factory is ~80m from Gangnam Station: rounds to "0.1km"
@@ -100,13 +102,14 @@ describe('GymBottomSheet (list mode)', () => {
         onSelectGym={onSelectGym}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
       />,
     );
     fireEvent.press(getByRole('button', { name: /^Strength Gym/ }));
     expect(onSelectGym).toHaveBeenCalledWith('g-2');
   });
 
-  it('shows an empty state when the gyms array is empty', () => {
+  it('shows an empty state with filter-tuning copy when the gyms array is empty', () => {
     const { getByText } = render(
       <GymBottomSheet
         gyms={[]}
@@ -115,9 +118,43 @@ describe('GymBottomSheet (list mode)', () => {
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
       />,
     );
-    expect(getByText('주변에 헬스장이 없어요')).toBeTruthy();
+    expect(getByText('조건에 맞는 헬스장이 없어요')).toBeTruthy();
+    expect(getByText('필터를 조정해보세요')).toBeTruthy();
+  });
+
+  it('renders a "필터 초기화" button in the empty state', () => {
+    const { getByRole } = render(
+      <GymBottomSheet
+        gyms={[]}
+        userLocation={userLocation}
+        selectedGym={null}
+        onSelectGym={() => undefined}
+        onCloseDetail={() => undefined}
+        onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
+      />,
+    );
+    expect(getByRole('button', { name: '필터 초기화' })).toBeTruthy();
+  });
+
+  it('invokes onClearFilters when the empty-state button is pressed', () => {
+    const onClearFilters = jest.fn();
+    const { getByRole } = render(
+      <GymBottomSheet
+        gyms={[]}
+        userLocation={userLocation}
+        selectedGym={null}
+        onSelectGym={() => undefined}
+        onCloseDetail={() => undefined}
+        onPressMachine={() => undefined}
+        onClearFilters={onClearFilters}
+      />,
+    );
+    fireEvent.press(getByRole('button', { name: '필터 초기화' }));
+    expect(onClearFilters).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -142,6 +179,7 @@ describe('GymBottomSheet (detail mode)', () => {
         onSelectGym={() => undefined}
         onCloseDetail={() => undefined}
         onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
       />,
     );
     expect(getByRole('header', { name: 'Fitness Factory' })).toBeTruthy();
@@ -157,6 +195,7 @@ describe('GymBottomSheet (detail mode)', () => {
         onSelectGym={() => undefined}
         onCloseDetail={onCloseDetail}
         onPressMachine={() => undefined}
+        onClearFilters={() => undefined}
       />,
     );
     fireEvent.press(getByRole('button', { name: '목록으로 돌아가기' }));
