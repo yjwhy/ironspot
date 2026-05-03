@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
+import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { queryClient } from '@/shared/lib/query-client';
 import { useAppFonts } from '@/shared/theme/fonts';
 
@@ -50,6 +51,7 @@ export default function RootLayout() {
                 }}
               />
             </Stack>
+            <OfflineBanner />
           </QueryClientProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

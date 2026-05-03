@@ -132,3 +132,25 @@ When revisiting (Phase 2 polish), the supported path is
 ### 2026-04-25 / Task 6 — `@expo/vector-icons` testID does not propagate to a host node
 
 A `<MaterialIcons testID="x" />` does not produce a node queryable by `getByTestId('x')`; the testID lives on a non-host React class instance. Either wrap in `<View testID="x">` (which leaks an internal contract to tests) or query by component type via `UNSAFE_queryAllByType(MaterialIcons)`. Prefer the latter for decorative icons.
+
+---
+
+### 2026-05-02 / Task 12.4 — RNTL does not register `accessibilityRole="alert"` in its role map
+
+`render(<View accessibilityRole="alert" />)` renders correctly but `getByRole('alert')` throws "Unable to find an element with role: alert". `@testing-library/react-native`'s native role map omits `alert` (and several other ARIA roles RN supports). Assert the prop directly via `toHaveProp` on a `testID` instead — the role still reaches iOS VoiceOver / Android TalkBack at runtime.
+
+```tsx
+expect(getByTestId('offline-banner')).toHaveProp('accessibilityRole', 'alert');
+```
+
+---
+
+### 2026-05-02 / Task 12.4 — `NetInfo.isConnected` does not detect captive portals
+
+`@react-native-community/netinfo` exposes both `isConnected` (interface up) and `isInternetReachable` (HTTP probe succeeds). `isConnected` alone misses the "Wi-Fi joined but the captive-portal login page is not yet completed" case. Phase 1's offline banner only listens to `isConnected`, which is correct for the stated UX (cellular dead-zone awareness). If a future feature needs to distinguish "no internet" from "no interface", switch to `isInternetReachable !== false`.
+
+---
+
+### 2026-05-02 / Task 12.4 — Reanimated banners are hidden by iOS `presentation: 'modal'`
+
+Mounting a global `<OfflineBanner />` as a sibling of `<Stack>` in `app/_layout.tsx` floats it over normal stack screens but **not** over modal screens. iOS modals (`presentation: 'modal'`) render in a separate native window above the root view hierarchy, so an absolute-positioned banner in the root tree is occluded. Phase 1 accepts this — the user closes the modal to see the banner. If a future requirement needs banners on modals, mount a second instance inside the modal screen, or migrate to a portal-based approach.

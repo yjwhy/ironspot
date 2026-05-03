@@ -23,6 +23,7 @@
     "@gorhom/bottom-sheet": "^5.1.2",
     "@hookform/resolvers": "^3.10.0",
     "@mj-studio/react-native-naver-map": "^2.2.1",
+    "@react-native-community/netinfo": "11.4.1",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",

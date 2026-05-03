@@ -19,6 +19,10 @@ interface GymCardProps {
   testID?: string;
 }
 
+// Shared with GymCardSkeleton so the loading footprint matches the loaded
+// card pixel-for-pixel. If you change one, change both.
+export const GYM_CARD_THUMBNAIL_SIZE = 80;
+
 function buildAccessibilityLabel(
   name: string,
   distanceLabel: string,
@@ -56,7 +60,7 @@ export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID 
             {thumbnailUrl ? (
               <Image
                 source={{ uri: thumbnailUrl }}
-                style={{ width: 80, height: 80 }}
+                style={{ width: GYM_CARD_THUMBNAIL_SIZE, height: GYM_CARD_THUMBNAIL_SIZE }}
                 contentFit="cover"
               />
             ) : (
