@@ -30,6 +30,7 @@ When user says "Task N 시작" / "start Task N" / "continue Phase X":
    - `docs/plans/phase-1/PROGRESS.md` — current state
    - `docs/plans/phase-1/implementation.md` — find the specified Task
    - `docs/harness/lessons.md` — known gotchas not caught by lint/types/tests
+   - `docs/harness/frontend-guidelines.md` — **required when the Task touches `src/` or `app/`** (most Phase 1 Tasks). Loaded once at start so the full FF pattern set is in context; the always-loaded `src/CLAUDE.md` summary is the primer, this file is the reference.
 2. Follow subagent-driven development (see Execution Workflow).
 3. At Task completion: full `/verify` → `/commit-task <N>` → notify user with PR URL and stop.
 4. Pause and ask user only when: manual step required (auth, downloads), ambiguous decision not in docs, prerequisite missing (e.g., Naver API key for Task 13), or code-review loop exceeds 5 iterations.
