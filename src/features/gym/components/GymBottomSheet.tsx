@@ -15,60 +15,53 @@ import { GymCard } from './GymCard';
 import { GymCardSkeleton } from './GymCardSkeleton';
 import { GymDetail } from './GymDetail';
 
+// Discriminated union: detail mode owns selectedGym + close/press handlers,
+// list mode owns gyms + location + loading + filter handlers. Encoding
+// precedence in the type makes "detail wins over loading" a compile-time
+// fact rather than a runtime convention.
+export type GymBottomSheetMode =
+  | {
+      kind: 'detail';
+      selectedGym: GymWithMachineCount;
+      onCloseDetail: () => void;
+      onPressMachine: (gymMachineId: string) => void;
+    }
+  | {
+      kind: 'list';
+      gyms: readonly GymWithMachineCount[];
+      userLocation: Coordinate;
+      isLoading: boolean;
+      onSelectGym: (gymId: string) => void;
+      onClearFilters: () => void;
+    };
+
 interface GymBottomSheetProps {
-  gyms: readonly GymWithMachineCount[];
-  userLocation: Coordinate;
-  selectedGym: GymWithMachineCount | null;
-  isLoading: boolean;
-  onSelectGym: (gymId: string) => void;
-  onCloseDetail: () => void;
-  onPressMachine: (gymMachineId: string) => void;
-  onClearFilters: () => void;
+  mode: GymBottomSheetMode;
 }
 
 const SNAP_POINTS = ['10%', '50%', '90%'];
 
 const LIST_CONTENT_STYLE = { padding: 16 };
 
-const SKELETON_INDEXES = [0, 1, 2] as const;
+const SKELETON_COUNT = 3;
 
-export function GymBottomSheet(props: GymBottomSheetProps) {
+export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   return (
     <BottomSheet snapPoints={SNAP_POINTS} index={1}>
       <BottomSheetView className="flex-1">
-        {props.selectedGym ? (
-          <DetailMode
-            selectedGym={props.selectedGym}
-            onCloseDetail={props.onCloseDetail}
-            onPressMachine={props.onPressMachine}
-          />
-        ) : (
-          <ListMode
-            gyms={props.gyms}
-            userLocation={props.userLocation}
-            isLoading={props.isLoading}
-            onSelectGym={props.onSelectGym}
-            onClearFilters={props.onClearFilters}
-          />
-        )}
+        {mode.kind === 'detail' ? <DetailMode mode={mode} /> : <ListMode mode={mode} />}
       </BottomSheetView>
     </BottomSheet>
   );
 }
 
-interface ListModeProps {
-  gyms: readonly GymWithMachineCount[];
-  userLocation: Coordinate;
-  isLoading: boolean;
-  onSelectGym: (gymId: string) => void;
-  onClearFilters: () => void;
-}
+type ListMode_Props = Extract<GymBottomSheetMode, { kind: 'list' }>;
 
-function ListMode({ gyms, userLocation, isLoading, onSelectGym, onClearFilters }: ListModeProps) {
-  if (isLoading) {
+function ListMode({ mode }: { mode: ListMode_Props }) {
+  if (mode.isLoading) {
     return (
       <View className="gap-3 p-4">
-        {SKELETON_INDEXES.map((i) => (
+        {Array.from({ length: SKELETON_COUNT }, (_, i) => (
           <GymCardSkeleton key={i} />
         ))}
       </View>
@@ -76,7 +69,7 @@ function ListMode({ gyms, userLocation, isLoading, onSelectGym, onClearFilters }
   }
   return (
     <BottomSheetFlashList
-      data={gyms}
+      data={mode.gyms}
       keyExtractor={keyById}
       estimatedItemSize={120}
       contentContainerStyle={LIST_CONTENT_STYLE}
@@ -86,19 +79,19 @@ function ListMode({ gyms, userLocation, isLoading, onSelectGym, onClearFilters }
           icon="search-off"
           title="조건에 맞는 헬스장이 없어요"
           description="필터를 조정해보세요"
-          action={<Button label="필터 초기화" variant="secondary" onPress={onClearFilters} />}
+          action={<Button label="필터 초기화" variant="secondary" onPress={mode.onClearFilters} />}
         />
       }
       renderItem={({ item, index }) => (
         <GymCard
           gym={item}
-          distanceKm={haversineKm(userLocation, {
+          distanceKm={haversineKm(mode.userLocation, {
             latitude: item.latitude,
             longitude: item.longitude,
           })}
           index={index}
           onPress={() => {
-            onSelectGym(item.id);
+            mode.onSelectGym(item.id);
           }}
         />
       )}
@@ -106,17 +99,13 @@ function ListMode({ gyms, userLocation, isLoading, onSelectGym, onClearFilters }
   );
 }
 
-interface DetailModeProps {
-  selectedGym: GymWithMachineCount;
-  onCloseDetail: () => void;
-  onPressMachine: (gymMachineId: string) => void;
-}
+type DetailMode_Props = Extract<GymBottomSheetMode, { kind: 'detail' }>;
 
-function DetailMode({ selectedGym, onCloseDetail, onPressMachine }: DetailModeProps) {
+function DetailMode({ mode }: { mode: DetailMode_Props }) {
   return (
     <View className="flex-1">
       <Pressable
-        onPress={onCloseDetail}
+        onPress={mode.onCloseDetail}
         accessibilityRole="button"
         accessibilityLabel="목록으로 돌아가기"
         className="flex-row items-center gap-1 px-4 py-3"
@@ -131,7 +120,7 @@ function DetailMode({ selectedGym, onCloseDetail, onPressMachine }: DetailModePr
         />
         <AppText className="font-medium text-body-sm text-text-secondary">목록</AppText>
       </Pressable>
-      <GymDetail gym={selectedGym} onPressMachine={onPressMachine} />
+      <GymDetail gym={mode.selectedGym} onPressMachine={mode.onPressMachine} />
     </View>
   );
 }

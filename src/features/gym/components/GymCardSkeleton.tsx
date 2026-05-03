@@ -3,27 +3,26 @@ import { View } from 'react-native';
 import { Card } from '@/shared/components/Card';
 import { Skeleton } from '@/shared/components/Skeleton';
 
+import { GYM_CARD_THUMBNAIL_SIZE } from './GymCard';
+
 interface GymCardSkeletonProps {
   testID?: string;
 }
 
-const THUMBNAIL_SIZE = 80;
-const TITLE_WIDTH = 140;
-const TITLE_HEIGHT = 16;
-const META_WIDTH = 80;
-const META_HEIGHT = 14;
-const CHIP_WIDTH = 80;
-const CHIP_HEIGHT = 20;
+const THUMBNAIL = { size: GYM_CARD_THUMBNAIL_SIZE } as const;
+const TITLE = { width: 140, height: 16 } as const;
+const META = { width: 80, height: 14 } as const;
+const CHIP = { width: 80, height: 20 } as const;
 
 export function GymCardSkeleton({ testID = 'gym-card-skeleton' }: GymCardSkeletonProps) {
   return (
     <Card padding="md" testID={testID} accessibilityLabel="헬스장 정보 로딩 중">
       <View className="flex-row gap-3">
-        <Skeleton variant="rectangle" width={THUMBNAIL_SIZE} height={THUMBNAIL_SIZE} />
+        <Skeleton variant="rectangle" width={THUMBNAIL.size} height={THUMBNAIL.size} />
         <View className="flex-1 justify-center gap-2">
-          <Skeleton width={TITLE_WIDTH} height={TITLE_HEIGHT} />
-          <Skeleton width={META_WIDTH} height={META_HEIGHT} />
-          <Skeleton width={CHIP_WIDTH} height={CHIP_HEIGHT} />
+          <Skeleton width={TITLE.width} height={TITLE.height} />
+          <Skeleton width={META.width} height={META.height} />
+          <Skeleton width={CHIP.width} height={CHIP.height} />
         </View>
       </View>
     </Card>

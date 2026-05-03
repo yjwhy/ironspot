@@ -18,7 +18,7 @@ export function OfflineBanner() {
     <Animated.View
       testID="offline-banner"
       accessibilityRole="alert"
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion="assertive"
       entering={SlideInUp.duration(ANIMATION.microDuration)}
       exiting={SlideOutUp.duration(ANIMATION.microDuration)}
       style={{ paddingTop: insets.top }}

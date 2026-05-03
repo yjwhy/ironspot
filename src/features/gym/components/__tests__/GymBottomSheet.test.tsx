@@ -63,14 +63,14 @@ describe('GymBottomSheet (list mode)', () => {
   it('renders one GymCard per gym in the list', () => {
     const { getByText } = render(
       <GymBottomSheet
-        gyms={[fitnessFactory, strengthGym]}
-        userLocation={userLocation}
-        selectedGym={null}
-        isLoading={false}
-        onSelectGym={() => undefined}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
+        mode={{
+          kind: 'list',
+          gyms: [fitnessFactory, strengthGym],
+          userLocation,
+          isLoading: false,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
       />,
     );
     expect(getByText('Fitness Factory')).toBeTruthy();
@@ -80,14 +80,14 @@ describe('GymBottomSheet (list mode)', () => {
   it('renders haversine-derived distance for each card', () => {
     const { getByText } = render(
       <GymBottomSheet
-        gyms={[fitnessFactory]}
-        userLocation={userLocation}
-        selectedGym={null}
-        isLoading={false}
-        onSelectGym={() => undefined}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
+        mode={{
+          kind: 'list',
+          gyms: [fitnessFactory],
+          userLocation,
+          isLoading: false,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
       />,
     );
     // Fitness Factory is ~80m from Gangnam Station: rounds to "0.1km"
@@ -98,14 +98,14 @@ describe('GymBottomSheet (list mode)', () => {
     const onSelectGym = jest.fn();
     const { getByRole } = render(
       <GymBottomSheet
-        gyms={[fitnessFactory, strengthGym]}
-        userLocation={userLocation}
-        selectedGym={null}
-        isLoading={false}
-        onSelectGym={onSelectGym}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
+        mode={{
+          kind: 'list',
+          gyms: [fitnessFactory, strengthGym],
+          userLocation,
+          isLoading: false,
+          onSelectGym,
+          onClearFilters: () => undefined,
+        }}
       />,
     );
     fireEvent.press(getByRole('button', { name: /^Strength Gym/ }));
@@ -115,14 +115,14 @@ describe('GymBottomSheet (list mode)', () => {
   it('shows an empty state with filter-tuning copy when the gyms array is empty', () => {
     const { getByText } = render(
       <GymBottomSheet
-        gyms={[]}
-        userLocation={userLocation}
-        selectedGym={null}
-        isLoading={false}
-        onSelectGym={() => undefined}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
+        mode={{
+          kind: 'list',
+          gyms: [],
+          userLocation,
+          isLoading: false,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
       />,
     );
     expect(getByText('조건에 맞는 헬스장이 없어요')).toBeTruthy();
@@ -132,14 +132,14 @@ describe('GymBottomSheet (list mode)', () => {
   it('renders a "필터 초기화" button in the empty state', () => {
     const { getByRole } = render(
       <GymBottomSheet
-        gyms={[]}
-        userLocation={userLocation}
-        selectedGym={null}
-        isLoading={false}
-        onSelectGym={() => undefined}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
+        mode={{
+          kind: 'list',
+          gyms: [],
+          userLocation,
+          isLoading: false,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
       />,
     );
     expect(getByRole('button', { name: '필터 초기화' })).toBeTruthy();
@@ -149,14 +149,14 @@ describe('GymBottomSheet (list mode)', () => {
     const onClearFilters = jest.fn();
     const { getByRole } = render(
       <GymBottomSheet
-        gyms={[]}
-        userLocation={userLocation}
-        selectedGym={null}
-        isLoading={false}
-        onSelectGym={() => undefined}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={onClearFilters}
+        mode={{
+          kind: 'list',
+          gyms: [],
+          userLocation,
+          isLoading: false,
+          onSelectGym: () => undefined,
+          onClearFilters,
+        }}
       />,
     );
     fireEvent.press(getByRole('button', { name: '필터 초기화' }));
@@ -166,14 +166,14 @@ describe('GymBottomSheet (list mode)', () => {
   it('renders three gym-card skeletons while isLoading is true', () => {
     const { getAllByTestId, queryByText } = render(
       <GymBottomSheet
-        gyms={[]}
-        userLocation={userLocation}
-        selectedGym={null}
-        isLoading
-        onSelectGym={() => undefined}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
+        mode={{
+          kind: 'list',
+          gyms: [],
+          userLocation,
+          isLoading: true,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
       />,
     );
     expect(getAllByTestId('gym-card-skeleton')).toHaveLength(3);
@@ -185,20 +185,24 @@ describe('GymBottomSheet (list mode)', () => {
   it('does not render skeletons when isLoading is false and gyms exist', () => {
     const { queryAllByTestId } = render(
       <GymBottomSheet
-        gyms={[fitnessFactory]}
-        userLocation={userLocation}
-        selectedGym={null}
-        isLoading={false}
-        onSelectGym={() => undefined}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
+        mode={{
+          kind: 'list',
+          gyms: [fitnessFactory],
+          userLocation,
+          isLoading: false,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
       />,
     );
     expect(queryAllByTestId('gym-card-skeleton')).toHaveLength(0);
   });
 });
 
+// Detail-mode-wins-over-loading is now encoded in the discriminated union
+// (`kind: 'detail'` has no `isLoading` field), so the runtime precedence
+// test from the previous flat-props design has been retired — the type
+// system enforces the contract at compile time.
 describe('GymBottomSheet (detail mode)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -211,36 +215,17 @@ describe('GymBottomSheet (detail mode)', () => {
     });
   });
 
-  it('renders GymDetail when selectedGym is set', () => {
+  it('renders GymDetail when mode.kind is "detail"', () => {
     const { getByRole } = render(
       <GymBottomSheet
-        gyms={[fitnessFactory]}
-        userLocation={userLocation}
-        selectedGym={fitnessFactory}
-        isLoading={false}
-        onSelectGym={() => undefined}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
+        mode={{
+          kind: 'detail',
+          selectedGym: fitnessFactory,
+          onCloseDetail: () => undefined,
+          onPressMachine: () => undefined,
+        }}
       />,
     );
-    expect(getByRole('header', { name: 'Fitness Factory' })).toBeTruthy();
-  });
-
-  it('renders detail mode (not skeletons) when selectedGym is set even while isLoading', () => {
-    const { queryAllByTestId, getByRole } = render(
-      <GymBottomSheet
-        gyms={[fitnessFactory]}
-        userLocation={userLocation}
-        selectedGym={fitnessFactory}
-        isLoading
-        onSelectGym={() => undefined}
-        onCloseDetail={() => undefined}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
-      />,
-    );
-    expect(queryAllByTestId('gym-card-skeleton')).toHaveLength(0);
     expect(getByRole('header', { name: 'Fitness Factory' })).toBeTruthy();
   });
 
@@ -248,14 +233,12 @@ describe('GymBottomSheet (detail mode)', () => {
     const onCloseDetail = jest.fn();
     const { getByRole } = render(
       <GymBottomSheet
-        gyms={[fitnessFactory]}
-        userLocation={userLocation}
-        selectedGym={fitnessFactory}
-        isLoading={false}
-        onSelectGym={() => undefined}
-        onCloseDetail={onCloseDetail}
-        onPressMachine={() => undefined}
-        onClearFilters={() => undefined}
+        mode={{
+          kind: 'detail',
+          selectedGym: fitnessFactory,
+          onCloseDetail,
+          onPressMachine: () => undefined,
+        }}
       />,
     );
     fireEvent.press(getByRole('button', { name: '목록으로 돌아가기' }));
