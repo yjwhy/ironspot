@@ -19,7 +19,20 @@ Complete the current task's Git workflow: feature branch → commit → push →
 
    Expected: `task/<N>-<short-name>`. If user is on `main`, STOP and tell them to create a feature branch first.
 
-3. Run `/verify` (lint + typecheck + test). If it fails, STOP and report errors — do not commit.
+3. **Verify** — branch out by whether **frontend code** changed since `origin/main`:
+
+   ```bash
+   git diff --name-only origin/main...HEAD -- \
+     'app/' 'src/' 'tailwind.config.js' 'babel.config.js' 'metro.config.js' \
+     'app.json' 'app.config.js' 'app.config.ts' \
+     'nativewind-env.d.ts' 'expo-env.d.ts' \
+     'package.json' 'pnpm-lock.yaml'
+   ```
+
+   - **If the command prints any path** (frontend change): invoke `/verify` as a **slash command** — NOT `pnpm jest && pnpm lint && pnpm tsc --noEmit`. The slash command runs four steps; the pnpm trio only covers steps 1–3 and silently skips step 4 (FF review). That bug bit Task 12 PR #17.
+   - **If the output is empty** (docs / CI / Maestro / backend only): run `pnpm lint && pnpm exec tsc --noEmit && pnpm test` directly. FF review is N/A for non-FE diffs.
+
+   If verify fails, STOP and report errors — do not commit.
 
 4. Show user the changed files via `git status` — confirm they match the task scope.
 

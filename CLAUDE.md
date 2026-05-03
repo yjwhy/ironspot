@@ -111,14 +111,14 @@ This project uses **subagent-driven development** — the main session orchestra
 1. **Implement** — main agent writes test (RED), verifies failure, implements (GREEN), verifies pass
 2. **Auto-review** — dispatch `code-reviewer` sub-agent (or `superpowers:requesting-code-review` skill)
 3. **Fix feedback** — address any issues the reviewer surfaces
-4. **Verify** — run `/verify` (lint + typecheck + test). Must pass.
+4. **Verify** — quick check: `pnpm lint && pnpm exec tsc --noEmit && pnpm test`. The full `/verify` slash command (with FF review step 4) only runs at the per-task boundary, not per sub-task.
 5. **Commit** — small, focused commit on the feature branch
 
 ### Per-task cycle (PR creation)
 
 When all sub-tasks of a Task are complete:
 
-1. Run full `/verify`
+1. Run full `/verify` **as a slash command** — required when the diff against `origin/main` touches frontend code (`app/`, `src/`, `tailwind.config.js`, `babel.config.js`, `metro.config.js`, `app.json`, `app.config.{js,ts}`, `nativewind-env.d.ts`, `expo-env.d.ts`, `package.json`, `pnpm-lock.yaml`). Never substitute `pnpm jest && pnpm lint && pnpm tsc --noEmit` — those skip step 4 (FF review). For docs/CI/Maestro-only diffs the pnpm trio is sufficient.
 2. **Check `docs/harness/e2e-strategy.md`** — run the E2E flows mapped to this task
 3. Use `/commit-task <N>` to create PR targeting `main`
 4. Update `PROGRESS.md`
