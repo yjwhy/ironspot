@@ -22,6 +22,30 @@ src/
 
 Path alias: `@/*` → `src/*`.
 
+## Frontend Fundamentals (Karpathy-aligned)
+
+Always-loaded summary of `docs/harness/frontend-guidelines.md`. The full
+guide has examples; the short reminder below is what should be in mind when
+writing TS/TSX. `ff-review:review` audits these at task boundary; a
+PostToolUse hook (`.claude/hooks/frontend-guidelines-reminder.sh`) re-injects
+this reminder after every frontend edit.
+
+1. **Readability** — name magic numbers; split significantly different
+   conditional UI into distinct components; simplify nested ternaries to
+   `if`/`else` or IIFEs; **colocate simple logic** (inline `switch` /
+   policy object) to reduce eye movement; **name complex boolean
+   conditions** to make their meaning explicit.
+2. **Predictability** — consistent return types for similar hooks/functions
+   (e.g. all data hooks return `UseQueryResult`; all validators return a
+   discriminated `{ ok: true } | { ok: false; reason: string }`); SRP — no
+   hidden side effects; unique descriptive names (`getWithAuth` over `get`).
+3. **Cohesion** — feature-based folders; **constants defined near the logic
+   they relate to** (e.g. `GYM_CARD_THUMBNAIL_SIZE` exported from
+   `GymCard.tsx`, consumed by both card and skeleton).
+4. **Coupling** — composition over props drilling; narrow focused hooks
+   (avoid 5+ return values, single broad context); avoid premature
+   abstraction when use cases might diverge.
+
 ## Code Quality
 
 - Functions <50 lines; files <800 lines (typical 200–400)
