@@ -21,13 +21,13 @@ import { GymDetail } from './GymDetail';
 // fact rather than a runtime convention.
 export type GymBottomSheetMode =
   | {
-      kind: 'detail';
+      type: 'detail';
       selectedGym: GymWithMachineCount;
       onCloseDetail: () => void;
       onPressMachine: (gymMachineId: string) => void;
     }
   | {
-      kind: 'list';
+      type: 'list';
       gyms: readonly GymWithMachineCount[];
       userLocation: Coordinate;
       isLoading: boolean;
@@ -49,13 +49,13 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   return (
     <BottomSheet snapPoints={SNAP_POINTS} index={1}>
       <BottomSheetView className="flex-1">
-        {mode.kind === 'detail' ? <DetailMode mode={mode} /> : <ListMode mode={mode} />}
+        {mode.type === 'detail' ? <DetailMode mode={mode} /> : <ListMode mode={mode} />}
       </BottomSheetView>
     </BottomSheet>
   );
 }
 
-type ListMode_Props = Extract<GymBottomSheetMode, { kind: 'list' }>;
+type ListMode_Props = Extract<GymBottomSheetMode, { type: 'list' }>;
 
 function ListMode({ mode }: { mode: ListMode_Props }) {
   if (mode.isLoading) {
@@ -99,7 +99,7 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
   );
 }
 
-type DetailMode_Props = Extract<GymBottomSheetMode, { kind: 'detail' }>;
+type DetailMode_Props = Extract<GymBottomSheetMode, { type: 'detail' }>;
 
 function DetailMode({ mode }: { mode: DetailMode_Props }) {
   return (

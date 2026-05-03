@@ -64,7 +64,7 @@ describe('GymBottomSheet (list mode)', () => {
     const { getByText } = render(
       <GymBottomSheet
         mode={{
-          kind: 'list',
+          type: 'list',
           gyms: [fitnessFactory, strengthGym],
           userLocation,
           isLoading: false,
@@ -81,7 +81,7 @@ describe('GymBottomSheet (list mode)', () => {
     const { getByText } = render(
       <GymBottomSheet
         mode={{
-          kind: 'list',
+          type: 'list',
           gyms: [fitnessFactory],
           userLocation,
           isLoading: false,
@@ -99,7 +99,7 @@ describe('GymBottomSheet (list mode)', () => {
     const { getByRole } = render(
       <GymBottomSheet
         mode={{
-          kind: 'list',
+          type: 'list',
           gyms: [fitnessFactory, strengthGym],
           userLocation,
           isLoading: false,
@@ -116,7 +116,7 @@ describe('GymBottomSheet (list mode)', () => {
     const { getByText } = render(
       <GymBottomSheet
         mode={{
-          kind: 'list',
+          type: 'list',
           gyms: [],
           userLocation,
           isLoading: false,
@@ -133,7 +133,7 @@ describe('GymBottomSheet (list mode)', () => {
     const { getByRole } = render(
       <GymBottomSheet
         mode={{
-          kind: 'list',
+          type: 'list',
           gyms: [],
           userLocation,
           isLoading: false,
@@ -150,7 +150,7 @@ describe('GymBottomSheet (list mode)', () => {
     const { getByRole } = render(
       <GymBottomSheet
         mode={{
-          kind: 'list',
+          type: 'list',
           gyms: [],
           userLocation,
           isLoading: false,
@@ -167,7 +167,7 @@ describe('GymBottomSheet (list mode)', () => {
     const { getAllByTestId, queryByText } = render(
       <GymBottomSheet
         mode={{
-          kind: 'list',
+          type: 'list',
           gyms: [],
           userLocation,
           isLoading: true,
@@ -186,7 +186,7 @@ describe('GymBottomSheet (list mode)', () => {
     const { queryAllByTestId } = render(
       <GymBottomSheet
         mode={{
-          kind: 'list',
+          type: 'list',
           gyms: [fitnessFactory],
           userLocation,
           isLoading: false,
@@ -200,7 +200,7 @@ describe('GymBottomSheet (list mode)', () => {
 });
 
 // Detail-mode-wins-over-loading is now encoded in the discriminated union
-// (`kind: 'detail'` has no `isLoading` field), so the runtime precedence
+// (`type: 'detail'` has no `isLoading` field), so the runtime precedence
 // test from the previous flat-props design has been retired — the type
 // system enforces the contract at compile time.
 describe('GymBottomSheet (detail mode)', () => {
@@ -215,11 +215,11 @@ describe('GymBottomSheet (detail mode)', () => {
     });
   });
 
-  it('renders GymDetail when mode.kind is "detail"', () => {
+  it('renders GymDetail when mode.type is "detail"', () => {
     const { getByRole } = render(
       <GymBottomSheet
         mode={{
-          kind: 'detail',
+          type: 'detail',
           selectedGym: fitnessFactory,
           onCloseDetail: () => undefined,
           onPressMachine: () => undefined,
@@ -234,7 +234,7 @@ describe('GymBottomSheet (detail mode)', () => {
     const { getByRole } = render(
       <GymBottomSheet
         mode={{
-          kind: 'detail',
+          type: 'detail',
           selectedGym: fitnessFactory,
           onCloseDetail,
           onPressMachine: () => undefined,
