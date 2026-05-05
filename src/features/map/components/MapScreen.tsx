@@ -1,4 +1,5 @@
 import { NaverMapView } from '@mj-studio/react-native-naver-map';
+import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
@@ -17,6 +18,7 @@ import { useMarkerReveal } from '../hooks/useMarkerReveal';
 const INITIAL_ZOOM = 14;
 
 export function MapScreen() {
+  const router = useRouter();
   const locationState = useCurrentLocation();
   const { filters, setBrand, setCategory, clear: clearFilters } = useFilters();
   const { data: brands = [] } = useBrands();
@@ -37,6 +39,9 @@ export function MapScreen() {
     isPending,
     userLocation,
     clearFilters,
+    onPressMachine: (gymId, machineId) => {
+      router.push(`/gym/${gymId}/machine/${machineId}`);
+    },
   });
 
   return (

@@ -21,7 +21,9 @@ export function useMapSearch(filters: SearchFilters) {
     [bounds, searchBounds],
   );
 
-  const showSearchButton = bounds !== null && bounds !== searchBounds;
+  const hasBounds = bounds !== null;
+  const viewportDiffersFromSearch = bounds !== searchBounds;
+  const showSearchButton = hasBounds && viewportDiffersFromSearch;
 
   function handleCameraIdle({ region }: { region: Region }) {
     setBounds(regionToMapBounds(region));
