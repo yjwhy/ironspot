@@ -13,6 +13,7 @@ const THUMBNAIL = { size: GYM_CARD_THUMBNAIL_SIZE } as const;
 const TITLE = { width: 140, height: 16 } as const;
 const META = { width: 80, height: 14 } as const;
 const CHIP = { width: 80, height: 20 } as const;
+// height 12 is intentionally smaller than body-sm (13px) to minimise visual weight at the bottom
 const VERIFIED_DATE = { width: 60, height: 12 } as const;
 
 export function GymCardSkeleton({ testID = 'gym-card-skeleton' }: GymCardSkeletonProps) {

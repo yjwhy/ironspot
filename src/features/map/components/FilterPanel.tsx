@@ -36,7 +36,7 @@ export function FilterPanel({
   const progress = useSharedValue(visible ? 1 : 0);
 
   useEffect(
-    function syncAnimation() {
+    function syncVisibilityAndAnimation() {
       if (visible) {
         setRendered(true);
         progress.value = withTiming(1, { duration: ANIMATION.microDuration });
