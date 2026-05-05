@@ -1,5 +1,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import BottomSheet, { BottomSheetFlashList, BottomSheetView } from '@gorhom/bottom-sheet';
+import BottomSheet, {
+  BottomSheetView,
+  useBottomSheetScrollableCreator,
+} from '@gorhom/bottom-sheet';
+import { FlashList } from '@shopify/flash-list';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
@@ -58,6 +62,8 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
 type ListMode_Props = Extract<GymBottomSheetMode, { type: 'list' }>;
 
 function ListMode({ mode }: { mode: ListMode_Props }) {
+  const renderScrollComponent = useBottomSheetScrollableCreator();
+
   if (mode.isLoading) {
     return (
       <View className="gap-3 p-4">
@@ -68,10 +74,10 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
     );
   }
   return (
-    <BottomSheetFlashList
+    <FlashList
+      renderScrollComponent={renderScrollComponent}
       data={mode.gyms}
       keyExtractor={keyById}
-      estimatedItemSize={120}
       contentContainerStyle={LIST_CONTENT_STYLE}
       ItemSeparatorComponent={ListSeparator}
       ListEmptyComponent={
