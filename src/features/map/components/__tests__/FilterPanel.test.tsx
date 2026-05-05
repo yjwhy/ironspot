@@ -24,8 +24,8 @@ describe('FilterPanel', () => {
         brands={brands}
         categories={categories}
         filters={noFilters}
-        onBrandChange={() => undefined}
-        onCategoryChange={() => undefined}
+        onBrandToggle={() => undefined}
+        onCategoryToggle={() => undefined}
         onClose={() => undefined}
       />,
     );
@@ -40,8 +40,8 @@ describe('FilterPanel', () => {
         brands={brands}
         categories={categories}
         filters={noFilters}
-        onBrandChange={() => undefined}
-        onCategoryChange={() => undefined}
+        onBrandToggle={() => undefined}
+        onCategoryToggle={() => undefined}
         onClose={() => undefined}
       />,
     );
@@ -49,55 +49,55 @@ describe('FilterPanel', () => {
     expect(getByText('가슴')).toBeTruthy();
   });
 
-  it('calls onBrandChange with brand id when brand chip pressed', () => {
-    const onBrandChange = jest.fn();
+  it('calls onBrandToggle with brand id when brand chip pressed', () => {
+    const onBrandToggle = jest.fn();
     const { getByText } = render(
       <FilterPanel
         visible={true}
         brands={brands}
         categories={categories}
         filters={noFilters}
-        onBrandChange={onBrandChange}
-        onCategoryChange={() => undefined}
+        onBrandToggle={onBrandToggle}
+        onCategoryToggle={() => undefined}
         onClose={() => undefined}
       />,
     );
     fireEvent.press(getByText('Hammer Strength'));
-    expect(onBrandChange).toHaveBeenCalledWith('b-1');
+    expect(onBrandToggle).toHaveBeenCalledWith('b-1');
   });
 
-  it('calls onBrandChange with null when selected brand is pressed again', () => {
-    const onBrandChange = jest.fn();
+  it('calls onBrandToggle with null when selected brand is pressed again', () => {
+    const onBrandToggle = jest.fn();
     const { getByText } = render(
       <FilterPanel
         visible={true}
         brands={brands}
         categories={categories}
         filters={{ ...noFilters, brandId: 'b-1' }}
-        onBrandChange={onBrandChange}
-        onCategoryChange={() => undefined}
+        onBrandToggle={onBrandToggle}
+        onCategoryToggle={() => undefined}
         onClose={() => undefined}
       />,
     );
     fireEvent.press(getByText('Hammer Strength'));
-    expect(onBrandChange).toHaveBeenCalledWith(null);
+    expect(onBrandToggle).toHaveBeenCalledWith(null);
   });
 
-  it('calls onCategoryChange with category id when category chip pressed', () => {
-    const onCategoryChange = jest.fn();
+  it('calls onCategoryToggle with category id when category chip pressed', () => {
+    const onCategoryToggle = jest.fn();
     const { getByText } = render(
       <FilterPanel
         visible={true}
         brands={brands}
         categories={categories}
         filters={noFilters}
-        onBrandChange={() => undefined}
-        onCategoryChange={onCategoryChange}
+        onBrandToggle={() => undefined}
+        onCategoryToggle={onCategoryToggle}
         onClose={() => undefined}
       />,
     );
     fireEvent.press(getByText('등'));
-    expect(onCategoryChange).toHaveBeenCalledWith('c-1');
+    expect(onCategoryToggle).toHaveBeenCalledWith('c-1');
   });
 
   it('calls onClose when backdrop is pressed', () => {
@@ -108,8 +108,8 @@ describe('FilterPanel', () => {
         brands={brands}
         categories={categories}
         filters={noFilters}
-        onBrandChange={() => undefined}
-        onCategoryChange={() => undefined}
+        onBrandToggle={() => undefined}
+        onCategoryToggle={() => undefined}
         onClose={onClose}
       />,
     );
@@ -124,8 +124,8 @@ describe('FilterPanel', () => {
         brands={brands}
         categories={categories}
         filters={noFilters}
-        onBrandChange={() => undefined}
-        onCategoryChange={() => undefined}
+        onBrandToggle={() => undefined}
+        onCategoryToggle={() => undefined}
         onClose={() => undefined}
       />,
     );

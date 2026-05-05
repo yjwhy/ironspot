@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -11,8 +12,8 @@ interface FilterPanelProps {
   brands: readonly Brand[];
   categories: readonly Category[];
   filters: SearchFilters;
-  onBrandChange: (brandId: string | null) => void;
-  onCategoryChange: (categoryId: string | null) => void;
+  onBrandToggle: (brandId: string | null) => void;
+  onCategoryToggle: (categoryId: string | null) => void;
   onClose: () => void;
 }
 
@@ -23,17 +24,15 @@ export function FilterPanel({
   brands,
   categories,
   filters,
-  onBrandChange,
-  onCategoryChange,
+  onBrandToggle,
+  onCategoryToggle,
   onClose,
 }: FilterPanelProps) {
-  const progress = useSharedValue(visible ? 1 : 0);
+  const progress = useSharedValue(0);
 
-  if (visible && progress.value === 0) {
-    progress.value = withTiming(1, { duration: PANEL_DURATION });
-  } else if (!visible && progress.value === 1) {
-    progress.value = withTiming(0, { duration: PANEL_DURATION });
-  }
+  useEffect(() => {
+    progress.value = withTiming(visible ? 1 : 0, { duration: PANEL_DURATION });
+  }, [visible, progress]);
 
   const panelStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
@@ -59,7 +58,7 @@ export function FilterPanel({
                   label={brand.name}
                   selected={filters.brandId === brand.id}
                   onPress={() => {
-                    onBrandChange(filters.brandId === brand.id ? null : brand.id);
+                    onBrandToggle(filters.brandId === brand.id ? null : brand.id);
                   }}
                 />
               ))}
@@ -76,7 +75,7 @@ export function FilterPanel({
                   label={category.name}
                   selected={filters.categoryId === category.id}
                   onPress={() => {
-                    onCategoryChange(filters.categoryId === category.id ? null : category.id);
+                    onCategoryToggle(filters.categoryId === category.id ? null : category.id);
                   }}
                 />
               ))}

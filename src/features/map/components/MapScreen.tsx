@@ -48,8 +48,7 @@ export function MapScreen() {
     },
   });
 
-  const activeFilterCount =
-    (filters.brandId !== null ? 1 : 0) + (filters.categoryId !== null ? 1 : 0);
+  const activeFilterCount = [filters.brandId, filters.categoryId].filter(Boolean).length;
 
   return (
     <View className="flex-1">
@@ -64,7 +63,10 @@ export function MapScreen() {
               }
             : undefined
         }
-        onCameraIdle={handleCameraIdle}
+        onCameraIdle={(event) => {
+          setFilterPanelOpen(false);
+          handleCameraIdle(event);
+        }}
       >
         {visibleMarkerIds.map((gymId) => {
           const gym = gyms.find((g) => g.id === gymId);
@@ -100,8 +102,8 @@ export function MapScreen() {
           brands={brands}
           categories={categories}
           filters={filters}
-          onBrandChange={setBrand}
-          onCategoryChange={setCategory}
+          onBrandToggle={setBrand}
+          onCategoryToggle={setCategory}
           onClose={() => {
             setFilterPanelOpen(false);
           }}
