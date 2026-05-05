@@ -32,6 +32,8 @@ const SNAP_POINTS = ['10%', '50%', '90%'];
 
 const LIST_PADDING = 16;
 const LIST_CONTENT_STYLE = { padding: LIST_PADDING };
+const BACKGROUND_STYLE = { backgroundColor: '#FFFFFF' };
+const CONTENT_STYLE = { flex: 1 };
 
 const SKELETON_COUNT = 3;
 
@@ -39,8 +41,21 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   const ref = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
   const tabBarHeight = useBottomTabBarHeight();
 
-  useEffect(function presentOnMount() {
-    ref.current?.present();
+  useEffect(function presentAfterNavigationSettles() {
+    const id = setTimeout(() => {
+      ref.current?.present();
+      // bottom-sheet v5.2.10: present() skips snapToIndex on first mount
+      // because mounted.current is still false at that point. Two rAFs give
+      // the inner BottomSheet time to commit before we snap to index 1.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          ref.current?.snapToIndex(1);
+        });
+      });
+    }, 0);
+    return () => {
+      clearTimeout(id);
+    };
   }, []);
 
   return (
@@ -51,8 +66,9 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
       enablePanDownToClose={false}
       backdropComponent={undefined}
       bottomInset={tabBarHeight}
+      backgroundStyle={BACKGROUND_STYLE}
     >
-      <BottomSheetView className="flex-1">
+      <BottomSheetView style={CONTENT_STYLE}>
         {mode.type === 'detail' ? <DetailMode mode={mode} /> : <ListMode mode={mode} />}
       </BottomSheetView>
     </BottomSheetModal>

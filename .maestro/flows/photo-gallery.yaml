@@ -1,23 +1,12 @@
-# Photo gallery flow — verifies Task 11 (PhotoGrid + MachinePhotoGalleryScreen)
-# end-to-end against the live dev build + Supabase.
-#
-# DEVIATION FROM implementation.md spec: the original flow assumes the user
-# reaches this screen by tapping the map → bottom sheet → machine row. That
-# path requires Task 13. Until Task 13 ships, we enter via the same deep link
-# the agent uses for visual smoke testing (see scripts/snap.sh workflow).
-# Switch back to the tap-driven path when Task 13 lands.
-#
-# Machine ID is the Panatta High Row seed gym_machine (has 2 photos so the
-# 3-col grid below the Best Cut hero actually renders a cell).
+# Photo gallery flow — full tap-driven path (Task 13 live, deep-link deviation retired).
+# map → bottom sheet list → gym detail → machine row → MachinePhotoGalleryScreen
 appId: com.ironspot.app
 ---
 - launchApp
-- openLink: 'ironspot:///gym/x/machine/e0010001-0000-0000-0000-000000000001'
-- assertVisible: '머신 사진'
-# Best Cut hero is asserted via testID rather than visible text — the inner
-# Text nodes ("Best Cut", "추천 N") get merged into the Pressable's
-# accessibilityLabel ("베스트 컷, ...") which Maestro's substring matcher
-# does not pick up reliably. testID is the durable contract.
+- tapOn:
+    text: 'Fitness Factory'
+    index: 0
+- tapOn: 'High Row'
 - assertVisible:
     id: 'photo-grid-best-cut'
 - assertVisible: '사진 올리기'
