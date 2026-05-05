@@ -26,11 +26,9 @@ export function GymCardSkeleton({ testID = 'gym-card-skeleton' }: GymCardSkeleto
             <Skeleton width={META.width} height={META.height} />
             <Skeleton width={CHIP.width} height={CHIP.height} />
           </View>
-          <Skeleton
-            width={VERIFIED_DATE.width}
-            height={VERIFIED_DATE.height}
-            className="self-end"
-          />
+          <View className="items-end">
+            <Skeleton width={VERIFIED_DATE.width} height={VERIFIED_DATE.height} />
+          </View>
         </View>
       </View>
     </Card>
