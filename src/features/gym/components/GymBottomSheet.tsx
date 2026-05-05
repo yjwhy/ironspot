@@ -1,9 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import BottomSheet, {
+import {
+  BottomSheetModal,
   BottomSheetView,
   useBottomSheetScrollableCreator,
 } from '@gorhom/bottom-sheet';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { FlashList } from '@shopify/flash-list';
+import { useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
@@ -33,12 +36,26 @@ const LIST_CONTENT_STYLE = { padding: LIST_PADDING };
 const SKELETON_COUNT = 3;
 
 export function GymBottomSheet({ mode }: GymBottomSheetProps) {
+  const ref = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
+  const tabBarHeight = useBottomTabBarHeight();
+
+  useEffect(function presentOnMount() {
+    ref.current?.present();
+  }, []);
+
   return (
-    <BottomSheet snapPoints={SNAP_POINTS} index={1}>
+    <BottomSheetModal
+      ref={ref}
+      snapPoints={SNAP_POINTS}
+      index={1}
+      enablePanDownToClose={false}
+      backdropComponent={undefined}
+      bottomInset={tabBarHeight}
+    >
       <BottomSheetView className="flex-1">
         {mode.type === 'detail' ? <DetailMode mode={mode} /> : <ListMode mode={mode} />}
       </BottomSheetView>
-    </BottomSheet>
+    </BottomSheetModal>
   );
 }
 

@@ -1,3 +1,4 @@
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -39,19 +40,21 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <QueryClientProvider client={queryClient}>
-            <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="gym/[id]/machine/[machineId]" />
-              <Stack.Screen
-                name="photo/[id]"
-                options={{
-                  presentation: 'modal',
-                  contentStyle: { backgroundColor: '#000' },
-                }}
-              />
-            </Stack>
-            <OfflineBanner />
+            <BottomSheetModalProvider>
+              <StatusBar style="dark" />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="gym/[id]/machine/[machineId]" />
+                <Stack.Screen
+                  name="photo/[id]"
+                  options={{
+                    presentation: 'modal',
+                    contentStyle: { backgroundColor: '#000' },
+                  }}
+                />
+              </Stack>
+              <OfflineBanner />
+            </BottomSheetModalProvider>
           </QueryClientProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
