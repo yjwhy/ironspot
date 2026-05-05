@@ -30,9 +30,12 @@ export function FilterPanel({
 }: FilterPanelProps) {
   const progress = useSharedValue(0);
 
-  useEffect(() => {
-    progress.value = withTiming(visible ? 1 : 0, { duration: PANEL_DURATION });
-  }, [visible, progress]);
+  useEffect(
+    function syncPanelAnimation() {
+      progress.value = withTiming(visible ? 1 : 0, { duration: PANEL_DURATION });
+    },
+    [visible, progress],
+  );
 
   const panelStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
