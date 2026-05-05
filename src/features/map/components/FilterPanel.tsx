@@ -5,25 +5,27 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { AppText } from '@/shared/components/AppText';
 import { Chip } from '@/shared/components/Chip';
 import { ANIMATION } from '@/shared/theme/tokens';
-import type { Brand, Category, SearchFilters } from '@/shared/types/database';
+import type { Brand, Category } from '@/shared/types/database';
+
+const PANEL_SLIDE_OFFSET = 8;
 
 interface FilterPanelProps {
   visible: boolean;
   brands: readonly Brand[];
   categories: readonly Category[];
-  filters: SearchFilters;
+  selectedBrandId: string | null;
+  selectedCategoryId: string | null;
   onBrandToggle: (brandId: string | null) => void;
   onCategoryToggle: (categoryId: string | null) => void;
   onClose: () => void;
 }
 
-const PANEL_DURATION = ANIMATION.microDuration;
-
 export function FilterPanel({
   visible,
   brands,
   categories,
-  filters,
+  selectedBrandId,
+  selectedCategoryId,
   onBrandToggle,
   onCategoryToggle,
   onClose,
@@ -31,15 +33,17 @@ export function FilterPanel({
   const progress = useSharedValue(0);
 
   useEffect(
-    function syncPanelAnimation() {
-      progress.value = withTiming(visible ? 1 : 0, { duration: PANEL_DURATION });
+    function enterAnimation() {
+      if (visible) {
+        progress.value = withTiming(1, { duration: ANIMATION.microDuration });
+      }
     },
     [visible, progress],
   );
 
   const panelStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ translateY: (1 - progress.value) * -8 }],
+    transform: [{ translateY: (1 - progress.value) * -PANEL_SLIDE_OFFSET }],
   }));
 
   if (!visible) return null;
@@ -59,9 +63,9 @@ export function FilterPanel({
                 <Chip
                   key={brand.id}
                   label={brand.name}
-                  selected={filters.brandId === brand.id}
+                  selected={selectedBrandId === brand.id}
                   onPress={() => {
-                    onBrandToggle(filters.brandId === brand.id ? null : brand.id);
+                    onBrandToggle(selectedBrandId === brand.id ? null : brand.id);
                   }}
                 />
               ))}
@@ -76,9 +80,9 @@ export function FilterPanel({
                 <Chip
                   key={category.id}
                   label={category.name}
-                  selected={filters.categoryId === category.id}
+                  selected={selectedCategoryId === category.id}
                   onPress={() => {
-                    onCategoryToggle(filters.categoryId === category.id ? null : category.id);
+                    onCategoryToggle(selectedCategoryId === category.id ? null : category.id);
                   }}
                 />
               ))}

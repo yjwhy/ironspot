@@ -1,4 +1,5 @@
 import { NaverMapView } from '@mj-studio/react-native-naver-map';
+import type { Region } from '@mj-studio/react-native-naver-map';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -49,9 +50,9 @@ export function MapScreen() {
 
   const activeFilterCount = [filters.brandId, filters.categoryId].filter(Boolean).length;
 
-  function handleCameraIdleWithPanelClose(event: Parameters<typeof handleCameraIdle>[0]) {
+  function handleCameraIdleWithPanelClose({ region }: { region: Region }) {
     setFilterPanelOpen(false);
-    handleCameraIdle(event);
+    handleCameraIdle({ region });
   }
 
   return (
@@ -102,7 +103,8 @@ export function MapScreen() {
           visible={filterPanelOpen}
           brands={brands}
           categories={categories}
-          filters={filters}
+          selectedBrandId={filters.brandId}
+          selectedCategoryId={filters.categoryId}
           onBrandToggle={setBrand}
           onCategoryToggle={setCategory}
           onClose={() => {
