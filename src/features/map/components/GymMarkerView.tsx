@@ -7,7 +7,12 @@ export const MARKER_SIZE_DEFAULT = { width: 32, height: 28 } as const;
 export const MARKER_SIZE_SELECTED = { width: 40, height: 34 } as const;
 
 const TRIANGLE_HALF_WIDTH = 6;
-export const TRIANGLE_HEIGHT = 6;
+const TRIANGLE_HEIGHT = 6;
+
+export function getOverlaySize(isSelected: boolean): { width: number; height: number } {
+  const size = isSelected ? MARKER_SIZE_SELECTED : MARKER_SIZE_DEFAULT;
+  return { width: size.width, height: size.height + TRIANGLE_HEIGHT };
+}
 
 interface GymMarkerViewProps {
   machineCount: number;

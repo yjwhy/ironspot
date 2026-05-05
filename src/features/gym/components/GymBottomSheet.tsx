@@ -45,7 +45,8 @@ interface GymBottomSheetProps {
 
 const SNAP_POINTS = ['10%', '50%', '90%'];
 
-const LIST_CONTENT_STYLE = { padding: 16 };
+const LIST_PADDING = 16;
+const LIST_CONTENT_STYLE = { padding: LIST_PADDING };
 
 const SKELETON_COUNT = 3;
 

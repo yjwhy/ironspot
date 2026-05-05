@@ -34,33 +34,51 @@ export function MapScreen() {
 
   const { data: gyms = [], isPending } = useGymSearch(searchBounds, filters);
 
+  // Clear selection when the selected gym leaves the search results
+  useEffect(
+    function clearStaleSelectedGym() {
+      if (selectedGymId !== null && !gyms.find((g) => g.id === selectedGymId)) {
+        setSelectedGymId(null);
+      }
+    },
+    [gyms, selectedGymId],
+  );
+
   // Stagger-reveal markers when gyms update
-  useEffect(() => {
-    if (gyms.length === 0) {
+  useEffect(
+    function staggerRevealMarkers() {
+      if (gyms.length === 0) {
+        setVisibleMarkerIds([]);
+        return;
+      }
       setVisibleMarkerIds([]);
-      return;
-    }
-    setVisibleMarkerIds([]);
-    const ids = gyms.map((g) => g.id);
-    const timers = ids.map((id, i) =>
-      setTimeout(() => {
-        setVisibleMarkerIds((prev) => [...prev, id]);
-      }, i * ANIMATION.stagger),
-    );
-    return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [gyms]);
+      const ids = gyms.map((g) => g.id);
+      const timers = ids.map((id, i) =>
+        setTimeout(() => {
+          setVisibleMarkerIds((prev) => [...prev, id]);
+        }, i * ANIMATION.stagger),
+      );
+      return () => {
+        timers.forEach(clearTimeout);
+      };
+    },
+    [gyms],
+  );
+
+  // Trigger the initial search once the first camera idle sets bounds
+  useEffect(
+    function triggerInitialSearch() {
+      if (bounds !== null && searchBounds === null) {
+        setSearchBounds(bounds);
+      }
+    },
+    [bounds, searchBounds],
+  );
 
   const showSearchButton = bounds !== null && bounds !== searchBounds;
 
   function handleCameraIdle({ region }: { region: Region }) {
-    const newBounds = regionToMapBounds(region);
-    setBounds(newBounds);
-    // Auto-search on first camera idle (no prior searchBounds)
-    if (searchBounds === null) {
-      setSearchBounds(newBounds);
-    }
+    setBounds(regionToMapBounds(region));
   }
 
   function handleSearch() {
@@ -73,6 +91,7 @@ export function MapScreen() {
     selectedGymId !== null ? (gyms.find((g) => g.id === selectedGymId) ?? null) : null;
 
   function handlePressMachine(gymMachineId: string) {
+    // detail mode is only created when selectedGym !== null, so selectedGymId is non-null here
     if (selectedGymId === null) return;
     router.push(`/gym/${selectedGymId}/machine/${gymMachineId}`);
   }
@@ -97,12 +116,6 @@ export function MapScreen() {
           onSelectGym: setSelectedGymId,
           onClearFilters: clearFilters,
         };
-
-  useEffect(() => {
-    if (selectedGymId !== null && !gyms.find((g) => g.id === selectedGymId)) {
-      setSelectedGymId(null);
-    }
-  }, [gyms, selectedGymId]);
 
   return (
     <View className="flex-1">
@@ -130,7 +143,6 @@ export function MapScreen() {
               longitude={gym.longitude}
               machineCount={gym.machine_count}
               isSelected={gymId === selectedGymId}
-              isMismatch={gym.machine_count === 0}
               onPress={() => {
                 setSelectedGymId(gymId);
               }}
