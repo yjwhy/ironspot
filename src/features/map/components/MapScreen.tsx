@@ -25,7 +25,6 @@ export function MapScreen() {
   const { filters, setBrand, setCategory, clear: clearFilters } = useFilters();
   const { data: brands = [] } = useBrands();
   const { data: categories = [] } = useCategories();
-
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   const initialLocation = locationState.status !== 'loading' ? locationState.location : null;
