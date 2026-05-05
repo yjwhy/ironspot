@@ -74,7 +74,7 @@ export function MapScreen() {
 
   function handlePressMachine(gymMachineId: string) {
     if (selectedGymId === null) return;
-    router.push(`/gym/${selectedGymId}/machine/${gymMachineId}` as never);
+    router.push(`/gym/${selectedGymId}/machine/${gymMachineId}`);
   }
 
   const initialLocation = locationState.status !== 'loading' ? locationState.location : null;
