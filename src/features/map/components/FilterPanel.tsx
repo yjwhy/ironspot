@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -8,6 +8,8 @@ import { ANIMATION } from '@/shared/theme/tokens';
 import type { Brand, Category } from '@/shared/types/database';
 
 const PANEL_SLIDE_OFFSET = 8;
+// Exit is 65% of enter duration — feels responsive (ui-design.md animation principles)
+const EXIT_DURATION = Math.round(ANIMATION.microDuration * 0.65);
 
 interface FilterPanelProps {
   visible: boolean;
@@ -30,13 +32,23 @@ export function FilterPanel({
   onCategoryToggle,
   onClose,
 }: FilterPanelProps) {
-  const progress = useSharedValue(0);
+  const [rendered, setRendered] = useState(visible);
+  const progress = useSharedValue(visible ? 1 : 0);
 
   useEffect(
-    function enterAnimation() {
+    function syncVisibilityAndAnimation() {
       if (visible) {
+        setRendered(true);
         progress.value = withTiming(1, { duration: ANIMATION.microDuration });
+        return;
       }
+      progress.value = withTiming(0, { duration: EXIT_DURATION });
+      const timer = setTimeout(() => {
+        setRendered(false);
+      }, EXIT_DURATION);
+      return () => {
+        clearTimeout(timer);
+      };
     },
     [visible, progress],
   );
@@ -46,7 +58,7 @@ export function FilterPanel({
     transform: [{ translateY: (1 - progress.value) * -PANEL_SLIDE_OFFSET }],
   }));
 
-  if (!visible) return null;
+  if (!rendered) return null;
 
   return (
     <>

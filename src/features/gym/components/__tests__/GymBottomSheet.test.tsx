@@ -7,12 +7,18 @@ import type * as BottomSheetMockModule from '@/test/utils/bottom-sheet-mock';
 import { useGymMachines } from '../../hooks/useGymMachines';
 import { GymBottomSheet } from '../GymBottomSheet';
 
+jest.mock('@react-navigation/bottom-tabs', () => ({
+  useBottomTabBarHeight: jest.fn(() => 83),
+}));
+
 jest.mock('@gorhom/bottom-sheet', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const mock = require('@/test/utils/bottom-sheet-mock') as typeof BottomSheetMockModule;
   return {
     __esModule: true,
     default: mock.BottomSheetPassthrough,
+    BottomSheetModal: mock.BottomSheetModalPassthrough,
+    BottomSheetModalProvider: mock.BottomSheetPassthrough,
     BottomSheetView: mock.BottomSheetPassthrough,
     useBottomSheetScrollableCreator: jest.fn(() => jest.fn()),
   };

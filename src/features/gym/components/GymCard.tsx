@@ -20,7 +20,8 @@ interface GymCardProps {
 }
 
 // Shared with GymCardSkeleton so the loading footprint matches the loaded
-// card pixel-for-pixel. If you change one, change both.
+// card pixel-for-pixel. If you change layout slots (thumbnail, name, meta,
+// chip, verified-date) or their sizes, update GymCardSkeleton to match.
 export const GYM_CARD_THUMBNAIL_SIZE = 80;
 
 function buildAccessibilityLabel(

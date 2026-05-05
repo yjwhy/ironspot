@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import type { ComponentType, ReactElement, ReactNode } from 'react';
 import { View } from 'react-native';
 
@@ -8,6 +9,13 @@ interface PassthroughProps {
 export function BottomSheetPassthrough({ children }: PassthroughProps) {
   return <View>{children}</View>;
 }
+
+export const BottomSheetModalPassthrough = forwardRef<
+  { present: () => void; dismiss: () => void },
+  PassthroughProps
+>(function BottomSheetModalMock({ children }, _ref) {
+  return <View>{children}</View>;
+});
 
 interface ListMockProps<T> {
   data: readonly T[];
