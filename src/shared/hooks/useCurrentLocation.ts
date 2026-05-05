@@ -43,10 +43,18 @@ async function acquireCurrentLocation(): Promise<ResolvedLocationState> {
   }
 }
 
+// Skip GPS in dev builds so the app starts at a known Korean location without VPN.
+// process.env.NODE_ENV check keeps tests unaffected (__DEV__ is true in Jest too).
+const DEV_FORCE_LOCATION = __DEV__ && process.env.NODE_ENV !== 'test';
+
 export function useCurrentLocation(): LocationState {
-  const [state, setState] = useState<LocationState>({ status: 'loading' });
+  const [state, setState] = useState<LocationState>(
+    DEV_FORCE_LOCATION ? { status: 'ready', location: GANGNAM_STATION } : { status: 'loading' },
+  );
 
   useEffect(function loadOnMount() {
+    if (DEV_FORCE_LOCATION) return;
+
     const controller = new AbortController();
 
     async function apply() {
