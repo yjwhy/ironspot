@@ -1,7 +1,13 @@
 # Gym search flow.
 # Auto-search fires on the first camera idle (useMapSearch.triggerInitialSearch).
-# No manual tap needed — assert seeded gym is visible in the BottomSheet list.
+# GymCard uses a Pressable with accessibilityLabel — inner text is swallowed,
+# so we assert via testID (gym-card-<kebab-name>) rather than text content.
 appId: com.ironspot.app
 ---
 - launchApp
-- assertVisible: 'Fitness Factory'
+- extendedWaitUntil:
+    visible:
+      id: 'gym-card-피트니스-팩토리'
+    timeout: 15000
+- assertVisible:
+    id: 'gym-card-피트니스-팩토리'

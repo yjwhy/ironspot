@@ -12,6 +12,7 @@ import { Pressable, View } from 'react-native';
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { toTestSlug } from '@/shared/lib/format';
 import { haversineKm } from '@/shared/lib/geo';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
@@ -36,25 +37,27 @@ const BACKGROUND_STYLE = { backgroundColor: '#FFFFFF' };
 const CONTENT_STYLE = { flex: 1 };
 
 const SKELETON_COUNT = 3;
+const PRESENT_DELAY_MS = 300;
+const SNAP_DELAY_MS = 50;
 
 export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   const ref = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
   const tabBarHeight = useBottomTabBarHeight();
 
   useEffect(function presentAfterNavigationSettles() {
+    let snapId: ReturnType<typeof setTimeout> | undefined;
     const id = setTimeout(() => {
       ref.current?.present();
       // bottom-sheet v5.2.10: present() skips snapToIndex on first mount
-      // because mounted.current is still false at that point. Two rAFs give
-      // the inner BottomSheet time to commit before we snap to index 1.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          ref.current?.snapToIndex(1);
-        });
-      });
-    }, 0);
+      // because mounted.current is false; delay gives React time to commit
+      // the setState({mount:true}) before we snap to index 1.
+      snapId = setTimeout(() => {
+        ref.current?.snapToIndex(1);
+      }, SNAP_DELAY_MS);
+    }, PRESENT_DELAY_MS);
     return () => {
       clearTimeout(id);
+      clearTimeout(snapId);
     };
   }, []);
 
@@ -112,6 +115,7 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
             longitude: item.longitude,
           })}
           index={index}
+          testID={`gym-card-${toTestSlug(item.name)}`}
           onPress={() => {
             mode.onSelectGym(item.id);
           }}

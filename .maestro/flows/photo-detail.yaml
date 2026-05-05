@@ -1,15 +1,20 @@
 # Photo detail flow — full tap-driven path (Task 13 live, deep-link deviation retired).
 # map → bottom sheet → gym detail → machine row → gallery → tap best cut → PhotoDetailScreen
+# GymCard and MachineRow inner text is swallowed by Pressable accessibilityLabel — use testID.
 appId: com.ironspot.app
 ---
 - launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'gym-card-피트니스-팩토리'
+    timeout: 15000
 - tapOn:
-    text: 'Fitness Factory'
-    index: 0
-- tapOn: 'High Row'
+    id: 'gym-card-피트니스-팩토리'
+- tapOn:
+    id: 'machine-row-low-row'
 - tapOn:
     id: 'photo-grid-best-cut'
-- assertVisible: '추천 12'
+- assertVisible: '추천 3'
 - assertVisible: '익명'
 - assertVisible: '닫기'
 - assertVisible: '신고'

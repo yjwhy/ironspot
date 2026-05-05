@@ -1,11 +1,16 @@
 # Gym detail flow (BottomSheet list → detail → MachineList).
 # Auto-search populates the list; tap the gym card directly to switch
 # BottomSheet into detail mode and assert the machine list is visible.
+# GymCard and MachineRow inner text is swallowed by Pressable accessibilityLabel — use testID.
 # MachineList sections start expanded (collapsedBrandIds = empty Set).
 appId: com.ironspot.app
 ---
 - launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'gym-card-피트니스-팩토리'
+    timeout: 15000
 - tapOn:
-    text: 'Fitness Factory'
-    index: 0
-- assertVisible: 'High Row'
+    id: 'gym-card-피트니스-팩토리'
+- assertVisible:
+    id: 'machine-row-low-row'
