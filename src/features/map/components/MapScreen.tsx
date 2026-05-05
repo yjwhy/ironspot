@@ -1,11 +1,14 @@
 import { NaverMapView } from '@mj-studio/react-native-naver-map';
+import type { Region } from '@mj-studio/react-native-naver-map';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
 import { GANGNAM_STATION, useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
 
-import { FilterBar } from './FilterBar';
+import { FilterButton } from './FilterButton';
+import { FilterPanel } from './FilterPanel';
 import { GymMarker } from './GymMarker';
 import { SearchAreaButton } from './SearchAreaButton';
 import { useBottomSheetMode } from '../hooks/useBottomSheetMode';
@@ -23,6 +26,7 @@ export function MapScreen() {
   const { filters, setBrand, setCategory, clear: clearFilters } = useFilters();
   const { data: brands = [] } = useBrands();
   const { data: categories = [] } = useCategories();
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   const initialLocation = locationState.status !== 'loading' ? locationState.location : null;
   const userLocation = initialLocation ?? GANGNAM_STATION;
@@ -44,6 +48,13 @@ export function MapScreen() {
     },
   });
 
+  const activeFilterCount = [filters.brandId, filters.categoryId].filter(Boolean).length;
+
+  function handleCameraIdleWithPanelClose({ region }: { region: Region }) {
+    setFilterPanelOpen(false);
+    handleCameraIdle({ region });
+  }
+
   return (
     <View className="flex-1">
       <NaverMapView
@@ -57,7 +68,7 @@ export function MapScreen() {
               }
             : undefined
         }
-        onCameraIdle={handleCameraIdle}
+        onCameraIdle={handleCameraIdleWithPanelClose}
       >
         {visibleMarkerIds.map((gymId) => {
           const gym = gyms.find((g) => g.id === gymId);
@@ -78,13 +89,27 @@ export function MapScreen() {
         })}
       </NaverMapView>
 
-      <View className="absolute top-safe-or-4 left-0 right-0 z-10">
-        <FilterBar
+      <View className="absolute top-safe-or-4 right-4 z-10">
+        <FilterButton
+          activeCount={activeFilterCount}
+          onPress={() => {
+            setFilterPanelOpen((prev) => !prev);
+          }}
+        />
+      </View>
+
+      <View className="absolute top-safe-or-16 left-0 right-0 z-20">
+        <FilterPanel
+          visible={filterPanelOpen}
           brands={brands}
           categories={categories}
-          filters={filters}
-          onBrandChange={setBrand}
-          onCategoryChange={setCategory}
+          selectedBrandId={filters.brandId}
+          selectedCategoryId={filters.categoryId}
+          onBrandToggle={setBrand}
+          onCategoryToggle={setCategory}
+          onClose={() => {
+            setFilterPanelOpen(false);
+          }}
         />
       </View>
 
