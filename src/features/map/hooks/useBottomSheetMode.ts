@@ -1,16 +1,16 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
 import type { GymWithMachineCount } from '@/shared/types/database';
 
-import type { GymBottomSheetMode } from '../../gym/components/GymBottomSheet';
+import type { GymBottomSheetMode } from '../../gym/types';
 
 interface UseBottomSheetModeParams {
   gyms: readonly GymWithMachineCount[];
   isPending: boolean;
   userLocation: Coordinate;
   clearFilters: () => void;
+  onPressMachine: (gymId: string, machineId: string) => void;
 }
 
 interface UseBottomSheetModeResult {
@@ -24,25 +24,25 @@ export function useBottomSheetMode({
   isPending,
   userLocation,
   clearFilters,
+  onPressMachine,
 }: UseBottomSheetModeParams): UseBottomSheetModeResult {
-  const router = useRouter();
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
-
-  useEffect(
-    function clearStaleSelectedGym() {
-      if (selectedGymId !== null && !gyms.find((g) => g.id === selectedGymId)) {
-        setSelectedGymId(null);
-      }
-    },
-    [gyms, selectedGymId],
-  );
 
   const selectedGym =
     selectedGymId !== null ? (gyms.find((g) => g.id === selectedGymId) ?? null) : null;
 
-  function handlePressMachine(gymMachineId: string) {
+  useEffect(
+    function clearStaleSelectedGym() {
+      if (selectedGymId !== null && selectedGym === null) {
+        setSelectedGymId(null);
+      }
+    },
+    [selectedGymId, selectedGym],
+  );
+
+  function handlePressMachine(machineId: string) {
     if (selectedGymId === null) return;
-    router.push(`/gym/${selectedGymId}/machine/${gymMachineId}`);
+    onPressMachine(selectedGymId, machineId);
   }
 
   const mode: GymBottomSheetMode =

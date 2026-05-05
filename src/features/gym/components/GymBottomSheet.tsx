@@ -9,35 +9,17 @@ import { Pressable, View } from 'react-native';
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
-import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
 import { haversineKm } from '@/shared/lib/geo';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { GymWithMachineCount } from '@/shared/types/database';
 
+import type { GymBottomSheetMode } from '../types';
 import { GymCard } from './GymCard';
 import { GymCardSkeleton } from './GymCardSkeleton';
 import { GymDetail } from './GymDetail';
 
-// Discriminated union: detail mode owns selectedGym + close/press handlers,
-// list mode owns gyms + location + loading + filter handlers. Encoding
-// precedence in the type makes "detail wins over loading" a compile-time
-// fact rather than a runtime convention.
-export type GymBottomSheetMode =
-  | {
-      type: 'detail';
-      selectedGym: GymWithMachineCount;
-      onCloseDetail: () => void;
-      onPressMachine: (gymMachineId: string) => void;
-    }
-  | {
-      type: 'list';
-      gyms: readonly GymWithMachineCount[];
-      userLocation: Coordinate;
-      isLoading: boolean;
-      onSelectGym: (gymId: string) => void;
-      onClearFilters: () => void;
-    };
+export type { GymBottomSheetMode };
 
 interface GymBottomSheetProps {
   mode: GymBottomSheetMode;
