@@ -20,6 +20,13 @@
         {
           "locationAlwaysAndWhenInUsePermission": "주변 헬스장을 찾기 위해 위치 정보가 필요합니다"
         }
+      ],
+      [
+        "@mj-studio/react-native-naver-map",
+        {
+          "ios_client_id": "ty0sd0ldl9",
+          "android_client_id": "ty0sd0ldl9"
+        }
       ]
     ],
     "experiments": {
