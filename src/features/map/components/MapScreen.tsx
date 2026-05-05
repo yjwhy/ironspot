@@ -50,6 +50,11 @@ export function MapScreen() {
 
   const activeFilterCount = [filters.brandId, filters.categoryId].filter(Boolean).length;
 
+  function handleCameraIdleWithPanelClose(event: Parameters<typeof handleCameraIdle>[0]) {
+    setFilterPanelOpen(false);
+    handleCameraIdle(event);
+  }
+
   return (
     <View className="flex-1">
       <NaverMapView
@@ -63,10 +68,7 @@ export function MapScreen() {
               }
             : undefined
         }
-        onCameraIdle={(event) => {
-          setFilterPanelOpen(false);
-          handleCameraIdle(event);
-        }}
+        onCameraIdle={handleCameraIdleWithPanelClose}
       >
         {visibleMarkerIds.map((gymId) => {
           const gym = gyms.find((g) => g.id === gymId);
