@@ -1,121 +1,43 @@
 import { NaverMapView } from '@mj-studio/react-native-naver-map';
-import type { Region } from '@mj-studio/react-native-naver-map';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
 import { GANGNAM_STATION, useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
-import { ANIMATION } from '@/shared/theme/tokens';
-import type { MapBounds } from '@/shared/types/database';
 
 import { FilterBar } from './FilterBar';
 import { GymMarker } from './GymMarker';
 import { SearchAreaButton } from './SearchAreaButton';
+import { useBottomSheetMode } from '../hooks/useBottomSheetMode';
 import { useBrands } from '../hooks/useBrands';
 import { useCategories } from '../hooks/useCategories';
 import { useFilters } from '../hooks/useFilters';
-import { useGymSearch } from '../hooks/useGymSearch';
-import { regionToMapBounds } from '../lib/mapUtils';
+import { useMapSearch } from '../hooks/useMapSearch';
+import { useMarkerReveal } from '../hooks/useMarkerReveal';
 
 const INITIAL_ZOOM = 14;
 
 export function MapScreen() {
-  const router = useRouter();
   const locationState = useCurrentLocation();
   const { filters, setBrand, setCategory, clear: clearFilters } = useFilters();
   const { data: brands = [] } = useBrands();
   const { data: categories = [] } = useCategories();
 
-  const [bounds, setBounds] = useState<MapBounds | null>(null);
-  const [searchBounds, setSearchBounds] = useState<MapBounds | null>(null);
-  const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
-  const [visibleMarkerIds, setVisibleMarkerIds] = useState<readonly string[]>([]);
-
-  const { data: gyms = [], isPending } = useGymSearch(searchBounds, filters);
-
-  // Clear selection when the selected gym leaves the search results
-  useEffect(
-    function clearStaleSelectedGym() {
-      if (selectedGymId !== null && !gyms.find((g) => g.id === selectedGymId)) {
-        setSelectedGymId(null);
-      }
-    },
-    [gyms, selectedGymId],
-  );
-
-  // Stagger-reveal markers when gyms update
-  useEffect(
-    function staggerRevealMarkers() {
-      if (gyms.length === 0) {
-        setVisibleMarkerIds([]);
-        return;
-      }
-      setVisibleMarkerIds([]);
-      const ids = gyms.map((g) => g.id);
-      const timers = ids.map((id, i) =>
-        setTimeout(() => {
-          setVisibleMarkerIds((prev) => [...prev, id]);
-        }, i * ANIMATION.stagger),
-      );
-      return () => {
-        timers.forEach(clearTimeout);
-      };
-    },
-    [gyms],
-  );
-
-  // Trigger the initial search once the first camera idle sets bounds
-  useEffect(
-    function triggerInitialSearch() {
-      if (bounds !== null && searchBounds === null) {
-        setSearchBounds(bounds);
-      }
-    },
-    [bounds, searchBounds],
-  );
-
-  const showSearchButton = bounds !== null && bounds !== searchBounds;
-
-  function handleCameraIdle({ region }: { region: Region }) {
-    setBounds(regionToMapBounds(region));
-  }
-
-  function handleSearch() {
-    if (bounds !== null) {
-      setSearchBounds(bounds);
-    }
-  }
-
-  const selectedGym =
-    selectedGymId !== null ? (gyms.find((g) => g.id === selectedGymId) ?? null) : null;
-
-  function handlePressMachine(gymMachineId: string) {
-    // detail mode is only created when selectedGym !== null, so selectedGymId is non-null here
-    if (selectedGymId === null) return;
-    router.push(`/gym/${selectedGymId}/machine/${gymMachineId}`);
-  }
-
   const initialLocation = locationState.status !== 'loading' ? locationState.location : null;
+  const userLocation = initialLocation ?? GANGNAM_STATION;
 
-  const bottomSheetMode =
-    selectedGym !== null
-      ? {
-          type: 'detail' as const,
-          selectedGym,
-          onCloseDetail: () => {
-            setSelectedGymId(null);
-          },
-          onPressMachine: handlePressMachine,
-        }
-      : {
-          type: 'list' as const,
-          gyms,
-          userLocation: initialLocation ?? GANGNAM_STATION,
-          isLoading: isPending,
-          onSelectGym: setSelectedGymId,
-          onClearFilters: clearFilters,
-        };
+  const { gyms, isPending, showSearchButton, handleCameraIdle, handleSearch } =
+    useMapSearch(filters);
+  const { visibleMarkerIds } = useMarkerReveal(gyms);
+  const {
+    mode: bottomSheetMode,
+    selectedGymId,
+    setSelectedGymId,
+  } = useBottomSheetMode({
+    gyms,
+    isPending,
+    userLocation,
+    clearFilters,
+  });
 
   return (
     <View className="flex-1">
