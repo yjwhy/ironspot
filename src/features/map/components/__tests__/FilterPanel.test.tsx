@@ -76,4 +76,10 @@ describe('FilterPanel', () => {
     expect(getByText('브랜드')).toBeTruthy();
     expect(getByText('머신 종류')).toBeTruthy();
   });
+
+  it('renders nothing when visible is false', () => {
+    const { queryByText, queryByTestId } = renderPanel({ visible: false });
+    expect(queryByText('브랜드')).toBeNull();
+    expect(queryByTestId('filter-panel-backdrop')).toBeNull();
+  });
 });
