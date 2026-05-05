@@ -14,8 +14,14 @@ jest.mock('@gorhom/bottom-sheet', () => {
     __esModule: true,
     default: mock.BottomSheetPassthrough,
     BottomSheetView: mock.BottomSheetPassthrough,
-    BottomSheetFlashList: mock.BottomSheetListMock,
+    useBottomSheetScrollableCreator: jest.fn(() => jest.fn()),
   };
+});
+
+jest.mock('@shopify/flash-list', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mock = require('@/test/utils/bottom-sheet-mock') as typeof BottomSheetMockModule;
+  return { FlashList: mock.BottomSheetListMock };
 });
 
 jest.mock('../../hooks/useGymMachines', () => ({

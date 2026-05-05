@@ -151,6 +151,26 @@ expect(getByTestId('offline-banner')).toHaveProp('accessibilityRole', 'alert');
 
 ---
 
+### 2026-05-05 / Task 13 — NaverMapView causes Jest OOM / SIGABRT via native module chain
+
+Rendering `MapScreen` (or any component that imports `NaverMapView`) in Jest crashes the process with SIGABRT or runs out of memory. The cause is the native module chain: `NaverMapView` → reanimated worklets → native bridge, which Jest cannot sandbox. `moduleNameMapper` redirecting `@mj-studio/react-native-naver-map` to a lightweight mock is not enough — the crash happens during Jest's module evaluation, before the mock is applied.
+
+**Fix:** Extract all pure logic out of `MapScreen` into sibling files (`mapUtils.ts`, etc.) and unit-test those. Add the component files to `collectCoverageFrom` exclusions in `jest.config.js`. Rely on Maestro E2E for render coverage of `MapScreen` and `GymMarker`.
+
+```js
+// jest.config.js — exclude native-overlay components from coverage
+'!src/features/map/components/MapScreen.tsx',
+'!src/features/map/components/GymMarker.tsx',
+```
+
+---
+
+### 2026-05-05 / Task 13 — `@shopify/flash-list` v2 removed `estimatedItemSize` and deprecated `BottomSheetFlashList`
+
+Flash-list v2.0.x is a full rewrite (`RecyclerView` under the hood). `estimatedItemSize` no longer exists in `FlashListProps` — TypeScript will error. `@gorhom/bottom-sheet` v5.2+ deprecated `BottomSheetFlashList`; the replacement is `useBottomSheetScrollableCreator()` returning a `renderScrollComponent` callback to pass to `<FlashList>` directly. Test mock: add a `jest.mock('@shopify/flash-list', ...)` that returns `BottomSheetListMock` for `FlashList`; add `useBottomSheetScrollableCreator: jest.fn(() => jest.fn())` to the bottom-sheet mock.
+
+---
+
 ### 2026-05-02 / Task 12.4 — Reanimated banners are hidden by iOS `presentation: 'modal'`
 
 Mounting a global `<OfflineBanner />` as a sibling of `<Stack>` in `app/_layout.tsx` floats it over normal stack screens but **not** over modal screens. iOS modals (`presentation: 'modal'`) render in a separate native window above the root view hierarchy, so an absolute-positioned banner in the root tree is occluded. Phase 1 accepts this — the user closes the modal to see the banner. If a future requirement needs banners on modals, mount a second instance inside the modal screen, or migrate to a portal-based approach.
