@@ -17,6 +17,13 @@
 11. My Page full implementation
 12. Account settings (nickname edit, account deletion)
 
+## Deferred from Phase 1
+
+13. **머신 모델 멀티셀렉트 검색** — 특정 기구 여러 개(예: "Panatta High Row + Hammer Strength DY Row")를 모두 보유한 헬스장을 찾는 검색 플로우. Phase 1의 브랜드/카테고리 단일 선택 필터로는 구현 불가. 필요한 작업:
+    - `searchGymsInBounds` RPC를 머신 템플릿 ID 배열 + ALL 매칭으로 재작성
+    - 기구 위시리스트 선택 UI (별도 검색 플로우)
+    - 결정 배경: [ADR 0020](../../adrs/0020-filter-panel-over-scrollbar.md)
+
 ## Files to add here
 
 - `implementation.md` — detailed task breakdown (written after Phase 1 completes)
