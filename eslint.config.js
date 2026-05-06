@@ -12,6 +12,7 @@ module.exports = defineConfig([
       '.expo/**',
       'dist/**',
       'coverage/**',
+      'iron-spot-api/**',
       'babel.config.js',
       'metro.config.js',
       'jest.config.js',
