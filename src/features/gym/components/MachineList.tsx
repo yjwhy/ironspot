@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
+import { toTestSlug } from '@/shared/lib/format';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { GymMachineWithDetails } from '@/shared/types/database';
@@ -83,9 +84,12 @@ function MachineRow({ machine, onPress }: MachineRowProps) {
   const showQuantity = machine.quantity >= 2;
   const accessibilityLabel = buildRowAccessibilityLabel(name, machine.quantity, photoCount);
 
+  const testID = `machine-row-${toTestSlug(name)}`;
+
   return (
     <Pressable
       onPress={onPress}
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       className="flex-row items-center justify-between rounded-md bg-bg-subtle px-3 py-2"

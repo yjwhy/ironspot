@@ -1,10 +1,13 @@
 # Gym search flow.
-#
-# STATUS: pending Task 13 (Map screen with "이 지역 재검색" button).
-# Will fail until the map UI lands. Kept here so the suite is complete and
-# `maestro test .maestro/` lights up the moment Task 13 ships.
+# Auto-search fires on the first camera idle (useMapSearch.triggerInitialSearch).
+# GymCard uses a Pressable with accessibilityLabel — inner text is swallowed,
+# so we assert via testID (gym-card-<kebab-name>) rather than text content.
 appId: com.ironspot.app
 ---
 - launchApp
-- tapOn: '이 지역 재검색'
-- assertVisible: '헬스장'
+- extendedWaitUntil:
+    visible:
+      id: 'gym-card-피트니스-팩토리'
+    timeout: 15000
+- assertVisible:
+    id: 'gym-card-피트니스-팩토리'

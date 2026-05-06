@@ -1,17 +1,20 @@
-# Photo detail flow — verifies Task 11.4 (PhotoDetailScreen + PhotoPager) by
-# tapping the Best Cut hero in the gallery and asserting the modal renders
-# with its disabled report affordance and uploader label.
-#
-# DEVIATION FROM implementation.md spec: enters the gallery via deep link
-# (same reason as photo-gallery.yaml). Switch back to the tap-driven entry
-# path when Task 13 lands.
+# Photo detail flow — full tap-driven path (Task 13 live, deep-link deviation retired).
+# map → bottom sheet → gym detail → machine row → gallery → tap best cut → PhotoDetailScreen
+# GymCard and MachineRow inner text is swallowed by Pressable accessibilityLabel — use testID.
 appId: com.ironspot.app
 ---
 - launchApp
-- openLink: 'ironspot:///gym/x/machine/e0010001-0000-0000-0000-000000000001'
+- extendedWaitUntil:
+    visible:
+      id: 'gym-card-피트니스-팩토리'
+    timeout: 15000
+- tapOn:
+    id: 'gym-card-피트니스-팩토리'
+- tapOn:
+    id: 'machine-row-low-row'
 - tapOn:
     id: 'photo-grid-best-cut'
-- assertVisible: '추천 12'
+- assertVisible: '추천 3'
 - assertVisible: '익명'
 - assertVisible: '닫기'
 - assertVisible: '신고'

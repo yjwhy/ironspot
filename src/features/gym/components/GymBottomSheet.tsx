@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import {
   BottomSheetModal,
   BottomSheetView,
+  useBottomSheetModal,
   useBottomSheetScrollableCreator,
 } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -12,6 +13,7 @@ import { Pressable, View } from 'react-native';
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { toTestSlug } from '@/shared/lib/format';
 import { haversineKm } from '@/shared/lib/geo';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
@@ -32,15 +34,32 @@ const SNAP_POINTS = ['10%', '50%', '90%'];
 
 const LIST_PADDING = 16;
 const LIST_CONTENT_STYLE = { padding: LIST_PADDING };
+const BACKGROUND_STYLE = { backgroundColor: '#FFFFFF' };
+const CONTENT_STYLE = { flex: 1 };
 
 const SKELETON_COUNT = 3;
+const PRESENT_DELAY_MS = 300;
+const SNAP_DELAY_MS = 50;
 
 export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   const ref = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
   const tabBarHeight = useBottomTabBarHeight();
 
-  useEffect(function presentOnMount() {
-    ref.current?.present();
+  useEffect(function presentAfterNavigationSettles() {
+    let snapId: ReturnType<typeof setTimeout> | undefined;
+    const id = setTimeout(() => {
+      ref.current?.present();
+      // bottom-sheet v5.2.10: present() skips snapToIndex on first mount
+      // because mounted.current is false; delay gives React time to commit
+      // the setState({mount:true}) before we snap to index 1.
+      snapId = setTimeout(() => {
+        ref.current?.snapToIndex(1);
+      }, SNAP_DELAY_MS);
+    }, PRESENT_DELAY_MS);
+    return () => {
+      clearTimeout(id);
+      clearTimeout(snapId);
+    };
   }, []);
 
   return (
@@ -51,8 +70,9 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
       enablePanDownToClose={false}
       backdropComponent={undefined}
       bottomInset={tabBarHeight}
+      backgroundStyle={BACKGROUND_STYLE}
     >
-      <BottomSheetView className="flex-1">
+      <BottomSheetView style={CONTENT_STYLE}>
         {mode.type === 'detail' ? <DetailMode mode={mode} /> : <ListMode mode={mode} />}
       </BottomSheetView>
     </BottomSheetModal>
@@ -96,6 +116,7 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
             longitude: item.longitude,
           })}
           index={index}
+          testID={`gym-card-${toTestSlug(item.name)}`}
           onPress={() => {
             mode.onSelectGym(item.id);
           }}
@@ -108,6 +129,13 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
 type DetailMode_Props = Extract<GymBottomSheetMode, { type: 'detail' }>;
 
 function DetailMode({ mode }: { mode: DetailMode_Props }) {
+  const { dismiss } = useBottomSheetModal();
+
+  function handlePressMachine(gymMachineId: string) {
+    dismiss();
+    mode.onPressMachine(gymMachineId);
+  }
+
   return (
     <View className="flex-1">
       <Pressable
@@ -126,7 +154,7 @@ function DetailMode({ mode }: { mode: DetailMode_Props }) {
         />
         <AppText className="font-medium text-body-sm text-text-secondary">목록</AppText>
       </Pressable>
-      <GymDetail gym={mode.selectedGym} onPressMachine={mode.onPressMachine} />
+      <GymDetail gym={mode.selectedGym} onPressMachine={handlePressMachine} />
     </View>
   );
 }

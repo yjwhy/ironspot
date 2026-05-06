@@ -1,4 +1,4 @@
-import { formatDistanceKm, formatVerifiedDate } from '../format';
+import { formatDistanceKm, formatVerifiedDate, toTestSlug } from '../format';
 
 describe('formatDistanceKm', () => {
   it('rounds to one decimal place with km suffix', () => {
@@ -15,6 +15,20 @@ describe('formatDistanceKm', () => {
 
   it('renders very small distances as 0.0km rather than NaN', () => {
     expect(formatDistanceKm(0)).toBe('0.0km');
+  });
+});
+
+describe('toTestSlug', () => {
+  it('converts spaces to hyphens and lowercases', () => {
+    expect(toTestSlug('Fitness Factory')).toBe('fitness-factory');
+  });
+
+  it('collapses multiple spaces into a single hyphen', () => {
+    expect(toTestSlug('Low  Row')).toBe('low-row');
+  });
+
+  it('is a no-op for single words', () => {
+    expect(toTestSlug('row')).toBe('row');
   });
 });
 
