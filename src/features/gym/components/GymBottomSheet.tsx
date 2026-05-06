@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import {
   BottomSheetModal,
   BottomSheetView,
+  useBottomSheetModal,
   useBottomSheetScrollableCreator,
 } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -128,6 +129,13 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
 type DetailMode_Props = Extract<GymBottomSheetMode, { type: 'detail' }>;
 
 function DetailMode({ mode }: { mode: DetailMode_Props }) {
+  const { dismiss } = useBottomSheetModal();
+
+  function handlePressMachine(gymMachineId: string) {
+    dismiss();
+    mode.onPressMachine(gymMachineId);
+  }
+
   return (
     <View className="flex-1">
       <Pressable
@@ -146,7 +154,7 @@ function DetailMode({ mode }: { mode: DetailMode_Props }) {
         />
         <AppText className="font-medium text-body-sm text-text-secondary">목록</AppText>
       </Pressable>
-      <GymDetail gym={mode.selectedGym} onPressMachine={mode.onPressMachine} />
+      <GymDetail gym={mode.selectedGym} onPressMachine={handlePressMachine} />
     </View>
   );
 }

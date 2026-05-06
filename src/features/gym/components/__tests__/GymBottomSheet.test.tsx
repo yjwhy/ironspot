@@ -21,6 +21,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
     BottomSheetModalProvider: mock.BottomSheetPassthrough,
     BottomSheetView: mock.BottomSheetPassthrough,
     useBottomSheetScrollableCreator: jest.fn(() => jest.fn()),
+    useBottomSheetModal: jest.fn(() => ({ dismiss: jest.fn(), dismissAll: jest.fn() })),
   };
 });
 
