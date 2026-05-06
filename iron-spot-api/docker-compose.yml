@@ -1,0 +1,23 @@
+services:
+  api:
+    build: .
+    ports:
+      - '8080:8080'
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_DB: ironspot
+      POSTGRES_USER: ironspot
+      POSTGRES_PASSWORD: ironspot
+    ports:
+      - '5433:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ironspot']
+      interval: 5s
+      timeout: 5s
+      retries: 5
