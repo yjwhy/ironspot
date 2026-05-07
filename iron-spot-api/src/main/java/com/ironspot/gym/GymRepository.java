@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+
+import java.sql.Types;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -73,9 +75,9 @@ public class GymRepository {
                 g.location::geometry,
                 ST_MakeEnvelope(:minLng, :minLat, :maxLng, :maxLat, 4326)
             )
-            AND (CAST(:brandId AS text) IS NULL OR mt.brand_id::text = CAST(:brandId AS text))
-            AND (CAST(:categoryId AS text) IS NULL OR mt.category_id::text = CAST(:categoryId AS text))
-            AND (CAST(:loadingType AS text) IS NULL OR mt.loading_type::text = CAST(:loadingType AS text))
+            AND (:brandId IS NULL OR mt.brand_id::text = :brandId)
+            AND (:categoryId IS NULL OR mt.category_id::text = :categoryId)
+            AND (:loadingType IS NULL OR mt.loading_type::text = :loadingType)
             GROUP BY g.id
             ORDER BY machine_count DESC
             """;
@@ -84,9 +86,9 @@ public class GymRepository {
             .addValue("maxLat", req.getMaxLat())
             .addValue("minLng", req.getMinLng())
             .addValue("maxLng", req.getMaxLng())
-            .addValue("brandId", req.getBrandId())
-            .addValue("categoryId", req.getCategoryId())
-            .addValue("loadingType", req.getLoadingType());
+            .addValue("brandId", req.getBrandId(), Types.VARCHAR)
+            .addValue("categoryId", req.getCategoryId(), Types.VARCHAR)
+            .addValue("loadingType", req.getLoadingType(), Types.VARCHAR);
         return jdbc.query(sql, params, gymWithMachineCountRowMapper());
     }
 

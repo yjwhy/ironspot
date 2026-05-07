@@ -84,4 +84,15 @@ class GymSearchTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).doesNotContain("테스트 헬스장");
     }
+
+    @Test
+    void searchFiltersByCategoryId() {
+        String url = "/api/gyms/search" + GANGNAM_BOUNDS
+            + "&categoryId=c0000001-0000-0000-0000-000000000001";
+
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("테스트 헬스장");
+    }
 }
