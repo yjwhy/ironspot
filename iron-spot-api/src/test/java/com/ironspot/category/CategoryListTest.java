@@ -1,4 +1,4 @@
-package com.ironspot;
+package com.ironspot.category;
 
 import com.ironspot.common.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
@@ -13,15 +13,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
-class HealthCheckTest extends IntegrationTestBase {
+class CategoryListTest extends IntegrationTestBase {
 
     @Autowired
     private TestRestTemplate restTemplate;
 
     @Test
-    void actuatorHealthReturnsUp() {
-        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/health", String.class);
+    void getCategoriesReturns200() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/api/categories", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("\"status\":\"UP\"");
+    }
+
+    @Test
+    void getCategoriesReturnsAllCategories() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/api/categories", String.class);
+        assertThat(response.getBody()).contains("등");
+        assertThat(response.getBody()).contains("가슴");
+    }
+
+    @Test
+    void getCategoriesResponseHasSuccessTrue() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/api/categories", String.class);
+        assertThat(response.getBody()).contains("\"success\":true");
     }
 }

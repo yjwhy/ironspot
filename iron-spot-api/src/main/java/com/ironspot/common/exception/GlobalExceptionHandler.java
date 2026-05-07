@@ -4,7 +4,7 @@ import com.ironspot.common.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -20,9 +20,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(e.getStatus()).body(ApiResponse.error(e.getMessage()));
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiResponse<Void> handleValidation(MethodArgumentNotValidException e) {
+    public ApiResponse<Void> handleBind(BindException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(f -> f.getField() + ": " + f.getDefaultMessage())
                 .collect(Collectors.joining(", "));
