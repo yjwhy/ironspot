@@ -7,8 +7,9 @@ export default defineConfig({
       target: './openapi.json',
       // Excluded until Task 20 adds @Operation annotations and auth hooks.
       // To include: remove this filter and re-run pnpm generate:api.
+      // Tag is 'user-controller' (SpringDoc default from class name — no @Operation on UserController).
       filters: {
-        tags: ['users'],
+        tags: ['user-controller'],
         mode: 'exclude',
       },
     },
