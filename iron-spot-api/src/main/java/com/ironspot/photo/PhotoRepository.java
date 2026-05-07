@@ -17,14 +17,18 @@ public class PhotoRepository {
     private final NamedParameterJdbcTemplate jdbc;
 
     private static RowMapper<PhotoResponse> photoRowMapper() {
-        return (rs, rowNum) -> new PhotoResponse(
-            UUID.fromString(rs.getString("id")),
-            UUID.fromString(rs.getString("gym_machine_id")),
-            UUID.fromString(rs.getString("user_id")),
-            rs.getString("photo_url"),
-            rs.getInt("upvote_count"),
-            rs.getTimestamp("created_at").toInstant()
-        );
+        return (rs, rowNum) -> {
+            String userId = rs.getString("user_id");
+            java.sql.Timestamp createdAt = rs.getTimestamp("created_at");
+            return new PhotoResponse(
+                UUID.fromString(rs.getString("id")),
+                UUID.fromString(rs.getString("gym_machine_id")),
+                userId != null ? UUID.fromString(userId) : null,
+                rs.getString("photo_url"),
+                rs.getInt("upvote_count"),
+                createdAt != null ? createdAt.toInstant() : null
+            );
+        };
     }
 
     public List<PhotoResponse> findByGymMachineId(UUID gymMachineId) {

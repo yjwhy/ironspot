@@ -17,22 +17,27 @@ public class MachineRepository {
     private final NamedParameterJdbcTemplate jdbc;
 
     private static RowMapper<GymMachineResponse> machineRowMapper() {
-        return (rs, rowNum) -> new GymMachineResponse(
-            UUID.fromString(rs.getString("id")),
-            rs.getInt("quantity"),
-            rs.getBoolean("is_custom"),
-            rs.getString("custom_name"),
-            rs.getTimestamp("last_verified_at") != null
-                ? rs.getTimestamp("last_verified_at").toInstant() : null,
-            UUID.fromString(rs.getString("template_id")),
-            rs.getString("machine_name"),
-            rs.getString("loading_type"),
-            UUID.fromString(rs.getString("brand_id")),
-            rs.getString("brand_name"),
-            UUID.fromString(rs.getString("category_id")),
-            rs.getString("category_name"),
-            rs.getLong("photo_count")
-        );
+        return (rs, rowNum) -> {
+            String templateId = rs.getString("template_id");
+            String brandId = rs.getString("brand_id");
+            String categoryId = rs.getString("category_id");
+            return new GymMachineResponse(
+                UUID.fromString(rs.getString("id")),
+                rs.getInt("quantity"),
+                rs.getBoolean("is_custom"),
+                rs.getString("custom_name"),
+                rs.getTimestamp("last_verified_at") != null
+                    ? rs.getTimestamp("last_verified_at").toInstant() : null,
+                templateId != null ? UUID.fromString(templateId) : null,
+                rs.getString("machine_name"),
+                rs.getString("loading_type"),
+                brandId != null ? UUID.fromString(brandId) : null,
+                rs.getString("brand_name"),
+                categoryId != null ? UUID.fromString(categoryId) : null,
+                rs.getString("category_name"),
+                rs.getLong("photo_count")
+            );
+        };
     }
 
     public List<GymMachineResponse> findByGymId(UUID gymId) {
