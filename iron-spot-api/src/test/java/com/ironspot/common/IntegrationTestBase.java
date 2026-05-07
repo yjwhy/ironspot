@@ -10,6 +10,9 @@ public abstract class IntegrationTestBase {
     static final PostgreSQLContainer<?> postgres;
 
     static {
+        // JVM-wide singleton: one container for all test classes in the same JVM.
+        // @Testcontainers + @Container would stop the container after each test class,
+        // causing the cached Spring context to point to a dead datasource URL.
         postgres = new PostgreSQLContainer<>(
                 DockerImageName.parse("postgis/postgis:17-3.5").asCompatibleSubstituteFor("postgres"))
                 .withDatabaseName("ironspot_test")

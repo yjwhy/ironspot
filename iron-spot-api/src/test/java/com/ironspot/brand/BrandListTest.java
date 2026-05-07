@@ -25,10 +25,16 @@ class BrandListTest extends IntegrationTestBase {
     }
 
     @Test
-    void getBrandsReturnsAllBrands() {
+    void getBrandsReturnsAllBrandsAlphabetically() {
         ResponseEntity<String> response = restTemplate.getForEntity("/api/brands", String.class);
         assertThat(response.getBody()).contains("Panatta");
         assertThat(response.getBody()).contains("Life Fitness");
+        // ORDER BY name: "Life Fitness" < "Panatta"
+        assertThat(response.getBody()).satisfies(body -> {
+            int lifeFitnessIdx = body.indexOf("Life Fitness");
+            int panattaIdx = body.indexOf("Panatta");
+            assertThat(lifeFitnessIdx).isLessThan(panattaIdx);
+        });
     }
 
     @Test

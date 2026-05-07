@@ -19,7 +19,7 @@ public class BrandController {
     private final BrandService brandService;
 
     @GetMapping
-    @Operation(summary = "List all brands")
+    @Operation(summary = "List all brands", tags = {"brands"})
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Brand list returned successfully")
     })
