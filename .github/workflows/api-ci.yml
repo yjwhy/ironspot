@@ -12,6 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
+        id: java24
+        with:
+          java-version: '24'
+          distribution: 'temurin'
+      - uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -19,6 +24,10 @@ jobs:
       - name: Run tests
         working-directory: iron-spot-api
         run: ./gradlew test
+        env:
+          JAVA_HOME: ${{ steps.java24.outputs.path }}
       - name: Build JAR
         working-directory: iron-spot-api
         run: ./gradlew bootJar
+        env:
+          JAVA_HOME: ${{ steps.java24.outputs.path }}
