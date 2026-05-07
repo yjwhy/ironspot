@@ -19,9 +19,11 @@ public abstract class IntegrationTestBase {
                     .withInitScript("init-test-db.sql");
 
     @DynamicPropertySource
-    static void configureDatabase(DynamicPropertyRegistry registry) {
+    static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("security.supabase-jwt-secret",
+            () -> "test-supabase-jwt-secret-for-integration-tests-must-be-at-least-32-chars");
     }
 }
