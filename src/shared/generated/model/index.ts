@@ -6,15 +6,9 @@
  * OpenAPI spec version: v1
  */
 
-export * from './apiResponseGymDetailResponse';
-export * from './apiResponseListBrandResponse';
-export * from './apiResponseListCategoryResponse';
-export * from './apiResponseListGymMachineResponse';
-export * from './apiResponseListGymWithMachineCountResponse';
-export * from './apiResponseListPhotoResponse';
-export * from './apiResponseVoid';
 export * from './brandResponse';
 export * from './categoryResponse';
+export * from './errorResponse';
 export * from './gymDetailResponse';
 export * from './gymMachineResponse';
 export * from './gymSearchRequest';

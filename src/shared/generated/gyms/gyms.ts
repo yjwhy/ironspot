@@ -19,9 +19,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  ApiResponseGymDetailResponse,
-  ApiResponseListGymWithMachineCountResponse,
-  ApiResponseVoid,
+  ErrorResponse,
+  GymDetailResponse,
+  GymWithMachineCountResponse,
   SearchParams,
 } from '../model';
 
@@ -30,17 +30,17 @@ import { apiClient } from '../../lib/api-client';
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 export type getByIdResponse200 = {
-  data: ApiResponseGymDetailResponse;
+  data: GymDetailResponse;
   status: 200;
 };
 
 export type getByIdResponse404 = {
-  data: ApiResponseGymDetailResponse;
+  data: GymDetailResponse;
   status: 404;
 };
 
 export type getByIdResponse500 = {
-  data: ApiResponseVoid;
+  data: ErrorResponse;
   status: 500;
 };
 
@@ -73,7 +73,7 @@ export const getGetByIdQueryKey = (id: string) => {
 
 export const getGetByIdQueryOptions = <
   TData = Awaited<ReturnType<typeof getById>>,
-  TError = ApiResponseGymDetailResponse | ApiResponseVoid,
+  TError = GymDetailResponse | ErrorResponse,
 >(
   id: string,
   options?: {
@@ -96,11 +96,11 @@ export const getGetByIdQueryOptions = <
 };
 
 export type GetByIdQueryResult = NonNullable<Awaited<ReturnType<typeof getById>>>;
-export type GetByIdQueryError = ApiResponseGymDetailResponse | ApiResponseVoid;
+export type GetByIdQueryError = GymDetailResponse | ErrorResponse;
 
 export function useGetById<
   TData = Awaited<ReturnType<typeof getById>>,
-  TError = ApiResponseGymDetailResponse | ApiResponseVoid,
+  TError = GymDetailResponse | ErrorResponse,
 >(
   id: string,
   options: {
@@ -119,7 +119,7 @@ export function useGetById<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetById<
   TData = Awaited<ReturnType<typeof getById>>,
-  TError = ApiResponseGymDetailResponse | ApiResponseVoid,
+  TError = GymDetailResponse | ErrorResponse,
 >(
   id: string,
   options?: {
@@ -138,7 +138,7 @@ export function useGetById<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetById<
   TData = Awaited<ReturnType<typeof getById>>,
-  TError = ApiResponseGymDetailResponse | ApiResponseVoid,
+  TError = GymDetailResponse | ErrorResponse,
 >(
   id: string,
   options?: {
@@ -153,7 +153,7 @@ export function useGetById<
 
 export function useGetById<
   TData = Awaited<ReturnType<typeof getById>>,
-  TError = ApiResponseGymDetailResponse | ApiResponseVoid,
+  TError = GymDetailResponse | ErrorResponse,
 >(
   id: string,
   options?: {
@@ -172,17 +172,17 @@ export function useGetById<
 }
 
 export type searchResponse200 = {
-  data: ApiResponseListGymWithMachineCountResponse;
+  data: GymWithMachineCountResponse[];
   status: 200;
 };
 
 export type searchResponse400 = {
-  data: ApiResponseListGymWithMachineCountResponse;
+  data: GymWithMachineCountResponse[];
   status: 400;
 };
 
 export type searchResponse500 = {
-  data: ApiResponseVoid;
+  data: ErrorResponse;
   status: 500;
 };
 
@@ -230,7 +230,7 @@ export const getSearchQueryKey = (params?: SearchParams) => {
 
 export const getSearchQueryOptions = <
   TData = Awaited<ReturnType<typeof search>>,
-  TError = ApiResponseListGymWithMachineCountResponse | ApiResponseVoid,
+  TError = GymWithMachineCountResponse[] | ErrorResponse,
 >(
   params: SearchParams,
   options?: {
@@ -253,11 +253,11 @@ export const getSearchQueryOptions = <
 };
 
 export type SearchQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>;
-export type SearchQueryError = ApiResponseListGymWithMachineCountResponse | ApiResponseVoid;
+export type SearchQueryError = GymWithMachineCountResponse[] | ErrorResponse;
 
 export function useSearch<
   TData = Awaited<ReturnType<typeof search>>,
-  TError = ApiResponseListGymWithMachineCountResponse | ApiResponseVoid,
+  TError = GymWithMachineCountResponse[] | ErrorResponse,
 >(
   params: SearchParams,
   options: {
@@ -276,7 +276,7 @@ export function useSearch<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSearch<
   TData = Awaited<ReturnType<typeof search>>,
-  TError = ApiResponseListGymWithMachineCountResponse | ApiResponseVoid,
+  TError = GymWithMachineCountResponse[] | ErrorResponse,
 >(
   params: SearchParams,
   options?: {
@@ -295,7 +295,7 @@ export function useSearch<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSearch<
   TData = Awaited<ReturnType<typeof search>>,
-  TError = ApiResponseListGymWithMachineCountResponse | ApiResponseVoid,
+  TError = GymWithMachineCountResponse[] | ErrorResponse,
 >(
   params: SearchParams,
   options?: {
@@ -310,7 +310,7 @@ export function useSearch<
 
 export function useSearch<
   TData = Awaited<ReturnType<typeof search>>,
-  TError = ApiResponseListGymWithMachineCountResponse | ApiResponseVoid,
+  TError = GymWithMachineCountResponse[] | ErrorResponse,
 >(
   params: SearchParams,
   options?: {

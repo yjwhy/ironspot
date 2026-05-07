@@ -32,8 +32,9 @@ class CategoryListTest extends IntegrationTestBase {
     }
 
     @Test
-    void getCategoriesResponseHasSuccessTrue() {
+    void getCategoriesResponseContainsCategoryFields() {
         ResponseEntity<String> response = restTemplate.getForEntity("/api/categories", String.class);
-        assertThat(response.getBody()).contains("\"success\":true");
+        assertThat(response.getBody()).contains("\"name\"");
+        assertThat(response.getBody()).contains("\"id\"");
     }
 }

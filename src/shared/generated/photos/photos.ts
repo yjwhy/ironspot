@@ -18,19 +18,19 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ApiResponseListPhotoResponse, ApiResponseVoid } from '../model';
+import type { ErrorResponse, PhotoResponse } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 export type listPhotosResponse200 = {
-  data: ApiResponseListPhotoResponse;
+  data: PhotoResponse[];
   status: 200;
 };
 
 export type listPhotosResponse500 = {
-  data: ApiResponseVoid;
+  data: ErrorResponse;
   status: 500;
 };
 
@@ -66,7 +66,7 @@ export const getListPhotosQueryKey = (gymMachineId: string) => {
 
 export const getListPhotosQueryOptions = <
   TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymMachineId: string,
   options?: {
@@ -89,11 +89,11 @@ export const getListPhotosQueryOptions = <
 };
 
 export type ListPhotosQueryResult = NonNullable<Awaited<ReturnType<typeof listPhotos>>>;
-export type ListPhotosQueryError = ApiResponseVoid;
+export type ListPhotosQueryError = ErrorResponse;
 
 export function useListPhotos<
   TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymMachineId: string,
   options: {
@@ -112,7 +112,7 @@ export function useListPhotos<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListPhotos<
   TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymMachineId: string,
   options?: {
@@ -131,7 +131,7 @@ export function useListPhotos<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListPhotos<
   TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymMachineId: string,
   options?: {
@@ -146,7 +146,7 @@ export function useListPhotos<
 
 export function useListPhotos<
   TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymMachineId: string,
   options?: {

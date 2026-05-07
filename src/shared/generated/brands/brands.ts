@@ -18,19 +18,19 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ApiResponseListBrandResponse, ApiResponseVoid } from '../model';
+import type { BrandResponse, ErrorResponse } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 export type listBrandsResponse200 = {
-  data: ApiResponseListBrandResponse;
+  data: BrandResponse[];
   status: 200;
 };
 
 export type listBrandsResponse500 = {
-  data: ApiResponseVoid;
+  data: ErrorResponse;
   status: 500;
 };
 
@@ -63,7 +63,7 @@ export const getListBrandsQueryKey = () => {
 
 export const getListBrandsQueryOptions = <
   TData = Awaited<ReturnType<typeof listBrands>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>;
   request?: SecondParameter<typeof apiClient>;
@@ -83,11 +83,11 @@ export const getListBrandsQueryOptions = <
 };
 
 export type ListBrandsQueryResult = NonNullable<Awaited<ReturnType<typeof listBrands>>>;
-export type ListBrandsQueryError = ApiResponseVoid;
+export type ListBrandsQueryError = ErrorResponse;
 
 export function useListBrands<
   TData = Awaited<ReturnType<typeof listBrands>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> &
@@ -105,7 +105,7 @@ export function useListBrands<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListBrands<
   TData = Awaited<ReturnType<typeof listBrands>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> &
@@ -123,7 +123,7 @@ export function useListBrands<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListBrands<
   TData = Awaited<ReturnType<typeof listBrands>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>;
@@ -137,7 +137,7 @@ export function useListBrands<
 
 export function useListBrands<
   TData = Awaited<ReturnType<typeof listBrands>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>;

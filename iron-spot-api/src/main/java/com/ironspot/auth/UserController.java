@@ -2,13 +2,14 @@ package com.ironspot.auth;
 
 import com.ironspot.auth.dto.UpdateUserRequest;
 import com.ironspot.auth.dto.UserResponse;
-import com.ironspot.common.dto.ApiResponse;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+@Hidden
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -17,16 +18,16 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/me")
-    public ApiResponse<UserResponse> getMe(@AuthenticationPrincipal UserPrincipal principal) {
-        return ApiResponse.ok(userService.getOrCreate(principal));
+    public UserResponse getMe(@AuthenticationPrincipal UserPrincipal principal) {
+        return userService.getOrCreate(principal);
     }
 
     @PutMapping("/me")
-    public ApiResponse<UserResponse> updateMe(
+    public UserResponse updateMe(
         @AuthenticationPrincipal UserPrincipal principal,
         @Valid @RequestBody UpdateUserRequest request
     ) {
-        return ApiResponse.ok(userService.updateNickname(principal.getUserId(), request.nickname()));
+        return userService.updateNickname(principal.getUserId(), request.nickname());
     }
 
     @DeleteMapping("/me")

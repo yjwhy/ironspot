@@ -38,8 +38,9 @@ class BrandListTest extends IntegrationTestBase {
     }
 
     @Test
-    void getBrandsResponseHasSuccessTrue() {
+    void getBrandsResponseContainsBrandFields() {
         ResponseEntity<String> response = restTemplate.getForEntity("/api/brands", String.class);
-        assertThat(response.getBody()).contains("\"success\":true");
+        assertThat(response.getBody()).contains("\"name\"");
+        assertThat(response.getBody()).contains("\"id\"");
     }
 }

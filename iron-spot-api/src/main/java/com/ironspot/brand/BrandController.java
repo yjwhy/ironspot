@@ -1,7 +1,6 @@
 package com.ironspot.brand;
 
 import com.ironspot.brand.dto.BrandResponse;
-import com.ironspot.common.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,7 @@ public class BrandController {
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Brand list returned successfully")
     })
-    public ApiResponse<List<BrandResponse>> listBrands() {
-        return ApiResponse.ok(brandService.listAll());
+    public List<BrandResponse> listBrands() {
+        return brandService.listAll();
     }
 }

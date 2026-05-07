@@ -18,19 +18,19 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ApiResponseListGymMachineResponse, ApiResponseVoid } from '../model';
+import type { ErrorResponse, GymMachineResponse } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 export type listMachinesResponse200 = {
-  data: ApiResponseListGymMachineResponse;
+  data: GymMachineResponse[];
   status: 200;
 };
 
 export type listMachinesResponse500 = {
-  data: ApiResponseVoid;
+  data: ErrorResponse;
   status: 500;
 };
 
@@ -66,7 +66,7 @@ export const getListMachinesQueryKey = (gymId: string) => {
 
 export const getListMachinesQueryOptions = <
   TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymId: string,
   options?: {
@@ -89,11 +89,11 @@ export const getListMachinesQueryOptions = <
 };
 
 export type ListMachinesQueryResult = NonNullable<Awaited<ReturnType<typeof listMachines>>>;
-export type ListMachinesQueryError = ApiResponseVoid;
+export type ListMachinesQueryError = ErrorResponse;
 
 export function useListMachines<
   TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymId: string,
   options: {
@@ -112,7 +112,7 @@ export function useListMachines<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListMachines<
   TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymId: string,
   options?: {
@@ -131,7 +131,7 @@ export function useListMachines<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListMachines<
   TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymId: string,
   options?: {
@@ -146,7 +146,7 @@ export function useListMachines<
 
 export function useListMachines<
   TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   gymId: string,
   options?: {

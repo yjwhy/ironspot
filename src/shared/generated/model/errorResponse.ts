@@ -5,10 +5,7 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import type { GymMachineResponse } from './gymMachineResponse';
 
-export interface ApiResponseListGymMachineResponse {
-  success?: boolean;
-  data?: GymMachineResponse[];
+export interface ErrorResponse {
   error?: string;
 }

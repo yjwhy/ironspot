@@ -1,7 +1,6 @@
 package com.ironspot.category;
 
 import com.ironspot.category.dto.CategoryResponse;
-import com.ironspot.common.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,7 @@ public class CategoryController {
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Category list returned successfully")
     })
-    public ApiResponse<List<CategoryResponse>> listCategories() {
-        return ApiResponse.ok(categoryService.listAll());
+    public List<CategoryResponse> listCategories() {
+        return categoryService.listAll();
     }
 }

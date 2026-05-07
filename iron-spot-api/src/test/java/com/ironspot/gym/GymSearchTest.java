@@ -33,7 +33,6 @@ class GymSearchTest extends IntegrationTestBase {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("테스트 헬스장");
-        assertThat(response.getBody()).contains("\"success\":true");
     }
 
     @Test

@@ -1,6 +1,5 @@
 package com.ironspot.gym;
 
-import com.ironspot.common.dto.ApiResponse;
 import com.ironspot.common.exception.BusinessException;
 import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
@@ -34,10 +33,10 @@ public class GymController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "400", description = "Missing or invalid bounds parameters")
     })
-    public ApiResponse<List<GymWithMachineCountResponse>> search(
+    public List<GymWithMachineCountResponse> search(
         @Valid @ModelAttribute GymSearchRequest request
     ) {
-        return ApiResponse.ok(gymService.searchInBounds(request));
+        return gymService.searchInBounds(request);
     }
 
     @GetMapping("/{id}")
@@ -48,9 +47,8 @@ public class GymController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "404", description = "Gym not found")
     })
-    public ApiResponse<GymDetailResponse> getById(@PathVariable UUID id) {
+    public GymDetailResponse getById(@PathVariable UUID id) {
         return gymService.findById(id)
-            .map(ApiResponse::ok)
             .orElseThrow(() -> new BusinessException("Gym not found: " + id, HttpStatus.NOT_FOUND));
     }
 }

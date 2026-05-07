@@ -18,19 +18,19 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ApiResponseListCategoryResponse, ApiResponseVoid } from '../model';
+import type { CategoryResponse, ErrorResponse } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 export type listCategoriesResponse200 = {
-  data: ApiResponseListCategoryResponse;
+  data: CategoryResponse[];
   status: 200;
 };
 
 export type listCategoriesResponse500 = {
-  data: ApiResponseVoid;
+  data: ErrorResponse;
   status: 500;
 };
 
@@ -63,7 +63,7 @@ export const getListCategoriesQueryKey = () => {
 
 export const getListCategoriesQueryOptions = <
   TData = Awaited<ReturnType<typeof listCategories>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listCategories>>, TError, TData>>;
   request?: SecondParameter<typeof apiClient>;
@@ -83,11 +83,11 @@ export const getListCategoriesQueryOptions = <
 };
 
 export type ListCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listCategories>>>;
-export type ListCategoriesQueryError = ApiResponseVoid;
+export type ListCategoriesQueryError = ErrorResponse;
 
 export function useListCategories<
   TData = Awaited<ReturnType<typeof listCategories>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listCategories>>, TError, TData>> &
@@ -105,7 +105,7 @@ export function useListCategories<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListCategories<
   TData = Awaited<ReturnType<typeof listCategories>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listCategories>>, TError, TData>> &
@@ -123,7 +123,7 @@ export function useListCategories<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListCategories<
   TData = Awaited<ReturnType<typeof listCategories>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listCategories>>, TError, TData>>;
@@ -137,7 +137,7 @@ export function useListCategories<
 
 export function useListCategories<
   TData = Awaited<ReturnType<typeof listCategories>>,
-  TError = ApiResponseVoid,
+  TError = ErrorResponse,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listCategories>>, TError, TData>>;

@@ -29,8 +29,13 @@ class SpecExportTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotEmpty();
 
-        // Write to project root (iron-spot-api/ -> ../)
+        // Normalise the ephemeral RANDOM_PORT to a stable placeholder so openapi.json
+        // does not produce a noisy git diff on every regeneration.
+        // Working directory is iron-spot-api/ during Gradle test execution.
+        String spec = response.getBody()
+                .replaceAll("\"url\":\"http://localhost:\\d+\"", "\"url\":\"http://localhost:8080\"");
+
         Path outputPath = Path.of("../openapi.json");
-        Files.writeString(outputPath, response.getBody());
+        Files.writeString(outputPath, spec);
     }
 }

@@ -1,6 +1,5 @@
 package com.ironspot.photo;
 
-import com.ironspot.common.dto.ApiResponse;
 import com.ironspot.photo.dto.PhotoResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -25,7 +24,7 @@ public class PhotoController {
     @ApiResponses({
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Photo list returned successfully")
     })
-    public ApiResponse<List<PhotoResponse>> listPhotos(@PathVariable UUID gymMachineId) {
-        return ApiResponse.ok(photoService.findByGymMachineId(gymMachineId));
+    public List<PhotoResponse> listPhotos(@PathVariable UUID gymMachineId) {
+        return photoService.findByGymMachineId(gymMachineId);
     }
 }
