@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Phase 2 in progress. Task 16 next.
+Phase 2 in progress. Task 17 next.
 
 ### Pre-requisites status (2026-05-07)
 
@@ -13,7 +13,7 @@ Phase 2 in progress. Task 16 next.
 
 ## Task Checklist
 
-- [ ] Task 16: Spring Boot Project Setup
+- [x] Task 16: Spring Boot Project Setup
 - [ ] Task 17: JWT Auth Infrastructure
 - [ ] Task 18: Core Read Endpoints
 - [ ] Task 19: OpenAPI Spec + Orval Client Generation
@@ -31,5 +31,6 @@ Phase 2 in progress. Task 16 next.
 
 ## Completed Tasks Log
 
-| Task | Commit | Date | Notes |
-| ---- | ------ | ---- | ----- |
+| Task | Commit  | Date       | Notes                                                                                                                                                                                                                                                                                                                                                              |
+| ---- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 16   | 9f03e79 | 2026-05-07 | Spring Boot 3.5.0 + Java 25 skeleton. Gradle Kotlin DSL (daemon on Java 24 — Kotlin compiler can't parse Java 25 version strings). Common layer: ApiResponse, BusinessException, GlobalExceptionHandler, OpenApiConfig. Testcontainers: postgis/postgis:17-3.5 + full schema init. HealthCheckTest green. Dockerfile + docker-compose + GitHub Actions CI. PR #27. |
