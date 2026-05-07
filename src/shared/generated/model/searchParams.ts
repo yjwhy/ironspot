@@ -5,8 +5,29 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import type { GymSearchRequest } from './gymSearchRequest';
 
 export type SearchParams = {
-  request: GymSearchRequest;
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  minLat: number;
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  maxLat: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  minLng: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  maxLng: number;
+  brandId?: string;
+  categoryId?: string;
+  loadingType?: string;
 };

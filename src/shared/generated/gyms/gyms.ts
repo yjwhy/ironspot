@@ -35,7 +35,7 @@ export type getByIdResponse200 = {
 };
 
 export type getByIdResponse404 = {
-  data: GymDetailResponse;
+  data: ErrorResponse;
   status: 404;
 };
 
@@ -73,7 +73,7 @@ export const getGetByIdQueryKey = (id: string) => {
 
 export const getGetByIdQueryOptions = <
   TData = Awaited<ReturnType<typeof getById>>,
-  TError = GymDetailResponse | ErrorResponse,
+  TError = ErrorResponse,
 >(
   id: string,
   options?: {
@@ -96,12 +96,9 @@ export const getGetByIdQueryOptions = <
 };
 
 export type GetByIdQueryResult = NonNullable<Awaited<ReturnType<typeof getById>>>;
-export type GetByIdQueryError = GymDetailResponse | ErrorResponse;
+export type GetByIdQueryError = ErrorResponse;
 
-export function useGetById<
-  TData = Awaited<ReturnType<typeof getById>>,
-  TError = GymDetailResponse | ErrorResponse,
->(
+export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = ErrorResponse>(
   id: string,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>> &
@@ -117,10 +114,7 @@ export function useGetById<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useGetById<
-  TData = Awaited<ReturnType<typeof getById>>,
-  TError = GymDetailResponse | ErrorResponse,
->(
+export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = ErrorResponse>(
   id: string,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>> &
@@ -136,10 +130,7 @@ export function useGetById<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useGetById<
-  TData = Awaited<ReturnType<typeof getById>>,
-  TError = GymDetailResponse | ErrorResponse,
->(
+export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = ErrorResponse>(
   id: string,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>;
@@ -151,10 +142,7 @@ export function useGetById<
  * @summary Get gym detail
  */
 
-export function useGetById<
-  TData = Awaited<ReturnType<typeof getById>>,
-  TError = GymDetailResponse | ErrorResponse,
->(
+export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = ErrorResponse>(
   id: string,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>;
@@ -177,7 +165,7 @@ export type searchResponse200 = {
 };
 
 export type searchResponse400 = {
-  data: GymWithMachineCountResponse[];
+  data: ErrorResponse;
   status: 400;
 };
 
@@ -230,7 +218,7 @@ export const getSearchQueryKey = (params?: SearchParams) => {
 
 export const getSearchQueryOptions = <
   TData = Awaited<ReturnType<typeof search>>,
-  TError = GymWithMachineCountResponse[] | ErrorResponse,
+  TError = ErrorResponse,
 >(
   params: SearchParams,
   options?: {
@@ -253,12 +241,9 @@ export const getSearchQueryOptions = <
 };
 
 export type SearchQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>;
-export type SearchQueryError = GymWithMachineCountResponse[] | ErrorResponse;
+export type SearchQueryError = ErrorResponse;
 
-export function useSearch<
-  TData = Awaited<ReturnType<typeof search>>,
-  TError = GymWithMachineCountResponse[] | ErrorResponse,
->(
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorResponse>(
   params: SearchParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> &
@@ -274,10 +259,7 @@ export function useSearch<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useSearch<
-  TData = Awaited<ReturnType<typeof search>>,
-  TError = GymWithMachineCountResponse[] | ErrorResponse,
->(
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorResponse>(
   params: SearchParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> &
@@ -293,10 +275,7 @@ export function useSearch<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useSearch<
-  TData = Awaited<ReturnType<typeof search>>,
-  TError = GymWithMachineCountResponse[] | ErrorResponse,
->(
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorResponse>(
   params: SearchParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>;
@@ -308,10 +287,7 @@ export function useSearch<
  * @summary Search gyms within map bounds
  */
 
-export function useSearch<
-  TData = Awaited<ReturnType<typeof search>>,
-  TError = GymWithMachineCountResponse[] | ErrorResponse,
->(
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorResponse>(
   params: SearchParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>;

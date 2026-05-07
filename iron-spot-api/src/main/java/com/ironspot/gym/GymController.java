@@ -1,13 +1,17 @@
 package com.ironspot.gym;
 
+import com.ironspot.common.dto.ErrorResponse;
 import com.ironspot.common.exception.BusinessException;
 import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -31,10 +35,11 @@ public class GymController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "200", description = "Gym list returned successfully"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400", description = "Missing or invalid bounds parameters")
+            responseCode = "400", description = "Missing or invalid bounds parameters",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public List<GymWithMachineCountResponse> search(
-        @Valid @ModelAttribute GymSearchRequest request
+        @Valid @ModelAttribute @ParameterObject GymSearchRequest request
     ) {
         return gymService.searchInBounds(request);
     }
@@ -45,7 +50,8 @@ public class GymController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "200", description = "Gym returned successfully"),
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404", description = "Gym not found")
+            responseCode = "404", description = "Gym not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public GymDetailResponse getById(@PathVariable UUID id) {
         return gymService.findById(id)

@@ -11,7 +11,6 @@ export * from './categoryResponse';
 export * from './errorResponse';
 export * from './gymDetailResponse';
 export * from './gymMachineResponse';
-export * from './gymSearchRequest';
 export * from './gymWithMachineCountResponse';
 export * from './photoResponse';
 export * from './searchParams';

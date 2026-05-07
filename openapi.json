@@ -64,7 +64,7 @@
           },
           "404": {
             "description": "Gym not found",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/GymDetailResponse" } } }
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
@@ -108,10 +108,41 @@
         "operationId": "search",
         "parameters": [
           {
-            "name": "request",
+            "name": "minLat",
             "in": "query",
             "required": true,
-            "schema": { "$ref": "#/components/schemas/GymSearchRequest" }
+            "schema": { "type": "number", "format": "double", "maximum": 90.0, "minimum": -90.0 }
+          },
+          {
+            "name": "maxLat",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "number", "format": "double", "maximum": 90.0, "minimum": -90.0 }
+          },
+          {
+            "name": "minLng",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "number", "format": "double", "maximum": 180.0, "minimum": -180.0 }
+          },
+          {
+            "name": "maxLng",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "number", "format": "double", "maximum": 180.0, "minimum": -180.0 }
+          },
+          { "name": "brandId", "in": "query", "required": false, "schema": { "type": "string" } },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "loadingType",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
@@ -132,14 +163,7 @@
           },
           "400": {
             "description": "Missing or invalid bounds parameters",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/GymWithMachineCountResponse" }
-                }
-              }
-            }
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
@@ -241,19 +265,6 @@
           "categoryName": { "type": "string" },
           "photoCount": { "type": "integer", "format": "int64" }
         }
-      },
-      "GymSearchRequest": {
-        "type": "object",
-        "properties": {
-          "minLat": { "type": "number", "format": "double", "maximum": 90, "minimum": -90 },
-          "maxLat": { "type": "number", "format": "double", "maximum": 90, "minimum": -90 },
-          "minLng": { "type": "number", "format": "double", "maximum": 180, "minimum": -180 },
-          "maxLng": { "type": "number", "format": "double", "maximum": 180, "minimum": -180 },
-          "brandId": { "type": "string" },
-          "categoryId": { "type": "string" },
-          "loadingType": { "type": "string" }
-        },
-        "required": ["maxLat", "maxLng", "minLat", "minLng"]
       },
       "GymWithMachineCountResponse": {
         "type": "object",
