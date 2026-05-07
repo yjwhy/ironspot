@@ -1,0 +1,407 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "IronSpot API",
+    "description": "헬스장 기구 정보 플랫폼 API",
+    "version": "v1"
+  },
+  "servers": [{ "url": "http://localhost:58438", "description": "Generated server url" }],
+  "security": [{ "Bearer": [] }],
+  "paths": {
+    "/api/users/me": {
+      "get": {
+        "tags": ["user-controller"],
+        "operationId": "getMe",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseVoid" } } }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseUserResponse" } }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["user-controller"],
+        "operationId": "updateMe",
+        "requestBody": {
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/UpdateUserRequest" } }
+          },
+          "required": true
+        },
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseVoid" } } }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseUserResponse" } }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["user-controller"],
+        "operationId": "deleteMe",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseVoid" } } }
+          },
+          "204": { "description": "No Content" }
+        }
+      }
+    },
+    "/api/machines/{gymMachineId}/photos": {
+      "get": {
+        "tags": ["photos"],
+        "summary": "List photos for a gym machine",
+        "operationId": "listPhotos",
+        "parameters": [
+          {
+            "name": "gymMachineId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseVoid" } } }
+          },
+          "200": {
+            "description": "Photo list returned successfully",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseListPhotoResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/gyms/{id}": {
+      "get": {
+        "tags": ["gyms"],
+        "summary": "Get gym detail",
+        "operationId": "getById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseVoid" } } }
+          },
+          "200": {
+            "description": "Gym returned successfully",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseGymDetailResponse" } }
+            }
+          },
+          "404": {
+            "description": "Gym not found",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseGymDetailResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/gyms/{gymId}/machines": {
+      "get": {
+        "tags": ["machines"],
+        "summary": "List machines in a gym",
+        "operationId": "listMachines",
+        "parameters": [
+          {
+            "name": "gymId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseVoid" } } }
+          },
+          "200": {
+            "description": "Machine list returned successfully",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseListGymMachineResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gyms/search": {
+      "get": {
+        "tags": ["gyms"],
+        "summary": "Search gyms within map bounds",
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "request",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/GymSearchRequest" }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseVoid" } } }
+          },
+          "200": {
+            "description": "Gym list returned successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListGymWithMachineCountResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid bounds parameters",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListGymWithMachineCountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "tags": ["categories"],
+        "summary": "List all categories",
+        "operationId": "listCategories",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseVoid" } } }
+          },
+          "200": {
+            "description": "Category list returned successfully",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseListCategoryResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/brands": {
+      "get": {
+        "tags": ["brands"],
+        "summary": "List all brands",
+        "operationId": "listBrands",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error",
+            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseVoid" } } }
+          },
+          "200": {
+            "description": "Brand list returned successfully",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/ApiResponseListBrandResponse" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {},
+          "error": { "type": "string" }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": { "nickname": { "type": "string", "maxLength": 20, "minLength": 2 } },
+        "required": ["nickname"]
+      },
+      "ApiResponseUserResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/UserResponse" },
+          "error": { "type": "string" }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string" },
+          "nickname": { "type": "string" },
+          "createdAt": { "type": "string" }
+        }
+      },
+      "ApiResponseListPhotoResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/PhotoResponse" } },
+          "error": { "type": "string" }
+        }
+      },
+      "PhotoResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "gymMachineId": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "photoUrl": { "type": "string" },
+          "upvoteCount": { "type": "integer", "format": "int32" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseGymDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GymDetailResponse" },
+          "error": { "type": "string" }
+        }
+      },
+      "GymDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "latitude": { "type": "number", "format": "double" },
+          "longitude": { "type": "number", "format": "double" },
+          "phone": { "type": "string" },
+          "operatingHours": { "type": "string" },
+          "dayPassPrice": { "type": "integer", "format": "int32" },
+          "isVerified": { "type": "boolean" },
+          "lastVerifiedAt": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseListGymMachineResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GymMachineResponse" }
+          },
+          "error": { "type": "string" }
+        }
+      },
+      "GymMachineResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "integer", "format": "int32" },
+          "isCustom": { "type": "boolean" },
+          "customName": { "type": "string" },
+          "lastVerifiedAt": { "type": "string", "format": "date-time" },
+          "templateId": { "type": "string", "format": "uuid" },
+          "machineName": { "type": "string" },
+          "loadingType": { "type": "string" },
+          "brandId": { "type": "string", "format": "uuid" },
+          "brandName": { "type": "string" },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "categoryName": { "type": "string" },
+          "photoCount": { "type": "integer", "format": "int64" }
+        }
+      },
+      "GymSearchRequest": {
+        "type": "object",
+        "properties": {
+          "minLat": { "type": "number", "format": "double", "maximum": 90, "minimum": -90 },
+          "maxLat": { "type": "number", "format": "double", "maximum": 90, "minimum": -90 },
+          "minLng": { "type": "number", "format": "double", "maximum": 180, "minimum": -180 },
+          "maxLng": { "type": "number", "format": "double", "maximum": 180, "minimum": -180 },
+          "brandId": { "type": "string" },
+          "categoryId": { "type": "string" },
+          "loadingType": { "type": "string" }
+        },
+        "required": ["maxLat", "maxLng", "minLat", "minLng"]
+      },
+      "ApiResponseListGymWithMachineCountResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GymWithMachineCountResponse" }
+          },
+          "error": { "type": "string" }
+        }
+      },
+      "GymWithMachineCountResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "address": { "type": "string" },
+          "latitude": { "type": "number", "format": "double" },
+          "longitude": { "type": "number", "format": "double" },
+          "phone": { "type": "string" },
+          "operatingHours": { "type": "string" },
+          "dayPassPrice": { "type": "integer", "format": "int32" },
+          "isVerified": { "type": "boolean" },
+          "lastVerifiedAt": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "machineCount": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ApiResponseListCategoryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/CategoryResponse" } },
+          "error": { "type": "string" }
+        }
+      },
+      "CategoryResponse": {
+        "type": "object",
+        "properties": { "id": { "type": "string", "format": "uuid" }, "name": { "type": "string" } }
+      },
+      "ApiResponseListBrandResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/BrandResponse" } },
+          "error": { "type": "string" }
+        }
+      },
+      "BrandResponse": {
+        "type": "object",
+        "properties": { "id": { "type": "string", "format": "uuid" }, "name": { "type": "string" } }
+      }
+    },
+    "securitySchemes": { "Bearer": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" } }
+  }
+}

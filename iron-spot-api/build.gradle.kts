@@ -29,8 +29,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
 
-    // OpenAPI (SpringDoc)
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8")
+    // OpenAPI (SpringDoc) — 3.x required for Spring Boot 4.x / Spring Framework 7.x
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
     // JWT — Supabase Auth token validation
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")

@@ -1,0 +1,54 @@
+import ky, { HTTPError, type Options } from 'ky';
+
+import { env } from './env';
+import { supabase } from './supabase';
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error: string | null;
+}
+
+const _ky = ky.create({
+  prefixUrl: env.EXPO_PUBLIC_API_URL,
+  timeout: 10_000,
+});
+
+// Accept RequestInit so Orval-generated callers (which use SecondParameter<typeof apiClient>)
+// receive a compatible type. Ky accepts RequestInit-compatible objects.
+export async function apiClient<T>(url: string, options?: RequestInit): Promise<T> {
+  const sanitisedUrl = url.startsWith('/') ? url.slice(1) : url;
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+
+  const headers = new Headers(options?.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const kyOptions = options as Options | undefined;
+
+  let response: ApiResponse<T>;
+  try {
+    response = await _ky(sanitisedUrl, { ...kyOptions, headers }).json<ApiResponse<T>>();
+  } catch (err: unknown) {
+    if (err instanceof HTTPError && err.response.status === 401) {
+      await supabase.auth.refreshSession();
+      const { data: refreshed } = await supabase.auth.getSession();
+      const newToken = refreshed.session?.access_token;
+      if (!newToken) {
+        throw new Error('Session expired — please log in again');
+      }
+      headers.set('Authorization', `Bearer ${newToken}`);
+      response = await _ky(sanitisedUrl, { ...kyOptions, headers }).json<ApiResponse<T>>();
+    } else {
+      throw err;
+    }
+  }
+
+  if (!response.success) {
+    throw new Error(response.error ?? 'API error');
+  }
+  return response.data;
+}

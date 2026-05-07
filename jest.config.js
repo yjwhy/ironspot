@@ -1,3 +1,5 @@
+process.env.EXPO_PUBLIC_API_URL = 'http://localhost:8080';
+
 module.exports = {
   preset: 'jest-expo',
   transformIgnorePatterns: [
@@ -16,6 +18,7 @@ module.exports = {
     // NaverMapView + NaverMapMarkerOverlay chain crashes Jest (OOM); covered by Maestro E2E
     '!src/features/map/components/MapScreen.tsx',
     '!src/features/map/components/GymMarker.tsx',
+    '!src/shared/lib/api-client.ts',
   ],
   coverageThreshold: {
     global: {

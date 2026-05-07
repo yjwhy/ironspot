@@ -1251,6 +1251,8 @@ git commit -m "feat(api): springdoc openapi + orval typescript client generation
 
 **Goal:** Login screen with Google/Kakao social buttons. `useAuth` hook for session state. `useRequireAuth` hook for gating write actions. Auth callback deep link handler.
 
+**Pre-requisite from Task 19:** Remove the `filters.exclude` in `orval.config.ts` and add `@Operation(summary = ..., tags = {"users"})` to `UserController` methods so that `/api/users/me` is included in the generated client.
+
 **What must be complete before calling this task done:**
 
 - Login screen renders correctly with Google + Kakao buttons
