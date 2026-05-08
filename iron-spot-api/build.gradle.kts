@@ -85,6 +85,10 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+tasks.named("compileJava") {
+    dependsOn("generateJooq")
+}
+
 tasks.register("generateJooq") {
     group = "jooq"
     description = "Generate JOOQ classes from schema via Testcontainers — re-run when schema changes"
