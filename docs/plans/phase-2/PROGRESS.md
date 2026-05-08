@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Phase 2 in progress. Task 19 next.
+Phase 2 in progress. Task 20 next.
 
 ### Pre-requisites status (2026-05-07)
 
@@ -16,7 +16,7 @@ Phase 2 in progress. Task 19 next.
 - [x] Task 16: Spring Boot Project Setup
 - [x] Task 17: JWT Auth Infrastructure
 - [x] Task 18: Core Read Endpoints
-- [ ] Task 19: OpenAPI Spec + Orval Client Generation
+- [x] Task 19: OpenAPI Spec + Orval Client Generation
 - [ ] Task 20: Frontend Auth (Google/Kakao)
 - [ ] Task 21: Migrate Frontend Services to Spring Boot API
 - [ ] Task 22: Photo Upload Pipeline (Backend)
@@ -31,8 +31,9 @@ Phase 2 in progress. Task 19 next.
 
 ## Completed Tasks Log
 
-| Task | Commit  | Date       | Notes                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ---- | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 16   | 9f03e79 | 2026-05-07 | Spring Boot 3.5.0 + Java 25 skeleton. Gradle Kotlin DSL (daemon on Java 24 — Kotlin compiler can't parse Java 25 version strings). Common layer: ApiResponse, BusinessException, GlobalExceptionHandler, OpenApiConfig. Testcontainers: postgis/postgis:17-3.5 + full schema init. HealthCheckTest green. Dockerfile + docker-compose + GitHub Actions CI. PR #27.                                                       |
-| 17   | 3774503 | 2026-05-07 | Supabase JWT validation (JJWT 0.12.6, HMAC-SHA256), JwtAuthenticationFilter, SecurityConfig (stateless + 401 entry point). UserPrincipal, UserRepository (ON CONFLICT DO NOTHING), UserService (@Transactional getOrCreate/updateNickname/deleteAccount), GET/PUT/DELETE /api/users/me. 15 tests green. PR #28.                                                                                                          |
-| 18   | f0f3e63 | 2026-05-07 | 6 public GET endpoints: /api/brands, /api/categories, /api/gyms/search (PostGIS ST_Within), /api/gyms/:id, /api/gyms/:id/machines, /api/machines/:gymMachineId/photos. NamedParameterJdbcTemplate + Types.VARCHAR for nullable filter params. Null-safe RowMappers. Singleton Testcontainers pattern in IntegrationTestBase. BindException handler covers both @RequestBody and @ModelAttribute. 34 tests green. PR #29. |
+| Task | Commit  | Date       | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---- | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 16   | 9f03e79 | 2026-05-07 | Spring Boot 3.5.0 + Java 25 skeleton. Gradle Kotlin DSL (daemon on Java 24 — Kotlin compiler can't parse Java 25 version strings). Common layer: ApiResponse, BusinessException, GlobalExceptionHandler, OpenApiConfig. Testcontainers: postgis/postgis:17-3.5 + full schema init. HealthCheckTest green. Dockerfile + docker-compose + GitHub Actions CI. PR #27.                                                                                                      |
+| 17   | 3774503 | 2026-05-07 | Supabase JWT validation (JJWT 0.12.6, HMAC-SHA256), JwtAuthenticationFilter, SecurityConfig (stateless + 401 entry point). UserPrincipal, UserRepository (ON CONFLICT DO NOTHING), UserService (@Transactional getOrCreate/updateNickname/deleteAccount), GET/PUT/DELETE /api/users/me. 15 tests green. PR #28.                                                                                                                                                         |
+| 18   | f0f3e63 | 2026-05-07 | 6 public GET endpoints: /api/brands, /api/categories, /api/gyms/search (PostGIS ST_Within), /api/gyms/:id, /api/gyms/:id/machines, /api/machines/:gymMachineId/photos. NamedParameterJdbcTemplate + Types.VARCHAR for nullable filter params. Null-safe RowMappers. Singleton Testcontainers pattern in IntegrationTestBase. BindException handler covers both @RequestBody and @ModelAttribute. 34 tests green. PR #29.                                                |
+| 19   | d6639b8 | 2026-05-08 | SpecExportTest exports openapi.json from live app context. ApiResponse<T> wrapper removed — controllers return domain types directly. Orval generates TanStack Query hooks (5 tags). api-client.ts: ky + JWT injection + 401 token-refresh retry. @Schema(requiredMode=REQUIRED) on non-nullable fields, produces=APPLICATION*JSON_VALUE on all controllers, OpenApiCustomizer normalises */\_ → application/json. CI freshness check via git diff --exit-code. PR #30. |
