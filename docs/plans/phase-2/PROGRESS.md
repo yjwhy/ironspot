@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Phase 2 in progress. Task 22 next.
+Phase 2 in progress. Task 23 next.
 
 ### Pre-requisites status (2026-05-07)
 
@@ -19,7 +19,7 @@ Phase 2 in progress. Task 22 next.
 - [x] Task 19: OpenAPI Spec + Orval Client Generation
 - [x] Task 20: Frontend Auth (Google/Kakao)
 - [x] Task 21: Migrate Frontend Services to Spring Boot API
-- [ ] Task 22: JOOQ Migration
+- [x] Task 22: JOOQ Migration
 - [ ] Task 23: Orval Type Alignment (eliminate as-unknown-as casts)
 - [ ] Task 24: Photo Upload Pipeline (Backend)
 - [ ] Task 25: Photo Upload UI (Frontend)
@@ -41,3 +41,4 @@ Phase 2 in progress. Task 22 next.
 | 19   | d6639b8 | 2026-05-08 | SpecExportTest exports openapi.json from live app context. ApiResponse<T> wrapper removed — controllers return domain types directly. Orval generates TanStack Query hooks (5 tags). api-client.ts: ky + JWT injection + 401 token-refresh retry. @Schema(requiredMode=REQUIRED) on non-nullable fields, produces=APPLICATION*JSON_VALUE on all controllers, OpenApiCustomizer normalises */\_ → application/json. CI freshness check via git diff --exit-code. PR #30.                                                                          |
 | 20   | c914b68 | 2026-05-08 | UserController: @Hidden → @Operation + @Tag("users"), /api/users/me included in spec. orval.config.ts filter removed, users/ client generated. useAuth (discriminated AuthState via onAuthStateChange), useRequireAuth (gate hook, sync from useAuth), LoginScreen (Google+Kakao OAuth, error toast), app/(auth)/login+callback routes. useCurrentUser moved to features/auth/hooks, userKeys factory, STALE_TIME_DEFAULT_MS exported from query-client. 301 tests green. PR #31.                                                                |
 | 21   | fb504e2 | 2026-05-08 | Migrate all frontend services from Supabase direct calls to Orval-generated Spring Boot API client. Spring Boot: GymMachineResponse.photoCount → photos: List<PhotoResponse> with batch fetch in MachineService (N+1 prevention via findByGymMachineIds). Frontend: brands, categories, gym-search, gym-detail, photo-list services rewritten; toMachinePhoto deduplicated (exported from photo-list); toMachineTemplate extracted; getGymById return type narrowed to Promise<Gym>. All function signatures unchanged. 303 tests green. PR #32. |
+| 22   | 802929b | 2026-05-08 | Replace JdbcTemplate/NamedParameterJdbcTemplate raw SQL with JOOQ 3.19.23 DSL across all repositories. JOOQ codegen via Testcontainers (postgis/postgis:17-3.5). PostGIS geography handled via DSL.field/DSL.condition raw cast strings. LoadingType filter uses typed enum lookupLiteral(). groupBy lists all projected columns for strict PostgreSQL compliance. UserRowMapper deleted. 303 tests green. PR #33.                                                                                                                               |
