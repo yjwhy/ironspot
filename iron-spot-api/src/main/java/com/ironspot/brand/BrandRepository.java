@@ -2,31 +2,23 @@ package com.ironspot.brand;
 
 import com.ironspot.brand.dto.BrandResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.EmptySqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.UUID;
+
+import static com.ironspot.jooq.Tables.BRANDS;
 
 @Repository
 @RequiredArgsConstructor
 public class BrandRepository {
 
-    private static final RowMapper<BrandResponse> ROW_MAPPER =
-        (rs, rowNum) -> new BrandResponse(
-            UUID.fromString(rs.getString("id")),
-            rs.getString("name")
-        );
-
-    private final NamedParameterJdbcTemplate jdbc;
+    private final DSLContext dsl;
 
     public List<BrandResponse> findAll() {
-        return jdbc.query(
-            "SELECT id, name FROM brands ORDER BY name",
-            EmptySqlParameterSource.INSTANCE,
-            ROW_MAPPER
-        );
+        return dsl.select(BRANDS.ID, BRANDS.NAME)
+            .from(BRANDS)
+            .orderBy(BRANDS.NAME)
+            .fetch(r -> new BrandResponse(r.get(BRANDS.ID), r.get(BRANDS.NAME)));
     }
 }

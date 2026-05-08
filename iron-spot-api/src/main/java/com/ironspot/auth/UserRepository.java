@@ -2,54 +2,73 @@ package com.ironspot.auth;
 
 import com.ironspot.auth.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.UUID;
+
+import static com.ironspot.jooq.Tables.MACHINE_PHOTOS;
+import static com.ironspot.jooq.Tables.PHOTO_VOTES;
+import static com.ironspot.jooq.Tables.USERS;
 
 @Repository
 @RequiredArgsConstructor
 public class UserRepository {
 
-    private final JdbcTemplate jdbc;
+    private final DSLContext dsl;
 
     public Optional<UserResponse> findById(String id) {
-        try {
-            return Optional.ofNullable(
-                jdbc.queryForObject(
-                    "SELECT id, email, nickname, created_at FROM users WHERE id = ?::uuid AND deleted_at IS NULL",
-                    UserRowMapper.INSTANCE, id));
-        } catch (EmptyResultDataAccessException e) {
-            return Optional.empty();
-        }
+        return dsl.select(USERS.ID, USERS.EMAIL, USERS.NICKNAME, USERS.CREATED_AT)
+            .from(USERS)
+            .where(USERS.ID.eq(UUID.fromString(id)))
+            .and(USERS.DELETED_AT.isNull())
+            .fetchOptional(r -> {
+                OffsetDateTime createdAt = r.get(USERS.CREATED_AT);
+                return UserResponse.builder()
+                    .id(r.get(USERS.ID).toString())
+                    .email(r.get(USERS.EMAIL))
+                    .nickname(r.get(USERS.NICKNAME))
+                    .createdAt(createdAt != null ? createdAt.toString() : null)
+                    .build();
+            });
     }
 
     public void insert(String id, String email, String nickname) {
-        jdbc.update(
-            "INSERT INTO users (id, email, nickname) VALUES (?::uuid, ?, ?) ON CONFLICT (id) DO NOTHING",
-            id, email, nickname);
+        dsl.insertInto(USERS, USERS.ID, USERS.EMAIL, USERS.NICKNAME)
+            .values(UUID.fromString(id), email, nickname)
+            .onConflictDoNothing()
+            .execute();
     }
 
     public int updateNickname(String userId, String nickname) {
-        return jdbc.update(
-            "UPDATE users SET nickname = ?, updated_at = NOW() WHERE id = ?::uuid AND deleted_at IS NULL",
-            nickname, userId);
+        return dsl.update(USERS)
+            .set(USERS.NICKNAME, nickname)
+            .set(USERS.UPDATED_AT, OffsetDateTime.now())
+            .where(USERS.ID.eq(UUID.fromString(userId)))
+            .and(USERS.DELETED_AT.isNull())
+            .execute();
     }
 
     public void anonymizePhotos(String userId) {
-        jdbc.update(
-            "UPDATE machine_photos SET user_id = NULL WHERE user_id = ?::uuid",
-            userId);
+        dsl.update(MACHINE_PHOTOS)
+            .setNull(MACHINE_PHOTOS.USER_ID)
+            .where(MACHINE_PHOTOS.USER_ID.eq(UUID.fromString(userId)))
+            .execute();
     }
 
     public void deleteVotes(String userId) {
-        jdbc.update("DELETE FROM photo_votes WHERE user_id = ?::uuid", userId);
+        dsl.deleteFrom(PHOTO_VOTES)
+            .where(PHOTO_VOTES.USER_ID.eq(UUID.fromString(userId)))
+            .execute();
     }
 
     public int markDeleted(String userId) {
-        return jdbc.update(
-            "UPDATE users SET deleted_at = NOW() WHERE id = ?::uuid AND deleted_at IS NULL",
-            userId);
+        return dsl.update(USERS)
+            .set(USERS.DELETED_AT, OffsetDateTime.now())
+            .where(USERS.ID.eq(UUID.fromString(userId)))
+            .and(USERS.DELETED_AT.isNull())
+            .execute();
     }
 }

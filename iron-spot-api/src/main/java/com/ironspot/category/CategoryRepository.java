@@ -2,31 +2,23 @@ package com.ironspot.category;
 
 import com.ironspot.category.dto.CategoryResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.EmptySqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.UUID;
+
+import static com.ironspot.jooq.Tables.CATEGORIES;
 
 @Repository
 @RequiredArgsConstructor
 public class CategoryRepository {
 
-    private static final RowMapper<CategoryResponse> ROW_MAPPER =
-        (rs, rowNum) -> new CategoryResponse(
-            UUID.fromString(rs.getString("id")),
-            rs.getString("name")
-        );
-
-    private final NamedParameterJdbcTemplate jdbc;
+    private final DSLContext dsl;
 
     public List<CategoryResponse> findAll() {
-        return jdbc.query(
-            "SELECT id, name FROM categories ORDER BY name",
-            EmptySqlParameterSource.INSTANCE,
-            ROW_MAPPER
-        );
+        return dsl.select(CATEGORIES.ID, CATEGORIES.NAME)
+            .from(CATEGORIES)
+            .orderBy(CATEGORIES.NAME)
+            .fetch(r -> new CategoryResponse(r.get(CATEGORIES.ID), r.get(CATEGORIES.NAME)));
     }
 }

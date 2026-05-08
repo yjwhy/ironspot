@@ -2,60 +2,59 @@ package com.ironspot.photo;
 
 import com.ironspot.photo.dto.PhotoResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.jooq.DSLContext;
+import org.jooq.Record;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static com.ironspot.jooq.Tables.MACHINE_PHOTOS;
 
 @Repository
 @RequiredArgsConstructor
 public class PhotoRepository {
 
-    private final NamedParameterJdbcTemplate jdbc;
+    private final DSLContext dsl;
 
-    private static RowMapper<PhotoResponse> photoRowMapper() {
-        return (rs, rowNum) -> {
-            String userId = rs.getString("user_id");
-            java.sql.Timestamp createdAt = rs.getTimestamp("created_at");
-            return new PhotoResponse(
-                UUID.fromString(rs.getString("id")),
-                UUID.fromString(rs.getString("gym_machine_id")),
-                userId != null ? UUID.fromString(userId) : null,
-                rs.getString("photo_url"),
-                rs.getInt("upvote_count"),
-                createdAt != null ? createdAt.toInstant() : null
-            );
-        };
+    private PhotoResponse toPhotoResponse(Record r) {
+        OffsetDateTime createdAt = r.get(MACHINE_PHOTOS.CREATED_AT);
+        return new PhotoResponse(
+            r.get(MACHINE_PHOTOS.ID),
+            r.get(MACHINE_PHOTOS.GYM_MACHINE_ID),
+            r.get(MACHINE_PHOTOS.USER_ID),
+            r.get(MACHINE_PHOTOS.PHOTO_URL),
+            Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.UPVOTE_COUNT), 0),
+            createdAt != null ? createdAt.toInstant() : null
+        );
     }
 
     public List<PhotoResponse> findByGymMachineId(UUID gymMachineId) {
-        String sql = """
-            SELECT id, gym_machine_id, user_id, photo_url, upvote_count, created_at
-            FROM machine_photos
-            WHERE gym_machine_id = :gymMachineId
-              AND is_blinded = FALSE
-            ORDER BY upvote_count DESC, created_at DESC
-            """;
-        return jdbc.query(sql, new MapSqlParameterSource("gymMachineId", gymMachineId), photoRowMapper());
+        return dsl.select(
+                MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.GYM_MACHINE_ID.eq(gymMachineId))
+            .and(MACHINE_PHOTOS.IS_BLINDED.isFalse())
+            .orderBy(MACHINE_PHOTOS.UPVOTE_COUNT.desc(), MACHINE_PHOTOS.CREATED_AT.desc())
+            .fetch(this::toPhotoResponse);
     }
 
     public Map<UUID, List<PhotoResponse>> findByGymMachineIds(List<UUID> gymMachineIds) {
         if (gymMachineIds.isEmpty()) return Map.of();
-        String sql = """
-            SELECT id, gym_machine_id, user_id, photo_url, upvote_count, created_at
-            FROM machine_photos
-            WHERE gym_machine_id IN (:ids)
-              AND is_blinded = FALSE
-            ORDER BY upvote_count DESC, created_at DESC
-            """;
-        List<PhotoResponse> photos = jdbc.query(sql,
-            new MapSqlParameterSource("ids", gymMachineIds),
-            photoRowMapper());
-        return photos.stream().collect(Collectors.groupingBy(PhotoResponse::gymMachineId));
+        return dsl.select(
+                MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.GYM_MACHINE_ID.in(gymMachineIds))
+            .and(MACHINE_PHOTOS.IS_BLINDED.isFalse())
+            .orderBy(MACHINE_PHOTOS.UPVOTE_COUNT.desc(), MACHINE_PHOTOS.CREATED_AT.desc())
+            .fetch(this::toPhotoResponse)
+            .stream()
+            .collect(Collectors.groupingBy(PhotoResponse::gymMachineId));
     }
 }
