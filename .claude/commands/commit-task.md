@@ -36,17 +36,29 @@ Complete the current task's Git workflow: feature branch → commit → push →
 
 4. Show user the changed files via `git status` — confirm they match the task scope.
 
-5. Build commit message using conventional commits:
-   - Task 1 → `chore: initialize expo project with full tooling`
-   - Task 2 → `feat: add design tokens (colors, typography, spacing)`
-   - Task 5.1 → `feat(button): add Button component with variants`
-   - Task 7.2 → `feat(map): add gym search service and hook`
+5. Group changed files by area of concern, then create one commit per group.
+   Use conventional commit format per group. Examples of natural groupings:
 
-6. Stage only files scoped to this task (never `git add .`). Commit:
+   | Group                      | Scope                   | Example files                                     |
+   | -------------------------- | ----------------------- | ------------------------------------------------- |
+   | Build / config             | `chore`                 | `build.gradle.kts`, `package.json`, `*.config.ts` |
+   | Generated / codegen output | `chore`                 | `src/main/generated/`, `src/shared/generated/`    |
+   | Shared / util              | `feat` or `refactor`    | `src/shared/`, `src/lib/`                         |
+   | Feature A (one domain)     | `feat`/`refactor`/`fix` | `src/features/auth/**`                            |
+   | Feature B (another domain) | `feat`/`refactor`/`fix` | `src/features/gym/**`                             |
+   | Tests                      | `test`                  | `**/__tests__/**`                                 |
+   | Docs / progress            | `docs`                  | `docs/**`, `CLAUDE.md`                            |
+
+   Rules:
+   - Never `git add .` — always stage files explicitly per group.
+   - If a task touches only one logical unit, a single commit is fine.
+   - The final `docs(phase-N): mark Task N complete` is always its own commit.
+
+6. For each group, stage and commit in sequence:
 
    ```bash
-   git add <scoped-files>
-   git commit -m "<message>"
+   git add <group-files>
+   git commit -m "<type>(<scope>): <description>"
    ```
 
 7. Push branch:
