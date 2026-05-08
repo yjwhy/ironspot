@@ -5,7 +5,9 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import { useQuery } from '@tanstack/react-query';
+import {
+  useQuery
+} from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
@@ -15,151 +17,137 @@ import type {
   QueryKey,
   UndefinedInitialDataOptions,
   UseQueryOptions,
-  UseQueryResult,
+  UseQueryResult
 } from '@tanstack/react-query';
 
-import type { ErrorResponse, GymMachineResponse } from '../model';
+import type {
+  ErrorResponse,
+  GymMachineResponse
+} from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
+
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+
+
 export type listMachinesResponse200 = {
-  data: GymMachineResponse[];
-  status: 200;
-};
+  data: GymMachineResponse[]
+  status: 200
+}
 
 export type listMachinesResponse500 = {
-  data: ErrorResponse;
-  status: 500;
-};
+  data: ErrorResponse
+  status: 500
+}
 
-export type listMachinesResponseSuccess = listMachinesResponse200 & {
+export type listMachinesResponseSuccess = (listMachinesResponse200) & {
   headers: Headers;
 };
-export type listMachinesResponseError = listMachinesResponse500 & {
+export type listMachinesResponseError = (listMachinesResponse500) & {
   headers: Headers;
 };
 
-export type listMachinesResponse = listMachinesResponseSuccess | listMachinesResponseError;
+export type listMachinesResponse = (listMachinesResponseSuccess | listMachinesResponseError)
 
-export const getListMachinesUrl = (gymId: string) => {
-  return `/api/gyms/${gymId}/machines`;
-};
+export const getListMachinesUrl = (gymId: string,) => {
+
+
+
+
+  return `/api/gyms/${gymId}/machines`
+}
 
 /**
  * @summary List machines in a gym
  */
-export const listMachines = async (
-  gymId: string,
-  options?: RequestInit,
-): Promise<listMachinesResponse> => {
-  return apiClient<listMachinesResponse>(getListMachinesUrl(gymId), {
+export const listMachines = async (gymId: string, options?: RequestInit): Promise<listMachinesResponse> => {
+
+  return apiClient<listMachinesResponse>(getListMachinesUrl(gymId),
+  {
     ...options,
-    method: 'GET',
-  });
-};
+    method: 'GET'
 
-export const getListMachinesQueryKey = (gymId: string) => {
-  return [`/api/gyms/${gymId}/machines`] as const;
-};
 
-export const getListMachinesQueryOptions = <
-  TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ErrorResponse,
->(
-  gymId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>>;
-    request?: SecondParameter<typeof apiClient>;
-  },
+  }
+);}
+
+
+
+
+
+export const getListMachinesQueryKey = (gymId: string,) => {
+    return [
+    `/api/gyms/${gymId}/machines`
+    ] as const;
+    }
+
+
+export const getListMachinesQueryOptions = <TData = Awaited<ReturnType<typeof listMachines>>, TError = ErrorResponse>(gymId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
 ) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListMachinesQueryKey(gymId);
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMachines>>> = ({ signal }) =>
-    listMachines(gymId, { signal, ...requestOptions });
+  const queryKey =  queryOptions?.queryKey ?? getListMachinesQueryKey(gymId);
 
-  return { queryKey, queryFn, enabled: !!gymId, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listMachines>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
 
-export type ListMachinesQueryResult = NonNullable<Awaited<ReturnType<typeof listMachines>>>;
-export type ListMachinesQueryError = ErrorResponse;
 
-export function useListMachines<
-  TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ErrorResponse,
->(
-  gymId: string,
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>> &
-      Pick<
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMachines>>> = ({ signal }) => listMachines(gymId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(gymId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListMachinesQueryResult = NonNullable<Awaited<ReturnType<typeof listMachines>>>
+export type ListMachinesQueryError = ErrorResponse
+
+
+export function useListMachines<TData = Awaited<ReturnType<typeof listMachines>>, TError = ErrorResponse>(
+ gymId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listMachines>>,
           TError,
           Awaited<ReturnType<typeof listMachines>>
-        >,
-        'initialData'
-      >;
-    request?: SecondParameter<typeof apiClient>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useListMachines<
-  TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ErrorResponse,
->(
-  gymId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>> &
-      Pick<
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListMachines<TData = Awaited<ReturnType<typeof listMachines>>, TError = ErrorResponse>(
+ gymId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listMachines>>,
           TError,
           Awaited<ReturnType<typeof listMachines>>
-        >,
-        'initialData'
-      >;
-    request?: SecondParameter<typeof apiClient>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useListMachines<
-  TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ErrorResponse,
->(
-  gymId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>>;
-    request?: SecondParameter<typeof apiClient>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListMachines<TData = Awaited<ReturnType<typeof listMachines>>, TError = ErrorResponse>(
+ gymId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary List machines in a gym
  */
 
-export function useListMachines<
-  TData = Awaited<ReturnType<typeof listMachines>>,
-  TError = ErrorResponse,
->(
-  gymId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>>;
-    request?: SecondParameter<typeof apiClient>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getListMachinesQueryOptions(gymId, options);
+export function useListMachines<TData = Awaited<ReturnType<typeof listMachines>>, TError = ErrorResponse>(
+ gymId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachines>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
+  const queryOptions = getListMachinesQueryOptions(gymId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+
+
+
+
+

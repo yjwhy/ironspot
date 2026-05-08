@@ -5,7 +5,9 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import { useQuery } from '@tanstack/react-query';
+import {
+  useQuery
+} from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
@@ -15,151 +17,137 @@ import type {
   QueryKey,
   UndefinedInitialDataOptions,
   UseQueryOptions,
-  UseQueryResult,
+  UseQueryResult
 } from '@tanstack/react-query';
 
-import type { ErrorResponse, PhotoResponse } from '../model';
+import type {
+  ErrorResponse,
+  PhotoResponse
+} from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
+
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+
+
 export type listPhotosResponse200 = {
-  data: PhotoResponse[];
-  status: 200;
-};
+  data: PhotoResponse[]
+  status: 200
+}
 
 export type listPhotosResponse500 = {
-  data: ErrorResponse;
-  status: 500;
-};
+  data: ErrorResponse
+  status: 500
+}
 
-export type listPhotosResponseSuccess = listPhotosResponse200 & {
+export type listPhotosResponseSuccess = (listPhotosResponse200) & {
   headers: Headers;
 };
-export type listPhotosResponseError = listPhotosResponse500 & {
+export type listPhotosResponseError = (listPhotosResponse500) & {
   headers: Headers;
 };
 
-export type listPhotosResponse = listPhotosResponseSuccess | listPhotosResponseError;
+export type listPhotosResponse = (listPhotosResponseSuccess | listPhotosResponseError)
 
-export const getListPhotosUrl = (gymMachineId: string) => {
-  return `/api/machines/${gymMachineId}/photos`;
-};
+export const getListPhotosUrl = (gymMachineId: string,) => {
+
+
+
+
+  return `/api/machines/${gymMachineId}/photos`
+}
 
 /**
  * @summary List photos for a gym machine
  */
-export const listPhotos = async (
-  gymMachineId: string,
-  options?: RequestInit,
-): Promise<listPhotosResponse> => {
-  return apiClient<listPhotosResponse>(getListPhotosUrl(gymMachineId), {
+export const listPhotos = async (gymMachineId: string, options?: RequestInit): Promise<listPhotosResponse> => {
+
+  return apiClient<listPhotosResponse>(getListPhotosUrl(gymMachineId),
+  {
     ...options,
-    method: 'GET',
-  });
-};
+    method: 'GET'
 
-export const getListPhotosQueryKey = (gymMachineId: string) => {
-  return [`/api/machines/${gymMachineId}/photos`] as const;
-};
 
-export const getListPhotosQueryOptions = <
-  TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ErrorResponse,
->(
-  gymMachineId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>;
-    request?: SecondParameter<typeof apiClient>;
-  },
+  }
+);}
+
+
+
+
+
+export const getListPhotosQueryKey = (gymMachineId: string,) => {
+    return [
+    `/api/machines/${gymMachineId}/photos`
+    ] as const;
+    }
+
+
+export const getListPhotosQueryOptions = <TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(gymMachineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
 ) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListPhotosQueryKey(gymMachineId);
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPhotos>>> = ({ signal }) =>
-    listPhotos(gymMachineId, { signal, ...requestOptions });
+  const queryKey =  queryOptions?.queryKey ?? getListPhotosQueryKey(gymMachineId);
 
-  return { queryKey, queryFn, enabled: !!gymMachineId, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listPhotos>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
 
-export type ListPhotosQueryResult = NonNullable<Awaited<ReturnType<typeof listPhotos>>>;
-export type ListPhotosQueryError = ErrorResponse;
 
-export function useListPhotos<
-  TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ErrorResponse,
->(
-  gymMachineId: string,
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>> &
-      Pick<
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPhotos>>> = ({ signal }) => listPhotos(gymMachineId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(gymMachineId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPhotosQueryResult = NonNullable<Awaited<ReturnType<typeof listPhotos>>>
+export type ListPhotosQueryError = ErrorResponse
+
+
+export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(
+ gymMachineId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listPhotos>>,
           TError,
           Awaited<ReturnType<typeof listPhotos>>
-        >,
-        'initialData'
-      >;
-    request?: SecondParameter<typeof apiClient>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useListPhotos<
-  TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ErrorResponse,
->(
-  gymMachineId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>> &
-      Pick<
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(
+ gymMachineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listPhotos>>,
           TError,
           Awaited<ReturnType<typeof listPhotos>>
-        >,
-        'initialData'
-      >;
-    request?: SecondParameter<typeof apiClient>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useListPhotos<
-  TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ErrorResponse,
->(
-  gymMachineId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>;
-    request?: SecondParameter<typeof apiClient>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(
+ gymMachineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary List photos for a gym machine
  */
 
-export function useListPhotos<
-  TData = Awaited<ReturnType<typeof listPhotos>>,
-  TError = ErrorResponse,
->(
-  gymMachineId: string,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>;
-    request?: SecondParameter<typeof apiClient>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getListPhotosQueryOptions(gymMachineId, options);
+export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(
+ gymMachineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
+  const queryOptions = getListPhotosQueryOptions(gymMachineId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+
+
+
+
+
