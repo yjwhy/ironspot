@@ -1,62 +1,113 @@
-import type { GymMachineWithDetails } from '@/shared/types/database';
-import { makeGymMachineWithDetails } from '@/test/utils/factories/gym-machine';
-import { mockFromEqOrderResult } from '@/test/utils/supabase-mocks';
+import type { GymMachineResponse, PhotoResponse } from '@/shared/generated/model';
 
-import { getGymMachines, SELECT_WITH_DETAILS } from '../gym-detail';
+import { getGymMachines } from '../gym-detail';
 
-const mockFrom = jest.fn();
+const mockListMachines = jest.fn();
 
-jest.mock('@/shared/lib/supabase', () => ({
-  supabase: {
-    from: (...args: unknown[]) => mockFrom(...args) as unknown,
-  },
+jest.mock('@/shared/generated/gyms/gyms', () => ({
+  getById: jest.fn(),
 }));
 
-const sampleMachine: GymMachineWithDetails = makeGymMachineWithDetails();
+jest.mock('@/shared/generated/photos/photos', () => ({
+  listPhotos: jest.fn(),
+}));
+
+jest.mock('@/shared/generated/machines/machines', () => ({
+  listMachines: (...args: unknown[]) => mockListMachines(...args) as unknown,
+}));
+
+const apiPhoto: PhotoResponse = {
+  id: 'p1',
+  gymMachineId: 'gm-1',
+  userId: 'u1',
+  photoUrl: 'https://example.com/photo.jpg',
+  upvoteCount: 3,
+  createdAt: '2026-01-01T00:00:00Z',
+};
+
+const apiMachine: GymMachineResponse = {
+  id: 'gm-1',
+  quantity: 2,
+  isCustom: false,
+  customName: undefined,
+  lastVerifiedAt: '2026-03-01T00:00:00Z',
+  templateId: 'tmpl-1',
+  machineName: 'High Row',
+  loadingType: 'plate',
+  brandId: 'b1',
+  brandName: 'Panatta',
+  categoryId: 'c1',
+  categoryName: 'Row',
+  photos: [apiPhoto],
+};
 
 describe('getGymMachines', () => {
   beforeEach(() => {
-    mockFrom.mockReset();
+    mockListMachines.mockReset();
   });
 
-  it('queries the gym_machines table with the joined select, eq, and order chain', async () => {
-    const { select, eq, order } = mockFromEqOrderResult<GymMachineWithDetails>(mockFrom, {
-      data: [sampleMachine],
-      error: null,
-    });
+  it('calls listMachines with gymId and returns mapped GymMachineWithDetails array', async () => {
+    mockListMachines.mockResolvedValue([apiMachine]);
 
     const result = await getGymMachines('gym-1');
 
-    expect(mockFrom).toHaveBeenCalledWith('gym_machines');
-    expect(select).toHaveBeenCalledWith(SELECT_WITH_DETAILS);
-    expect(eq).toHaveBeenCalledWith('gym_id', 'gym-1');
-    expect(order).toHaveBeenCalledWith('template_id');
-    expect(result).toEqual([sampleMachine]);
+    expect(mockListMachines).toHaveBeenCalledTimes(1);
+    expect(mockListMachines).toHaveBeenCalledWith('gym-1');
+    expect(result).toHaveLength(1);
   });
 
-  it('returns [] when supabase returns null data with no error', async () => {
-    mockFromEqOrderResult<GymMachineWithDetails>(mockFrom, { data: null, error: null });
+  it('maps flat API response to nested GymMachineWithDetails shape', async () => {
+    mockListMachines.mockResolvedValue([apiMachine]);
+
+    const result = await getGymMachines('gym-1');
+
+    expect(result).toMatchObject([
+      {
+        id: 'gm-1',
+        gym_id: 'gym-1',
+        quantity: 2,
+        is_custom: false,
+        custom_name: null,
+        last_verified_at: '2026-03-01T00:00:00Z',
+        template: {
+          id: 'tmpl-1',
+          name: 'High Row',
+          loading_type: 'plate',
+          brand: { id: 'b1', name: 'Panatta' },
+          category: { id: 'c1', name: 'Row' },
+        },
+        photos: [{ id: 'p1', upvote_count: 3 }],
+      },
+    ]);
+  });
+
+  it('maps null/undefined optional fields to null', async () => {
+    const machineNoOptionals: GymMachineResponse = {
+      id: 'gm-2',
+      quantity: 1,
+      isCustom: true,
+      photos: [],
+    };
+    mockListMachines.mockResolvedValue([machineNoOptionals]);
+
+    const result = await getGymMachines('gym-1');
+
+    expect(result).toMatchObject([
+      { is_custom: true, custom_name: null, last_verified_at: null, photos: [] },
+    ]);
+  });
+
+  it('returns [] when API returns []', async () => {
+    mockListMachines.mockResolvedValue([]);
 
     const result = await getGymMachines('gym-1');
 
     expect(result).toEqual([]);
   });
 
-  it('throws an Error containing the supabase error message on failure', async () => {
-    mockFromEqOrderResult<GymMachineWithDetails>(mockFrom, {
-      data: null,
-      error: { message: 'permission denied' },
-    });
+  it('propagates errors thrown by the API client', async () => {
+    mockListMachines.mockRejectedValue(new Error('permission denied'));
 
     await expect(getGymMachines('gym-1')).rejects.toThrow('permission denied');
-  });
-});
-
-describe('SELECT_WITH_DETAILS', () => {
-  it('joins template, brand, category, and photos', () => {
-    expect(SELECT_WITH_DETAILS).toMatch(/template:machine_templates/);
-    expect(SELECT_WITH_DETAILS).toMatch(/brand:brands/);
-    expect(SELECT_WITH_DETAILS).toMatch(/category:categories/);
-    expect(SELECT_WITH_DETAILS).toMatch(/photos:machine_photos/);
   });
 });

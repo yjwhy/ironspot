@@ -1,8 +1,8 @@
-import { supabase } from '@/shared/lib/supabase';
-import { unwrapList } from '@/shared/lib/supabase-helpers';
+import { listBrands } from '@/shared/generated/brands/brands';
+import type { BrandResponse } from '@/shared/generated/model';
 import type { Brand } from '@/shared/types/database';
 
 export async function fetchBrands(): Promise<Brand[]> {
-  const response = await supabase.from('brands').select('*').order('name');
-  return unwrapList<Brand>(response);
+  const result = (await listBrands()) as unknown as BrandResponse[];
+  return result;
 }

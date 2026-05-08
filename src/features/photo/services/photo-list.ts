@@ -1,16 +1,19 @@
-import { supabase } from '@/shared/lib/supabase';
-import { unwrapList } from '@/shared/lib/supabase-helpers';
+import type { PhotoResponse } from '@/shared/generated/model';
+import { listPhotos } from '@/shared/generated/photos/photos';
 import type { MachinePhoto } from '@/shared/types/database';
 
-/**
- * Returns all photos for a machine ordered by upvote_count descending so the
- * "best cut" is first. Used by useMachinePhotos in the photo gallery screen.
- */
+export function toMachinePhoto(r: PhotoResponse): MachinePhoto {
+  return {
+    id: r.id,
+    gym_machine_id: r.gymMachineId,
+    user_id: r.userId,
+    photo_url: r.photoUrl,
+    upvote_count: r.upvoteCount,
+    created_at: r.createdAt,
+  };
+}
+
 export async function getMachinePhotos(gymMachineId: string): Promise<MachinePhoto[]> {
-  const response = await supabase
-    .from('machine_photos')
-    .select('*')
-    .eq('gym_machine_id', gymMachineId)
-    .order('upvote_count', { ascending: false });
-  return unwrapList<MachinePhoto>(response);
+  const result = (await listPhotos(gymMachineId)) as unknown as PhotoResponse[];
+  return result.map(toMachinePhoto);
 }

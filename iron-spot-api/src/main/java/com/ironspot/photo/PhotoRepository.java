@@ -8,7 +8,9 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -40,5 +42,20 @@ public class PhotoRepository {
             ORDER BY upvote_count DESC, created_at DESC
             """;
         return jdbc.query(sql, new MapSqlParameterSource("gymMachineId", gymMachineId), photoRowMapper());
+    }
+
+    public Map<UUID, List<PhotoResponse>> findByGymMachineIds(List<UUID> gymMachineIds) {
+        if (gymMachineIds.isEmpty()) return Map.of();
+        String sql = """
+            SELECT id, gym_machine_id, user_id, photo_url, upvote_count, created_at
+            FROM machine_photos
+            WHERE gym_machine_id IN (:ids)
+              AND is_blinded = FALSE
+            ORDER BY upvote_count DESC, created_at DESC
+            """;
+        List<PhotoResponse> photos = jdbc.query(sql,
+            new MapSqlParameterSource("ids", gymMachineIds),
+            photoRowMapper());
+        return photos.stream().collect(Collectors.groupingBy(PhotoResponse::gymMachineId));
     }
 }
