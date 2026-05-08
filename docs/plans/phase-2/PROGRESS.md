@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Phase 2 in progress. Task 23 next.
+Phase 2 in progress. Task 24 next.
 
 ### Pre-requisites status (2026-05-07)
 
@@ -20,7 +20,7 @@ Phase 2 in progress. Task 23 next.
 - [x] Task 20: Frontend Auth (Google/Kakao)
 - [x] Task 21: Migrate Frontend Services to Spring Boot API
 - [x] Task 22: JOOQ Migration
-- [ ] Task 23: Orval Type Alignment (eliminate as-unknown-as casts)
+- [x] Task 23: Orval Type Alignment (eliminate as-unknown-as casts)
 - [ ] Task 24: Photo Upload Pipeline (Backend)
 - [ ] Task 25: Photo Upload UI (Frontend)
 - [ ] Task 26: Upvote System
