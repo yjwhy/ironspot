@@ -14,3 +14,5 @@ export * from './gymMachineResponse';
 export * from './gymWithMachineCountResponse';
 export * from './photoResponse';
 export * from './searchParams';
+export * from './updateUserRequest';
+export * from './userResponse';
