@@ -1,0 +1,16 @@
+supabase:
+  url: http://localhost:54321
+  service-role-key: test-service-role-key
+
+google:
+  vision:
+    api-key: test-google-vision-api-key
+
+naver:
+  maps:
+    client-id: test-naver-client-id
+    client-secret: test-naver-client-secret
+
+springdoc:
+  api-docs:
+    path: /api-docs

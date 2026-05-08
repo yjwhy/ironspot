@@ -1,6 +1,6 @@
 package com.ironspot.common.exception;
 
-import com.ironspot.common.dto.ApiResponse;
+import com.ironspot.common.dto.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,24 +15,26 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    private static final String INTERNAL_ERROR_MESSAGE = "서버 오류가 발생했습니다";
+
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e) {
-        return ResponseEntity.status(e.getStatus()).body(ApiResponse.error(e.getMessage()));
+    public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
+        return ResponseEntity.status(e.getStatus()).body(new ErrorResponse(e.getMessage()));
     }
 
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiResponse<Void> handleBind(BindException e) {
+    public ErrorResponse handleBind(BindException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(f -> f.getField() + ": " + f.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-        return ApiResponse.error(message);
+        return new ErrorResponse(message);
     }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ApiResponse<Void> handleUnexpected(Exception e) {
+    public ErrorResponse handleUnexpected(Exception e) {
         log.error("Unexpected error", e);
-        return ApiResponse.error("서버 오류가 발생했습니다");
+        return new ErrorResponse(INTERNAL_ERROR_MESSAGE);
     }
 }

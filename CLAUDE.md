@@ -84,7 +84,9 @@ Main session orchestrates; sub-agents implement and review.
 ### Per-subtask cycle
 
 1. Implement — RED → GREEN → REFACTOR (TDD enforced, target 80%+ coverage)
-2. Auto-review — dispatch `code-reviewer` sub-agent
+2. Auto-review — dispatch the appropriate reviewer:
+   - Frontend (`src/`, `app/`): `code-reviewer` sub-agent → FF review via `ff-review:review`
+   - Spring Boot (`iron-spot-api/**`): `superpowers:code-reviewer` sub-agent
 3. Fix feedback
 4. Quick verify — `pnpm lint && pnpm exec tsc --noEmit && pnpm test`. Full `/verify` (with FF review) only at task boundary.
 5. Commit on the feature branch

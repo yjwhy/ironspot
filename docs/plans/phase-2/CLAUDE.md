@@ -16,6 +16,10 @@ Conventions for the Phase 2 backend service. Loaded only when working under `doc
 - **Orval**: OpenAPI spec → TypeScript client + TanStack Query hooks
 - **Never hand-write API calls** — always regenerate from spec when the spec changes
 
+## Code Review
+
+After writing or modifying any Spring Boot code (`iron-spot-api/**/*.java`, `build.gradle.kts`, `application*.yml`), dispatch `superpowers:code-reviewer` before committing. This applies per-subtask (same as the frontend `code-reviewer` step in the Execution Workflow). Frontend FF review (`/ff-review:review`) does **not** cover Spring Boot — use `superpowers:code-reviewer` instead.
+
 ## Testing
 
 - **JUnit 5 + Mockito + MockMvc**

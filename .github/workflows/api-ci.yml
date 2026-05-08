@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Kotlin DSL (embedded in Gradle 8.x) cannot parse Java 25 version strings.
+      # Workaround: run the Gradle daemon on Java 24 (via JAVA_HOME override below)
+      # while the build toolchain still compiles sources with Java 25.
+      # Track: https://youtrack.jetbrains.com/issue/KT-67005
       - uses: actions/setup-java@v4
         id: java24
         with:
@@ -26,6 +30,39 @@ jobs:
         run: ./gradlew test
         env:
           JAVA_HOME: ${{ steps.java24.outputs.path }}
+
+      - name: Setup pnpm
+        if: ${{ !cancelled() }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node
+        if: ${{ !cancelled() }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        if: ${{ !cancelled() }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Export OpenAPI spec
+        if: ${{ !cancelled() }}
+        working-directory: iron-spot-api
+        run: ./gradlew test --tests "com.ironspot.SpecExportTest" --rerun
+        env:
+          JAVA_HOME: ${{ steps.java24.outputs.path }}
+
+      - name: Regenerate API client
+        if: ${{ !cancelled() }}
+        run: pnpm generate:api
+
+      - name: Check generated client is up-to-date
+        if: ${{ !cancelled() }}
+        run: git diff --exit-code openapi.json src/shared/generated/
+
       - name: Build JAR
         working-directory: iron-spot-api
         run: ./gradlew bootJar

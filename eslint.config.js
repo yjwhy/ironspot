@@ -13,6 +13,7 @@ module.exports = defineConfig([
       'dist/**',
       'coverage/**',
       'iron-spot-api/**',
+      'src/shared/generated/**',
       'babel.config.js',
       'metro.config.js',
       'jest.config.js',

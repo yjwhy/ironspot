@@ -26,7 +26,6 @@ class PhotoListTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("test.jpg");
         assertThat(response.getBody()).doesNotContain("blinded.jpg");
-        assertThat(response.getBody()).contains("\"success\":true");
     }
 
     @Test
@@ -35,6 +34,6 @@ class PhotoListTest extends IntegrationTestBase {
             "/api/machines/00000000-0000-0000-0000-000000000000/photos", String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("\"data\":[]");
+        assertThat(response.getBody()).isEqualTo("[]");
     }
 }

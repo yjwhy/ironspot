@@ -26,7 +26,6 @@ class MachineListTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("High Row");
         assertThat(response.getBody()).contains("Panatta");
-        assertThat(response.getBody()).contains("\"success\":true");
     }
 
     @Test
@@ -35,6 +34,6 @@ class MachineListTest extends IntegrationTestBase {
             "/api/gyms/00000000-0000-0000-0000-000000000000/machines", String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("\"data\":[]");
+        assertThat(response.getBody()).isEqualTo("[]");
     }
 }

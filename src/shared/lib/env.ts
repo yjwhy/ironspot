@@ -4,12 +4,14 @@ const envSchema = z.object({
   EXPO_PUBLIC_SUPABASE_URL: z.string().url(),
   EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string().min(10),
   EXPO_PUBLIC_NAVER_MAP_CLIENT_ID: z.string().min(1),
+  EXPO_PUBLIC_API_URL: z.string().url(),
 });
 
 const parsed = envSchema.safeParse({
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   EXPO_PUBLIC_NAVER_MAP_CLIENT_ID: process.env.EXPO_PUBLIC_NAVER_MAP_CLIENT_ID,
+  EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
 });
 
 if (!parsed.success) {

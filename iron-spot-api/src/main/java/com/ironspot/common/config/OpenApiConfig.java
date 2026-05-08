@@ -3,8 +3,12 @@ package com.ironspot.common.config;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,5 +28,24 @@ public class OpenApiConfig {
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")));
+    }
+
+    // Replace any */* content-type entries with application/json so the generated
+    // TypeScript client always uses the correct media type (affects 500 responses
+    // inferred from @RestControllerAdvice handlers).
+    @Bean
+    public OpenApiCustomizer jsonContentTypeCustomizer() {
+        return openApi -> openApi.getPaths().values().forEach(pathItem ->
+            pathItem.readOperations().forEach(operation ->
+                operation.getResponses().values().forEach(response -> {
+                    Content content = response.getContent();
+                    if (content != null && content.containsKey("*/*")) {
+                        MediaType mediaType = content.get("*/*");
+                        content.remove("*/*");
+                        content.addMediaType(org.springframework.http.MediaType.APPLICATION_JSON_VALUE, mediaType);
+                    }
+                })
+            )
+        );
     }
 }
