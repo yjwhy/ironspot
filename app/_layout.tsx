@@ -41,6 +41,7 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" />
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="gym/[id]/machine/[machineId]" />
               <Stack.Screen
