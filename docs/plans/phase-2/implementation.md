@@ -45,7 +45,7 @@ This means all existing unit tests continue to pass without modification after m
 
 | #                     | Choice                                                                 | ADR               |
 | --------------------- | ---------------------------------------------------------------------- | ----------------- |
-| API server            | Spring Boot 3 + Java 26                                                | 0004, 0005        |
+| API server            | Spring Boot 3 + Java 27                                                | 0004, 0005        |
 | API client generation | Orval                                                                  | 0012              |
 | OCR                   | Google Vision API (1,000 free/month, fallback to manual)               | 0010              |
 | Auth                  | Supabase Auth JWT — Spring Boot only validates, never issues           | 0003              |
@@ -63,12 +63,12 @@ This means all existing unit tests continue to pass without modification after m
 ## Pre-requisites (gates — note which task each blocks)
 
 - [x] Docker Desktop installed — Testcontainers requirement (confirmed)
-- [x] Java 26 (Temurin 25.0.3) installed — confirmed 2026-05-07
-- [ ] Google Cloud project + Vision API key — blocks Task 23
+- [x] Java 27 (Temurin 25.0.3) installed — confirmed 2026-05-07
+- [ ] Google Cloud project + Vision API key — blocks Task 24
 - [ ] Google OAuth app configured in Supabase Dashboard → Auth → Providers — blocks Task 20
 - [ ] Kakao OAuth app configured in Supabase Dashboard → Auth → Providers — blocks Task 20
-- [ ] Naver Places API key (separate from Maps key — apply at ncloud.biz) — blocks Task 27
-- [ ] Railway account (or Fly.io) for deployment — blocks Task 31
+- [ ] Naver Places API key (separate from Maps key — apply at ncloud.biz) — blocks Task 28
+- [ ] Railway account (or Fly.io) for deployment — blocks Task 32
 - [ ] `.env` updated with `EXPO_PUBLIC_API_URL` — blocks Task 21
 
 ---
@@ -118,7 +118,7 @@ Download from https://start.spring.io with:
 - Project: Gradle - Kotlin
 - Language: Java
 - Spring Boot: 3.4.x (latest stable)
-- Java: 26
+- Java: 27
 - Group: `com.ironspot`, Artifact: `iron-spot-api`
 - Dependencies: Spring Web, Spring Security, Validation, Spring Boot Actuator, Lombok
 
@@ -773,7 +773,7 @@ public class UserService {
         userRepository.anonymizePhotos(userId);       // set user_id = NULL on machine_photos
         userRepository.deleteVotes(userId);            // remove all votes
         userRepository.markDeleted(userId);            // set deleted_at = NOW()
-        // Permanent hard-delete scheduled by a DB job at deleted_at + 31 days
+        // Permanent hard-delete scheduled by a DB job at deleted_at + 32 days
     }
 }
 ```
@@ -1604,7 +1604,7 @@ git commit -m "feat(services): migrate data source from supabase direct to sprin
 
 ### Why now
 
-Task 23 onward adds write paths (photo upload, upvote, report). Starting those on JOOQ avoids having to migrate write queries later.
+Task 24 onward adds write paths (photo upload, upvote, report). Starting those on JOOQ avoids having to migrate write queries later.
 
 ### Scope
 
@@ -1628,7 +1628,49 @@ git commit -m "refactor(persistence): replace JdbcTemplate raw SQL with JOOQ DSL
 
 ---
 
-## Task 23: Photo Upload Pipeline (Backend)
+## Task 23: Orval Type Alignment
+
+**Goal:** Eliminate all `as unknown as` casts in the frontend service layer. The casts exist because Orval generates envelope types (`{ data: T, status: 200 } | { data: ErrorResponse, status: 500 }`) but `apiClient` returns the raw JSON body (`T`) directly via `ky.json()`. Fix the mismatch at the source so TypeScript types reflect runtime reality.
+
+### Root cause
+
+```
+Orval-generated: listBrands() → Promise<{ data: BrandResponse[], status: 200 } | { data: ErrorResponse, status: 500 }>
+apiClient actual: ky.json<T>() → T (raw body; ky throws on non-2xx)
+```
+
+Orval generates envelope types when the OpenAPI spec defines both 200 and error responses. `apiClient` never surfaces the envelope — it either returns the body or throws.
+
+### Fix options (pick one)
+
+**A. Orval config — `override.response`** (minimal change): configure Orval to treat the mutator as returning `T` directly. Regenerate; all `as unknown as` casts become unnecessary.
+
+**B. apiClient wraps response**: change `apiClient` to return `{ data: T, status: number }` matching the envelope. Then service layer accesses `result.data` — no casts needed, but services change slightly.
+
+Option A is preferred (no service layer change).
+
+### Scope
+
+- Investigate and apply the Orval config option that aligns generated types with `apiClient` return type
+- Regenerate all Orval files (`pnpm orval`)
+- Remove all `as unknown as` casts from `src/features/*/services/*.ts`
+- Verify TypeScript still passes with no casts
+
+### Verification
+
+- `grep -r "as unknown as" src/features` returns nothing
+- `pnpm exec tsc --noEmit` passes
+- All 300+ tests pass
+
+### Commit
+
+```bash
+git commit -m "refactor(orval): align generated types with apiClient, remove as-unknown-as casts"
+```
+
+---
+
+## Task 24: Photo Upload Pipeline (Backend)
 
 **Goal:** `POST /api/photos/upload` accepts compressed image + gymMachineId, runs Google Vision OCR, fuzzy-matches to `machine_templates`, uploads to Supabase Storage, and saves photo record to DB. OCR failure silently falls back — the endpoint always returns a result.
 
@@ -1898,7 +1940,7 @@ git commit -m "feat(api): photo upload pipeline with google vision OCR + fuzzy m
 
 ---
 
-## Task 24: Photo Upload UI (Frontend)
+## Task 25: Photo Upload UI (Frontend)
 
 **Goal:** 3-step upload flow: gym select → camera/gallery → OCR confirm. Client-side compression before upload. Animations for OCR scan + upload progress. FAB button in PhotoGrid activated.
 
@@ -1965,7 +2007,7 @@ interface UploadState {
 // Step 1: Select gym, then select machine within that gym.
 // Renders useGymSearch results with current location + wide bounds (5km radius).
 // Search field for gym name filter.
-// "헬스장이 없어요?" section triggers Naver Places search (wired in Task 27 — stub here).
+// "헬스장이 없어요?" section triggers Naver Places search (wired in Task 28 — stub here).
 // On machine selection → navigate to /(upload)/photo
 ```
 
@@ -2097,7 +2139,7 @@ git commit -m "feat(upload): 3-step photo upload flow with OCR confirm + animati
 
 ---
 
-## Task 25: Upvote System
+## Task 26: Upvote System
 
 **Goal:** Users can upvote/un-upvote photos. `@Transactional` on backend ensures count consistency. Optimistic update on frontend with rollback on error. Heart bounce animation.
 
@@ -2319,7 +2361,7 @@ git commit -m "feat(vote): upvote system with @Transactional + optimistic update
 
 ---
 
-## Task 26: Report System
+## Task 27: Report System
 
 **Goal:** Users can report photos. 5+ pending reports auto-blinds a photo (hides from public queries). Report button in PhotoDetailScreen activated.
 
@@ -2423,7 +2465,7 @@ git commit -m "feat(report): report system with auto-blind at 5 pending reports"
 
 ---
 
-## Task 27: New Gym Registration (Naver Places API)
+## Task 28: New Gym Registration (Naver Places API)
 
 **Goal:** When a gym isn't in the DB, the user can search Naver Places and auto-create a gym record. Prevents duplicate gyms. New gyms start unverified.
 
@@ -2525,7 +2567,7 @@ git commit -m "feat(gym): new gym registration via naver places api proxy"
 
 ---
 
-## Task 28: My Page
+## Task 29: My Page
 
 **Goal:** Full My Page replacing the Phase 1 "Phase 2에서 제공 예정" stub. Shows profile, my uploads, my upvoted photos, logout. Non-authenticated users see a login prompt empty state.
 
@@ -2655,9 +2697,9 @@ git commit -m "feat(profile): my page with photos, votes, logout, login prompt"
 
 ---
 
-## Task 29: Account Settings
+## Task 30: Account Settings
 
-**Goal:** Nickname edit (inline) + account deletion (App Store requirement). Deletion soft-deletes the account and schedules permanent removal after 31 days.
+**Goal:** Nickname edit (inline) + account deletion (App Store requirement). Deletion soft-deletes the account and schedules permanent removal after 32 days.
 
 **What must be complete before calling this task done:**
 
@@ -2814,7 +2856,7 @@ git commit -m "feat(account): nickname edit + account deletion (app store requir
 
 ---
 
-## Task 30: Monitoring + Sentry
+## Task 31: Monitoring + Sentry
 
 **Goal:** Error tracking in app and API. Actuator health endpoint. Structured logging for Railway log drain.
 
@@ -2899,7 +2941,7 @@ git commit -m "feat(monitoring): sentry + actuator + structured JSON logging"
 
 ---
 
-## Task 31: Phase 2 Final Verification
+## Task 32: Phase 2 Final Verification
 
 **Goal:** All E2E flows pass. Security checklist complete. Performance validated. App Store requirements met.
 
@@ -2995,22 +3037,23 @@ git commit -m "feat: complete phase 2 spring boot + auth + upload + ocr"
 | 20   | Frontend auth — Login screen, useAuth, callback      | Frontend     | 21         |
 | 21   | Migrate frontend services Supabase → Spring Boot API | Frontend     | —          |
 | 22   | JOOQ migration — replace JdbcTemplate raw SQL        | Backend      | 23         |
-| 23   | Photo upload pipeline (OCR + fuzzy match + storage)  | Backend      | 24         |
-| 24   | Photo upload UI — 3-step flow + animations + FAB     | Frontend     | —          |
-| 25   | Upvote system — @Transactional + optimistic update   | Full-stack   | —          |
-| 26   | Report system — auto-blind at 5 pending reports      | Full-stack   | —          |
-| 27   | New gym registration via Naver Places API proxy      | Full-stack   | —          |
-| 28   | My Page — profile, photos, votes, logout             | Frontend     | 29         |
-| 29   | Account settings — nickname edit + account deletion  | Full-stack   | —          |
-| 30   | Sentry + Actuator + structured logging               | Cross        | 31         |
-| 31   | Phase 2 final verification + App Store checklist     | Verification | —          |
+| 23   | Orval type alignment — eliminate as-unknown-as casts | Frontend     | 24         |
+| 24   | Photo upload pipeline (OCR + fuzzy match + storage)  | Backend      | 25         |
+| 25   | Photo upload UI — 3-step flow + animations + FAB     | Frontend     | —          |
+| 26   | Upvote system — @Transactional + optimistic update   | Full-stack   | —          |
+| 27   | Report system — auto-blind at 5 pending reports      | Full-stack   | —          |
+| 28   | New gym registration via Naver Places API proxy      | Full-stack   | —          |
+| 29   | My Page — profile, photos, votes, logout             | Frontend     | 30         |
+| 30   | Account settings — nickname edit + account deletion  | Full-stack   | —          |
+| 31   | Sentry + Actuator + structured logging               | Cross        | 32         |
+| 32   | Phase 2 final verification + App Store checklist     | Verification | —          |
 
 ## User Review Checkpoints
 
 | Checkpoint | After Tasks | Reviews                                                                    |
 | ---------- | ----------- | -------------------------------------------------------------------------- |
 | 6          | 16–19       | Backend foundation, API client generated, Spring Boot serves all read data |
-| 7          | 20–22       | Auth flow works, app fully migrated to Spring Boot, raw SQL eliminated     |
-| 8          | 23–24       | Photo upload end-to-end working                                            |
-| 9          | 25–27       | Upvote, report, new gym registration                                       |
-| 10         | 28–31       | My Page, account settings, final verification                              |
+| 7          | 20–23       | Auth, migration, JOOQ, Orval types all clean — solid foundation            |
+| 8          | 24–25       | Photo upload end-to-end working                                            |
+| 9          | 26–28       | Upvote, report, new gym registration                                       |
+| 10         | 29–32       | My Page, account settings, final verification                              |

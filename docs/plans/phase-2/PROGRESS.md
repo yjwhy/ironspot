@@ -20,15 +20,16 @@ Phase 2 in progress. Task 22 next.
 - [x] Task 20: Frontend Auth (Google/Kakao)
 - [x] Task 21: Migrate Frontend Services to Spring Boot API
 - [ ] Task 22: JOOQ Migration
-- [ ] Task 23: Photo Upload Pipeline (Backend)
-- [ ] Task 24: Photo Upload UI (Frontend)
-- [ ] Task 25: Upvote System
-- [ ] Task 26: Report System
-- [ ] Task 27: New Gym Registration (Naver Places API)
-- [ ] Task 28: My Page
-- [ ] Task 29: Account Settings
-- [ ] Task 30: Monitoring + Sentry
-- [ ] Task 31: Phase 2 Final Verification
+- [ ] Task 23: Orval Type Alignment (eliminate as-unknown-as casts)
+- [ ] Task 24: Photo Upload Pipeline (Backend)
+- [ ] Task 25: Photo Upload UI (Frontend)
+- [ ] Task 26: Upvote System
+- [ ] Task 27: Report System
+- [ ] Task 28: New Gym Registration (Naver Places API)
+- [ ] Task 29: My Page
+- [ ] Task 30: Account Settings
+- [ ] Task 31: Monitoring + Sentry
+- [ ] Task 32: Phase 2 Final Verification
 
 ## Completed Tasks Log
 
