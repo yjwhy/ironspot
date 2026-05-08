@@ -21,8 +21,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  BrandResponse,
-  ErrorResponse
+  BrandResponse
 } from '../model';
 
 import { apiClient } from '../../lib/api-client';
@@ -37,19 +36,12 @@ export type listBrandsResponse200 = {
   status: 200
 }
 
-export type listBrandsResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
-
 export type listBrandsResponseSuccess = (listBrandsResponse200) & {
   headers: Headers;
 };
-export type listBrandsResponseError = (listBrandsResponse500) & {
-  headers: Headers;
-};
+;
 
-export type listBrandsResponse = (listBrandsResponseSuccess | listBrandsResponseError)
+export type listBrandsResponse = (listBrandsResponseSuccess)
 
 export const getListBrandsUrl = () => {
 
@@ -84,7 +76,7 @@ export const getListBrandsQueryKey = () => {
     }
 
 
-export const getListBrandsQueryOptions = <TData = Awaited<ReturnType<typeof listBrands>>, TError = ErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+export const getListBrandsQueryOptions = <TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -103,10 +95,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListBrandsQueryResult = NonNullable<Awaited<ReturnType<typeof listBrands>>>
-export type ListBrandsQueryError = ErrorResponse
+export type ListBrandsQueryError = unknown
 
 
-export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = ErrorResponse>(
+export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listBrands>>,
@@ -116,7 +108,7 @@ export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TE
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = ErrorResponse>(
+export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listBrands>>,
@@ -126,7 +118,7 @@ export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TE
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = ErrorResponse>(
+export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -134,7 +126,7 @@ export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TE
  * @summary List all brands
  */
 
-export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = ErrorResponse>(
+export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

@@ -21,7 +21,6 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  ErrorResponse,
   PhotoResponse
 } from '../model';
 
@@ -37,19 +36,12 @@ export type listPhotosResponse200 = {
   status: 200
 }
 
-export type listPhotosResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
-
 export type listPhotosResponseSuccess = (listPhotosResponse200) & {
   headers: Headers;
 };
-export type listPhotosResponseError = (listPhotosResponse500) & {
-  headers: Headers;
-};
+;
 
-export type listPhotosResponse = (listPhotosResponseSuccess | listPhotosResponseError)
+export type listPhotosResponse = (listPhotosResponseSuccess)
 
 export const getListPhotosUrl = (gymMachineId: string,) => {
 
@@ -84,7 +76,7 @@ export const getListPhotosQueryKey = (gymMachineId: string,) => {
     }
 
 
-export const getListPhotosQueryOptions = <TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(gymMachineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+export const getListPhotosQueryOptions = <TData = Awaited<ReturnType<typeof listPhotos>>, TError = unknown>(gymMachineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -103,10 +95,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListPhotosQueryResult = NonNullable<Awaited<ReturnType<typeof listPhotos>>>
-export type ListPhotosQueryError = ErrorResponse
+export type ListPhotosQueryError = unknown
 
 
-export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(
+export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = unknown>(
  gymMachineId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listPhotos>>,
@@ -116,7 +108,7 @@ export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TE
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(
+export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = unknown>(
  gymMachineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listPhotos>>,
@@ -126,7 +118,7 @@ export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TE
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(
+export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = unknown>(
  gymMachineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -134,7 +126,7 @@ export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TE
  * @summary List photos for a gym machine
  */
 
-export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = ErrorResponse>(
+export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = unknown>(
  gymMachineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

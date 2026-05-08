@@ -1,5 +1,6 @@
 import { search } from '@/shared/generated/gyms/gyms';
 import type { GymWithMachineCountResponse } from '@/shared/generated/model';
+import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import type { GymWithMachineCount, MapBounds, SearchFilters } from '@/shared/types/database';
 
 function toGymWithMachineCount(r: GymWithMachineCountResponse): GymWithMachineCount {
@@ -24,14 +25,16 @@ export async function searchGymsInBounds(
   bounds: MapBounds,
   filters: SearchFilters,
 ): Promise<GymWithMachineCount[]> {
-  const result = (await search({
-    minLat: bounds.minLat,
-    maxLat: bounds.maxLat,
-    minLng: bounds.minLng,
-    maxLng: bounds.maxLng,
-    brandId: filters.brandId ?? undefined,
-    categoryId: filters.categoryId ?? undefined,
-    loadingType: filters.loadingType ?? undefined,
-  })) as unknown as GymWithMachineCountResponse[];
+  const result = unwrapOrvalResponse(
+    await search({
+      minLat: bounds.minLat,
+      maxLat: bounds.maxLat,
+      minLng: bounds.minLng,
+      maxLng: bounds.maxLng,
+      brandId: filters.brandId ?? undefined,
+      categoryId: filters.categoryId ?? undefined,
+      loadingType: filters.loadingType ?? undefined,
+    }),
+  );
   return result.map(toGymWithMachineCount);
 }

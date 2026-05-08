@@ -31,8 +31,7 @@ public class OpenApiConfig {
     }
 
     // Replace any */* content-type entries with application/json so the generated
-    // TypeScript client always uses the correct media type (affects 500 responses
-    // inferred from @RestControllerAdvice handlers).
+    // TypeScript client always uses the correct media type.
     @Bean
     public OpenApiCustomizer jsonContentTypeCustomizer() {
         return openApi -> openApi.getPaths().values().forEach(pathItem ->
@@ -45,6 +44,18 @@ public class OpenApiConfig {
                         content.addMediaType(org.springframework.http.MediaType.APPLICATION_JSON_VALUE, mediaType);
                     }
                 })
+            )
+        );
+    }
+
+    // Remove all non-2xx responses from all operations so Orval generates the raw
+    // success body type directly (e.g. BrandResponse[]) instead of a success|error
+    // union envelope. apiClient throws on non-2xx, so error types are never returned.
+    @Bean
+    public OpenApiCustomizer removeErrorResponsesCustomizer() {
+        return openApi -> openApi.getPaths().values().forEach(pathItem ->
+            pathItem.readOperations().forEach(operation ->
+                operation.getResponses().keySet().removeIf(code -> !code.startsWith("2"))
             )
         );
     }

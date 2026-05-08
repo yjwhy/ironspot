@@ -1,8 +1,6 @@
 import { listCategories } from '@/shared/generated/categories/categories';
-import type { CategoryResponse } from '@/shared/generated/model';
-import type { Category } from '@/shared/types/database';
+import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 
-export async function fetchCategories(): Promise<Category[]> {
-  const result = (await listCategories()) as unknown as CategoryResponse[];
-  return result;
+export async function fetchCategories() {
+  return unwrapOrvalResponse(await listCategories());
 }
