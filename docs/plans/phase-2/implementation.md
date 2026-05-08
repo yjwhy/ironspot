@@ -45,7 +45,7 @@ This means all existing unit tests continue to pass without modification after m
 
 | #                     | Choice                                                                 | ADR               |
 | --------------------- | ---------------------------------------------------------------------- | ----------------- |
-| API server            | Spring Boot 3 + Java 25                                                | 0004, 0005        |
+| API server            | Spring Boot 3 + Java 26                                                | 0004, 0005        |
 | API client generation | Orval                                                                  | 0012              |
 | OCR                   | Google Vision API (1,000 free/month, fallback to manual)               | 0010              |
 | Auth                  | Supabase Auth JWT — Spring Boot only validates, never issues           | 0003              |
@@ -63,12 +63,12 @@ This means all existing unit tests continue to pass without modification after m
 ## Pre-requisites (gates — note which task each blocks)
 
 - [x] Docker Desktop installed — Testcontainers requirement (confirmed)
-- [x] Java 25 (Temurin 25.0.3) installed — confirmed 2026-05-07
-- [ ] Google Cloud project + Vision API key — blocks Task 22
+- [x] Java 26 (Temurin 25.0.3) installed — confirmed 2026-05-07
+- [ ] Google Cloud project + Vision API key — blocks Task 23
 - [ ] Google OAuth app configured in Supabase Dashboard → Auth → Providers — blocks Task 20
 - [ ] Kakao OAuth app configured in Supabase Dashboard → Auth → Providers — blocks Task 20
-- [ ] Naver Places API key (separate from Maps key — apply at ncloud.biz) — blocks Task 26
-- [ ] Railway account (or Fly.io) for deployment — blocks Task 30
+- [ ] Naver Places API key (separate from Maps key — apply at ncloud.biz) — blocks Task 27
+- [ ] Railway account (or Fly.io) for deployment — blocks Task 31
 - [ ] `.env` updated with `EXPO_PUBLIC_API_URL` — blocks Task 21
 
 ---
@@ -118,7 +118,7 @@ Download from https://start.spring.io with:
 - Project: Gradle - Kotlin
 - Language: Java
 - Spring Boot: 3.4.x (latest stable)
-- Java: 25
+- Java: 26
 - Group: `com.ironspot`, Artifact: `iron-spot-api`
 - Dependencies: Spring Web, Spring Security, Validation, Spring Boot Actuator, Lombok
 
@@ -773,7 +773,7 @@ public class UserService {
         userRepository.anonymizePhotos(userId);       // set user_id = NULL on machine_photos
         userRepository.deleteVotes(userId);            // remove all votes
         userRepository.markDeleted(userId);            // set deleted_at = NOW()
-        // Permanent hard-delete scheduled by a DB job at deleted_at + 30 days
+        // Permanent hard-delete scheduled by a DB job at deleted_at + 31 days
     }
 }
 ```
@@ -1598,7 +1598,37 @@ git commit -m "feat(services): migrate data source from supabase direct to sprin
 
 ---
 
-## Task 22: Photo Upload Pipeline (Backend)
+## Task 22: JOOQ Migration
+
+**Goal:** Replace all `NamedParameterJdbcTemplate` raw SQL strings with JOOQ's type-safe DSL. All repository interfaces and service signatures stay unchanged — only the internals swap. Result: compile-time column/table validation, no raw SQL strings anywhere in the codebase.
+
+### Why now
+
+Task 23 onward adds write paths (photo upload, upvote, report). Starting those on JOOQ avoids having to migrate write queries later.
+
+### Scope
+
+- Add `jooq` + `jooq-codegen` to `build.gradle.kts`
+- Run code generation against the Supabase schema (via Testcontainers in a `generateJooq` Gradle task)
+- Migrate all repositories: `GymRepository`, `MachineRepository`, `PhotoRepository`, `BrandRepository`, `CategoryRepository`, `UserRepository`
+- PostGIS spatial operators (`ST_Within`, `ST_DWithin`) expressed as JOOQ `DSL.field()` custom conditions
+- Delete `NamedParameterJdbcTemplate` injection everywhere
+
+### Verification
+
+- All existing integration tests pass unchanged (same SQL semantics, different authoring)
+- No raw SQL strings remain in `src/main/java`
+- `./gradlew generateJooq` runs cleanly in CI
+
+### Commit
+
+```bash
+git commit -m "refactor(persistence): replace JdbcTemplate raw SQL with JOOQ DSL"
+```
+
+---
+
+## Task 23: Photo Upload Pipeline (Backend)
 
 **Goal:** `POST /api/photos/upload` accepts compressed image + gymMachineId, runs Google Vision OCR, fuzzy-matches to `machine_templates`, uploads to Supabase Storage, and saves photo record to DB. OCR failure silently falls back — the endpoint always returns a result.
 
@@ -1868,7 +1898,7 @@ git commit -m "feat(api): photo upload pipeline with google vision OCR + fuzzy m
 
 ---
 
-## Task 23: Photo Upload UI (Frontend)
+## Task 24: Photo Upload UI (Frontend)
 
 **Goal:** 3-step upload flow: gym select → camera/gallery → OCR confirm. Client-side compression before upload. Animations for OCR scan + upload progress. FAB button in PhotoGrid activated.
 
@@ -1935,7 +1965,7 @@ interface UploadState {
 // Step 1: Select gym, then select machine within that gym.
 // Renders useGymSearch results with current location + wide bounds (5km radius).
 // Search field for gym name filter.
-// "헬스장이 없어요?" section triggers Naver Places search (wired in Task 26 — stub here).
+// "헬스장이 없어요?" section triggers Naver Places search (wired in Task 27 — stub here).
 // On machine selection → navigate to /(upload)/photo
 ```
 
@@ -2067,7 +2097,7 @@ git commit -m "feat(upload): 3-step photo upload flow with OCR confirm + animati
 
 ---
 
-## Task 24: Upvote System
+## Task 25: Upvote System
 
 **Goal:** Users can upvote/un-upvote photos. `@Transactional` on backend ensures count consistency. Optimistic update on frontend with rollback on error. Heart bounce animation.
 
@@ -2289,7 +2319,7 @@ git commit -m "feat(vote): upvote system with @Transactional + optimistic update
 
 ---
 
-## Task 25: Report System
+## Task 26: Report System
 
 **Goal:** Users can report photos. 5+ pending reports auto-blinds a photo (hides from public queries). Report button in PhotoDetailScreen activated.
 
@@ -2393,7 +2423,7 @@ git commit -m "feat(report): report system with auto-blind at 5 pending reports"
 
 ---
 
-## Task 26: New Gym Registration (Naver Places API)
+## Task 27: New Gym Registration (Naver Places API)
 
 **Goal:** When a gym isn't in the DB, the user can search Naver Places and auto-create a gym record. Prevents duplicate gyms. New gyms start unverified.
 
@@ -2495,7 +2525,7 @@ git commit -m "feat(gym): new gym registration via naver places api proxy"
 
 ---
 
-## Task 27: My Page
+## Task 28: My Page
 
 **Goal:** Full My Page replacing the Phase 1 "Phase 2에서 제공 예정" stub. Shows profile, my uploads, my upvoted photos, logout. Non-authenticated users see a login prompt empty state.
 
@@ -2625,9 +2655,9 @@ git commit -m "feat(profile): my page with photos, votes, logout, login prompt"
 
 ---
 
-## Task 28: Account Settings
+## Task 29: Account Settings
 
-**Goal:** Nickname edit (inline) + account deletion (App Store requirement). Deletion soft-deletes the account and schedules permanent removal after 30 days.
+**Goal:** Nickname edit (inline) + account deletion (App Store requirement). Deletion soft-deletes the account and schedules permanent removal after 31 days.
 
 **What must be complete before calling this task done:**
 
@@ -2784,7 +2814,7 @@ git commit -m "feat(account): nickname edit + account deletion (app store requir
 
 ---
 
-## Task 29: Monitoring + Sentry
+## Task 30: Monitoring + Sentry
 
 **Goal:** Error tracking in app and API. Actuator health endpoint. Structured logging for Railway log drain.
 
@@ -2869,7 +2899,7 @@ git commit -m "feat(monitoring): sentry + actuator + structured JSON logging"
 
 ---
 
-## Task 30: Phase 2 Final Verification
+## Task 31: Phase 2 Final Verification
 
 **Goal:** All E2E flows pass. Security checklist complete. Performance validated. App Store requirements met.
 
@@ -2962,24 +2992,25 @@ git commit -m "feat: complete phase 2 spring boot + auth + upload + ocr"
 | 17   | JWT auth filter + Spring Security + /api/users/me    | Backend      | 18, 20, 22 |
 | 18   | Core read endpoints + PostGIS integration tests      | Backend      | 19         |
 | 19   | OpenAPI spec + Orval TypeScript client generation    | Cross        | 21         |
-| 20   | Frontend auth — Login screen, useAuth, callback      | Frontend     | 21, 23     |
-| 21   | Migrate frontend services Supabase → Spring Boot API | Frontend     | 24, 25     |
-| 22   | Photo upload pipeline (OCR + fuzzy match + storage)  | Backend      | 23         |
-| 23   | Photo upload UI — 3-step flow + animations + FAB     | Frontend     | —          |
-| 24   | Upvote system — @Transactional + optimistic update   | Full-stack   | —          |
-| 25   | Report system — auto-blind at 5 pending reports      | Full-stack   | —          |
-| 26   | New gym registration via Naver Places API proxy      | Full-stack   | —          |
-| 27   | My Page — profile, photos, votes, logout             | Frontend     | 28         |
-| 28   | Account settings — nickname edit + account deletion  | Full-stack   | —          |
-| 29   | Sentry + Actuator + structured logging               | Cross        | 30         |
-| 30   | Phase 2 final verification + App Store checklist     | Verification | —          |
+| 20   | Frontend auth — Login screen, useAuth, callback      | Frontend     | 21         |
+| 21   | Migrate frontend services Supabase → Spring Boot API | Frontend     | —          |
+| 22   | JOOQ migration — replace JdbcTemplate raw SQL        | Backend      | 23         |
+| 23   | Photo upload pipeline (OCR + fuzzy match + storage)  | Backend      | 24         |
+| 24   | Photo upload UI — 3-step flow + animations + FAB     | Frontend     | —          |
+| 25   | Upvote system — @Transactional + optimistic update   | Full-stack   | —          |
+| 26   | Report system — auto-blind at 5 pending reports      | Full-stack   | —          |
+| 27   | New gym registration via Naver Places API proxy      | Full-stack   | —          |
+| 28   | My Page — profile, photos, votes, logout             | Frontend     | 29         |
+| 29   | Account settings — nickname edit + account deletion  | Full-stack   | —          |
+| 30   | Sentry + Actuator + structured logging               | Cross        | 31         |
+| 31   | Phase 2 final verification + App Store checklist     | Verification | —          |
 
 ## User Review Checkpoints
 
-| Checkpoint | After Tasks | Reviews                                                                      |
-| ---------- | ----------- | ---------------------------------------------------------------------------- |
-| 6          | 16–19       | Backend foundation, API client generated, Spring Boot serves all read data   |
-| 7          | 20–21       | Auth flow works, app fully migrated to Spring Boot, no Supabase direct reads |
-| 8          | 22–23       | Photo upload end-to-end working                                              |
-| 9          | 24–26       | Upvote, report, new gym registration                                         |
-| 10         | 27–30       | My Page, account settings, final verification                                |
+| Checkpoint | After Tasks | Reviews                                                                    |
+| ---------- | ----------- | -------------------------------------------------------------------------- |
+| 6          | 16–19       | Backend foundation, API client generated, Spring Boot serves all read data |
+| 7          | 20–22       | Auth flow works, app fully migrated to Spring Boot, raw SQL eliminated     |
+| 8          | 23–24       | Photo upload end-to-end working                                            |
+| 9          | 25–27       | Upvote, report, new gym registration                                       |
+| 10         | 28–31       | My Page, account settings, final verification                              |
