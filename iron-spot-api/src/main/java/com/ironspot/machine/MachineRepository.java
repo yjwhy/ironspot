@@ -1,59 +1,70 @@
 package com.ironspot.machine;
 
+import com.ironspot.jooq.enums.LoadingType;
+import com.ironspot.jooq.tables.Brands;
+import com.ironspot.jooq.tables.Categories;
+import com.ironspot.jooq.tables.GymMachines;
+import com.ironspot.jooq.tables.MachineTemplates;
 import com.ironspot.machine.dto.GymMachineResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+
+import static com.ironspot.jooq.Tables.*;
 
 @Repository
 @RequiredArgsConstructor
 public class MachineRepository {
 
-    private final NamedParameterJdbcTemplate jdbc;
-
-    private static RowMapper<GymMachineResponse> machineRowMapper() {
-        return (rs, rowNum) -> {
-            String templateId = rs.getString("template_id");
-            String brandId = rs.getString("brand_id");
-            String categoryId = rs.getString("category_id");
-            return new GymMachineResponse(
-                UUID.fromString(rs.getString("id")),
-                rs.getInt("quantity"),
-                rs.getBoolean("is_custom"),
-                rs.getString("custom_name"),
-                rs.getTimestamp("last_verified_at") != null
-                    ? rs.getTimestamp("last_verified_at").toInstant() : null,
-                templateId != null ? UUID.fromString(templateId) : null,
-                rs.getString("machine_name"),
-                rs.getString("loading_type"),
-                brandId != null ? UUID.fromString(brandId) : null,
-                rs.getString("brand_name"),
-                categoryId != null ? UUID.fromString(categoryId) : null,
-                rs.getString("category_name"),
-                List.of()
-            );
-        };
-    }
+    private final DSLContext dsl;
 
     public List<GymMachineResponse> findByGymId(UUID gymId) {
-        String sql = """
-            SELECT
-                gm.id, gm.quantity, gm.is_custom, gm.custom_name, gm.last_verified_at,
-                mt.id AS template_id, mt.name AS machine_name, mt.loading_type,
-                b.id AS brand_id, b.name AS brand_name,
-                c.id AS category_id, c.name AS category_name
-            FROM gym_machines gm
-            JOIN machine_templates mt ON mt.id = gm.template_id
-            JOIN brands b ON b.id = mt.brand_id
-            JOIN categories c ON c.id = mt.category_id
-            WHERE gm.gym_id = :gymId
-            ORDER BY b.name, c.name, mt.name
-            """;
-        return jdbc.query(sql, new MapSqlParameterSource("gymId", gymId), machineRowMapper());
+        GymMachines gm = GYM_MACHINES.as("gm");
+        MachineTemplates mt = MACHINE_TEMPLATES.as("mt");
+        Brands b = BRANDS.as("b");
+        Categories c = CATEGORIES.as("c");
+
+        Field<UUID> templateIdField = mt.ID.as("template_id");
+        Field<String> machineNameField = mt.NAME.as("machine_name");
+        Field<UUID> brandIdField = b.ID.as("brand_id");
+        Field<String> brandNameField = b.NAME.as("brand_name");
+        Field<UUID> categoryIdField = c.ID.as("category_id");
+        Field<String> categoryNameField = c.NAME.as("category_name");
+
+        return dsl.select(
+                gm.ID, gm.QUANTITY, gm.IS_CUSTOM, gm.CUSTOM_NAME, gm.LAST_VERIFIED_AT,
+                templateIdField, machineNameField, mt.LOADING_TYPE,
+                brandIdField, brandNameField, categoryIdField, categoryNameField)
+            .from(gm)
+            .join(mt).on(mt.ID.eq(gm.TEMPLATE_ID))
+            .join(b).on(b.ID.eq(mt.BRAND_ID))
+            .join(c).on(c.ID.eq(mt.CATEGORY_ID))
+            .where(gm.GYM_ID.eq(gymId))
+            .orderBy(b.NAME, c.NAME, mt.NAME)
+            .fetch(r -> {
+                OffsetDateTime lastVerified = r.get(gm.LAST_VERIFIED_AT);
+                LoadingType lt = r.get(mt.LOADING_TYPE);
+                return new GymMachineResponse(
+                    r.get(gm.ID),
+                    Objects.requireNonNullElse(r.get(gm.QUANTITY), 1),
+                    Objects.requireNonNullElse(r.get(gm.IS_CUSTOM), false),
+                    r.get(gm.CUSTOM_NAME),
+                    lastVerified != null ? lastVerified.toInstant() : null,
+                    r.get(templateIdField),
+                    r.get(machineNameField),
+                    lt != null ? lt.getLiteral() : null,
+                    r.get(brandIdField),
+                    r.get(brandNameField),
+                    r.get(categoryIdField),
+                    r.get(categoryNameField),
+                    List.of()
+                );
+            });
     }
 }
