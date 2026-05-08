@@ -28,6 +28,8 @@ class SpecExportTest extends IntegrationTestBase {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotEmpty();
+        assertThat(response.getBody()).contains("\"openapi\"");
+        assertThat(response.getBody()).contains("\"/api/gyms/search\"");
 
         // Normalise the ephemeral RANDOM_PORT to a stable placeholder so openapi.json
         // does not produce a noisy git diff on every regeneration.

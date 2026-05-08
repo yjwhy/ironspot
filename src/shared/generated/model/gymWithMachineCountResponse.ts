@@ -7,17 +7,17 @@
  */
 
 export interface GymWithMachineCountResponse {
-  id?: string;
-  name?: string;
-  address?: string;
-  latitude?: number;
-  longitude?: number;
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
   phone?: string;
   operatingHours?: string;
   dayPassPrice?: number;
-  isVerified?: boolean;
+  isVerified: boolean;
   lastVerifiedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  machineCount?: number;
+  createdAt: string;
+  updatedAt: string;
+  machineCount: number;
 }

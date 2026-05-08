@@ -19,6 +19,7 @@ module.exports = {
     '!src/features/map/components/MapScreen.tsx',
     '!src/features/map/components/GymMarker.tsx',
     '!src/shared/lib/api-client.ts',
+    '!src/shared/generated/**',
   ],
   coverageThreshold: {
     global: {

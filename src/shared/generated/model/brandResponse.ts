@@ -7,6 +7,6 @@
  */
 
 export interface BrandResponse {
-  id?: string;
-  name?: string;
+  id: string;
+  name: string;
 }

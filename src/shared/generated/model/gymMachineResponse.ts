@@ -7,9 +7,9 @@
  */
 
 export interface GymMachineResponse {
-  id?: string;
-  quantity?: number;
-  isCustom?: boolean;
+  id: string;
+  quantity: number;
+  isCustom: boolean;
   customName?: string;
   lastVerifiedAt?: string;
   templateId?: string;
@@ -19,5 +19,5 @@ export interface GymMachineResponse {
   brandName?: string;
   categoryId?: string;
   categoryName?: string;
-  photoCount?: number;
+  photoCount: number;
 }

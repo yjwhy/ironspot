@@ -1,12 +1,14 @@
 package com.ironspot.machine.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.Instant;
 import java.util.UUID;
 
 public record GymMachineResponse(
-    UUID id,
-    int quantity,
-    boolean isCustom,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID id,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int quantity,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean isCustom,
     String customName,
     Instant lastVerifiedAt,
     UUID templateId,
@@ -16,5 +18,5 @@ public record GymMachineResponse(
     String brandName,
     UUID categoryId,
     String categoryName,
-    long photoCount
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long photoCount
 ) {}

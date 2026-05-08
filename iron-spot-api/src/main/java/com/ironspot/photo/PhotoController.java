@@ -4,6 +4,7 @@ import com.ironspot.photo.dto.PhotoResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/machines")
+@RequestMapping(value = "/api/machines", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class PhotoController {
 

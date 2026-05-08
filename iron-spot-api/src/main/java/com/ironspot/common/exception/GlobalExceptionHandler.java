@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    private static final String INTERNAL_ERROR_MESSAGE = "서버 오류가 발생했습니다";
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
         return ResponseEntity.status(e.getStatus()).body(new ErrorResponse(e.getMessage()));
@@ -33,6 +35,6 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleUnexpected(Exception e) {
         log.error("Unexpected error", e);
-        return new ErrorResponse("서버 오류가 발생했습니다");
+        return new ErrorResponse(INTERNAL_ERROR_MESSAGE);
     }
 }

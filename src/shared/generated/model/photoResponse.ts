@@ -7,10 +7,10 @@
  */
 
 export interface PhotoResponse {
-  id?: string;
-  gymMachineId?: string;
-  userId?: string;
-  photoUrl?: string;
-  upvoteCount?: number;
-  createdAt?: string;
+  id: string;
+  gymMachineId: string;
+  userId: string;
+  photoUrl: string;
+  upvoteCount: number;
+  createdAt: string;
 }

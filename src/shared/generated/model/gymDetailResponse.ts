@@ -7,16 +7,16 @@
  */
 
 export interface GymDetailResponse {
-  id?: string;
-  name?: string;
-  address?: string;
-  latitude?: number;
-  longitude?: number;
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
   phone?: string;
   operatingHours?: string;
   dayPassPrice?: number;
-  isVerified?: boolean;
+  isVerified: boolean;
   lastVerifiedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }

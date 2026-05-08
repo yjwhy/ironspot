@@ -24,12 +24,14 @@
         "responses": {
           "500": {
             "description": "Internal Server Error",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "200": {
             "description": "Photo list returned successfully",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "type": "array",
                   "items": { "$ref": "#/components/schemas/PhotoResponse" }
@@ -56,15 +58,21 @@
         "responses": {
           "500": {
             "description": "Internal Server Error",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "200": {
             "description": "Gym returned successfully",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/GymDetailResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/GymDetailResponse" } }
+            }
           },
           "404": {
             "description": "Gym not found",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           }
         }
       }
@@ -85,12 +93,14 @@
         "responses": {
           "500": {
             "description": "Internal Server Error",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "200": {
             "description": "Machine list returned successfully",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "type": "array",
                   "items": { "$ref": "#/components/schemas/GymMachineResponse" }
@@ -148,12 +158,14 @@
         "responses": {
           "500": {
             "description": "Internal Server Error",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "200": {
             "description": "Gym list returned successfully",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "type": "array",
                   "items": { "$ref": "#/components/schemas/GymWithMachineCountResponse" }
@@ -163,7 +175,9 @@
           },
           "400": {
             "description": "Missing or invalid bounds parameters",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           }
         }
       }
@@ -176,12 +190,14 @@
         "responses": {
           "500": {
             "description": "Internal Server Error",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "200": {
             "description": "Category list returned successfully",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "type": "array",
                   "items": { "$ref": "#/components/schemas/CategoryResponse" }
@@ -200,12 +216,14 @@
         "responses": {
           "500": {
             "description": "Internal Server Error",
-            "content": { "*/*": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
           },
           "200": {
             "description": "Brand list returned successfully",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "type": "array",
                   "items": { "$ref": "#/components/schemas/BrandResponse" }
@@ -219,7 +237,11 @@
   },
   "components": {
     "schemas": {
-      "ErrorResponse": { "type": "object", "properties": { "error": { "type": "string" } } },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } },
+        "required": ["error"]
+      },
       "PhotoResponse": {
         "type": "object",
         "properties": {
@@ -229,7 +251,8 @@
           "photoUrl": { "type": "string" },
           "upvoteCount": { "type": "integer", "format": "int32" },
           "createdAt": { "type": "string", "format": "date-time" }
-        }
+        },
+        "required": ["createdAt", "gymMachineId", "id", "photoUrl", "upvoteCount", "userId"]
       },
       "GymDetailResponse": {
         "type": "object",
@@ -246,7 +269,17 @@
           "lastVerifiedAt": { "type": "string", "format": "date-time" },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
-        }
+        },
+        "required": [
+          "address",
+          "createdAt",
+          "id",
+          "isVerified",
+          "latitude",
+          "longitude",
+          "name",
+          "updatedAt"
+        ]
       },
       "GymMachineResponse": {
         "type": "object",
@@ -264,7 +297,8 @@
           "categoryId": { "type": "string", "format": "uuid" },
           "categoryName": { "type": "string" },
           "photoCount": { "type": "integer", "format": "int64" }
-        }
+        },
+        "required": ["id", "isCustom", "photoCount", "quantity"]
       },
       "GymWithMachineCountResponse": {
         "type": "object",
@@ -282,15 +316,34 @@
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
           "machineCount": { "type": "integer", "format": "int64" }
-        }
+        },
+        "required": [
+          "address",
+          "createdAt",
+          "id",
+          "isVerified",
+          "latitude",
+          "longitude",
+          "machineCount",
+          "name",
+          "updatedAt"
+        ]
       },
       "CategoryResponse": {
         "type": "object",
-        "properties": { "id": { "type": "string", "format": "uuid" }, "name": { "type": "string" } }
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" }
+        },
+        "required": ["id", "name"]
       },
       "BrandResponse": {
         "type": "object",
-        "properties": { "id": { "type": "string", "format": "uuid" }, "name": { "type": "string" } }
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" }
+        },
+        "required": ["id", "name"]
       }
     },
     "securitySchemes": { "Bearer": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" } }
