@@ -1,8 +1,10 @@
 package com.ironspot.machine.dto;
 
+import com.ironspot.photo.dto.PhotoResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record GymMachineResponse(
@@ -18,5 +20,5 @@ public record GymMachineResponse(
     String brandName,
     UUID categoryId,
     String categoryName,
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long photoCount
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<PhotoResponse> photos
 ) {}

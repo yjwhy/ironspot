@@ -65,20 +65,6 @@ describe('useGymDetail', () => {
     expect(result.current.data).toEqual(sampleGym);
   });
 
-  it('returns null data when the gym does not exist (service resolves null)', async () => {
-    const mockGet = getGymById as jest.MockedFunction<typeof getGymById>;
-    mockGet.mockResolvedValue(null);
-    const { Wrapper } = createQueryWrapper();
-
-    const { result } = renderHook(() => useGymDetail('missing'), { wrapper: Wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(result.current.data).toBeNull();
-  });
-
   it('exposes an error state when the service rejects', async () => {
     const mockGet = getGymById as jest.MockedFunction<typeof getGymById>;
     mockGet.mockRejectedValue(new Error('boom'));

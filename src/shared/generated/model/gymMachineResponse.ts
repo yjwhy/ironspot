@@ -5,6 +5,7 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
+import type { PhotoResponse } from './photoResponse';
 
 export interface GymMachineResponse {
   id: string;
@@ -19,5 +20,5 @@ export interface GymMachineResponse {
   brandName?: string;
   categoryId?: string;
   categoryName?: string;
-  photoCount: number;
+  photos: PhotoResponse[];
 }

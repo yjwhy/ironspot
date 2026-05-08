@@ -35,7 +35,7 @@ public class MachineRepository {
                 rs.getString("brand_name"),
                 categoryId != null ? UUID.fromString(categoryId) : null,
                 rs.getString("category_name"),
-                rs.getLong("photo_count")
+                List.of()
             );
         };
     }
@@ -46,15 +46,12 @@ public class MachineRepository {
                 gm.id, gm.quantity, gm.is_custom, gm.custom_name, gm.last_verified_at,
                 mt.id AS template_id, mt.name AS machine_name, mt.loading_type,
                 b.id AS brand_id, b.name AS brand_name,
-                c.id AS category_id, c.name AS category_name,
-                COUNT(mp.id) AS photo_count
+                c.id AS category_id, c.name AS category_name
             FROM gym_machines gm
             JOIN machine_templates mt ON mt.id = gm.template_id
             JOIN brands b ON b.id = mt.brand_id
             JOIN categories c ON c.id = mt.category_id
-            LEFT JOIN machine_photos mp ON mp.gym_machine_id = gm.id AND mp.is_blinded = FALSE
             WHERE gm.gym_id = :gymId
-            GROUP BY gm.id, mt.id, b.id, c.id
             ORDER BY b.name, c.name, mt.name
             """;
         return jdbc.query(sql, new MapSqlParameterSource("gymId", gymId), machineRowMapper());
