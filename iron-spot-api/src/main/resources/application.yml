@@ -1,6 +1,12 @@
 spring:
   application:
     name: iron-spot-api
+  main:
+    web-application-type: servlet
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
   datasource:
     url: ${DATABASE_URL}
     driver-class-name: org.postgresql.Driver

@@ -10,6 +10,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -56,5 +57,29 @@ public class PhotoRepository {
             .fetch(this::toPhotoResponse)
             .stream()
             .collect(Collectors.groupingBy(PhotoResponse::gymMachineId));
+    }
+
+    public void insert(UUID photoId, UUID gymMachineId, String userId, String photoUrl) {
+        dsl.insertInto(MACHINE_PHOTOS)
+            .set(MACHINE_PHOTOS.ID, photoId)
+            .set(MACHINE_PHOTOS.GYM_MACHINE_ID, gymMachineId)
+            .set(MACHINE_PHOTOS.USER_ID, UUID.fromString(userId))
+            .set(MACHINE_PHOTOS.PHOTO_URL, photoUrl)
+            .execute();
+    }
+
+    public Optional<PhotoResponse> findById(UUID photoId) {
+        return dsl.select(
+                MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .fetchOptional(this::toPhotoResponse);
+    }
+
+    public void delete(UUID photoId) {
+        dsl.deleteFrom(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .execute();
     }
 }
