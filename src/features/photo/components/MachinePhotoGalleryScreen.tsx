@@ -1,9 +1,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { toast } from 'burnt';
 import { router } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { useGymDetail } from '@/features/gym/hooks/useGymDetail';
 import { useGymMachines } from '@/features/gym/hooks/useGymMachines';
 import { machineDisplayName } from '@/features/gym/lib/group-machines';
@@ -32,6 +32,7 @@ export function MachinePhotoGalleryScreen({ gymId, machineId }: MachinePhotoGall
   const gym = useGymDetail(gymId);
   const machines = useGymMachines(gymId);
   const photos = useMachinePhotos(machineId);
+  const requireAuth = useRequireAuth();
 
   const machine = machines.data?.find((m) => m.id === machineId) ?? null;
 
@@ -48,7 +49,9 @@ export function MachinePhotoGalleryScreen({ gymId, machineId }: MachinePhotoGall
   }
 
   function handlePressUpload() {
-    toast({ title: 'Phase 2에서 제공 예정' });
+    requireAuth(function navigateToUpload() {
+      router.push('/(upload)/gym-select');
+    });
   }
 
   return (

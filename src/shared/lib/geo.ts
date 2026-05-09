@@ -1,6 +1,18 @@
 import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
+import type { MapBounds } from '@/shared/types/database';
 
 const EARTH_RADIUS_KM = 6371;
+const DEG_PER_KM = 1 / 111;
+
+export function toBounds(lat: number, lng: number, radiusKm: number): MapBounds {
+  const delta = radiusKm * DEG_PER_KM;
+  return {
+    minLat: lat - delta,
+    minLng: lng - delta,
+    maxLat: lat + delta,
+    maxLng: lng + delta,
+  };
+}
 
 export function haversineKm(a: Coordinate, b: Coordinate): number {
   const dLat = toRadians(b.latitude - a.latitude);
