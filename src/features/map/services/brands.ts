@@ -1,8 +1,6 @@
 import { listBrands } from '@/shared/generated/brands/brands';
-import type { BrandResponse } from '@/shared/generated/model';
-import type { Brand } from '@/shared/types/database';
+import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 
-export async function fetchBrands(): Promise<Brand[]> {
-  const result = (await listBrands()) as unknown as BrandResponse[];
-  return result;
+export async function fetchBrands() {
+  return unwrapOrvalResponse(await listBrands());
 }

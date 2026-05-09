@@ -1,5 +1,6 @@
 import type { PhotoResponse } from '@/shared/generated/model';
 import { listPhotos } from '@/shared/generated/photos/photos';
+import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import type { MachinePhoto } from '@/shared/types/database';
 
 export function toMachinePhoto(r: PhotoResponse): MachinePhoto {
@@ -14,6 +15,6 @@ export function toMachinePhoto(r: PhotoResponse): MachinePhoto {
 }
 
 export async function getMachinePhotos(gymMachineId: string): Promise<MachinePhoto[]> {
-  const result = (await listPhotos(gymMachineId)) as unknown as PhotoResponse[];
+  const result = unwrapOrvalResponse(await listPhotos(gymMachineId));
   return result.map(toMachinePhoto);
 }

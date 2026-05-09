@@ -2,6 +2,7 @@ import { toMachinePhoto } from '@/features/photo/services/photo-list';
 import { getById } from '@/shared/generated/gyms/gyms';
 import { listMachines } from '@/shared/generated/machines/machines';
 import type { GymDetailResponse, GymMachineResponse } from '@/shared/generated/model';
+import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import type { Gym, GymMachineWithDetails, LoadingType } from '@/shared/types/database';
 
 function toMachineTemplate(
@@ -59,11 +60,11 @@ function toGym(r: GymDetailResponse): Gym {
 }
 
 export async function getGymById(gymId: string): Promise<Gym> {
-  const result = (await getById(gymId)) as unknown as GymDetailResponse;
+  const result = unwrapOrvalResponse(await getById(gymId));
   return toGym(result);
 }
 
 export async function getGymMachines(gymId: string): Promise<GymMachineWithDetails[]> {
-  const result = (await listMachines(gymId)) as unknown as GymMachineResponse[];
+  const result = unwrapOrvalResponse(await listMachines(gymId));
   return result.map((m) => toGymMachineWithDetails(m, gymId));
 }

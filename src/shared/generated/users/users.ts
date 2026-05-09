@@ -25,7 +25,6 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  ErrorResponse,
   UpdateUserRequest,
   UserResponse
 } from '../model';
@@ -42,19 +41,12 @@ export type getMeResponse200 = {
   status: 200
 }
 
-export type getMeResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
-
 export type getMeResponseSuccess = (getMeResponse200) & {
   headers: Headers;
 };
-export type getMeResponseError = (getMeResponse500) & {
-  headers: Headers;
-};
+;
 
-export type getMeResponse = (getMeResponseSuccess | getMeResponseError)
+export type getMeResponse = (getMeResponseSuccess)
 
 export const getGetMeUrl = () => {
 
@@ -89,7 +81,7 @@ export const getGetMeQueryKey = () => {
     }
 
 
-export const getGetMeQueryOptions = <TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+export const getGetMeQueryOptions = <TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -108,10 +100,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>
-export type GetMeQueryError = ErrorResponse
+export type GetMeQueryError = unknown
 
 
-export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>(
+export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMe>>,
@@ -121,7 +113,7 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>(
+export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMe>>,
@@ -131,7 +123,7 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>(
+export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -139,7 +131,7 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
  * @summary Get current user profile
  */
 
-export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = ErrorResponse>(
+export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -161,19 +153,12 @@ export type updateMeResponse200 = {
   status: 200
 }
 
-export type updateMeResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
-
 export type updateMeResponseSuccess = (updateMeResponse200) & {
   headers: Headers;
 };
-export type updateMeResponseError = (updateMeResponse500) & {
-  headers: Headers;
-};
+;
 
-export type updateMeResponse = (updateMeResponseSuccess | updateMeResponseError)
+export type updateMeResponse = (updateMeResponseSuccess)
 
 export const getUpdateMeUrl = () => {
 
@@ -201,7 +186,7 @@ export const updateMe = async (updateUserRequest: UpdateUserRequest, options?: R
 
 
 
-export const getUpdateMeMutationOptions = <TError = ErrorResponse,
+export const getUpdateMeMutationOptions = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError,{data: UpdateUserRequest}, TContext>, request?: SecondParameter<typeof apiClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError,{data: UpdateUserRequest}, TContext> => {
 
@@ -230,12 +215,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateMeMutationResult = NonNullable<Awaited<ReturnType<typeof updateMe>>>
     export type UpdateMeMutationBody = UpdateUserRequest
-    export type UpdateMeMutationError = ErrorResponse
+    export type UpdateMeMutationError = unknown
 
     /**
  * @summary Update current user nickname
  */
-export const useUpdateMe = <TError = ErrorResponse,
+export const useUpdateMe = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError,{data: UpdateUserRequest}, TContext>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof updateMe>>,
@@ -250,19 +235,12 @@ export const useUpdateMe = <TError = ErrorResponse,
   status: 204
 }
 
-export type deleteMeResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
-
 export type deleteMeResponseSuccess = (deleteMeResponse204) & {
   headers: Headers;
 };
-export type deleteMeResponseError = (deleteMeResponse500) & {
-  headers: Headers;
-};
+;
 
-export type deleteMeResponse = (deleteMeResponseSuccess | deleteMeResponseError)
+export type deleteMeResponse = (deleteMeResponseSuccess)
 
 export const getDeleteMeUrl = () => {
 
@@ -289,7 +267,7 @@ export const deleteMe = async ( options?: RequestInit): Promise<deleteMeResponse
 
 
 
-export const getDeleteMeMutationOptions = <TError = ErrorResponse,
+export const getDeleteMeMutationOptions = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMe>>, TError,void, TContext>, request?: SecondParameter<typeof apiClient>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteMe>>, TError,void, TContext> => {
 
@@ -318,12 +296,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteMeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMe>>>
 
-    export type DeleteMeMutationError = ErrorResponse
+    export type DeleteMeMutationError = unknown
 
     /**
  * @summary Delete current user account
  */
-export const useDeleteMe = <TError = ErrorResponse,
+export const useDeleteMe = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMe>>, TError,void, TContext>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteMe>>,

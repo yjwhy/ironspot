@@ -21,7 +21,6 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  ErrorResponse,
   GymDetailResponse,
   GymWithMachineCountResponse,
   SearchParams
@@ -39,24 +38,12 @@ export type getByIdResponse200 = {
   status: 200
 }
 
-export type getByIdResponse404 = {
-  data: ErrorResponse
-  status: 404
-}
-
-export type getByIdResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
-
 export type getByIdResponseSuccess = (getByIdResponse200) & {
   headers: Headers;
 };
-export type getByIdResponseError = (getByIdResponse404 | getByIdResponse500) & {
-  headers: Headers;
-};
+;
 
-export type getByIdResponse = (getByIdResponseSuccess | getByIdResponseError)
+export type getByIdResponse = (getByIdResponseSuccess)
 
 export const getGetByIdUrl = (id: string,) => {
 
@@ -91,7 +78,7 @@ export const getGetByIdQueryKey = (id: string,) => {
     }
 
 
-export const getGetByIdQueryOptions = <TData = Awaited<ReturnType<typeof getById>>, TError = ErrorResponse>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+export const getGetByIdQueryOptions = <TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -110,10 +97,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetByIdQueryResult = NonNullable<Awaited<ReturnType<typeof getById>>>
-export type GetByIdQueryError = ErrorResponse
+export type GetByIdQueryError = unknown
 
 
-export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = ErrorResponse>(
+export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(
  id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getById>>,
@@ -123,7 +110,7 @@ export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError =
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = ErrorResponse>(
+export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(
  id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getById>>,
@@ -133,7 +120,7 @@ export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError =
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = ErrorResponse>(
+export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(
  id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -141,7 +128,7 @@ export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError =
  * @summary Get gym detail
  */
 
-export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = ErrorResponse>(
+export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(
  id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -163,24 +150,12 @@ export type searchResponse200 = {
   status: 200
 }
 
-export type searchResponse400 = {
-  data: ErrorResponse
-  status: 400
-}
-
-export type searchResponse500 = {
-  data: ErrorResponse
-  status: 500
-}
-
 export type searchResponseSuccess = (searchResponse200) & {
   headers: Headers;
 };
-export type searchResponseError = (searchResponse400 | searchResponse500) & {
-  headers: Headers;
-};
+;
 
-export type searchResponse = (searchResponseSuccess | searchResponseError)
+export type searchResponse = (searchResponseSuccess)
 
 export const getSearchUrl = (params: SearchParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -222,7 +197,7 @@ export const getSearchQueryKey = (params?: SearchParams,) => {
     }
 
 
-export const getSearchQueryOptions = <TData = Awaited<ReturnType<typeof search>>, TError = ErrorResponse>(params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+export const getSearchQueryOptions = <TData = Awaited<ReturnType<typeof search>>, TError = unknown>(params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -241,10 +216,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type SearchQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>
-export type SearchQueryError = ErrorResponse
+export type SearchQueryError = unknown
 
 
-export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorResponse>(
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
  params: SearchParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof search>>,
@@ -254,7 +229,7 @@ export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = E
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorResponse>(
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
  params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof search>>,
@@ -264,7 +239,7 @@ export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = E
       >, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorResponse>(
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
  params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -272,7 +247,7 @@ export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = E
  * @summary Search gyms within map bounds
  */
 
-export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = ErrorResponse>(
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
  params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
