@@ -19,4 +19,5 @@ export * from './searchParams';
 export * from './updateUserRequest';
 export * from './uploadBody';
 export * from './uploadParams';
+export * from './upvoteResponse';
 export * from './userResponse';
