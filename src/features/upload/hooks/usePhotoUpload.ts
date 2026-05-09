@@ -17,6 +17,7 @@ interface UsePhotoUploadReturn {
   retry: () => Promise<void>;
   isUploading: boolean;
   uploadProgress: number;
+  uploadError: Error | null;
   result: UploadResult | null;
 }
 
@@ -37,11 +38,13 @@ export function usePhotoUpload(gymMachineId: string, compressedUri: string): Use
   const { mutateAsync } = useUpload();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<Error | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
 
   async function runUpload(): Promise<void> {
     setIsUploading(true);
     setUploadProgress(0.5);
+    setUploadError(null);
     setResult(null);
 
     try {
@@ -55,6 +58,9 @@ export function usePhotoUpload(gymMachineId: string, compressedUri: string): Use
 
       setResult(toUploadResult(uploadResponse.data));
       setUploadProgress(1);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error : new Error('Upload failed'));
+      setUploadProgress(0);
     } finally {
       setIsUploading(false);
     }
@@ -65,6 +71,7 @@ export function usePhotoUpload(gymMachineId: string, compressedUri: string): Use
     retry: runUpload,
     isUploading,
     uploadProgress,
+    uploadError,
     result,
   };
 }

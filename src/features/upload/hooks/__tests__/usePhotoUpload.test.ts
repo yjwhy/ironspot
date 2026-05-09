@@ -55,6 +55,7 @@ describe('usePhotoUpload', () => {
 
     expect(result.current.isUploading).toBe(false);
     expect(result.current.uploadProgress).toBe(0);
+    expect(result.current.uploadError).toBeNull();
     expect(result.current.result).toBeNull();
     expect(typeof result.current.upload).toBe('function');
     expect(typeof result.current.retry).toBe('function');
@@ -175,5 +176,79 @@ describe('usePhotoUpload', () => {
     });
 
     expect(mockMutateAsync).toHaveBeenCalledTimes(2);
+  });
+
+  it('on error: uploadError is set and uploadProgress resets to 0', async () => {
+    const networkError = new Error('Network failure');
+    mockMutateAsync.mockRejectedValue(networkError);
+    (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => usePhotoUpload(GYM_MACHINE_ID, COMPRESSED_URI), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.upload();
+    });
+
+    await waitFor(() => {
+      expect(result.current.uploadError).not.toBeNull();
+    });
+
+    expect(result.current.uploadError?.message).toBe('Network failure');
+    expect(result.current.uploadProgress).toBe(0);
+    expect(result.current.isUploading).toBe(false);
+    expect(result.current.result).toBeNull();
+  });
+
+  it('on error: non-Error thrown wraps in generic message', async () => {
+    mockMutateAsync.mockRejectedValue('string-error');
+    (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => usePhotoUpload(GYM_MACHINE_ID, COMPRESSED_URI), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.upload();
+    });
+
+    await waitFor(() => {
+      expect(result.current.uploadError).not.toBeNull();
+    });
+
+    expect(result.current.uploadError?.message).toBe('Upload failed');
+  });
+
+  it('retry() clears uploadError before re-attempting', async () => {
+    const networkError = new Error('Network failure');
+    mockMutateAsync.mockRejectedValueOnce(networkError).mockResolvedValueOnce(mockUploadResponse);
+    (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => usePhotoUpload(GYM_MACHINE_ID, COMPRESSED_URI), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.upload();
+    });
+
+    await waitFor(() => {
+      expect(result.current.uploadError).not.toBeNull();
+    });
+
+    await act(async () => {
+      await result.current.retry();
+    });
+
+    await waitFor(() => {
+      expect(result.current.result).not.toBeNull();
+    });
+
+    expect(result.current.uploadError).toBeNull();
+    expect(result.current.uploadProgress).toBe(1);
   });
 });

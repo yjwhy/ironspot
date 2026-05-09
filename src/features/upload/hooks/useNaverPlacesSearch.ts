@@ -1,5 +1,6 @@
-// eslint-disable-next-line @typescript-eslint/no-empty-function
-function noopSearch() {}
+function noopSearch(): void {
+  return;
+}
 
 export function useNaverPlacesSearch() {
   return { search: noopSearch, results: [], isLoading: false };
