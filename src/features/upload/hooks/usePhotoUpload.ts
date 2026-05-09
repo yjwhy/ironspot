@@ -14,7 +14,6 @@ interface UploadResult {
 
 interface UsePhotoUploadReturn {
   upload: () => Promise<void>;
-  retry: () => Promise<void>;
   isUploading: boolean;
   uploadProgress: number;
   uploadError: Error | null;
@@ -41,9 +40,11 @@ export function usePhotoUpload(gymMachineId: string, compressedUri: string): Use
   const [uploadError, setUploadError] = useState<Error | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
 
+  const UPLOAD_STARTED_PROGRESS = 0.5;
+
   async function runUpload(): Promise<void> {
     setIsUploading(true);
-    setUploadProgress(0.5);
+    setUploadProgress(UPLOAD_STARTED_PROGRESS);
     setUploadError(null);
     setResult(null);
 
@@ -68,7 +69,6 @@ export function usePhotoUpload(gymMachineId: string, compressedUri: string): Use
 
   return {
     upload: runUpload,
-    retry: runUpload,
     isUploading,
     uploadProgress,
     uploadError,

@@ -41,7 +41,6 @@ const mockUsePhotoUpload = usePhotoUpload as jest.Mock;
 function buildUploadingState(overrides = {}) {
   return {
     upload: jest.fn(),
-    retry: jest.fn(),
     isUploading: true,
     uploadProgress: 0.5,
     uploadError: null,
@@ -53,7 +52,6 @@ function buildUploadingState(overrides = {}) {
 function buildOcrSuccessState(overrides = {}) {
   return {
     upload: jest.fn(),
-    retry: jest.fn(),
     isUploading: false,
     uploadProgress: 1,
     uploadError: null,
@@ -74,7 +72,6 @@ function buildOcrSuccessState(overrides = {}) {
 function buildOcrFailState(overrides = {}) {
   return {
     upload: jest.fn(),
-    retry: jest.fn(),
     isUploading: false,
     uploadProgress: 1,
     uploadError: null,
@@ -91,7 +88,6 @@ function buildOcrFailState(overrides = {}) {
 function buildErrorState(overrides = {}) {
   return {
     upload: jest.fn(),
-    retry: jest.fn(),
     isUploading: false,
     uploadProgress: 0,
     uploadError: new Error('Network error'),
@@ -147,15 +143,16 @@ describe('UploadConfirmScreen', () => {
     expect(getByTestId('upload-retry-btn')).toBeTruthy();
   });
 
-  it('"다시 시도" calls retry()', () => {
-    const retry = jest.fn();
-    mockUsePhotoUpload.mockReturnValue(buildErrorState({ retry }));
+  it('"다시 시도" calls upload()', () => {
+    const upload = jest.fn();
+    mockUsePhotoUpload.mockReturnValue(buildErrorState({ upload }));
 
     const { getByTestId } = render(<UploadConfirmScreen />);
 
+    // upload is also called once on mount via useEffect
     fireEvent.press(getByTestId('upload-retry-btn'));
 
-    expect(retry).toHaveBeenCalledTimes(1);
+    expect(upload).toHaveBeenCalledTimes(2);
   });
 
   it('registers with direct input text when ocrSucceeded=false', async () => {

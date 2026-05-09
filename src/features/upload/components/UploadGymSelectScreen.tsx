@@ -6,37 +6,23 @@ import { useGymMachines } from '@/features/gym/hooks/useGymMachines';
 import { useGymSearch } from '@/features/map/hooks/useGymSearch';
 import { AppText } from '@/shared/components/AppText';
 import { useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
+import { toBounds } from '@/shared/lib/geo';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
-import type {
-  GymMachineWithDetails,
-  GymWithMachineCount,
-  MapBounds,
-} from '@/shared/types/database';
+import type { GymMachineWithDetails, GymWithMachineCount } from '@/shared/types/database';
 
 const SEARCH_RADIUS_KM = 5;
-const DEG_PER_KM = 1 / 111;
 
 const EMPTY_FILTERS = { brandId: null, categoryId: null, loadingType: null } as const;
 
-function toBounds(lat: number, lng: number): MapBounds {
-  const delta = SEARCH_RADIUS_KM * DEG_PER_KM;
-  return {
-    minLat: lat - delta,
-    minLng: lng - delta,
-    maxLat: lat + delta,
-    maxLng: lng + delta,
-  };
-}
-
 export function UploadGymSelectScreen() {
-  const router = useRouter();
   const locationState = useCurrentLocation();
   const [searchText, setSearchText] = useState('');
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
 
   const location = locationState.status === 'loading' ? null : locationState.location;
-  const bounds = location !== null ? toBounds(location.latitude, location.longitude) : null;
+  const bounds =
+    location !== null ? toBounds(location.latitude, location.longitude, SEARCH_RADIUS_KM) : null;
 
   const {
     data: allGyms,
@@ -46,10 +32,6 @@ export function UploadGymSelectScreen() {
 
   function handleGymPress(gymId: string) {
     setSelectedGymId((prev) => (prev === gymId ? null : gymId));
-  }
-
-  function handleMachinePress(gymMachineId: string) {
-    router.push({ pathname: '/(upload)/photo', params: { gymMachineId } });
   }
 
   if (locationState.status === 'loading') {
@@ -74,7 +56,6 @@ export function UploadGymSelectScreen() {
       filteredGyms={filteredGyms}
       selectedGymId={selectedGymId}
       onGymPress={handleGymPress}
-      onMachinePress={handleMachinePress}
     />
   );
 }
@@ -87,7 +68,6 @@ interface GymSelectContentProps {
   filteredGyms: GymWithMachineCount[];
   selectedGymId: string | null;
   onGymPress: (gymId: string) => void;
-  onMachinePress: (gymMachineId: string) => void;
 }
 
 function GymSelectContent({
@@ -98,7 +78,6 @@ function GymSelectContent({
   filteredGyms,
   selectedGymId,
   onGymPress,
-  onMachinePress,
 }: GymSelectContentProps) {
   return (
     <View className="flex-1 bg-bg-base">
@@ -122,7 +101,6 @@ function GymSelectContent({
         gyms={filteredGyms}
         selectedGymId={selectedGymId}
         onGymPress={onGymPress}
-        onMachinePress={onMachinePress}
       />
 
       <View className="border-t border-border-subtle px-4 py-3">
@@ -145,7 +123,6 @@ interface GymListBodyProps {
   gyms: GymWithMachineCount[];
   selectedGymId: string | null;
   onGymPress: (gymId: string) => void;
-  onMachinePress: (gymMachineId: string) => void;
 }
 
 function GymListBody({
@@ -154,7 +131,6 @@ function GymListBody({
   gyms,
   selectedGymId,
   onGymPress,
-  onMachinePress,
 }: GymListBodyProps) {
   if (gymsLoading) {
     return (
@@ -188,7 +164,6 @@ function GymListBody({
           gym={gym}
           isSelected={selectedGymId === gym.id}
           onPress={onGymPress}
-          onMachinePress={onMachinePress}
         />
       ))}
     </ScrollView>
@@ -199,10 +174,9 @@ interface GymItemProps {
   gym: GymWithMachineCount;
   isSelected: boolean;
   onPress: (gymId: string) => void;
-  onMachinePress: (gymMachineId: string) => void;
 }
 
-function GymItem({ gym, isSelected, onPress, onMachinePress }: GymItemProps) {
+function GymItem({ gym, isSelected, onPress }: GymItemProps) {
   return (
     <View>
       <Pressable
@@ -224,17 +198,17 @@ function GymItem({ gym, isSelected, onPress, onMachinePress }: GymItemProps) {
         </AppText>
       </Pressable>
 
-      {isSelected ? <GymMachineSubList gymId={gym.id} onMachinePress={onMachinePress} /> : null}
+      {isSelected ? <GymMachineSubList gymId={gym.id} /> : null}
     </View>
   );
 }
 
 interface GymMachineSubListProps {
   gymId: string;
-  onMachinePress: (gymMachineId: string) => void;
 }
 
-function GymMachineSubList({ gymId, onMachinePress }: GymMachineSubListProps) {
+function GymMachineSubList({ gymId }: GymMachineSubListProps) {
+  const router = useRouter();
   const { data: machines, isPending, isError } = useGymMachines(gymId);
 
   if (isPending) {
@@ -263,10 +237,14 @@ function GymMachineSubList({ gymId, onMachinePress }: GymMachineSubListProps) {
     );
   }
 
+  function handleMachinePress(gymMachineId: string) {
+    router.push({ pathname: '/(upload)/photo', params: { gymMachineId } });
+  }
+
   return (
     <View className="bg-bg-subtle pb-2">
       {machines.map((machine) => (
-        <MachineItem key={machine.id} machine={machine} onPress={onMachinePress} />
+        <MachineItem key={machine.id} machine={machine} onPress={handleMachinePress} />
       ))}
     </View>
   );

@@ -58,7 +58,6 @@ describe('usePhotoUpload', () => {
     expect(result.current.uploadError).toBeNull();
     expect(result.current.result).toBeNull();
     expect(typeof result.current.upload).toBe('function');
-    expect(typeof result.current.retry).toBe('function');
   });
 
   it('sets isUploading to true when upload starts', async () => {
@@ -154,7 +153,7 @@ describe('usePhotoUpload', () => {
     expect(result.current.result?.ocrSucceeded).toBe(true);
   });
 
-  it('retry() re-triggers the upload', async () => {
+  it('upload() can be called multiple times', async () => {
     mockMutateAsync.mockResolvedValue(mockUploadResponse);
     (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
 
@@ -172,7 +171,7 @@ describe('usePhotoUpload', () => {
     });
 
     await act(async () => {
-      await result.current.retry();
+      await result.current.upload();
     });
 
     expect(mockMutateAsync).toHaveBeenCalledTimes(2);
@@ -222,7 +221,7 @@ describe('usePhotoUpload', () => {
     expect(result.current.uploadError?.message).toBe('Upload failed');
   });
 
-  it('retry() clears uploadError before re-attempting', async () => {
+  it('upload() clears uploadError before re-attempting', async () => {
     const networkError = new Error('Network failure');
     mockMutateAsync.mockRejectedValueOnce(networkError).mockResolvedValueOnce(mockUploadResponse);
     (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
@@ -241,7 +240,7 @@ describe('usePhotoUpload', () => {
     });
 
     await act(async () => {
-      await result.current.retry();
+      await result.current.upload();
     });
 
     await waitFor(() => {

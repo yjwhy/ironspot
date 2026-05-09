@@ -64,8 +64,9 @@ function OcrSuccessView({
   onRegister,
 }: OcrSuccessViewProps) {
   const isDirectInputSelected = selectedValue === DIRECT_INPUT_VALUE;
-  const canRegister =
-    selectedValue !== '' && (!isDirectInputSelected || directInputText.trim().length > 0);
+  const hasSuggestionSelected = selectedValue !== '' && !isDirectInputSelected;
+  const hasDirectInputFilled = isDirectInputSelected && directInputText.trim().length > 0;
+  const canRegister = hasSuggestionSelected || hasDirectInputFilled;
 
   return (
     <View className="flex-1 gap-4 p-4">
@@ -220,7 +221,7 @@ export function UploadConfirmScreen() {
   }>();
   const router = useRouter();
 
-  const { upload, retry, isUploading, uploadProgress, uploadError, result } = usePhotoUpload(
+  const { upload, isUploading, uploadProgress, uploadError, result } = usePhotoUpload(
     gymMachineId,
     compressedUri,
   );
@@ -242,14 +243,15 @@ export function UploadConfirmScreen() {
   function handleRetry() {
     setSelectedValue('');
     setDirectInputText('');
-    void retry();
+    void upload();
   }
 
   if (uploadError !== null) {
     return <UploadErrorView onRetry={handleRetry} />;
   }
 
-  if (isUploading || result === null) {
+  const isInitialOrUploading = isUploading || result === null;
+  if (isInitialOrUploading) {
     return <UploadingView compressedUri={compressedUri} uploadProgress={uploadProgress} />;
   }
 
