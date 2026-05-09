@@ -1,9 +1,11 @@
+import { toast } from 'burnt';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { getInfoAsync } from 'expo-file-system/legacy';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
 import { pressedOpacity } from '@/shared/lib/pressable';
@@ -13,12 +15,21 @@ const COMPRESS_QUALITY = 0.8;
 
 async function compressImage(uri: string): Promise<string> {
   const context = ImageManipulator.manipulate(uri);
-  context.resize({ width: COMPRESS_MAX_WIDTH });
-  const imageRef = await context.renderAsync();
-  const result = await imageRef.saveAsync({ compress: COMPRESS_QUALITY, format: SaveFormat.WEBP });
-  context.release();
-  imageRef.release();
-  return result.uri;
+  context.resize({ width: COMPRESS_MAX_WIDTH, height: COMPRESS_MAX_WIDTH });
+  try {
+    const imageRef = await context.renderAsync();
+    try {
+      const result = await imageRef.saveAsync({
+        compress: COMPRESS_QUALITY,
+        format: SaveFormat.WEBP,
+      });
+      return result.uri;
+    } finally {
+      imageRef.release();
+    }
+  } finally {
+    context.release();
+  }
 }
 
 export function UploadPhotoScreen() {
@@ -33,12 +44,17 @@ export function UploadPhotoScreen() {
     try {
       const compressedUri = await compressImage(uri);
       if (__DEV__) {
-        console.warn('[Upload] compressed:', compressedUri);
+        const info = await getInfoAsync(compressedUri);
+        if (info.exists) {
+          console.warn('[Upload] compressed size:', info.size, 'bytes');
+        }
       }
       router.push({
         pathname: '/(upload)/confirm' as never,
         params: { gymMachineId, compressedUri },
       });
+    } catch {
+      toast({ title: '사진 처리 중 오류가 발생했어요', preset: 'error' });
     } finally {
       setIsCompressing(false);
     }
@@ -67,7 +83,9 @@ export function UploadPhotoScreen() {
   }
 
   if (!permission.granted) {
-    return <PermissionDeniedView onRequest={requestPermission} />;
+    return (
+      <PermissionDeniedView canAskAgain={permission.canAskAgain} onRequest={requestPermission} />
+    );
   }
 
   return (
@@ -89,10 +107,21 @@ function PermissionLoadingView() {
 }
 
 interface PermissionDeniedViewProps {
+  canAskAgain: boolean;
   onRequest: () => Promise<unknown>;
 }
 
-function PermissionDeniedView({ onRequest }: PermissionDeniedViewProps) {
+function PermissionDeniedView({ canAskAgain, onRequest }: PermissionDeniedViewProps) {
+  const buttonLabel = canAskAgain ? '권한 요청하기' : '설정에서 변경하기';
+
+  function handlePress() {
+    if (canAskAgain) {
+      void onRequest();
+    } else {
+      void Linking.openSettings();
+    }
+  }
+
   return (
     <View className="flex-1 items-center justify-center gap-4 bg-bg-base px-6">
       <AppText className="text-center text-body text-text-secondary">
@@ -100,13 +129,11 @@ function PermissionDeniedView({ onRequest }: PermissionDeniedViewProps) {
       </AppText>
       <Pressable
         accessibilityRole="button"
-        onPress={() => {
-          void onRequest();
-        }}
+        onPress={handlePress}
         style={pressedOpacity}
         className="rounded-lg bg-accent px-6 py-3"
       >
-        <AppText className="text-body font-medium text-white">권한 허용하기</AppText>
+        <AppText className="text-body font-medium text-white">{buttonLabel}</AppText>
       </Pressable>
     </View>
   );
