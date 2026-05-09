@@ -50,7 +50,7 @@ public class PhotoController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete own photo", tags = {"photos"})
+    @Operation(summary = "Delete own photo", tags = {"photos"}, operationId = "deletePhoto")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Deleted"),
         @ApiResponse(responseCode = "403", description = "Not owner",

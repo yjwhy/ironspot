@@ -9,5 +9,5 @@ public record PhotoUploadResponse(
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID photoId,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String photoUrl,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<MachineTemplateSuggestion> suggestions,
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean ocrSucceeded
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "true if OCR text extraction succeeded and produced suggestions; false if OCR failed or produced no usable text") boolean ocrSucceeded
 ) {}

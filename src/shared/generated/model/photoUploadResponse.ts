@@ -11,5 +11,6 @@ export interface PhotoUploadResponse {
   photoId: string;
   photoUrl: string;
   suggestions: MachineTemplateSuggestion[];
+  /** true if OCR text extraction succeeded and produced suggestions; false if OCR failed or produced no usable text */
   ocrSucceeded: boolean;
 }

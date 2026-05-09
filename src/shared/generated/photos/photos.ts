@@ -244,19 +244,19 @@ export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TE
 
 
 
-export type _deleteResponse204 = {
+export type deletePhotoResponse204 = {
   data: void
   status: 204
 }
 
-export type _deleteResponseSuccess = (_deleteResponse204) & {
+export type deletePhotoResponseSuccess = (deletePhotoResponse204) & {
   headers: Headers;
 };
 ;
 
-export type _deleteResponse = (_deleteResponseSuccess)
+export type deletePhotoResponse = (deletePhotoResponseSuccess)
 
-export const getDeleteUrl = (id: string,) => {
+export const getDeletePhotoUrl = (id: string,) => {
 
 
 
@@ -267,9 +267,9 @@ export const getDeleteUrl = (id: string,) => {
 /**
  * @summary Delete own photo
  */
-export const _delete = async (id: string, options?: RequestInit): Promise<_deleteResponse> => {
+export const deletePhoto = async (id: string, options?: RequestInit): Promise<deletePhotoResponse> => {
 
-  return apiClient<_deleteResponse>(getDeleteUrl(id),
+  return apiClient<deletePhotoResponse>(getDeletePhotoUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -281,11 +281,11 @@ export const _delete = async (id: string, options?: RequestInit): Promise<_delet
 
 
 
-export const getDeleteMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof apiClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{id: string}, TContext> => {
+export const getDeletePhotoMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePhoto>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof apiClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePhoto>>, TError,{id: string}, TContext> => {
 
-const mutationKey = ['_delete'];
+const mutationKey = ['deletePhoto'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -295,10 +295,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof _delete>>, {id: string}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePhoto>>, {id: string}> = (props) => {
           const {id} = props ?? {};
 
-          return  _delete(id,requestOptions)
+          return  deletePhoto(id,requestOptions)
         }
 
 
@@ -308,20 +308,20 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type _DeleteMutationResult = NonNullable<Awaited<ReturnType<typeof _delete>>>
+    export type DeletePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof deletePhoto>>>
 
-    export type _DeleteMutationError = unknown
+    export type DeletePhotoMutationError = unknown
 
     /**
  * @summary Delete own photo
  */
-export const useDelete = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof apiClient>}
+export const useDeletePhoto = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePhoto>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof apiClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof _delete>>,
+        Awaited<ReturnType<typeof deletePhoto>>,
         TError,
         {id: string},
         TContext
       > => {
-      return useMutation(getDeleteMutationOptions(options), queryClient);
+      return useMutation(getDeletePhotoMutationOptions(options), queryClient);
     }
