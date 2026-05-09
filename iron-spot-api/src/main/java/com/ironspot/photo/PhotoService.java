@@ -6,6 +6,7 @@ import com.ironspot.photo.dto.PhotoResponse;
 import com.ironspot.photo.dto.PhotoUploadResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -61,7 +62,11 @@ public class PhotoService {
         }
 
         List<MachineTemplateSuggestion> suggestions = fuzzyMatchService.findMatches(ocrTexts);
-        photoRepository.insert(photoId, gymMachineId, userId, photoUrl);
+        try {
+            photoRepository.insert(photoId, gymMachineId, userId, photoUrl);
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException("유효하지 않은 헬스장 기구 ID입니다", HttpStatus.BAD_REQUEST);
+        }
 
         return new PhotoUploadResponse(photoId, photoUrl, suggestions, ocrSucceeded);
     }

@@ -1,6 +1,8 @@
 package com.ironspot.photo;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OcrService {
@@ -20,6 +23,13 @@ public class OcrService {
     private String apiKey;
 
     private final WebClient webClient;
+
+    @PostConstruct
+    void validateKey() {
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("GOOGLE_VISION_API_KEY is not configured — OCR will always fall back to empty results");
+        }
+    }
 
     private static final String VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 

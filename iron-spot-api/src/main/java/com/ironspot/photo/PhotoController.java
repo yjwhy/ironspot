@@ -1,8 +1,11 @@
 package com.ironspot.photo;
 
 import com.ironspot.auth.UserPrincipal;
+import com.ironspot.common.dto.ErrorResponse;
 import com.ironspot.photo.dto.PhotoUploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
@@ -32,8 +35,10 @@ public class PhotoController {
     @Operation(summary = "Upload a machine photo", tags = {"photos"})
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Photo uploaded successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid file"),
-        @ApiResponse(responseCode = "401", description = "Unauthenticated")
+        @ApiResponse(responseCode = "400", description = "Invalid file",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthenticated",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public PhotoUploadResponse upload(
         @AuthenticationPrincipal UserPrincipal principal,
@@ -48,8 +53,10 @@ public class PhotoController {
     @Operation(summary = "Delete own photo", tags = {"photos"})
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Deleted"),
-        @ApiResponse(responseCode = "403", description = "Not owner"),
-        @ApiResponse(responseCode = "404", description = "Not found")
+        @ApiResponse(responseCode = "403", description = "Not owner",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public void delete(
         @AuthenticationPrincipal UserPrincipal principal,
