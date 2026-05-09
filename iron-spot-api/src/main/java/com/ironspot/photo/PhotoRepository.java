@@ -59,14 +59,13 @@ public class PhotoRepository {
             .collect(Collectors.groupingBy(PhotoResponse::gymMachineId));
     }
 
-    public PhotoResponse insert(UUID photoId, UUID gymMachineId, String userId, String photoUrl) {
+    public void insert(UUID photoId, UUID gymMachineId, String userId, String photoUrl) {
         dsl.insertInto(MACHINE_PHOTOS)
             .set(MACHINE_PHOTOS.ID, photoId)
             .set(MACHINE_PHOTOS.GYM_MACHINE_ID, gymMachineId)
             .set(MACHINE_PHOTOS.USER_ID, UUID.fromString(userId))
             .set(MACHINE_PHOTOS.PHOTO_URL, photoUrl)
             .execute();
-        return new PhotoResponse(photoId, gymMachineId, UUID.fromString(userId), photoUrl, 0, null);
     }
 
     public Optional<PhotoResponse> findById(UUID photoId) {

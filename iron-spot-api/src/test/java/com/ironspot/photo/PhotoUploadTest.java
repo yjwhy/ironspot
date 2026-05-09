@@ -160,7 +160,20 @@ class PhotoUploadTest extends IntegrationTestBase {
         assertThat(count).isEqualTo(0);
     }
 
-    // --- 6. Non-owner cannot delete another user's photo ---
+    // --- 6. Delete non-existent photo returns 404 ---
+
+    @Test
+    void deleteNonExistentPhotoReturns404() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+
+        UUID randomId = UUID.randomUUID();
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/" + randomId, HttpMethod.DELETE, bearerRequest(null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    // --- 7. Non-owner cannot delete another user's photo ---
 
     @Test
     void deleteOtherPhotoFails() {

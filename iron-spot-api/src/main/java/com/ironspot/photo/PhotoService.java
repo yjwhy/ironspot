@@ -8,9 +8,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,15 +28,24 @@ public class PhotoService {
         return photoRepository.findByGymMachineId(gymMachineId);
     }
 
-    @Transactional
+    // Storage upload is intentionally not wrapped in @Transactional:
+    // a DB rollback cannot undo a file already uploaded to Supabase Storage.
+    // Orphaned files are removed by a periodic cleanup job (Phase 2 tradeoff).
     public PhotoUploadResponse upload(String userId, MultipartFile file, UUID gymMachineId) {
         validateImage(file);
 
         UUID photoId = UUID.randomUUID();
         String filename = photoId + ".webp";
+        final byte[] imageBytes;
+        try {
+            imageBytes = file.getBytes();
+        } catch (IOException e) {
+            throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
+        }
+
         String photoUrl;
         try {
-            photoUrl = storageService.upload(file.getBytes(), gymMachineId, filename);
+            photoUrl = storageService.upload(imageBytes, gymMachineId, filename);
         } catch (Exception e) {
             log.error("Storage upload failed for photo {}: {}", photoId, e.getMessage());
             throw new BusinessException("사진 업로드에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -45,7 +54,7 @@ public class PhotoService {
         List<String> ocrTexts = List.of();
         boolean ocrSucceeded = false;
         try {
-            ocrTexts = ocrService.extractText(file.getBytes());
+            ocrTexts = ocrService.extractText(imageBytes);
             ocrSucceeded = !ocrTexts.isEmpty();
         } catch (Exception e) {
             log.warn("OCR failed for photo {}: {}", photoId, e.getMessage());
@@ -58,12 +67,12 @@ public class PhotoService {
     }
 
     public void deleteOwn(String userId, UUID photoId) {
-        photoRepository.findById(photoId).ifPresent(photo -> {
-            if (!userId.equals(photo.userId().toString())) {
-                throw new BusinessException("본인의 사진만 삭제할 수 있습니다", HttpStatus.FORBIDDEN);
-            }
-            photoRepository.delete(photoId);
-        });
+        PhotoResponse photo = photoRepository.findById(photoId)
+            .orElseThrow(() -> new BusinessException("사진을 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+        if (!UUID.fromString(userId).equals(photo.userId())) {
+            throw new BusinessException("본인의 사진만 삭제할 수 있습니다", HttpStatus.FORBIDDEN);
+        }
+        photoRepository.delete(photoId);
     }
 
     private void validateImage(MultipartFile file) {
