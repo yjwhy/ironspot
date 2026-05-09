@@ -158,6 +158,23 @@ describe('UploadConfirmScreen', () => {
     expect(retry).toHaveBeenCalledTimes(1);
   });
 
+  it('registers with direct input text when ocrSucceeded=false', async () => {
+    mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
+
+    const { getByTestId } = render(<UploadConfirmScreen />);
+
+    fireEvent.changeText(getByTestId('upload-direct-input'), 'Leg Press');
+
+    fireEvent.press(getByTestId('upload-register-btn'));
+
+    await waitFor(() => {
+      expect(burnt.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: '사진이 등록됐어요!', preset: 'done' }),
+      );
+      expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('"등록하기" shows success toast and navigates back', async () => {
     mockUsePhotoUpload.mockReturnValue(buildOcrSuccessState());
 

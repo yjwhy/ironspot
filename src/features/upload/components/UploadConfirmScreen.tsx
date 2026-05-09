@@ -1,6 +1,6 @@
 import { toast } from 'burnt';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, TextInput, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
@@ -9,13 +9,7 @@ import { pressedOpacity } from '@/shared/lib/pressable';
 
 import { OcrScanAnimation } from './OcrScanAnimation';
 import { UploadProgressBar } from './UploadProgressBar';
-import { usePhotoUpload } from '../hooks/usePhotoUpload';
-
-interface SuggestionItem {
-  id: string;
-  brandName: string;
-  name: string;
-}
+import { type SuggestionPreview, usePhotoUpload } from '../hooks/usePhotoUpload';
 
 const DIRECT_INPUT_VALUE = '__direct__';
 
@@ -52,7 +46,7 @@ function UploadingView({ compressedUri, uploadProgress }: UploadingViewProps) {
 
 interface OcrSuccessViewProps {
   compressedUri: string;
-  suggestions: SuggestionItem[];
+  suggestions: SuggestionPreview[];
   selectedValue: string;
   directInputText: string;
   onSelectSuggestion: (value: string) => void;
@@ -177,7 +171,7 @@ function OcrFailView({
       />
       <View className="gap-2">
         {directInputText.trim().length > 0 ? (
-          <Button label="등록하기" onPress={onRegister} />
+          <Button testID="upload-register-btn" label="등록하기" onPress={onRegister} />
         ) : null}
         <Button testID="upload-retry-btn" label="다시 시도" variant="secondary" onPress={onRetry} />
       </View>
@@ -234,15 +228,13 @@ export function UploadConfirmScreen() {
   const [selectedValue, setSelectedValue] = useState('');
   const [directInputText, setDirectInputText] = useState('');
 
-  useEffect(
-    function triggerUpload() {
-      void upload();
-    },
-    [upload],
-  );
+  const uploadRef = useRef(upload);
+  useEffect(function triggerUpload() {
+    void uploadRef.current();
+  }, []);
 
   function handleRegister() {
-    // Stub: registration call goes here in a future task
+    // TODO: call registerMachine({ gymMachineId, selectedValue, directInputText })
     toast({ title: '사진이 등록됐어요!', preset: 'done' });
     router.back();
   }

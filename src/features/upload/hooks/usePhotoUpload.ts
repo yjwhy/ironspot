@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { MachineTemplateSuggestion, PhotoUploadResponse } from '@/shared/generated/model';
 import { useUpload } from '@/shared/generated/photos/photos';
 
-type SuggestionPreview = Pick<MachineTemplateSuggestion, 'id' | 'brandName' | 'name'>;
+export type SuggestionPreview = Pick<MachineTemplateSuggestion, 'id' | 'brandName' | 'name'>;
 
 interface UploadResult {
   photoId: string;
