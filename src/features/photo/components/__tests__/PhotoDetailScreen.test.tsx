@@ -5,11 +5,23 @@ import type { MachinePhoto } from '@/shared/types/database';
 import { makeMachinePhoto } from '@/test/utils/factories/gym-machine';
 
 import { useMachinePhotos } from '../../hooks/useMachinePhotos';
+import { useUpvote } from '../../hooks/useUpvote';
 import { PhotoDetailScreen } from '../PhotoDetailScreen';
+
+jest.mock('react-native-reanimated', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mock = require('react-native-reanimated/mock') as Record<string, unknown>;
+  return { ...mock };
+});
 
 jest.mock('../../hooks/useMachinePhotos', () => ({
   useMachinePhotos: jest.fn(),
 }));
+
+jest.mock('../../hooks/useUpvote', () => ({
+  useUpvote: jest.fn(),
+}));
+
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), push: jest.fn() },
 }));
@@ -51,10 +63,24 @@ function setMachinePhotos(stub: QueryStub = {}): void {
   });
 }
 
+function setUpvote({
+  handleUpvote = jest.fn(),
+  isPending = false,
+  isUpvotedByMe = false,
+}: {
+  handleUpvote?: jest.Mock;
+  isPending?: boolean;
+  isUpvotedByMe?: boolean;
+} = {}): jest.Mock {
+  (useUpvote as jest.Mock).mockReturnValue({ handleUpvote, isPending, isUpvotedByMe });
+  return handleUpvote;
+}
+
 describe('PhotoDetailScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setMachinePhotos();
+    setUpvote();
   });
 
   it('renders the upvote count and creation date of the initial photo in the footer', () => {
@@ -107,5 +133,24 @@ describe('PhotoDetailScreen', () => {
     const { getByLabelText } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
     fireEvent.press(getByLabelText('닫기'));
     expect(router.back).toHaveBeenCalledTimes(1);
+  });
+
+  it('pressing the upvote button calls handleUpvote', () => {
+    const handleUpvote = setUpvote();
+    const { getByLabelText } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
+    fireEvent.press(getByLabelText('추천 12'));
+    expect(handleUpvote).toHaveBeenCalledTimes(1);
+  });
+
+  it('upvote button shows "추천 취소" label when already voted', () => {
+    setUpvote({ isUpvotedByMe: true });
+    const { getByLabelText } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
+    expect(getByLabelText('추천 취소')).toBeTruthy();
+  });
+
+  it('upvote button is disabled when isPending is true', () => {
+    setUpvote({ isPending: true });
+    const { getByRole } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
+    expect(getByRole('button', { name: '추천 12', disabled: true })).toBeTruthy();
   });
 });

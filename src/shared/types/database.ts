@@ -70,6 +70,7 @@ export interface MachinePhoto {
   photo_url: string;
   created_at: string;
   upvote_count: number;
+  is_upvoted_by_me?: boolean;
 }
 
 export interface GymWithMachineCount extends Gym {

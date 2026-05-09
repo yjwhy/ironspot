@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
+import Animated, { useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
@@ -14,6 +15,7 @@ import type { MachinePhoto } from '@/shared/types/database';
 
 import { PhotoPager } from './PhotoPager';
 import { useMachinePhotos } from '../hooks/useMachinePhotos';
+import { useUpvote } from '../hooks/useUpvote';
 
 const ANONYMOUS_LABEL = '익명';
 const TOP_BAR_GUTTER = 8;
@@ -158,26 +160,63 @@ interface FooterBarProps {
   bottomInset: number;
 }
 
+const HEART_BOUNCE_PEAK_SCALE = 1.5;
+const HEART_BOUNCE_PEAK_DAMPING = 4;
+const HEART_BOUNCE_PEAK_STIFFNESS = 400;
+const HEART_BOUNCE_REST_DAMPING = 8;
+const HEART_BOUNCE_REST_STIFFNESS = 200;
+
+function disabledOrPressedStyle({ pressed }: { pressed: boolean }, isPending: boolean) {
+  if (isPending) return { opacity: DISABLED_OPACITY };
+  return pressedOpacity({ pressed });
+}
+
 function FooterBar({ photo, bottomInset }: FooterBarProps) {
   const dateLabel = formatVerifiedDate(photo.created_at);
   const upvoteLabel = `추천 ${String(photo.upvote_count)}`;
   const uploaderLabel = photo.user_id ? '회원' : ANONYMOUS_LABEL;
+  const { handleUpvote, isPending, isUpvotedByMe } = useUpvote(photo);
+  const heartScale = useSharedValue(1);
+
+  function handlePress() {
+    heartScale.value = withSequence(
+      withSpring(HEART_BOUNCE_PEAK_SCALE, {
+        damping: HEART_BOUNCE_PEAK_DAMPING,
+        stiffness: HEART_BOUNCE_PEAK_STIFFNESS,
+      }),
+      withSpring(1, {
+        damping: HEART_BOUNCE_REST_DAMPING,
+        stiffness: HEART_BOUNCE_REST_STIFFNESS,
+      }),
+    );
+    handleUpvote();
+  }
 
   return (
     <View
       className="absolute bottom-0 left-0 right-0 bg-black/60 px-4 pt-3"
       style={{ paddingBottom: bottomInset }}
     >
-      <View className="flex-row items-center gap-2">
-        <MaterialIcons
-          name="favorite"
-          size={18}
-          color={colors.error}
-          importantForAccessibility="no"
-          accessibilityElementsHidden
-        />
+      <Pressable
+        onPress={handlePress}
+        disabled={isPending}
+        accessibilityRole="button"
+        accessibilityLabel={isUpvotedByMe ? '추천 취소' : upvoteLabel}
+        accessibilityState={{ disabled: isPending }}
+        style={(state) => disabledOrPressedStyle(state, isPending)}
+        className="flex-row items-center gap-2 self-start"
+      >
+        <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+          <MaterialIcons
+            name={isUpvotedByMe ? 'favorite' : 'favorite-border'}
+            size={18}
+            color={colors.error}
+            importantForAccessibility="no"
+            accessibilityElementsHidden
+          />
+        </Animated.View>
         <AppText className="text-body text-text-inverse">{upvoteLabel}</AppText>
-      </View>
+      </Pressable>
       <View className="mt-1 flex-row items-center gap-2">
         <AppText className="text-body-sm text-text-inverse opacity-80">{uploaderLabel}</AppText>
         <AppText className="text-body-sm text-text-inverse opacity-80">·</AppText>
