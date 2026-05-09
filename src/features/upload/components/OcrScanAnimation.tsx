@@ -24,6 +24,7 @@ export function OcrScanAnimation() {
         cancelAnimation(translateY);
       };
     },
+    // translateY is a stable shared value ref — this effect runs once on mount
     [translateY],
   );
 

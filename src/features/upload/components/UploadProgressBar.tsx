@@ -1,6 +1,11 @@
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { colors, radius } from '@/shared/theme/tokens';
 
@@ -17,6 +22,9 @@ export function UploadProgressBar({ progress }: Props) {
   useEffect(
     function animateProgress() {
       scale.value = withTiming(progress, { duration: ANIMATION_DURATION });
+      return function cleanup() {
+        cancelAnimation(scale);
+      };
     },
     [progress, scale],
   );
@@ -44,6 +52,6 @@ const styles = StyleSheet.create({
     height: TRACK_HEIGHT,
     borderRadius: radius.full,
     backgroundColor: colors.accent.DEFAULT,
-    transformOrigin: 'left',
+    transformOrigin: ['0%', '50%', 0],
   },
 });
