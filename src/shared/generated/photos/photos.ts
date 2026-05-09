@@ -6,22 +6,29 @@
  * OpenAPI spec version: v1
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
-  PhotoResponse
+  PhotoResponse,
+  PhotoUploadResponse,
+  UploadBody,
+  UploadParams
 } from '../model';
 
 import { apiClient } from '../../lib/api-client';
@@ -31,7 +38,101 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
-export type listPhotosResponse200 = {
+export type uploadResponse201 = {
+  data: PhotoUploadResponse
+  status: 201
+}
+
+export type uploadResponseSuccess = (uploadResponse201) & {
+  headers: Headers;
+};
+;
+
+export type uploadResponse = (uploadResponseSuccess)
+
+export const getUploadUrl = (params: UploadParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/photos/upload?${stringifiedParams}` : `/api/photos/upload`
+}
+
+/**
+ * @summary Upload a machine photo
+ */
+export const upload = async (params: UploadParams,
+    uploadBody?: UploadBody, options?: RequestInit): Promise<uploadResponse> => {
+    const formData = new FormData();
+if(uploadBody?.image !== undefined) {
+ formData.append(`image`, uploadBody.image);
+ }
+
+  return apiClient<uploadResponse>(getUploadUrl(params),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getUploadMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upload>>, TError,{params: UploadParams;data?: UploadBody}, TContext>, request?: SecondParameter<typeof apiClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof upload>>, TError,{params: UploadParams;data?: UploadBody}, TContext> => {
+
+const mutationKey = ['upload'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upload>>, {params: UploadParams;data?: UploadBody}> = (props) => {
+          const {params,data} = props ?? {};
+
+          return  upload(params,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadMutationResult = NonNullable<Awaited<ReturnType<typeof upload>>>
+    export type UploadMutationBody = UploadBody | undefined
+    export type UploadMutationError = unknown
+
+    /**
+ * @summary Upload a machine photo
+ */
+export const useUpload = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upload>>, TError,{params: UploadParams;data?: UploadBody}, TContext>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof upload>>,
+        TError,
+        {params: UploadParams;data?: UploadBody},
+        TContext
+      > => {
+      return useMutation(getUploadMutationOptions(options), queryClient);
+    }
+    export type listPhotosResponse200 = {
   data: PhotoResponse[]
   status: 200
 }
@@ -143,3 +244,84 @@ export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TE
 
 
 
+export type _deleteResponse204 = {
+  data: void
+  status: 204
+}
+
+export type _deleteResponseSuccess = (_deleteResponse204) & {
+  headers: Headers;
+};
+;
+
+export type _deleteResponse = (_deleteResponseSuccess)
+
+export const getDeleteUrl = (id: string,) => {
+
+
+
+
+  return `/api/photos/${id}`
+}
+
+/**
+ * @summary Delete own photo
+ */
+export const _delete = async (id: string, options?: RequestInit): Promise<_deleteResponse> => {
+
+  return apiClient<_deleteResponse>(getDeleteUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof apiClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['_delete'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof _delete>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  _delete(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type _DeleteMutationResult = NonNullable<Awaited<ReturnType<typeof _delete>>>
+
+    export type _DeleteMutationError = unknown
+
+    /**
+ * @summary Delete own photo
+ */
+export const useDelete = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof _delete>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteMutationOptions(options), queryClient);
+    }

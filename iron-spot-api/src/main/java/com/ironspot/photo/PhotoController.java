@@ -1,31 +1,60 @@
 package com.ironspot.photo;
 
-import com.ironspot.photo.dto.PhotoResponse;
+import com.ironspot.auth.UserPrincipal;
+import com.ironspot.photo.dto.PhotoUploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping(value = "/api/machines", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/api/photos", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class PhotoController {
 
     private final PhotoService photoService;
 
-    @GetMapping("/{gymMachineId}/photos")
-    @Operation(summary = "List photos for a gym machine", tags = {"photos"})
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Upload a machine photo", tags = {"photos"})
     @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Photo list returned successfully")
+        @ApiResponse(responseCode = "201", description = "Photo uploaded successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid file"),
+        @ApiResponse(responseCode = "401", description = "Unauthenticated")
     })
-    public List<PhotoResponse> listPhotos(@PathVariable UUID gymMachineId) {
-        return photoService.findByGymMachineId(gymMachineId);
+    public PhotoUploadResponse upload(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @RequestParam("image") MultipartFile image,
+        @RequestParam("gymMachineId") UUID gymMachineId
+    ) {
+        return photoService.upload(principal.getUserId(), image, gymMachineId);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete own photo", tags = {"photos"})
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Deleted"),
+        @ApiResponse(responseCode = "403", description = "Not owner"),
+        @ApiResponse(responseCode = "404", description = "Not found")
+    })
+    public void delete(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID id
+    ) {
+        photoService.deleteOwn(principal.getUserId(), id);
     }
 }
