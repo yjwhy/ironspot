@@ -50,7 +50,7 @@ export function UploadPhotoScreen() {
         }
       }
       router.push({
-        pathname: '/(upload)/confirm' as never,
+        pathname: '/(upload)/confirm',
         params: { gymMachineId, compressedUri },
       });
     } catch {

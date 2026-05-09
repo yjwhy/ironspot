@@ -49,9 +49,7 @@ export function UploadGymSelectScreen() {
   }
 
   function handleMachinePress(gymMachineId: string) {
-    // Route will exist once the /(upload) segment is scaffolded in Task 25.
-    const pathname = '/(upload)/photo' as never;
-    router.push({ pathname, params: { gymMachineId } });
+    router.push({ pathname: '/(upload)/photo', params: { gymMachineId } });
   }
 
   if (locationState.status === 'loading') {

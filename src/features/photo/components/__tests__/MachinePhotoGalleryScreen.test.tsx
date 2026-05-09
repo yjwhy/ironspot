@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { toast } from 'burnt';
 import { router } from 'expo-router';
 
+import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { useGymDetail } from '@/features/gym/hooks/useGymDetail';
 import { useGymMachines } from '@/features/gym/hooks/useGymMachines';
 import type { Gym, GymMachineWithDetails, MachinePhoto } from '@/shared/types/database';
@@ -10,6 +10,9 @@ import { makeGymMachineWithDetails, makeMachinePhoto } from '@/test/utils/factor
 import { useMachinePhotos } from '../../hooks/useMachinePhotos';
 import { MachinePhotoGalleryScreen } from '../MachinePhotoGalleryScreen';
 
+jest.mock('@/features/auth/hooks/useRequireAuth', () => ({
+  useRequireAuth: jest.fn(),
+}));
 jest.mock('@/features/gym/hooks/useGymDetail', () => ({
   useGymDetail: jest.fn(),
 }));
@@ -19,7 +22,6 @@ jest.mock('@/features/gym/hooks/useGymMachines', () => ({
 jest.mock('../../hooks/useMachinePhotos', () => ({
   useMachinePhotos: jest.fn(),
 }));
-jest.mock('burnt', () => ({ toast: jest.fn() }));
 jest.mock('expo-router', () => ({
   router: { push: jest.fn() },
 }));
@@ -88,6 +90,9 @@ function setMachinePhotos(stub: QueryStub<readonly MachinePhoto[]> = {}): void {
 describe('MachinePhotoGalleryScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useRequireAuth as jest.Mock).mockReturnValue((action: () => void) => {
+      action();
+    });
     setGymDetail();
     setGymMachines();
     setMachinePhotos();
@@ -126,10 +131,19 @@ describe('MachinePhotoGalleryScreen', () => {
     expect(getByTestId('photo-grid-best-cut')).toBeTruthy();
   });
 
-  it('shows a Phase 2 toast when the upload FAB is tapped', () => {
+  it('navigates to the upload gym-select screen when the FAB is tapped by an authenticated user', () => {
     const { getByLabelText } = render(<MachinePhotoGalleryScreen gymId="g-1" machineId="gm-1" />);
     fireEvent.press(getByLabelText('사진 올리기'));
-    expect(toast).toHaveBeenCalledWith({ title: 'Phase 2에서 제공 예정' });
+    expect(router.push).toHaveBeenCalledWith('/(upload)/gym-select');
+  });
+
+  it('redirects to login when the FAB is tapped by an unauthenticated user', () => {
+    (useRequireAuth as jest.Mock).mockReturnValue((_action: () => void) => {
+      router.push('/(auth)/login');
+    });
+    const { getByLabelText } = render(<MachinePhotoGalleryScreen gymId="g-1" machineId="gm-1" />);
+    fireEvent.press(getByLabelText('사진 올리기'));
+    expect(router.push).toHaveBeenCalledWith('/(auth)/login');
   });
 
   it('navigates to the photo detail modal with id and machineId when a photo is tapped', () => {
