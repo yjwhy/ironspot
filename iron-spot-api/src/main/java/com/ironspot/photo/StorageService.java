@@ -32,6 +32,7 @@ public class StorageService {
             .bodyValue(imageBytes)
             .retrieve()
             .bodyToMono(String.class)
+            // HTTP 4xx/5xx propagates as WebClientResponseException — PhotoService catches all exceptions
             .block(Duration.ofSeconds(15));
         return supabaseUrl + "/storage/v1/object/public/" + BUCKET + "/" + path;
     }

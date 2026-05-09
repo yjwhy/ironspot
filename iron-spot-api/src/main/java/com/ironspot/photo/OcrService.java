@@ -23,6 +23,7 @@ public class OcrService {
 
     private static final String VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 
+    @SuppressWarnings("unchecked")
     public List<String> extractText(byte[] imageBytes) {
         String base64 = Base64.getEncoder().encodeToString(imageBytes);
 

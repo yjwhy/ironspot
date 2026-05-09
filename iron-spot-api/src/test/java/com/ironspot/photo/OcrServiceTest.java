@@ -28,6 +28,7 @@ class OcrServiceTest {
     @Mock WebClient.RequestBodySpec requestBodySpec;
     @Mock WebClient.RequestHeadersSpec requestHeadersSpec;
     @Mock WebClient.ResponseSpec responseSpec;
+    @SuppressWarnings("rawtypes")
     @Mock Mono<Map> monoResponse;
 
     @InjectMocks OcrService ocrService;
