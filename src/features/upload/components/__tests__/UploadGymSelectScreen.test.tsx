@@ -338,6 +338,35 @@ describe('UploadGymSelectScreen', () => {
     expect(getByTestId('no-gyms-empty')).toBeTruthy();
   });
 
+  it('filters gym list when search text is typed', async () => {
+    mockUseCurrentLocation.mockReturnValue({
+      status: 'ready',
+      location: { latitude: 37.4979, longitude: 127.0276 },
+    });
+    mockUseGymSearch.mockReturnValue(
+      makeUseQueryResult({
+        isPending: false,
+        isSuccess: true,
+        data: SAMPLE_GYMS,
+        status: 'success',
+      }),
+    );
+
+    const { getByTestId, getByPlaceholderText, queryByTestId } = renderScreen();
+
+    await waitFor(() => {
+      expect(getByTestId('gym-item-gym-1')).toBeTruthy();
+      expect(getByTestId('gym-item-gym-2')).toBeTruthy();
+    });
+
+    fireEvent.changeText(getByPlaceholderText('헬스장 이름 검색'), '강남');
+
+    await waitFor(() => {
+      expect(getByTestId('gym-item-gym-1')).toBeTruthy();
+      expect(queryByTestId('gym-item-gym-2')).toBeNull();
+    });
+  });
+
   it('renders gym list when location is in fallback state', async () => {
     mockUseCurrentLocation.mockReturnValue({
       status: 'fallback',

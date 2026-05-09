@@ -7,6 +7,7 @@ import { useGymSearch } from '@/features/map/hooks/useGymSearch';
 import { AppText } from '@/shared/components/AppText';
 import { useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
 import { pressedOpacity } from '@/shared/lib/pressable';
+import { colors } from '@/shared/theme/tokens';
 import type {
   GymMachineWithDetails,
   GymWithMachineCount,
@@ -35,10 +36,13 @@ export function UploadGymSelectScreen() {
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
 
   const location = locationState.status === 'loading' ? null : locationState.location;
-
   const bounds = location !== null ? toBounds(location.latitude, location.longitude) : null;
 
-  const { data: allGyms, isPending: gymsLoading } = useGymSearch(bounds, EMPTY_FILTERS);
+  const {
+    data: allGyms,
+    isPending: gymsLoading,
+    isError: gymsError,
+  } = useGymSearch(bounds, EMPTY_FILTERS);
 
   function handleGymPress(gymId: string) {
     setSelectedGymId((prev) => (prev === gymId ? null : gymId));
@@ -64,6 +68,41 @@ export function UploadGymSelectScreen() {
       : (allGyms ?? []).filter((g) => g.name.toLowerCase().includes(searchText.toLowerCase()));
 
   return (
+    <GymSelectContent
+      searchText={searchText}
+      onSearchChange={setSearchText}
+      gymsLoading={gymsLoading}
+      gymsError={gymsError}
+      filteredGyms={filteredGyms}
+      selectedGymId={selectedGymId}
+      onGymPress={handleGymPress}
+      onMachinePress={handleMachinePress}
+    />
+  );
+}
+
+interface GymSelectContentProps {
+  searchText: string;
+  onSearchChange: (text: string) => void;
+  gymsLoading: boolean;
+  gymsError: boolean;
+  filteredGyms: GymWithMachineCount[];
+  selectedGymId: string | null;
+  onGymPress: (gymId: string) => void;
+  onMachinePress: (gymMachineId: string) => void;
+}
+
+function GymSelectContent({
+  searchText,
+  onSearchChange,
+  gymsLoading,
+  gymsError,
+  filteredGyms,
+  selectedGymId,
+  onGymPress,
+  onMachinePress,
+}: GymSelectContentProps) {
+  return (
     <View className="flex-1 bg-bg-base">
       <AppText className="px-4 pt-6 pb-3 text-heading-lg text-text-primary">
         어느 헬스장인가요?
@@ -73,18 +112,19 @@ export function UploadGymSelectScreen() {
         <TextInput
           placeholder="헬스장 이름 검색"
           value={searchText}
-          onChangeText={setSearchText}
+          onChangeText={onSearchChange}
           className="text-body text-text-primary"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.text.tertiary}
         />
       </View>
 
       <GymListBody
         gymsLoading={gymsLoading}
+        gymsError={gymsError}
         gyms={filteredGyms}
         selectedGymId={selectedGymId}
-        onGymPress={handleGymPress}
-        onMachinePress={handleMachinePress}
+        onGymPress={onGymPress}
+        onMachinePress={onMachinePress}
       />
 
       <View className="border-t border-border-subtle px-4 py-3">
@@ -103,6 +143,7 @@ export function UploadGymSelectScreen() {
 
 interface GymListBodyProps {
   gymsLoading: boolean;
+  gymsError: boolean;
   gyms: GymWithMachineCount[];
   selectedGymId: string | null;
   onGymPress: (gymId: string) => void;
@@ -111,6 +152,7 @@ interface GymListBodyProps {
 
 function GymListBody({
   gymsLoading,
+  gymsError,
   gyms,
   selectedGymId,
   onGymPress,
@@ -120,6 +162,14 @@ function GymListBody({
     return (
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator testID="gyms-loading" />
+      </View>
+    );
+  }
+
+  if (gymsError) {
+    return (
+      <View className="flex-1 items-center justify-center px-4" testID="gyms-error">
+        <AppText className="text-body text-text-secondary">헬스장 정보를 불러오지 못했어요</AppText>
       </View>
     );
   }
@@ -187,7 +237,7 @@ interface GymMachineSubListProps {
 }
 
 function GymMachineSubList({ gymId, onMachinePress }: GymMachineSubListProps) {
-  const { data: machines, isPending } = useGymMachines(gymId);
+  const { data: machines, isPending, isError } = useGymMachines(gymId);
 
   if (isPending) {
     return (
@@ -197,7 +247,17 @@ function GymMachineSubList({ gymId, onMachinePress }: GymMachineSubListProps) {
     );
   }
 
-  if (!machines || machines.length === 0) {
+  if (isError) {
+    return (
+      <View className="px-4 py-2" testID="machines-error">
+        <AppText className="text-body-sm text-text-secondary">
+          기구 목록을 불러오지 못했어요
+        </AppText>
+      </View>
+    );
+  }
+
+  if (machines.length === 0) {
     return (
       <View className="px-4 py-2">
         <AppText className="text-body-sm text-text-secondary">등록된 기구가 없어요</AppText>
