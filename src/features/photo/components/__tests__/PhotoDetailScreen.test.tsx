@@ -1,5 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
+import type * as ReactNative from 'react-native';
 
 import type { MachinePhoto } from '@/shared/types/database';
 import { makeMachinePhoto } from '@/test/utils/factories/gym-machine';
@@ -20,6 +21,20 @@ jest.mock('../../hooks/useMachinePhotos', () => ({
 
 jest.mock('../../hooks/useUpvote', () => ({
   useUpvote: jest.fn(),
+}));
+
+jest.mock('@/features/auth/hooks/useRequireAuth', () => ({
+  useRequireAuth: () => (cb: () => void) => {
+    cb();
+  },
+}));
+
+jest.mock('../ReportReasonSheet', () => ({
+  ReportReasonSheet: jest.fn(({ photoId }: { photoId: string; onClose: () => void }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const RN = require('react-native') as typeof ReactNative;
+    return <RN.View testID={`report-sheet-${photoId}`} />;
+  }),
 }));
 
 jest.mock('expo-router', () => ({
@@ -100,9 +115,24 @@ describe('PhotoDetailScreen', () => {
     expect(router.back).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the report button as disabled (Phase 1 — non-interactive)', () => {
+  it('renders an active report button when a photo is in view', () => {
     const { getByRole } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
-    expect(getByRole('button', { name: '신고', disabled: true })).toBeTruthy();
+    expect(getByRole('button', { name: '신고하기' })).toBeTruthy();
+  });
+
+  it('renders the report button as disabled while photos are loading', () => {
+    setMachinePhotos({ isPending: true, data: undefined });
+    const { getByRole } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
+    expect(getByRole('button', { name: '신고하기', disabled: true })).toBeTruthy();
+  });
+
+  it('opens the report sheet for the current photo when the report button is tapped', () => {
+    const { getByLabelText, queryByTestId, getByTestId } = render(
+      <PhotoDetailScreen photoId="p1" machineId="gm-1" />,
+    );
+    expect(queryByTestId('report-sheet-p1')).toBeNull();
+    fireEvent.press(getByLabelText('신고하기'));
+    expect(getByTestId('report-sheet-p1')).toBeTruthy();
   });
 
   it('renders an error EmptyState when the photo query errors', () => {
