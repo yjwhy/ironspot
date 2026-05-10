@@ -20,6 +20,13 @@ jest.mock('@/features/gym/hooks/useGymMachines', () => ({
   useGymMachines: jest.fn(),
 }));
 
+jest.mock('burnt', () => ({ toast: jest.fn() }));
+
+jest.mock('@/shared/generated/gyms/gyms', () => ({
+  useSearchPlaces: jest.fn(),
+  useCreateGym: jest.fn(),
+}));
+
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -171,10 +178,25 @@ function makeGymMachinesResult(
   } as ReturnType<typeof useGymMachines>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const orvalGyms = require('@/shared/generated/gyms/gyms') as {
+  useSearchPlaces: jest.Mock;
+  useCreateGym: jest.Mock;
+};
+
 describe('UploadGymSelectScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseGymMachines.mockReturnValue(makeGymMachinesResult({ isPending: true }));
+    orvalGyms.useSearchPlaces.mockReturnValue({
+      data: undefined,
+      isFetching: false,
+      isError: false,
+    });
+    orvalGyms.useCreateGym.mockReturnValue({
+      mutate: jest.fn(),
+      isPending: false,
+    });
   });
 
   function renderScreen() {
@@ -386,6 +408,122 @@ describe('UploadGymSelectScreen', () => {
 
     await waitFor(() => {
       expect(getByTestId('gym-item-gym-1')).toBeTruthy();
+    });
+  });
+
+  // ─── Naver gym registration flow ─────────────────────────────────────────
+
+  function setupReadyLocation() {
+    mockUseCurrentLocation.mockReturnValue({
+      status: 'ready',
+      location: { latitude: 37.4979, longitude: 127.0276 },
+    });
+    mockUseGymSearch.mockReturnValue(
+      makeUseQueryResult({
+        isPending: false,
+        isSuccess: true,
+        data: SAMPLE_GYMS,
+        status: 'success',
+      }),
+    );
+  }
+
+  it('enters Naver search mode when "헬스장이 없어요?" is tapped', async () => {
+    setupReadyLocation();
+    const { getByTestId, getByText } = renderScreen();
+
+    fireEvent.press(getByTestId('no-gym-button'));
+
+    await waitFor(() => {
+      expect(getByText('새 헬스장 등록')).toBeTruthy();
+      expect(getByTestId('naver-search-input')).toBeTruthy();
+    });
+  });
+
+  it('returns to gym list when cancel is tapped', async () => {
+    setupReadyLocation();
+    const { getByTestId, queryByText } = renderScreen();
+
+    fireEvent.press(getByTestId('no-gym-button'));
+    await waitFor(() => {
+      expect(getByTestId('cancel-add-gym')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('cancel-add-gym'));
+    await waitFor(() => {
+      expect(queryByText('새 헬스장 등록')).toBeNull();
+      expect(getByTestId('no-gym-button')).toBeTruthy();
+    });
+  });
+
+  it('shows minimum-length hint while query is too short', async () => {
+    setupReadyLocation();
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('no-gym-button'));
+
+    fireEvent.changeText(getByTestId('naver-search-input'), 'ㅎ');
+
+    await waitFor(() => {
+      expect(getByTestId('naver-search-hint')).toBeTruthy();
+    });
+  });
+
+  it('shows empty state when query has no results', async () => {
+    setupReadyLocation();
+    orvalGyms.useSearchPlaces.mockReturnValue({
+      data: { data: [], status: 200 },
+      isFetching: false,
+      isError: false,
+    });
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('no-gym-button'));
+
+    fireEvent.changeText(getByTestId('naver-search-input'), '없는헬스장');
+
+    await waitFor(() => {
+      expect(getByTestId('naver-search-empty')).toBeTruthy();
+    });
+  });
+
+  it('renders Naver places and triggers create-gym on tap', async () => {
+    setupReadyLocation();
+    const place = {
+      id: 'naver-12345',
+      name: '에어짐 강남',
+      address: '서울 강남구 1',
+      roadAddress: '서울특별시 테헤란로 1',
+      latitude: 37.4979,
+      longitude: 127.0276,
+      phone: '02-1111-2222',
+      category: '스포츠시설>헬스장',
+    };
+    orvalGyms.useSearchPlaces.mockReturnValue({
+      data: { data: [place], status: 200 },
+      isFetching: false,
+      isError: false,
+    });
+    const mutate = jest.fn();
+    orvalGyms.useCreateGym.mockReturnValue({ mutate, isPending: false });
+
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('no-gym-button'));
+    fireEvent.changeText(getByTestId('naver-search-input'), '에어짐');
+
+    await waitFor(() => {
+      expect(getByTestId('naver-place-naver-12345')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('naver-place-naver-12345'));
+
+    expect(mutate).toHaveBeenCalledWith({
+      data: {
+        name: '에어짐 강남',
+        address: '서울특별시 테헤란로 1',
+        latitude: 37.4979,
+        longitude: 127.0276,
+        naverPlaceId: 'naver-12345',
+        phone: '02-1111-2222',
+      },
     });
   });
 });
