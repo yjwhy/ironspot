@@ -79,10 +79,18 @@ CREATE TABLE IF NOT EXISTS reports (
   user_id UUID REFERENCES users(id),
   target_type TEXT NOT NULL,
   target_id UUID NOT NULL,
-  reason TEXT,
+  reason TEXT NOT NULL,
+  detail TEXT,
   status TEXT DEFAULT 'pending',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT reports_unique_reporter_target UNIQUE (user_id, target_id)
 );
+
+CREATE INDEX IF NOT EXISTS reports_target_pending_idx
+  ON reports (target_id) WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS reports_reporter_recent_idx
+  ON reports (user_id, created_at DESC);
 
 -- Minimal seed for tests
 INSERT INTO brands(id, name) VALUES ('b0000001-0000-0000-0000-000000000001', 'Panatta');

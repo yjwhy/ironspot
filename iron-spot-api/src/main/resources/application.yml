@@ -29,6 +29,10 @@ naver:
     client-id: ${NAVER_MAPS_CLIENT_ID}
     client-secret: ${NAVER_MAPS_CLIENT_SECRET}
 
+ironspot:
+  slack:
+    admin-webhook-url: ${SLACK_ADMIN_WEBHOOK_URL:}
+
 server:
   port: 8080
 
