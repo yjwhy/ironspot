@@ -10,9 +10,14 @@ CREATE TABLE IF NOT EXISTS gyms (
   day_pass_price INTEGER,
   is_verified BOOLEAN DEFAULT FALSE,
   last_verified_at TIMESTAMPTZ,
+  naver_place_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS gyms_naver_place_id_key
+  ON gyms (naver_place_id)
+  WHERE naver_place_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS brands (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
