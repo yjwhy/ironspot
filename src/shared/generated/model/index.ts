@@ -8,6 +8,7 @@
 
 export * from './brandResponse';
 export * from './categoryResponse';
+export * from './createGymRequest';
 export * from './createReportRequest';
 export * from './createReportRequestReason';
 export * from './errorResponse';
@@ -15,9 +16,11 @@ export * from './gymDetailResponse';
 export * from './gymMachineResponse';
 export * from './gymWithMachineCountResponse';
 export * from './machineTemplateSuggestion';
+export * from './naverPlaceResult';
 export * from './photoResponse';
 export * from './photoUploadResponse';
 export * from './searchParams';
+export * from './searchPlacesParams';
 export * from './updateUserRequest';
 export * from './uploadBody';
 export * from './uploadParams';

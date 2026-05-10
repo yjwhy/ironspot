@@ -33,6 +33,8 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(eh -> eh.authenticationEntryPoint(unauthorizedEntryPoint()))
             .authorizeHttpRequests(auth -> auth
+                // Order matters: specific authenticated routes must precede the public wildcard.
+                .requestMatchers(HttpMethod.GET, "/api/gyms/places-search").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/gyms/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/brands").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()

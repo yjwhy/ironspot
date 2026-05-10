@@ -7,7 +7,7 @@ google:
     api-key: test-google-vision-api-key
 
 naver:
-  maps:
+  search:
     client-id: test-naver-client-id
     client-secret: test-naver-client-secret
 

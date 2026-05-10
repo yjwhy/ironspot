@@ -5,20 +5,27 @@ import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react
 import { useGymMachines } from '@/features/gym/hooks/useGymMachines';
 import { useGymSearch } from '@/features/map/hooks/useGymSearch';
 import { AppText } from '@/shared/components/AppText';
+import type { NaverPlaceResult } from '@/shared/generated/model/naverPlaceResult';
 import { useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
 import { toBounds } from '@/shared/lib/geo';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { GymMachineWithDetails, GymWithMachineCount } from '@/shared/types/database';
 
+import { useCreateGym } from '../hooks/useCreateGym';
+import { useNaverPlacesSearch } from '../hooks/useNaverPlacesSearch';
+
 const SEARCH_RADIUS_KM = 5;
 
 const EMPTY_FILTERS = { brandId: null, categoryId: null, loadingType: null } as const;
+
+type ScreenMode = 'list' | 'naver-search';
 
 export function UploadGymSelectScreen() {
   const locationState = useCurrentLocation();
   const [searchText, setSearchText] = useState('');
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
+  const [mode, setMode] = useState<ScreenMode>('list');
 
   const location = locationState.status === 'loading' ? null : locationState.location;
   const bounds =
@@ -34,12 +41,24 @@ export function UploadGymSelectScreen() {
     setSelectedGymId((prev) => (prev === gymId ? null : gymId));
   }
 
+  function handleEnterNaverSearch() {
+    setMode('naver-search');
+  }
+
+  function handleExitNaverSearch() {
+    setMode('list');
+  }
+
   if (locationState.status === 'loading') {
     return (
       <View className="flex-1 items-center justify-center bg-bg-base">
         <ActivityIndicator testID="location-loading" />
       </View>
     );
+  }
+
+  if (mode === 'naver-search') {
+    return <NaverGymRegistrationPanel onClose={handleExitNaverSearch} />;
   }
 
   const filteredGyms =
@@ -56,6 +75,7 @@ export function UploadGymSelectScreen() {
       filteredGyms={filteredGyms}
       selectedGymId={selectedGymId}
       onGymPress={handleGymPress}
+      onAddGym={handleEnterNaverSearch}
     />
   );
 }
@@ -68,6 +88,7 @@ interface GymSelectContentProps {
   filteredGyms: GymWithMachineCount[];
   selectedGymId: string | null;
   onGymPress: (gymId: string) => void;
+  onAddGym: () => void;
 }
 
 function GymSelectContent({
@@ -78,6 +99,7 @@ function GymSelectContent({
   filteredGyms,
   selectedGymId,
   onGymPress,
+  onAddGym,
 }: GymSelectContentProps) {
   return (
     <View className="flex-1 bg-bg-base">
@@ -107,6 +129,7 @@ function GymSelectContent({
         <Pressable
           testID="no-gym-button"
           accessibilityRole="button"
+          onPress={onAddGym}
           style={pressedOpacity}
           className="items-center py-2"
         >
@@ -116,6 +139,148 @@ function GymSelectContent({
     </View>
   );
 }
+
+interface NaverGymRegistrationPanelProps {
+  onClose: () => void;
+}
+
+function NaverGymRegistrationPanel({ onClose }: NaverGymRegistrationPanelProps) {
+  const [query, setQuery] = useState('');
+  const { places, isFetching, isError } = useNaverPlacesSearch(query);
+  const { handleCreateGym, isPending } = useCreateGym({ onSuccess: onClose });
+
+  function handlePlacePress(place: NaverPlaceResult) {
+    if (isPending) return;
+    handleCreateGym(place);
+  }
+
+  return (
+    <View className="flex-1 bg-bg-base">
+      <View className="flex-row items-center justify-between px-4 pt-6 pb-3">
+        <AppText className="text-heading-lg text-text-primary">새 헬스장 등록</AppText>
+        <Pressable
+          testID="cancel-add-gym"
+          accessibilityRole="button"
+          accessibilityLabel="취소"
+          onPress={onClose}
+          style={pressedOpacity}
+          className="px-2 py-1"
+        >
+          <AppText className="text-body text-accent">취소</AppText>
+        </Pressable>
+      </View>
+
+      <View className="mx-4 mb-3 rounded-lg bg-bg-subtle px-3 py-2">
+        <TextInput
+          testID="naver-search-input"
+          placeholder="헬스장 이름으로 검색"
+          value={query}
+          onChangeText={setQuery}
+          className="text-body text-text-primary"
+          placeholderTextColor={colors.text.tertiary}
+          autoFocus
+        />
+      </View>
+
+      <NaverPlacesBody
+        query={query}
+        places={places}
+        isFetching={isFetching}
+        isError={isError}
+        isCreating={isPending}
+        onPlacePress={handlePlacePress}
+      />
+    </View>
+  );
+}
+
+interface NaverPlacesBodyProps {
+  query: string;
+  places: NaverPlaceResult[];
+  isFetching: boolean;
+  isError: boolean;
+  isCreating: boolean;
+  onPlacePress: (place: NaverPlaceResult) => void;
+}
+
+function NaverPlacesBody({
+  query,
+  places,
+  isFetching,
+  isError,
+  isCreating,
+  onPlacePress,
+}: NaverPlacesBodyProps) {
+  if (query.trim().length < NAVER_QUERY_MIN_LENGTH) {
+    return (
+      <View className="flex-1 items-center justify-center px-4" testID="naver-search-hint">
+        <AppText className="text-body text-text-secondary">두 글자 이상 입력해주세요</AppText>
+      </View>
+    );
+  }
+
+  if (isFetching) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator testID="naver-search-loading" />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View className="flex-1 items-center justify-center px-4" testID="naver-search-error">
+        <AppText className="text-body text-text-secondary">
+          네이버 검색에 실패했어요. 잠시 후 다시 시도해주세요.
+        </AppText>
+      </View>
+    );
+  }
+
+  if (places.length === 0) {
+    return (
+      <View className="flex-1 items-center justify-center px-4" testID="naver-search-empty">
+        <AppText className="text-body text-text-secondary">검색 결과가 없어요</AppText>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView className="flex-1">
+      {places.map((place) => (
+        <NaverPlaceItem key={place.id} place={place} disabled={isCreating} onPress={onPlacePress} />
+      ))}
+    </ScrollView>
+  );
+}
+
+interface NaverPlaceItemProps {
+  place: NaverPlaceResult;
+  disabled: boolean;
+  onPress: (place: NaverPlaceResult) => void;
+}
+
+function NaverPlaceItem({ place, disabled, onPress }: NaverPlaceItemProps) {
+  return (
+    <Pressable
+      testID={`naver-place-${place.id}`}
+      accessibilityRole="button"
+      accessibilityLabel={place.name}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={() => {
+        onPress(place);
+      }}
+      style={({ pressed }) => ({ opacity: disabled ? 0.5 : pressed ? 0.7 : 1 })}
+      className="border-b border-border-subtle px-4 py-3"
+    >
+      <AppText className="text-body font-medium text-text-primary">{place.name}</AppText>
+      <AppText className="text-body-sm text-text-secondary">{place.roadAddress}</AppText>
+    </Pressable>
+  );
+}
+
+const NAVER_QUERY_MIN_LENGTH = 2;
 
 interface GymListBodyProps {
   gymsLoading: boolean;

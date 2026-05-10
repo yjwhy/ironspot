@@ -81,20 +81,30 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+// Load `.env` into a map so we can pipe selected keys into both bootRun and test tasks.
+val dotEnv: Map<String, String> = file(".env").let { f ->
+    if (!f.exists()) emptyMap()
+    else f.readLines()
+        .filter { it.isNotBlank() && !it.startsWith("#") && it.contains("=") }
+        .associate {
+            val (k, v) = it.split("=", limit = 2)
+            k.trim() to v.trim()
+        }
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Pipe Naver Search keys from .env (or CI env) to JUnit @EnabledIfEnvironmentVariable so the
+    // real-API integration test runs locally and in CI without manual setup. Other secrets stay
+    // out unless added explicitly — minimises blast radius if a test prints env.
+    listOf("NAVER_SEARCH_CLIENT_ID", "NAVER_SEARCH_CLIENT_SECRET").forEach { key ->
+        val value = System.getenv(key) ?: dotEnv[key]
+        if (!value.isNullOrBlank()) environment(key, value)
+    }
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
-    val envFile = file(".env")
-    if (envFile.exists()) {
-        envFile.readLines()
-            .filter { it.isNotBlank() && !it.startsWith("#") && it.contains("=") }
-            .forEach { line ->
-                val (key, value) = line.split("=", limit = 2)
-                environment(key.trim(), value.trim())
-            }
-    }
+    dotEnv.forEach { (k, v) -> environment(k, v) }
 }
 
 tasks.named("compileJava") {

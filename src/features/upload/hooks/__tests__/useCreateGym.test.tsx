@@ -1,0 +1,129 @@
+import { renderHook } from '@testing-library/react-native';
+import * as burnt from 'burnt';
+
+import { useCreateGym as useCreateGymMutation } from '@/shared/generated/gyms/gyms';
+import type { GymDetailResponse } from '@/shared/generated/model/gymDetailResponse';
+import type { NaverPlaceResult } from '@/shared/generated/model/naverPlaceResult';
+
+import { useCreateGym } from '../useCreateGym';
+
+jest.mock('@/shared/generated/gyms/gyms', () => ({
+  useCreateGym: jest.fn(),
+}));
+
+const mockInvalidateQueries = jest.fn();
+jest.mock('@tanstack/react-query', () => {
+  const actual: Record<string, unknown> = jest.requireActual('@tanstack/react-query');
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+  };
+});
+
+jest.mock('burnt', () => ({
+  toast: jest.fn(),
+}));
+
+const mockedUseCreateGym = useCreateGymMutation as jest.Mock;
+
+interface CapturedOptions {
+  mutation?: {
+    onSuccess?: (response: { data: GymDetailResponse; status: number }) => void;
+    onError?: (err: unknown) => void;
+  };
+}
+
+function setupHook(opts?: { onSuccess?: (gym: GymDetailResponse) => void }) {
+  const mutate = jest.fn();
+  let captured: CapturedOptions | undefined;
+  mockedUseCreateGym.mockImplementation((options: CapturedOptions) => {
+    captured = options;
+    return { mutate, isPending: false };
+  });
+
+  const { result } = renderHook(() => useCreateGym(opts));
+  return {
+    result,
+    mutate,
+    getCaptured: () => {
+      if (!captured) throw new Error('Mutation options were not captured');
+      return captured;
+    },
+  };
+}
+
+const PLACE: NaverPlaceResult = {
+  id: 'p123',
+  name: '에어짐 강남',
+  address: '서울 강남구 테헤란로 1',
+  roadAddress: '서울특별시 테헤란로 1',
+  latitude: 37.4979,
+  longitude: 127.0276,
+  phone: '02-1111-2222',
+  category: '스포츠시설>헬스장',
+};
+
+const CREATED_GYM: GymDetailResponse = {
+  id: 'gym-1',
+  name: PLACE.name,
+  address: PLACE.roadAddress,
+  latitude: PLACE.latitude,
+  longitude: PLACE.longitude,
+  isVerified: false,
+  createdAt: '2026-05-11T00:00:00Z',
+  updatedAt: '2026-05-11T00:00:00Z',
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('useCreateGym', () => {
+  it('maps NaverPlaceResult fields onto CreateGymRequest', () => {
+    const { result, mutate } = setupHook();
+
+    result.current.handleCreateGym(PLACE);
+
+    expect(mutate).toHaveBeenCalledWith({
+      data: {
+        name: '에어짐 강남',
+        address: '서울특별시 테헤란로 1',
+        latitude: 37.4979,
+        longitude: 127.0276,
+        naverPlaceId: 'p123',
+        phone: '02-1111-2222',
+      },
+    });
+  });
+
+  it('omits phone from the payload when the source place has no phone', () => {
+    const { result, mutate } = setupHook();
+
+    result.current.handleCreateGym({ ...PLACE, phone: undefined });
+
+    const calls = mutate.mock.calls as [{ data: Record<string, unknown> }][];
+    const lastCall = calls.at(-1);
+    if (!lastCall) throw new Error('mutate was not called');
+    expect(lastCall[0].data).not.toHaveProperty('phone');
+  });
+
+  it('shows success toast, invalidates map cache, and calls onSuccess on mutation success', () => {
+    const onSuccess = jest.fn();
+    const { getCaptured } = setupHook({ onSuccess });
+
+    // Orval wraps responses as { data, status, headers } — onSuccess receives the envelope.
+    getCaptured().mutation?.onSuccess?.({ data: CREATED_GYM, status: 200 });
+
+    expect(burnt.toast).toHaveBeenCalledWith(expect.objectContaining({ preset: 'done' }));
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['map'] });
+    expect(onSuccess).toHaveBeenCalledWith(CREATED_GYM);
+  });
+
+  it('shows error toast on mutation error', () => {
+    const { getCaptured } = setupHook();
+
+    getCaptured().mutation?.onError?.(new Error('boom'));
+
+    expect(burnt.toast).toHaveBeenCalledWith(expect.objectContaining({ preset: 'error' }));
+  });
+});
