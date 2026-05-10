@@ -30,6 +30,10 @@ jobs:
         run: ./gradlew test
         env:
           JAVA_HOME: ${{ steps.java24.outputs.path }}
+          # Naver 지역검색 API credentials — gates NaverSearchServiceIT (real-API contract test).
+          # When unset, the IT skips via @EnabledIfEnvironmentVariable.
+          NAVER_SEARCH_CLIENT_ID: ${{ secrets.NAVER_SEARCH_CLIENT_ID }}
+          NAVER_SEARCH_CLIENT_SECRET: ${{ secrets.NAVER_SEARCH_CLIENT_SECRET }}
 
       - name: Setup pnpm
         if: ${{ !cancelled() }}
