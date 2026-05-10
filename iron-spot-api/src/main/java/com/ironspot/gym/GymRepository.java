@@ -1,5 +1,6 @@
 package com.ironspot.gym;
 
+import com.ironspot.gym.dto.CreateGymRequest;
 import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
@@ -89,6 +90,34 @@ public class GymRepository {
                     Objects.requireNonNullElse(r.get(machineCount), 0).longValue()
                 );
             });
+    }
+
+    public Optional<UUID> findIdByNaverPlaceId(String naverPlaceId) {
+        return dsl.select(GYMS.ID)
+            .from(GYMS)
+            .where(GYMS.NAVER_PLACE_ID.eq(naverPlaceId))
+            .fetchOptional(r -> r.get(GYMS.ID));
+    }
+
+    public void insertFromNaverPlaces(UUID id, CreateGymRequest req) {
+        // Raw SQL for the PostGIS cast: JOOQ's typed insert can't disambiguate the
+        // geography Field<Object> overloads, and CLOB-typing the column would lose the
+        // GEOGRAPHY(POINT) constraint. is_verified=false marks user-registered gyms so
+        // verified Phase 1 seed gyms remain visually distinct.
+        dsl.execute(
+            """
+            INSERT INTO gyms (id, name, address, phone, naver_place_id, is_verified, location)
+            VALUES ({0}, {1}, {2}, {3}, {4}, FALSE,
+                    ST_SetSRID(ST_MakePoint({5}, {6}), 4326)::geography)
+            """,
+            DSL.val(id),
+            DSL.val(req.name()),
+            DSL.val(req.address()),
+            DSL.val(req.phone()),
+            DSL.val(req.naverPlaceId()),
+            DSL.val(req.longitude()),
+            DSL.val(req.latitude())
+        );
     }
 
     public Optional<GymDetailResponse> findById(UUID id) {

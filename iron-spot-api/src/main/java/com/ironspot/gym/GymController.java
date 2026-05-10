@@ -1,23 +1,33 @@
 package com.ironspot.gym;
 
+import com.ironspot.auth.UserPrincipal;
 import com.ironspot.common.dto.ErrorResponse;
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.gym.dto.CreateGymRequest;
 import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
+import com.ironspot.gym.dto.NaverPlaceResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -26,6 +36,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping(value = "/api/gyms", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
+@Validated
 public class GymController {
 
     private final GymService gymService;
@@ -57,5 +68,49 @@ public class GymController {
     public GymDetailResponse getById(@PathVariable UUID id) {
         return gymService.findById(id)
             .orElseThrow(() -> new BusinessException("Gym not found: " + id, HttpStatus.NOT_FOUND));
+    }
+
+    @GetMapping("/places-search")
+    @Operation(
+        summary = "Search Naver 지역검색 for unregistered gyms",
+        description = "Auth required (JWT). Naver quota guard — anonymous calls would drain it.",
+        tags = {"gyms"}
+    )
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200", description = "Naver places list returned"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "401", description = "Missing or invalid JWT"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "502", description = "Naver upstream failure",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public List<NaverPlaceResult> searchPlaces(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @RequestParam @NotBlank @Size(max = 100) String query
+    ) {
+        return gymService.searchNaverPlaces(query);
+    }
+
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+        summary = "Register a new gym from a Naver place",
+        description = "Auth required. Idempotent on naverPlaceId — repeated calls return the same gym.",
+        tags = {"gyms"}
+    )
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200", description = "Gym created or returned (dedup)"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400", description = "Validation error",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "401", description = "Missing or invalid JWT")
+    })
+    public GymDetailResponse createGym(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @Valid @RequestBody CreateGymRequest request
+    ) {
+        return gymService.createFromNaverPlaces(request);
     }
 }
