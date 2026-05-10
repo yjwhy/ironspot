@@ -8,6 +8,8 @@
 
 export * from './brandResponse';
 export * from './categoryResponse';
+export * from './createReportRequest';
+export * from './createReportRequestReason';
 export * from './errorResponse';
 export * from './gymDetailResponse';
 export * from './gymMachineResponse';
