@@ -24,8 +24,7 @@
       [
         "@mj-studio/react-native-naver-map",
         {
-          "ios_client_id": "ty0sd0ldl9",
-          "android_client_id": "ty0sd0ldl9"
+          "client_id": "ty0sd0ldl9"
         }
       ]
     ],
