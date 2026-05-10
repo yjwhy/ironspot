@@ -213,9 +213,9 @@ google:
     api-key: ${GOOGLE_VISION_API_KEY:}
 
 naver:
-  maps:
-    client-id: ${NAVER_MAPS_CLIENT_ID}
-    client-secret: ${NAVER_MAPS_CLIENT_SECRET}
+  search:
+    client-id: ${NAVER_SEARCH_CLIENT_ID}
+    client-secret: ${NAVER_SEARCH_CLIENT_SECRET}
 
 server:
   port: 8080
@@ -252,8 +252,8 @@ SUPABASE_JWT_SECRET=your-supabase-jwt-secret
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 GOOGLE_VISION_API_KEY=
-NAVER_MAPS_CLIENT_ID=
-NAVER_MAPS_CLIENT_SECRET=
+NAVER_SEARCH_CLIENT_ID=
+NAVER_SEARCH_CLIENT_SECRET=
 ```
 
 ### Step 5: Common DTOs + Exception handling
@@ -2363,20 +2363,81 @@ git commit -m "feat(vote): upvote system with @Transactional + optimistic update
 
 ## Task 27: Report System
 
-**Goal:** Users can report photos. 5+ pending reports auto-blinds a photo (hides from public queries). Report button in PhotoDetailScreen activated.
+**Goal:** Defense-in-depth content moderation. Three composing layers:
+
+- **L1 (사전 차단)**: Vision SafeSearch at upload rejects obvious NSFW/violence; borderline content is published with `is_blinded=TRUE` and queued for admin
+- **L2 (사용자 신고)**: 4 일반 사유는 3건 누적 시 자동 차단, 1 긴급 사유(본인/법적)는 1건 즉시 admin Slack 알림 (자동 차단은 안 함)
+- **L3 (관리자 큐)**: `reports.status` 기반 + Slack webhook 알림. 정식 admin 도구는 Phase 3.
 
 **What must be complete before calling this task done:**
 
-- Report saved in `reports` table with correct user_id, target_type, target_id, reason
-- 5 pending reports on same photo → `is_blinded = TRUE` on that photo
-- Blinded photos excluded from `GET /api/machines/:id/photos`
-- Report button in PhotoDetailScreen navigates to reason selection sheet
+- Vision SafeSearch enforced on every upload (reject `VERY_LIKELY` adult/violence, queue `LIKELY` for review)
+- `POST /api/photos/{photoId}/reports` saves report with reason enum + optional 자유 입력
+- 일반 사유 3건 누적 → `machine_photos.is_blinded = TRUE` + Slack 알림
+- 긴급 사유(본인/법적) 1건 → Slack 즉시 알림 (자동 차단 X, 어뷰즈 방어)
+- `(user_id, target_id)` UNIQUE 제약 — 같은 사용자가 같은 사진 중복 신고 불가
+- 자기 사진 신고 시 400
+- 일일 신고 한도 10건/유저 초과 시 429
+- Blinded 사진은 `GET /api/machines/:id/photos`와 `findByGymMachineIds` 양쪽에서 제외
+- PhotoDetailScreen 신고 버튼이 reason 선택 시트로 진입 (Option C 레이아웃, "기타" 선택 시 textarea 노출)
+
+### Locked-in design decisions (이 task 시작 전 확정 — 재논의 X)
+
+- **범위**: photo target만. `gym_machine` 신고는 Phase 3로 미룸 (정책/UI 정의 안 됨)
+- **임계값**: 일반 3건 / 긴급 1건 (instant alert only, NOT instant blind)
+- **계정 나이 게이트 없음** (OAuth-only로 Sybil 비용 이미 있음)
+- **Abuse 이메일 채널 없음** — 본인/법적 신고는 인앱 카테고리로 흡수
+- **신뢰 점수 / 자동 ban**: Phase 3
+- **API 경로**: Task 26 컨벤션 따라 `/api/photos/{photoId}/reports` (path-based, body는 reason만)
+- **응답 wrapper 없음** (Task 19에서 `ApiResponse<T>` 제거됨)
 
 ### Backend
 
+#### Layer 1: Vision SafeSearch (OcrService 확장)
+
+기존 OCR 호출에 feature 한 줄 추가. 별도 호출 없음.
+
+```java
+// OcrService — 기존 annotateImage 호출에 SAFE_SEARCH_DETECTION 추가
+List<Feature> features = List.of(
+    Feature.newBuilder().setType(Type.TEXT_DETECTION).build(),
+    Feature.newBuilder().setType(Type.SAFE_SEARCH_DETECTION).build()
+);
+
+// 응답 처리
+SafeSearchAnnotation safeSearch = response.getSafeSearchAnnotation();
+SafeSearchVerdict verdict = SafeSearchVerdict.from(safeSearch);
+// verdict ∈ { ALLOW, QUEUE_FOR_ADMIN, REJECT }
+```
+
+```java
+public enum SafeSearchVerdict {
+    ALLOW,            // 통과
+    QUEUE_FOR_ADMIN,  // adult/violence == LIKELY → 게시하되 is_blinded=TRUE + admin 큐
+    REJECT;           // adult/violence >= VERY_LIKELY → 400 거부
+
+    public static SafeSearchVerdict from(SafeSearchAnnotation s) {
+        Likelihood adult = s.getAdult();
+        Likelihood violence = s.getViolence();
+        if (adult == VERY_LIKELY || violence == VERY_LIKELY) return REJECT;
+        if (adult == LIKELY || violence == LIKELY) return QUEUE_FOR_ADMIN;
+        return ALLOW;
+        // racy/medical/spoof는 헬스장 도메인 false positive가 많아 무시
+    }
+}
+```
+
+`PhotoService.upload()`:
+
+- `REJECT` → `BusinessException("부적절한 콘텐츠로 감지되었습니다", 400)`
+- `QUEUE_FOR_ADMIN` → `is_blinded=TRUE`로 INSERT + Slack 알림
+- `ALLOW` → 정상 게시
+
+#### Layer 2: Report endpoint
+
 ```java
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping(value = "/api/photos/{photoId}/reports", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class ReportController {
 
@@ -2384,22 +2445,34 @@ public class ReportController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<Void> report(
+    @Operation(operationId = "reportPhoto")
+    public void report(
         @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID photoId,
         @Valid @RequestBody CreateReportRequest request
     ) {
-        reportService.createReport(principal.getUserId(), request);
-        return ApiResponse.ok(null);
+        reportService.createReport(principal.getUserId(), photoId, request);
     }
+}
+```
+
+```java
+public enum ReportReason {
+    INAPPROPRIATE,    // 부적절한 사진 (NSFW/폭력)
+    WRONG_MACHINE,    // 잘못된 기구 정보
+    DUPLICATE,        // 중복 사진
+    OTHER,            // 기타
+    LEGAL_PERSONAL;   // 본인이 찍혔거나 법적 문제 (긴급)
+
+    public boolean isUrgent() { return this == LEGAL_PERSONAL; }
 }
 ```
 
 ```java
 @Getter
 public class CreateReportRequest {
-    @NotBlank private String targetType;  // "photo" | "gym_machine"
-    @NotNull  private UUID targetId;
-    @Size(max = 500) private String reason;
+    @NotNull private ReportReason reason;
+    @Size(max = 500) private String detail;  // "기타" 선택 시 자유 입력, 그 외엔 null/비어있음 OK
 }
 ```
 
@@ -2408,59 +2481,270 @@ public class CreateReportRequest {
 @RequiredArgsConstructor
 public class ReportService {
 
-    private static final int AUTO_BLIND_THRESHOLD = 5;
+    private static final int GENERAL_AUTO_BLIND_THRESHOLD = 3;
+    private static final int DAILY_REPORT_CAP = 10;
 
     private final ReportRepository reportRepository;
     private final PhotoRepository photoRepository;
+    private final AdminNotificationService adminNotifier;
 
     @Transactional
-    public void createReport(String userId, CreateReportRequest request) {
-        reportRepository.insert(userId, request.getTargetType(), request.getTargetId(), request.getReason());
+    public void createReport(String userId, UUID photoId, CreateReportRequest req) {
+        UUID userUuid = parseUuid(userId);
 
-        if ("photo".equals(request.getTargetType())) {
-            int pendingCount = reportRepository.countPending(request.getTargetId());
-            if (pendingCount >= AUTO_BLIND_THRESHOLD) {
-                photoRepository.setBlinded(request.getTargetId(), true);
+        // 1. self-report guard
+        if (photoRepository.isOwner(photoId, userUuid)) {
+            throw new BusinessException("자신의 사진은 신고할 수 없습니다", HttpStatus.BAD_REQUEST);
+        }
+
+        // 2. daily cap
+        int todayCount = reportRepository.countByReporterToday(userUuid);
+        if (todayCount >= DAILY_REPORT_CAP) {
+            throw new BusinessException("일일 신고 한도를 초과했습니다", HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        // 3. insert (UNIQUE on (user_id, target_id) — 중복 시 idempotent)
+        boolean inserted = reportRepository.insertIfAbsent(userUuid, photoId, req.getReason(), req.getDetail());
+        if (!inserted) {
+            return;  // already reported — silent no-op (idempotent)
+        }
+
+        // 4. 분기: 긴급 vs 일반
+        if (req.getReason().isUrgent()) {
+            adminNotifier.notifyUrgentReport(photoId, userUuid, req);
+            // 자동 차단 안 함 — 어뷰즈 방어
+        } else {
+            int pending = reportRepository.countPending(photoId);
+            if (pending >= GENERAL_AUTO_BLIND_THRESHOLD) {
+                photoRepository.setBlinded(photoId, true);
+                adminNotifier.notifyAutoBlind(photoId, pending);
             }
         }
     }
 }
 ```
 
-### Update photo query to exclude blinded
+#### Layer 3: Admin Slack webhook
 
 ```java
-// PhotoRepository.findByGymMachineId — add WHERE clause
-"WHERE mp.gym_machine_id = ?::uuid AND mp.is_blinded = FALSE"
+@Service
+@RequiredArgsConstructor
+public class AdminNotificationService {
+    private final WebClient slackWebClient;
+    @Value("${ironspot.slack.admin-webhook-url:}") private String webhookUrl;
+
+    public void notifyUrgentReport(UUID photoId, UUID reporterId, CreateReportRequest req) {
+        post(":rotating_light: URGENT report — photo " + photoId + " by " + reporterId
+             + " (" + req.getReason() + ")");
+    }
+
+    public void notifyAutoBlind(UUID photoId, int reportCount) {
+        post(":warning: Photo auto-blinded — " + photoId + " (" + reportCount + " reports)");
+    }
+
+    public void notifySafeSearchQueue(UUID photoId, String verdict) {
+        post(":mag: SafeSearch queue — photo " + photoId + " (" + verdict + ")");
+    }
+
+    private void post(String text) {
+        if (webhookUrl == null || webhookUrl.isBlank()) return;  // dev/test 환경에서 무동작
+        slackWebClient.post().uri(webhookUrl)
+            .bodyValue(Map.of("text", text))
+            .retrieve().toBodilessEntity()
+            .subscribe();  // fire-and-forget
+    }
+}
+```
+
+`application.yml`:
+
+```yaml
+ironspot:
+  slack:
+    admin-webhook-url: ${SLACK_ADMIN_WEBHOOK_URL:}
+```
+
+#### Repository (JOOQ)
+
+- `insertIfAbsent`: `onConflictDoNothing()` on `(user_id, target_id)` UNIQUE
+- `countPending(photoId)`: `WHERE target_id = ? AND status = 'pending'`
+- `countByReporterToday(userId)`: `WHERE user_id = ? AND created_at >= NOW() - INTERVAL '24 hours'`
+- `PhotoRepository.isOwner(photoId, userId)`
+- `PhotoRepository.setBlinded(photoId, true)`
+
+#### DB schema 변경
+
+`reports` 테이블에 UNIQUE 제약 추가 + 인덱스. Supabase 프로덕션 마이그레이션 + `iron-spot-api/src/test/resources/init-test-db.sql` 양쪽 갱신.
+
+```sql
+ALTER TABLE reports
+  ADD CONSTRAINT reports_unique_reporter_target UNIQUE (user_id, target_id);
+
+CREATE INDEX IF NOT EXISTS reports_target_pending_idx
+  ON reports (target_id) WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS reports_reporter_recent_idx
+  ON reports (user_id, created_at DESC);
+```
+
+#### Photo 쿼리에서 blinded 제외
+
+`PhotoRepository.findByGymMachineId` **그리고** `findByGymMachineIds` 둘 다 갱신 (Task 21에서 batch fetch 도입됨).
+
+```java
+// JOOQ
+.where(MACHINE_PHOTOS.GYM_MACHINE_ID.eq(gymMachineId))
+.and(MACHINE_PHOTOS.IS_BLINDED.eq(false))
 ```
 
 ### Frontend
 
-```tsx
-// ReportReasonSheet.tsx — bottom sheet with reason options
-const REPORT_REASONS = ['부적절한 사진', '잘못된 기구 정보', '중복 사진', '기타'] as const;
+#### REPORT_REASONS
 
-// Activate report button in PhotoDetailScreen:
+```ts
+// src/features/photo/lib/reportReasons.ts
+export type ReportReasonId =
+  | 'INAPPROPRIATE'
+  | 'WRONG_MACHINE'
+  | 'DUPLICATE'
+  | 'OTHER'
+  | 'LEGAL_PERSONAL';
+
+export const GENERAL_REASONS = [
+  { id: 'INAPPROPRIATE', label: '부적절한 사진 (NSFW / 폭력)' },
+  { id: 'WRONG_MACHINE', label: '잘못된 기구 정보' },
+  { id: 'DUPLICATE', label: '중복 사진' },
+  { id: 'OTHER', label: '기타' },
+] as const satisfies ReadonlyArray<{ id: ReportReasonId; label: string }>;
+
+export const URGENT_REASONS = [
+  { id: 'LEGAL_PERSONAL', label: '본인이 찍혔거나 법적 문제' },
+] as const satisfies ReadonlyArray<{ id: ReportReasonId; label: string }>;
+```
+
+#### ReportReasonSheet (Option C 레이아웃)
+
+`@gorhom/bottom-sheet` 사용. 시각 그룹 분리(divider + section header), 라디오 단일 선택, "기타" 선택 시 textarea 노출, 제출 버튼.
+
+```tsx
+// 골격 (모든 props/handlers는 구현 시 채움)
+<BottomSheet>
+  <Section title="일반 사유">
+    {GENERAL_REASONS.map(r => <RadioRow key={r.id} ... />)}
+    {selected === 'OTHER' && (
+      <TextInput
+        multiline
+        maxLength={500}
+        placeholder="신고 사유를 입력해주세요"
+        value={detail}
+        onChangeText={setDetail}
+        ...
+      />
+    )}
+  </Section>
+  <Divider />
+  <Section title="긴급 (즉시 검토)">
+    {URGENT_REASONS.map(r => <RadioRow key={r.id} ... />)}
+  </Section>
+  <SubmitButton disabled={!selected || submitting} onPress={handleSubmit} />
+</BottomSheet>
+```
+
+#### useReport 훅
+
+```ts
+export function useReport(photoId: string) {
+  const queryClient = useQueryClient();
+  return useReportPhoto({
+    // Orval-generated
+    mutation: {
+      onSuccess: () => {
+        Toast.success('신고가 접수되었습니다');
+        // 사용자 본인이 더 못 신고하게 cache 표시 (선택). 다른 사용자 view엔 영향 없음.
+      },
+      onError: (err) => {
+        if (err.status === 429) Toast.error('일일 신고 한도를 초과했습니다');
+        else if (err.status === 400) Toast.error('신고할 수 없는 사진입니다');
+        else Toast.error('신고에 실패했습니다');
+      },
+    },
+  });
+}
+```
+
+#### PhotoDetailScreen 통합
+
+기존 `ReportButtonDisabled` (View) → 활성 `Pressable`:
+
+```tsx
 const requireAuth = useRequireAuth();
+const [sheetVisible, setSheetVisible] = useState(false);
+
 function handleReport() {
-  requireAuth(() => setReportSheetVisible(true));
+  requireAuth(() => setSheetVisible(true));
 }
 
-// Replace Phase 1 non-interactive View with Pressable:
 <Pressable
   onPress={handleReport}
   accessibilityRole="button"
   accessibilityLabel="신고하기"
   style={pressedOpacity}
+  className="h-10 w-10 items-center justify-center rounded-full bg-black/50"
 >
-  <MaterialIcons name="flag" size={20} color={colors.text.tertiary} />
-</Pressable>;
+  <MaterialIcons name="flag" size={20} color="#fff" />
+</Pressable>
+
+<ReportReasonSheet
+  visible={sheetVisible}
+  photoId={photo.id}
+  onClose={() => setSheetVisible(false)}
+/>
 ```
+
+### Anti-abuse safeguards (요약)
+
+| 위협                      | 방어                                                |
+| ------------------------- | --------------------------------------------------- |
+| 1인이 같은 사진 도배 신고 | `(user_id, target_id)` UNIQUE                       |
+| 1인이 다수 사진 도배 신고 | 일일 한도 10건 (`countByReporterToday`)             |
+| 자기 사진 신고            | `isOwner` 체크 → 400                                |
+| 긴급 카테고리 어뷰즈      | 자동 차단 안 함, admin 알림만. admin이 dismiss 가능 |
+| 5건 모일 때까지 노출      | 임계값 3 + Vision L1로 단축                         |
+
+### Testing
+
+- **Backend integration tests** (Testcontainers, 실 DB):
+  - 일반 사유 1/2/3건 시 blind 상태 변화
+  - 긴급 사유 1건 → blind 안 됨, AdminNotificationService.notifyUrgent 호출 검증 (mock)
+  - UNIQUE 위반 시 idempotent (200 OK, 두 번째 insert 무시)
+  - 자기 사진 신고 400
+  - 일일 한도 초과 429
+  - blinded 사진이 `GET /api/machines/:id/photos`에서 제외
+- **Frontend tests**:
+  - `useReport` mutation: success / 429 / 400 분기 toast
+  - `ReportReasonSheet`: "기타" 선택 시 textarea 노출, 다른 선택 시 숨김
+  - PhotoDetailScreen: 신고 버튼 비로그인 시 로그인 시트 → 로그인 후 신고 시트
+- **Vision SafeSearch unit test**:
+  - `SafeSearchVerdict.from`에 5단계 likelihood 조합으로 expected verdict 검증
+
+### Slack webhook 설정
+
+- `SLACK_ADMIN_WEBHOOK_URL` 환경변수 (운영자 워크스페이스)
+- 미설정 시 `AdminNotificationService.post`가 no-op (개발/테스트 환경)
+
+### OpenAPI / Orval 재생성
+
+```bash
+cd iron-spot-api && ./gradlew specExport
+pnpm orval
+```
+
+신규 operationId: `reportPhoto`.
 
 ### Commit
 
 ```bash
-git commit -m "feat(report): report system with auto-blind at 5 pending reports"
+git commit -m "feat(report): defense-in-depth content moderation (Vision + 3-count + Slack)"
 ```
 
 ---
@@ -2476,7 +2760,7 @@ git commit -m "feat(report): report system with auto-blind at 5 pending reports"
 - Duplicate prevention: if `naverPlaceId` already exists in DB, returns the existing gym
 - "헬스장이 없어요?" section in UploadGymSelectScreen is functional
 
-**Note:** Requires Naver Places API credentials (separate from Maps SDK). Gate: `NAVER_MAPS_CLIENT_ID`, `NAVER_MAPS_CLIENT_SECRET`.
+**Note:** Requires Naver 지역검색 API credentials from developers.naver.com (separate from Maps SDK on NCloud). Gate: `NAVER_SEARCH_CLIENT_ID`, `NAVER_SEARCH_CLIENT_SECRET`. Naver auth uses `X-Naver-Client-Id` / `X-Naver-Client-Secret` headers (not Bearer).
 
 ### Backend
 
@@ -2856,9 +3140,9 @@ git commit -m "feat(account): nickname edit + account deletion (app store requir
 
 ---
 
-## Task 31: Monitoring + Sentry
+## Task 31: Monitoring + Sentry + Admin Alerts
 
-**Goal:** Error tracking in app and API. Actuator health endpoint. Structured logging for Railway log drain.
+**Goal:** Error tracking in app and API. Actuator health endpoint. Structured logging for Railway log drain. Wire admin Slack webhook (Task 27 deferred operational setup).
 
 **What must be complete before calling this task done:**
 
@@ -2866,6 +3150,17 @@ git commit -m "feat(account): nickname edit + account deletion (app store requir
 - Sentry captures unhandled exceptions in Spring Boot
 - `GET /actuator/health` returns `{"status":"UP"}` in production
 - Spring Boot logs in JSON format in prod profile
+- Slack admin webhook delivers a test message from each of `notifyUrgentReport` / `notifyAutoBlind` / `notifySafeSearchQueue` paths
+
+### Admin Slack webhook (Task 27 carry-over)
+
+Code is shipped (`AdminNotificationService` no-ops on empty URL); only operational wiring remains.
+
+1. Create or reuse a Slack workspace.
+2. Add **Incoming Webhooks** integration → choose channel (e.g. `#ironspot-moderation`) → copy webhook URL.
+3. Set `SLACK_ADMIN_WEBHOOK_URL` env var on the Spring Boot deployment (Railway / equivalent).
+4. Smoke test: POST a fake report through `POST /api/photos/{id}/reports` 3 times from 3 distinct users → verify Slack receives the auto-blind alert. Repeat with `LEGAL_PERSONAL` to test the urgent path.
+5. Document the channel + webhook owner in `docs/harness/operations.md` (create if missing) for rotation later.
 
 ### Frontend: Sentry
 

@@ -1,9 +1,11 @@
 package com.ironspot.photo;
 
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.common.notification.AdminNotificationService;
 import com.ironspot.photo.dto.MachineTemplateSuggestion;
 import com.ironspot.photo.dto.PhotoResponse;
 import com.ironspot.photo.dto.PhotoUploadResponse;
+import com.ironspot.photo.dto.VisionAnalysisResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,6 +26,7 @@ public class PhotoService {
     private final OcrService ocrService;
     private final FuzzyMatchService fuzzyMatchService;
     private final StorageService storageService;
+    private final AdminNotificationService adminNotifier;
 
     public List<PhotoResponse> findByGymMachineId(UUID gymMachineId) {
         return photoRepository.findByGymMachineId(gymMachineId);
@@ -44,6 +47,22 @@ public class PhotoService {
             throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
         }
 
+        // Layer 1: Vision SafeSearch + OCR. Run before storage upload so a REJECT
+        // verdict aborts before producing an orphan file. Failures fail-open
+        // (verdict=ALLOW, empty texts) to preserve existing OCR behaviour during
+        // Vision API outages.
+        VisionAnalysisResult vision;
+        try {
+            vision = ocrService.analyzeImage(imageBytes);
+        } catch (Exception e) {
+            log.warn("Vision API failed for photo {} — failing open", photoId, e);
+            vision = VisionAnalysisResult.EMPTY;
+        }
+
+        if (vision.verdict() == SafeSearchVerdict.REJECT) {
+            throw new BusinessException("부적절한 콘텐츠로 감지되었습니다", HttpStatus.BAD_REQUEST);
+        }
+
         String photoUrl;
         try {
             photoUrl = storageService.upload(imageBytes, gymMachineId, filename);
@@ -52,22 +71,19 @@ public class PhotoService {
             throw new BusinessException("사진 업로드에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        List<String> ocrTexts = List.of();
-        boolean ocrSucceeded = false;
+        boolean queueForAdmin = vision.verdict() == SafeSearchVerdict.QUEUE_FOR_ADMIN;
+        List<MachineTemplateSuggestion> suggestions = fuzzyMatchService.findMatches(vision.texts());
         try {
-            ocrTexts = ocrService.extractText(imageBytes);
-            ocrSucceeded = !ocrTexts.isEmpty();
-        } catch (Exception e) {
-            log.warn("OCR failed for photo {}: {}", photoId, e.getMessage());
-        }
-
-        List<MachineTemplateSuggestion> suggestions = fuzzyMatchService.findMatches(ocrTexts);
-        try {
-            photoRepository.insert(photoId, gymMachineId, userId, photoUrl);
+            photoRepository.insert(photoId, gymMachineId, userId, photoUrl, queueForAdmin);
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException("유효하지 않은 헬스장 기구 ID입니다", HttpStatus.BAD_REQUEST);
         }
 
+        if (queueForAdmin) {
+            adminNotifier.notifySafeSearchQueue(photoId, vision.verdict().name());
+        }
+
+        boolean ocrSucceeded = !vision.texts().isEmpty();
         return new PhotoUploadResponse(photoId, photoUrl, suggestions, ocrSucceeded);
     }
 

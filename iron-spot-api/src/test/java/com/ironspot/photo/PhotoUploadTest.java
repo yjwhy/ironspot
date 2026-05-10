@@ -3,6 +3,8 @@ package com.ironspot.photo;
 import com.ironspot.auth.JwtValidator;
 import com.ironspot.auth.UserPrincipal;
 import com.ironspot.common.IntegrationTestBase;
+import com.ironspot.common.notification.AdminNotificationService;
+import com.ironspot.photo.dto.VisionAnalysisResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +38,7 @@ class PhotoUploadTest extends IntegrationTestBase {
     @MockitoBean private JwtValidator jwtValidator;
     @MockitoBean private OcrService ocrService;
     @MockitoBean private StorageService storageService;
+    @MockitoBean private AdminNotificationService adminNotifier;
 
     // Existing test data from init-test-db.sql
     private static final String USER_A_ID = "d0000001-0000-0000-0000-000000000001";
@@ -95,7 +98,8 @@ class PhotoUploadTest extends IntegrationTestBase {
     @Test
     void uploadSucceedsWithOcrSuggestions() throws Exception {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
-        given(ocrService.extractText(any())).willReturn(java.util.List.of("PANATTA", "HIGH", "ROW"));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of("PANATTA", "HIGH", "ROW"), SafeSearchVerdict.ALLOW));
         given(storageService.upload(any(), any(), anyString()))
             .willReturn("https://example.com/photo.webp");
 
@@ -124,7 +128,7 @@ class PhotoUploadTest extends IntegrationTestBase {
     @Test
     void uploadSucceedsWithOcrFailure() {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
-        doThrow(new RuntimeException("Vision API down")).when(ocrService).extractText(any());
+        doThrow(new RuntimeException("Vision API down")).when(ocrService).analyzeImage(any());
         given(storageService.upload(any(), any(), anyString()))
             .willReturn("https://example.com/photo-noocr.webp");
 
@@ -140,6 +144,52 @@ class PhotoUploadTest extends IntegrationTestBase {
         assertThat(response.getBody()).contains("\"suggestions\":[]");
     }
 
+    // --- 4b. SafeSearch REJECT blocks upload (400, no storage call) ---
+
+    @Test
+    void uploadRejectedBySafeSearch() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of(), SafeSearchVerdict.REJECT));
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+        body.add("gymMachineId", GYM_MACHINE_ID.toString());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        org.mockito.Mockito.verify(storageService, org.mockito.Mockito.never())
+            .upload(any(), any(), anyString());
+    }
+
+    // --- 4c. SafeSearch QUEUE_FOR_ADMIN inserts with is_blinded=TRUE + Slack notify ---
+
+    @Test
+    void uploadQueuedForAdminInsertsBlinded() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of("LATERAL"), SafeSearchVerdict.QUEUE_FOR_ADMIN));
+        given(storageService.upload(any(), any(), anyString()))
+            .willReturn("https://example.com/queued.webp");
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+        body.add("gymMachineId", GYM_MACHINE_ID.toString());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Boolean blinded = jdbcTemplate.queryForObject(
+            "SELECT is_blinded FROM machine_photos WHERE photo_url = ?",
+            Boolean.class, "https://example.com/queued.webp");
+        assertThat(blinded).isTrue();
+        org.mockito.Mockito.verify(adminNotifier).notifySafeSearchQueue(
+            any(UUID.class), org.mockito.ArgumentMatchers.eq("QUEUE_FOR_ADMIN"));
+    }
+
     // --- 5. Owner can delete own photo ---
 
     @Test
@@ -147,7 +197,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
 
         UUID photoId = UUID.randomUUID();
-        photoRepository.insert(photoId, GYM_MACHINE_ID, USER_A_ID, "https://example.com/deleteme.webp");
+        photoRepository.insert(photoId, GYM_MACHINE_ID, USER_A_ID, "https://example.com/deleteme.webp", false);
 
         ResponseEntity<Void> response = restTemplate.exchange(
             "/api/photos/" + photoId, HttpMethod.DELETE, bearerRequest(null), Void.class);
@@ -179,7 +229,7 @@ class PhotoUploadTest extends IntegrationTestBase {
     void deleteOtherPhotoFails() {
         // Insert photo owned by user A
         UUID photoId = UUID.randomUUID();
-        photoRepository.insert(photoId, GYM_MACHINE_ID, USER_A_ID, "https://example.com/usera.webp");
+        photoRepository.insert(photoId, GYM_MACHINE_ID, USER_A_ID, "https://example.com/usera.webp", false);
 
         // Authenticate as user B
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalB()));

@@ -3,6 +3,11 @@ import ky, { HTTPError, type Options } from 'ky';
 import { env } from './env';
 import { supabase } from './supabase';
 
+// Re-export so consumers share a single ky resolution path. Importing
+// HTTPError from 'ky' directly elsewhere risks `instanceof` returning false
+// if ky is ever duplicated in the bundle (e.g. via a transitive dep pin).
+export { HTTPError };
+
 const _ky = ky.create({
   prefixUrl: env.EXPO_PUBLIC_API_URL,
   timeout: 10_000,

@@ -51,13 +51,54 @@ class OcrServiceTest {
         Map<String, Object> apiResponse = Map.of("responses", List.of(firstResponse));
         when(monoResponse.block(any())).thenReturn(apiResponse);
 
-        List<String> result = ocrService.extractText("fake-image".getBytes());
-        assertThat(result).contains("PANATTA");
+        com.ironspot.photo.dto.VisionAnalysisResult result =
+            ocrService.analyzeImage("fake-image".getBytes());
+        assertThat(result.texts()).contains("PANATTA");
+        assertThat(result.verdict()).isEqualTo(SafeSearchVerdict.ALLOW);
     }
 
     @Test
-    void returnsEmptyListWhenResponseIsNull() {
+    void returnsEmptyResultWhenResponseIsNull() {
         when(monoResponse.block(any())).thenReturn(null);
-        assertThat(ocrService.extractText("img".getBytes())).isEmpty();
+        com.ironspot.photo.dto.VisionAnalysisResult result =
+            ocrService.analyzeImage("img".getBytes());
+        assertThat(result.texts()).isEmpty();
+        assertThat(result.verdict()).isEqualTo(SafeSearchVerdict.ALLOW);
+    }
+
+    @Test
+    void rejectsWhenSafeSearchAdultIsVeryLikely() {
+        Map<String, Object> safeSearch = Map.of("adult", "VERY_LIKELY", "violence", "UNLIKELY");
+        Map<String, Object> firstResponse = Map.of("safeSearchAnnotation", safeSearch);
+        Map<String, Object> apiResponse = Map.of("responses", List.of(firstResponse));
+        when(monoResponse.block(any())).thenReturn(apiResponse);
+
+        com.ironspot.photo.dto.VisionAnalysisResult result =
+            ocrService.analyzeImage("img".getBytes());
+        assertThat(result.verdict()).isEqualTo(SafeSearchVerdict.REJECT);
+    }
+
+    @Test
+    void queuesWhenSafeSearchViolenceIsLikely() {
+        Map<String, Object> safeSearch = Map.of("adult", "UNLIKELY", "violence", "LIKELY");
+        Map<String, Object> firstResponse = Map.of("safeSearchAnnotation", safeSearch);
+        Map<String, Object> apiResponse = Map.of("responses", List.of(firstResponse));
+        when(monoResponse.block(any())).thenReturn(apiResponse);
+
+        com.ironspot.photo.dto.VisionAnalysisResult result =
+            ocrService.analyzeImage("img".getBytes());
+        assertThat(result.verdict()).isEqualTo(SafeSearchVerdict.QUEUE_FOR_ADMIN);
+    }
+
+    @Test
+    void racyIsIgnoredForGymDomainFalsePositives() {
+        Map<String, Object> safeSearch = Map.of("racy", "VERY_LIKELY", "adult", "UNLIKELY", "violence", "UNLIKELY");
+        Map<String, Object> firstResponse = Map.of("safeSearchAnnotation", safeSearch);
+        Map<String, Object> apiResponse = Map.of("responses", List.of(firstResponse));
+        when(monoResponse.block(any())).thenReturn(apiResponse);
+
+        com.ironspot.photo.dto.VisionAnalysisResult result =
+            ocrService.analyzeImage("img".getBytes());
+        assertThat(result.verdict()).isEqualTo(SafeSearchVerdict.ALLOW);
     }
 }

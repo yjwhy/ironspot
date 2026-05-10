@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 import Animated, { useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Skeleton } from '@/shared/components/Skeleton';
@@ -14,6 +15,7 @@ import { colors } from '@/shared/theme/tokens';
 import type { MachinePhoto } from '@/shared/types/database';
 
 import { PhotoPager } from './PhotoPager';
+import { ReportReasonSheet } from './ReportReasonSheet';
 import { useMachinePhotos } from '../hooks/useMachinePhotos';
 import { useUpvote } from '../hooks/useUpvote';
 
@@ -43,9 +45,24 @@ export function PhotoDetailScreen({ photoId, machineId }: PhotoDetailScreenProps
     Boolean(photoId) && !photos.isPending && !photos.isError && initialIndex === -1;
   const showError = !hasValidContext || photos.isError || photoNotFound;
 
+  const requireAuth = useRequireAuth();
+  const [reportSheetVisible, setReportSheetVisible] = useState(false);
+
   function handleClose() {
     router.back();
   }
+
+  function handleReport() {
+    requireAuth(() => {
+      setReportSheetVisible(true);
+    });
+  }
+
+  function handleReportSheetClose() {
+    setReportSheetVisible(false);
+  }
+
+  const isPhotoReady = currentPhoto !== undefined;
 
   return (
     <View className="flex-1 bg-black">
@@ -53,7 +70,7 @@ export function PhotoDetailScreen({ photoId, machineId }: PhotoDetailScreenProps
         className="absolute left-0 right-0 top-0 z-10 px-4"
         style={{ paddingTop: insets.top + TOP_BAR_GUTTER }}
       >
-        <TopBar onClose={handleClose} />
+        <TopBar onClose={handleClose} onReport={handleReport} canReport={isPhotoReady} />
       </View>
 
       {showError ? <ErrorView /> : null}
@@ -70,19 +87,25 @@ export function PhotoDetailScreen({ photoId, machineId }: PhotoDetailScreenProps
           ) : null}
         </>
       ) : null}
+
+      {reportSheetVisible && currentPhoto ? (
+        <ReportReasonSheet photoId={currentPhoto.id} onClose={handleReportSheetClose} />
+      ) : null}
     </View>
   );
 }
 
 interface TopBarProps {
   onClose: () => void;
+  onReport: () => void;
+  canReport: boolean;
 }
 
-function TopBar({ onClose }: TopBarProps) {
+function TopBar({ onClose, onReport, canReport }: TopBarProps) {
   return (
     <View className="flex-row items-center justify-between">
       <CloseButton onPress={onClose} />
-      <ReportButtonDisabled />
+      {canReport ? <ReportButton onPress={onReport} /> : <ReportButtonDisabled />}
     </View>
   );
 }
@@ -111,15 +134,40 @@ function CloseButton({ onPress }: CloseButtonProps) {
   );
 }
 
-// Phase 1: report is intentionally non-interactive (spec: "Report button
-// top-right (disabled Phase 1)"). Rendered as a visually disabled icon so
-// the affordance is communicated; full implementation lands in Phase 2.
+interface ReportButtonProps {
+  onPress: () => void;
+}
+
+function ReportButton({ onPress }: ReportButtonProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="신고하기"
+      style={pressedOpacity}
+      className="h-10 w-10 items-center justify-center rounded-full bg-black/50"
+    >
+      <MaterialIcons
+        name="flag"
+        size={20}
+        color="#fff"
+        importantForAccessibility="no"
+        accessibilityElementsHidden
+      />
+    </Pressable>
+  );
+}
+
+// Disabled placeholder shown while photos are loading or unavailable so the
+// header keeps its layout. Becomes active once a photo is in view. Same
+// label as the active button so screen readers don't re-announce on
+// state transition; disabled-ness is communicated via accessibilityState.
 function ReportButtonDisabled() {
   return (
     <View
       accessible
       accessibilityRole="button"
-      accessibilityLabel="신고"
+      accessibilityLabel="신고하기"
       accessibilityState={{ disabled: true }}
       style={{ opacity: DISABLED_OPACITY }}
       className="h-10 w-10 items-center justify-center rounded-full bg-black/50"

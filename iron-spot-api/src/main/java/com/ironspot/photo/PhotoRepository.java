@@ -59,12 +59,13 @@ public class PhotoRepository {
             .collect(Collectors.groupingBy(PhotoResponse::gymMachineId));
     }
 
-    public void insert(UUID photoId, UUID gymMachineId, String userId, String photoUrl) {
+    public void insert(UUID photoId, UUID gymMachineId, String userId, String photoUrl, boolean isBlinded) {
         dsl.insertInto(MACHINE_PHOTOS)
             .set(MACHINE_PHOTOS.ID, photoId)
             .set(MACHINE_PHOTOS.GYM_MACHINE_ID, gymMachineId)
             .set(MACHINE_PHOTOS.USER_ID, UUID.fromString(userId))
             .set(MACHINE_PHOTOS.PHOTO_URL, photoUrl)
+            .set(MACHINE_PHOTOS.IS_BLINDED, isBlinded)
             .execute();
     }
 
@@ -81,5 +82,36 @@ public class PhotoRepository {
         dsl.deleteFrom(MACHINE_PHOTOS)
             .where(MACHINE_PHOTOS.ID.eq(photoId))
             .execute();
+    }
+
+    public boolean isOwner(UUID photoId, UUID userId) {
+        return dsl.fetchExists(
+            dsl.selectOne()
+                .from(MACHINE_PHOTOS)
+                .where(MACHINE_PHOTOS.ID.eq(photoId))
+                .and(MACHINE_PHOTOS.USER_ID.eq(userId))
+        );
+    }
+
+    public void setBlinded(UUID photoId, boolean blinded) {
+        dsl.update(MACHINE_PHOTOS)
+            .set(MACHINE_PHOTOS.IS_BLINDED, blinded)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .execute();
+    }
+
+    /**
+     * Conditional blind: only flips FALSE → TRUE. Returns true if this call
+     * actually changed the row, false if the photo was already blinded.
+     * Used to prevent duplicate Slack alerts when concurrent reports cross
+     * the auto-blind threshold simultaneously.
+     */
+    public boolean blindIfNotAlreadyBlinded(UUID photoId) {
+        int rows = dsl.update(MACHINE_PHOTOS)
+            .set(MACHINE_PHOTOS.IS_BLINDED, true)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .and(MACHINE_PHOTOS.IS_BLINDED.eq(false))
+            .execute();
+        return rows > 0;
     }
 }
