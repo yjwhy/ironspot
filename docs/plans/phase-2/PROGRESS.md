@@ -28,7 +28,7 @@ Phase 2 in progress. Task 28 next.
 - [ ] Task 28: New Gym Registration (Naver Places API)
 - [ ] Task 29: My Page
 - [ ] Task 30: Account Settings
-- [ ] Task 31: Monitoring + Sentry
+- [ ] Task 31: Monitoring + Sentry + Admin Alerts (incl. Slack webhook from Task 27)
 - [ ] Task 32: Phase 2 Final Verification
 
 ## Completed Tasks Log

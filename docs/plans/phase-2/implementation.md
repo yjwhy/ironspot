@@ -213,9 +213,9 @@ google:
     api-key: ${GOOGLE_VISION_API_KEY:}
 
 naver:
-  maps:
-    client-id: ${NAVER_MAPS_CLIENT_ID}
-    client-secret: ${NAVER_MAPS_CLIENT_SECRET}
+  search:
+    client-id: ${NAVER_SEARCH_CLIENT_ID}
+    client-secret: ${NAVER_SEARCH_CLIENT_SECRET}
 
 server:
   port: 8080
@@ -252,8 +252,8 @@ SUPABASE_JWT_SECRET=your-supabase-jwt-secret
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 GOOGLE_VISION_API_KEY=
-NAVER_MAPS_CLIENT_ID=
-NAVER_MAPS_CLIENT_SECRET=
+NAVER_SEARCH_CLIENT_ID=
+NAVER_SEARCH_CLIENT_SECRET=
 ```
 
 ### Step 5: Common DTOs + Exception handling
@@ -2760,7 +2760,7 @@ git commit -m "feat(report): defense-in-depth content moderation (Vision + 3-cou
 - Duplicate prevention: if `naverPlaceId` already exists in DB, returns the existing gym
 - "헬스장이 없어요?" section in UploadGymSelectScreen is functional
 
-**Note:** Requires Naver Places API credentials (separate from Maps SDK). Gate: `NAVER_MAPS_CLIENT_ID`, `NAVER_MAPS_CLIENT_SECRET`.
+**Note:** Requires Naver 지역검색 API credentials from developers.naver.com (separate from Maps SDK on NCloud). Gate: `NAVER_SEARCH_CLIENT_ID`, `NAVER_SEARCH_CLIENT_SECRET`. Naver auth uses `X-Naver-Client-Id` / `X-Naver-Client-Secret` headers (not Bearer).
 
 ### Backend
 
@@ -3140,9 +3140,9 @@ git commit -m "feat(account): nickname edit + account deletion (app store requir
 
 ---
 
-## Task 31: Monitoring + Sentry
+## Task 31: Monitoring + Sentry + Admin Alerts
 
-**Goal:** Error tracking in app and API. Actuator health endpoint. Structured logging for Railway log drain.
+**Goal:** Error tracking in app and API. Actuator health endpoint. Structured logging for Railway log drain. Wire admin Slack webhook (Task 27 deferred operational setup).
 
 **What must be complete before calling this task done:**
 
@@ -3150,6 +3150,17 @@ git commit -m "feat(account): nickname edit + account deletion (app store requir
 - Sentry captures unhandled exceptions in Spring Boot
 - `GET /actuator/health` returns `{"status":"UP"}` in production
 - Spring Boot logs in JSON format in prod profile
+- Slack admin webhook delivers a test message from each of `notifyUrgentReport` / `notifyAutoBlind` / `notifySafeSearchQueue` paths
+
+### Admin Slack webhook (Task 27 carry-over)
+
+Code is shipped (`AdminNotificationService` no-ops on empty URL); only operational wiring remains.
+
+1. Create or reuse a Slack workspace.
+2. Add **Incoming Webhooks** integration → choose channel (e.g. `#ironspot-moderation`) → copy webhook URL.
+3. Set `SLACK_ADMIN_WEBHOOK_URL` env var on the Spring Boot deployment (Railway / equivalent).
+4. Smoke test: POST a fake report through `POST /api/photos/{id}/reports` 3 times from 3 distinct users → verify Slack receives the auto-blind alert. Repeat with `LEGAL_PERSONAL` to test the urgent path.
+5. Document the channel + webhook owner in `docs/harness/operations.md` (create if missing) for rotation later.
 
 ### Frontend: Sentry
 
