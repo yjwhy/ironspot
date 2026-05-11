@@ -2983,69 +2983,127 @@ git commit -m "feat(profile): my page with photos, votes, logout, login prompt"
 
 ## Task 30: Account Settings
 
-**Goal:** Nickname edit (inline) + account deletion (App Store requirement). Deletion soft-deletes the account and schedules permanent removal after 32 days.
+**Goal:** 닉네임 편집 + 계정 삭제 (App Store 요구사항). 백엔드의 `DELETE /api/users/me`는 익명화 + tombstone (`anonymizePhotos` + `deleteVotes` + `markDeleted(deleted_at)`) 만 수행한다. 사진 파일과 row는 그대로 유지되며 `user_id`만 NULL이 된다. 복구 경로/스케줄 hard-delete 없음.
 
-**What must be complete before calling this task done:**
+### Decisions (entry grilling, 2026-05-11)
 
-- Nickname edit: validates 2–20 chars, saves via `PUT /api/users/me`, shows success toast
-- Account deletion: confirmation dialog → `DELETE /api/users/me` → sign out → navigate to login
-- Connected account displays correctly (email from `useCurrentUser`)
+Task 30 시작 전 spec과 실제 코드 사이 8건 mismatch + 사진 정책 1건을 정리한 결과:
 
-**Files to create:**
+| #   | 항목             | 결정                                                                                                                                   | Why                                                                                                            |
+| --- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 1   | 다이얼로그 카피  | 백엔드 동작에 정합. "30일 복구" 문구 제거. 사진 익명화 명시                                                                            | spec의 "30/32일 후 영구 삭제"는 백엔드에 미구현 → 거짓 약속 회피                                               |
+| 2   | Mutation 패턴    | Orval `useUpdateMe` / `useDeleteMe` raw inline. wrapper hook 없음                                                                      | nickname/delete 모두 단일 화면 사용 + 비자명 로직 없음. CLAUDE.md "no abstractions for single-use code"        |
+| 3   | 헤더             | `ScreenHeader` 공용 컴포넌트 만들지 않음. `AccountSettingsScreen` 안 internal `Header` function                                        | 즉시 재사용처 1곳뿐. 3번째 사용처 생기면 그때 추출 (참고: `MyPhotoListView.Header` 와 유사 형태)               |
+| 4   | 진입 동선        | `AuthenticatedProfile`에 `ProfileMenuRow icon="settings" label="계정 설정"` 추가 (로그아웃 위). `PROFILE_ROUTES.accountSettings` 추가  | Task 29에서 deferred로 명시된 항목. 메뉴 행 없이는 화면 접근 불가                                              |
+| 5   | Delete 후 흐름   | `useDeleteMe.onSuccess`에서 inline `supabase.auth.signOut()` + `queryClient.clear()` + 삭제 토스트 + `router.replace('/(auth)/login')` | `useLogout`은 토스트 메시지가 "로그아웃했습니다"로 하드코딩 → delete 흐름에 부정확. inline 처리                |
+| 6   | Query key 무효화 | `userKeys.me(userId)` factory 사용                                                                                                     | `useCurrentUser`가 동일 키로 등록 → factory 미사용 시 key 불일치로 invalidate no-op 위험                       |
+| 7   | 닉네임 검증      | 클라(trim 후 2–20자) + 서버(`@Size(min=2, max=20)`) 이중                                                                               | 즉시 피드백 + 단일 메시지("닉네임은 2~20자여야 합니다") 양쪽 동일 → drift 위험 작음                            |
+| 8   | Confirmation     | `Alert.alert` (RN 기본). 코드베이스 최초 사용                                                                                          | destructive confirmation에 표준 UX                                                                             |
+| 9   | 사진 정책        | 익명화 유지 (현재 백엔드 동작 그대로). 백엔드 변경 0                                                                                   | IronSpot 핵심 가치 = 헬스장 기구 정보. 1명 탈퇴로 헬스장 데이터 깎이면 앱 가치 하락. Reddit/StackOverflow 패턴 |
+
+**Phase 3 백로그 추가 권장:** 머신 사진 PII 검열 (얼굴/문신 등). 현재 SafeSearch는 adult/violence만 검출 → 익명화 정책의 전제 조건 미구현. `docs/plans/phase-3/README.md` Carried-over 섹션 참조.
+
+### What must be complete before calling this task done
+
+- 닉네임 편집: 2–20자 trim 검증, `PUT /api/users/me` 호출 (Orval `useUpdateMe`), 성공 토스트, `userKeys.me(userId)` invalidate
+- 계정 삭제: `Alert.alert` 확인 → `DELETE /api/users/me` (Orval `useDeleteMe`) → `signOut` + `queryClient.clear()` + 토스트 + `router.replace('/(auth)/login')`
+- 연결된 계정 이메일 표시 (`useCurrentUser().data.email`)
+- `AuthenticatedProfile`에서 `/account-settings`로 진입 가능 (메뉴 행 추가됨)
+
+### Files to create / modify
 
 ```
-src/features/profile/components/AccountSettingsScreen.tsx
-src/features/profile/components/__tests__/AccountSettingsScreen.test.tsx
-app/account-settings.tsx
+NEW  src/features/profile/components/AccountSettingsScreen.tsx
+NEW  src/features/profile/components/__tests__/AccountSettingsScreen.test.tsx
+NEW  app/account-settings.tsx
+MOD  src/features/profile/routes.ts                                  # accountSettings 추가
+MOD  src/features/profile/components/AuthenticatedProfile.tsx        # ProfileMenuRow 추가
+MOD  src/features/profile/components/__tests__/AuthenticatedProfile.test.tsx
 ```
 
 ### `AccountSettingsScreen.tsx`
 
 ```tsx
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Alert, Pressable, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
+import * as burnt from 'burnt';
+
+import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
+import { useAuthenticatedUserId } from '@/features/auth/hooks/useAuthenticatedUserId';
+import { userKeys } from '@/features/auth/query-keys';
+import { AppText } from '@/shared/components/AppText';
+import { Button } from '@/shared/components/Button';
+import { useDeleteMe, useUpdateMe } from '@/shared/generated/users/users';
+import { pressedOpacity } from '@/shared/lib/pressable';
+import { supabase } from '@/shared/lib/supabase';
+import { colors } from '@/shared/theme/tokens';
+
+const NICKNAME_MIN = 2;
+const NICKNAME_MAX = 20;
+const HEADER_ICON_SIZE = 24;
+
 export function AccountSettingsScreen() {
-  const { data: user } = useCurrentUser();
-  const [isEditingNickname, setIsEditingNickname] = useState(false);
-  const [nickname, setNickname] = useState(user?.nickname ?? '');
+  const userId = useAuthenticatedUserId();
+  const userQuery = useCurrentUser();
+  const queryClient = useQueryClient();
+  const user = userQuery.data;
 
-  const updateMutation = useMutation({
-    mutationFn: (newNickname: string) => putApiUsersMe({ nickname: newNickname }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
-      setIsEditingNickname(false);
-      burnt.toast({ title: '닉네임이 변경되었습니다', preset: 'done' });
-    },
-    onError: () => burnt.toast({ title: '변경에 실패했습니다', preset: 'error' }),
-  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState('');
 
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteApiUsersMe(),
-    onSuccess: async () => {
-      await supabase.auth.signOut();
-      queryClient.clear();
-      router.replace('/(auth)/login');
-      burnt.toast({ title: '계정이 삭제되었습니다', preset: 'done' });
+  const updateMutation = useUpdateMe({
+    mutation: {
+      onSuccess: () => {
+        if (userId !== null) {
+          void queryClient.invalidateQueries({ queryKey: userKeys.me(userId) });
+        }
+        setIsEditing(false);
+        burnt.toast({ title: '닉네임이 변경되었습니다', preset: 'done' });
+      },
+      onError: () => burnt.toast({ title: '변경에 실패했습니다', preset: 'error' }),
     },
   });
+
+  const deleteMutation = useDeleteMe({
+    mutation: {
+      onSuccess: async () => {
+        await supabase.auth.signOut();
+        queryClient.clear();
+        burnt.toast({ title: '계정이 삭제되었습니다', preset: 'done' });
+        router.replace('/(auth)/login');
+      },
+      onError: () => burnt.toast({ title: '삭제에 실패했습니다', preset: 'error' }),
+    },
+  });
+
+  function handleStartEdit() {
+    setDraft(user?.nickname ?? '');
+    setIsEditing(true);
+  }
 
   function handleSaveNickname() {
-    const trimmed = nickname.trim();
-    if (trimmed.length < 2 || trimmed.length > 20) {
+    const trimmed = draft.trim();
+    if (trimmed.length < NICKNAME_MIN || trimmed.length > NICKNAME_MAX) {
       burnt.toast({ title: '닉네임은 2~20자여야 합니다', preset: 'error' });
       return;
     }
-    updateMutation.mutate(trimmed);
+    updateMutation.mutate({ data: { nickname: trimmed } });
   }
 
   function handleDeleteAccount() {
     Alert.alert(
       '계정을 삭제하시겠어요?',
-      '30일 이내 재가입 시 복구 가능합니다. 이후 영구 삭제됩니다.',
+      '계정과 추천 기록이 영구 삭제됩니다.\n업로드한 사진은 익명으로 헬스장 데이터에 남습니다.\n되돌릴 수 없습니다.',
       [
         { text: '취소', style: 'cancel' },
         {
           text: '삭제',
           style: 'destructive',
-          onPress: () => deleteMutation.mutate(),
+          onPress: () => deleteMutation.mutate(undefined),
         },
       ],
     );
@@ -3053,19 +3111,20 @@ export function AccountSettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg-base">
-      <ScreenHeader title="계정 설정" />
+      <Header title="계정 설정" onBack={router.back} />
 
-      {/* Nickname */}
+      {/* Nickname row */}
       <View className="px-4 py-4 border-b border-border-DEFAULT">
         <AppText className="text-body-sm text-text-secondary mb-2">닉네임</AppText>
-        {isEditingNickname ? (
+        {isEditing ? (
           <View className="flex-row items-center gap-2">
             <TextInput
-              value={nickname}
-              onChangeText={setNickname}
+              value={draft}
+              onChangeText={setDraft}
               className="flex-1 border border-border-focus rounded-md px-3 py-2 text-body"
-              maxLength={20}
+              maxLength={NICKNAME_MAX}
               autoFocus
+              accessibilityLabel="닉네임 입력"
             />
             <Button
               label="저장"
@@ -3073,18 +3132,13 @@ export function AccountSettingsScreen() {
               onPress={handleSaveNickname}
               loading={updateMutation.isPending}
             />
-            <Button
-              label="취소"
-              size="sm"
-              variant="ghost"
-              onPress={() => setIsEditingNickname(false)}
-            />
+            <Button label="취소" size="sm" variant="ghost" onPress={() => setIsEditing(false)} />
           </View>
         ) : (
           <View className="flex-row items-center justify-between">
-            <AppText className="text-body">{user?.nickname}</AppText>
+            <AppText className="text-body">{user?.nickname ?? ''}</AppText>
             <Pressable
-              onPress={() => setIsEditingNickname(true)}
+              onPress={handleStartEdit}
               accessibilityRole="button"
               accessibilityLabel="닉네임 수정"
               style={pressedOpacity}
@@ -3095,13 +3149,13 @@ export function AccountSettingsScreen() {
         )}
       </View>
 
-      {/* Connected account */}
+      {/* Connected account row */}
       <View className="px-4 py-4 border-b border-border-DEFAULT">
         <AppText className="text-body-sm text-text-secondary mb-2">연결된 계정</AppText>
-        <AppText className="text-body">{user?.email}</AppText>
+        <AppText className="text-body">{user?.email ?? ''}</AppText>
       </View>
 
-      {/* Delete account — pushed to bottom */}
+      {/* Delete account, pushed to bottom */}
       <View className="flex-1 justify-end px-4 pb-8">
         <Pressable
           onPress={handleDeleteAccount}
@@ -3109,6 +3163,7 @@ export function AccountSettingsScreen() {
           accessibilityLabel="계정 삭제"
           style={pressedOpacity}
           className="items-center py-3"
+          disabled={deleteMutation.isPending}
         >
           <AppText className="text-body text-error">계정 삭제</AppText>
         </Pressable>
@@ -3116,21 +3171,95 @@ export function AccountSettingsScreen() {
     </SafeAreaView>
   );
 }
+
+function Header({ title, onBack }: { title: string; onBack: () => void }) {
+  return (
+    <View className="flex-row items-center px-4 py-3 border-b border-border-DEFAULT">
+      <Pressable
+        onPress={onBack}
+        accessibilityRole="button"
+        accessibilityLabel="뒤로 가기"
+        style={pressedOpacity}
+        className="pr-3"
+      >
+        <MaterialIcons
+          name="arrow-back"
+          size={HEADER_ICON_SIZE}
+          color={colors.text.primary}
+          importantForAccessibility="no"
+          accessibilityElementsHidden={true}
+        />
+      </Pressable>
+      <AppText accessibilityRole="header" className="text-heading-sm text-text-primary">
+        {title}
+      </AppText>
+    </View>
+  );
+}
 ```
 
-### Tests
+### `AuthenticatedProfile.tsx` 수정
+
+`PROFILE_ROUTES`에 `accountSettings` 추가 후 로그아웃 메뉴 행 **위**에 새 행을 끼워 넣는다.
 
 ```tsx
-describe('AccountSettingsScreen', () => {
-  it('renders nickname with edit button', () => { ... });
-  it('shows nickname input when edit pressed', () => { ... });
-  it('shows error toast when nickname is too short', () => { ... });
-  it('renders account deletion button', () => {
-    const { getByRole } = render(<AccountSettingsScreen />);
-    expect(getByRole('button', { name: '계정 삭제' })).toBeTruthy();
-  });
-});
+// src/features/profile/routes.ts
+export const PROFILE_ROUTES = {
+  myPhotos: '/my-photos',
+  myVotes: '/my-votes',
+  accountSettings: '/account-settings', // NEW
+} as const;
+
+// AuthenticatedProfile.tsx — 로그아웃 위에 한 행 추가
+function navigateToAccountSettings() {
+  router.push(PROFILE_ROUTES.accountSettings);
+}
+
+// JSX 안 (border-t mt-4 다음, 로그아웃 위)
+<ProfileMenuRow
+  testID="profile-menu-account-settings"
+  icon="settings"
+  label="계정 설정"
+  onPress={navigateToAccountSettings}
+/>;
 ```
+
+### `app/account-settings.tsx`
+
+```tsx
+import { AccountSettingsScreen } from '@/features/profile/components/AccountSettingsScreen';
+
+export default function AccountSettingsRoute() {
+  return <AccountSettingsScreen />;
+}
+```
+
+### Tests (RED 단계)
+
+`AccountSettingsScreen.test.tsx` 최소 케이스:
+
+- 닉네임을 `user?.nickname`으로 표시 + "수정" 버튼 렌더
+- "수정" 누르면 `TextInput`이 현재 닉네임으로 채워져 노출
+- 저장 시 trim 후 1자 / 21자면 에러 토스트 + mutation 미호출
+- 정상 길이 저장 시 `useUpdateMe`의 mutationFn 호출됨 (Orval 모킹) + 성공 시 invalidate
+- 연결된 이메일 (`user?.email`) 표시
+- "계정 삭제" 버튼 렌더 + 누르면 `Alert.alert` 호출됨 (Alert을 spy)
+- 확인 → `useDeleteMe` 호출 → signOut + queryClient.clear + router.replace
+
+`AuthenticatedProfile.test.tsx` 보강:
+
+- "계정 설정" 메뉴 행 렌더 + 클릭 시 `router.push('/account-settings')` 호출
+
+### Workflow
+
+1. RED: 위 테스트 작성, 실패 확인
+2. GREEN: AccountSettingsScreen + 라우트 + AuthenticatedProfile 메뉴 행
+3. REFACTOR: 매직 넘버 분리(`NICKNAME_MIN/MAX`), pressable handler named function
+4. `code-reviewer` 디스패치 → `ff-review:review`
+5. 피드백 반영
+6. Quick verify (`pnpm lint && pnpm exec tsc --noEmit && pnpm test`)
+7. Task 경계: `/verify` (FE 변경 → FF review 필수) → `/commit-task 30`
+8. PROGRESS.md 업데이트
 
 ### Commit
 
