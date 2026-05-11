@@ -1,7 +1,10 @@
 import * as Sentry from '@sentry/react-native';
 
 // Empty / undefined DSN → init skipped entirely so dev environments emit zero Sentry traffic
-// without manual setup. Mirrors the server-side SentryConfig contract.
+// without manual setup. Mirrors the server-side SentryConfig contract. Kept out of env.ts's
+// Zod schema because that schema throws at module load for missing required vars — DSN is
+// optional by design (fail-open) and must not gate app boot. The cast is required because
+// the gitignored expo-env.d.ts is absent in CI lint runs, so process.env.X resolves to `any`.
 const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
 
 let initialised = false;
