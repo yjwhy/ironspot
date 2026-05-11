@@ -2,6 +2,9 @@ package com.ironspot.auth;
 
 import com.ironspot.auth.dto.UpdateUserRequest;
 import com.ironspot.auth.dto.UserResponse;
+import com.ironspot.photo.PhotoService;
+import com.ironspot.photo.VoteService;
+import com.ironspot.photo.dto.PhotoResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Tag(name = "users")
 @SecurityRequirement(name = "Bearer")
 @RestController
@@ -20,6 +25,8 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final PhotoService photoService;
+    private final VoteService voteService;
 
     @Operation(summary = "Get current user profile")
     @GetMapping(value = "/me", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -41,5 +48,17 @@ public class UserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMe(@AuthenticationPrincipal UserPrincipal principal) {
         userService.deleteAccount(principal.getUserId());
+    }
+
+    @Operation(summary = "List photos uploaded by the current user (newest first, excludes blinded)")
+    @GetMapping(value = "/me/photos", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<PhotoResponse> getMyPhotos(@AuthenticationPrincipal UserPrincipal principal) {
+        return photoService.findByUserId(principal.getUserId());
+    }
+
+    @Operation(summary = "List photos the current user has upvoted (most recently voted first)")
+    @GetMapping(value = "/me/votes", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<PhotoResponse> getMyVotes(@AuthenticationPrincipal UserPrincipal principal) {
+        return voteService.findUpvotedByUser(principal.getUserId());
     }
 }

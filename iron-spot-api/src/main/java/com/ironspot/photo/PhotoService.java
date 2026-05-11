@@ -32,6 +32,10 @@ public class PhotoService {
         return photoRepository.findByGymMachineId(gymMachineId);
     }
 
+    public List<PhotoResponse> findByUserId(String userId) {
+        return photoRepository.findByUserId(UUID.fromString(userId));
+    }
+
     // Storage upload is intentionally not wrapped in @Transactional:
     // a DB rollback cannot undo a file already uploaded to Supabase Storage.
     // Orphaned files are removed by a periodic cleanup job (Phase 2 tradeoff).

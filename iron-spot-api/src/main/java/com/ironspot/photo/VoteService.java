@@ -1,6 +1,7 @@
 package com.ironspot.photo;
 
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.photo.dto.PhotoResponse;
 import com.ironspot.photo.dto.UpvoteResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -16,6 +18,10 @@ import java.util.UUID;
 public class VoteService {
 
     private final VoteRepository voteRepository;
+
+    public List<PhotoResponse> findUpvotedByUser(String userId) {
+        return voteRepository.findUpvotedByUser(parseUserId(userId));
+    }
 
     @Transactional
     public UpvoteResponse upvote(String userId, UUID photoId) {
