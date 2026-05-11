@@ -29,6 +29,10 @@ function navigateToMyVotes() {
   router.push(PROFILE_ROUTES.myVotes);
 }
 
+function navigateToAccountSettings() {
+  router.push(PROFILE_ROUTES.accountSettings);
+}
+
 export function AuthenticatedProfile() {
   const userQuery = useCurrentUser();
   const myPhotos = useMyPhotos();
@@ -85,6 +89,13 @@ export function AuthenticatedProfile() {
       />
 
       <View className="border-t border-border-DEFAULT mt-4" />
+
+      <ProfileMenuRow
+        testID="profile-menu-account-settings"
+        icon="settings"
+        label="계정 설정"
+        onPress={navigateToAccountSettings}
+      />
 
       <ProfileMenuRow
         testID="profile-menu-logout"
