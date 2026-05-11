@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  PhotoResponse,
   UpdateUserRequest,
   UserResponse
 } from '../model';
@@ -311,3 +312,227 @@ export const useDeleteMe = <TError = unknown,
       > => {
       return useMutation(getDeleteMeMutationOptions(options), queryClient);
     }
+    export type getMyVotesResponse200 = {
+  data: PhotoResponse[]
+  status: 200
+}
+
+export type getMyVotesResponseSuccess = (getMyVotesResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getMyVotesResponse = (getMyVotesResponseSuccess)
+
+export const getGetMyVotesUrl = () => {
+
+
+
+
+  return `/api/users/me/votes`
+}
+
+/**
+ * @summary List photos the current user has upvoted (most recently voted first)
+ */
+export const getMyVotes = async ( options?: RequestInit): Promise<getMyVotesResponse> => {
+
+  return apiClient<getMyVotesResponse>(getGetMyVotesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyVotesQueryKey = () => {
+    return [
+    `/api/users/me/votes`
+    ] as const;
+    }
+
+
+export const getGetMyVotesQueryOptions = <TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyVotesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyVotes>>> = ({ signal }) => getMyVotes({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMyVotesQueryResult = NonNullable<Awaited<ReturnType<typeof getMyVotes>>>
+export type GetMyVotesQueryError = unknown
+
+
+export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyVotes>>,
+          TError,
+          Awaited<ReturnType<typeof getMyVotes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyVotes>>,
+          TError,
+          Awaited<ReturnType<typeof getMyVotes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List photos the current user has upvoted (most recently voted first)
+ */
+
+export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMyVotesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export type getMyPhotosResponse200 = {
+  data: PhotoResponse[]
+  status: 200
+}
+
+export type getMyPhotosResponseSuccess = (getMyPhotosResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getMyPhotosResponse = (getMyPhotosResponseSuccess)
+
+export const getGetMyPhotosUrl = () => {
+
+
+
+
+  return `/api/users/me/photos`
+}
+
+/**
+ * @summary List photos uploaded by the current user (newest first, excludes blinded)
+ */
+export const getMyPhotos = async ( options?: RequestInit): Promise<getMyPhotosResponse> => {
+
+  return apiClient<getMyPhotosResponse>(getGetMyPhotosUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyPhotosQueryKey = () => {
+    return [
+    `/api/users/me/photos`
+    ] as const;
+    }
+
+
+export const getGetMyPhotosQueryOptions = <TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyPhotosQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPhotos>>> = ({ signal }) => getMyPhotos({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMyPhotosQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPhotos>>>
+export type GetMyPhotosQueryError = unknown
+
+
+export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyPhotos>>,
+          TError,
+          Awaited<ReturnType<typeof getMyPhotos>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyPhotos>>,
+          TError,
+          Awaited<ReturnType<typeof getMyPhotos>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List photos uploaded by the current user (newest first, excludes blinded)
+ */
+
+export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMyPhotosQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
