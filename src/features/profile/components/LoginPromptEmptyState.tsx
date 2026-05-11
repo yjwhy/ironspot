@@ -1,4 +1,6 @@
 import { router } from 'expo-router';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -13,11 +15,15 @@ function handleNavigateToLogin() {
 
 export function LoginPromptEmptyState() {
   return (
-    <EmptyState
-      icon="person-outline"
-      title={LOGIN_PROMPT_TITLE}
-      description={LOGIN_PROMPT_DESCRIPTION}
-      action={<Button label={LOGIN_PROMPT_CTA} onPress={handleNavigateToLogin} />}
-    />
+    <SafeAreaView className="flex-1 bg-bg-base">
+      <View className="flex-1 items-center justify-center">
+        <EmptyState
+          icon="person-outline"
+          title={LOGIN_PROMPT_TITLE}
+          description={LOGIN_PROMPT_DESCRIPTION}
+          action={<Button label={LOGIN_PROMPT_CTA} onPress={handleNavigateToLogin} />}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
