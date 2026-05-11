@@ -3446,6 +3446,36 @@ git commit -m "feat: complete phase 2 spring boot + auth + upload + ocr"
 
 ---
 
+## Pre-Launch Backlog (post-Task 30, before App Store submission)
+
+Items that are not in the Task 16~32 numbered flow but **must land before iOS App Store submission**. Tracked separately because they don't fit the per-feature task model: they are App Store / store-policy gates rather than product features.
+
+### Apple Sign In
+
+**Trigger:** required by App Store Review Guideline 4.8 because the app already offers third-party social login (Google + Kakao via Task 20). Without it iOS submission will be rejected.
+
+**Why deferred from Task 20:** Task 20 focused on Google + Kakao OAuth to unblock Phase 2 photo upload + voting flows; Apple Sign In is iOS-store-only and doesn't unblock product work. The gap was identified post-Task 30 when reviewing the auth surface end-to-end.
+
+**Scope:**
+
+1. Supabase Auth dashboard — enable Apple provider, register Apple Service ID + return URL.
+2. Apple Developer Console — create Service ID + Sign in with Apple capability + return URL pointing to Supabase callback.
+3. Frontend `LoginScreen` — add Apple button (iOS only; hide on Android via `Platform.OS === 'ios'`). Reuse the existing `signInWithOAuth({ provider: 'apple' })` pattern.
+4. iOS native config — `app.config.ts` `ios.usesAppleSignIn: true`; entitlements via Expo's `expo-apple-authentication` plugin (or Supabase Web OAuth fallback if native plugin friction is high — decide at implementation time).
+5. UserService — confirm new Apple-issued JWTs carry email claim (Apple's "Hide my email" relay address is acceptable; `getOrCreate` already tolerates any unique email).
+6. E2E — Maestro flow on iOS: tap Apple button → system sheet → return to app authenticated. Android: Apple button hidden.
+
+**Out of scope:**
+
+- Migrating existing Google/Kakao users to Apple
+- Apple Sign In on web (we have no web target)
+
+**Acceptance:** iOS device renders Apple button; tapping it produces a successful Supabase session; backend `getOrCreate` creates a user row on first Apple sign-in; logout works.
+
+**Effort estimate:** S~M (mostly config + UI plumbing; the Supabase Auth abstraction does the heavy OAuth work as it does for Google/Kakao).
+
+---
+
 ## Out of Phase 2 Scope (Reference)
 
 - Natural Language Search (Phase 3)
