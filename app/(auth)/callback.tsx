@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { AUTH_CALLBACK_TIMEOUT_MS } from '@/features/auth/constants';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { AUTH_ROUTES } from '@/features/auth/routes';
 import { colors } from '@/shared/theme/tokens';
 
 export default function AuthCallbackScreen() {
@@ -24,7 +25,7 @@ export default function AuthCallbackScreen() {
     function timeoutGuard() {
       const id = setTimeout(() => {
         burnt.toast({ title: '로그인에 실패했습니다', preset: 'error' });
-        router.replace('/(auth)/login');
+        router.replace(AUTH_ROUTES.login);
       }, AUTH_CALLBACK_TIMEOUT_MS);
       return function cleanup() {
         clearTimeout(id);

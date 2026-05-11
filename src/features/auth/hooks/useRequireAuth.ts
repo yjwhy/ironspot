@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 
+import { AUTH_ROUTES } from '../routes';
 import { useAuth } from './useAuth';
 
 export function useRequireAuth() {
@@ -11,7 +12,7 @@ export function useRequireAuth() {
     if (auth.status === 'authenticated') {
       action();
     } else {
-      router.push('/(auth)/login');
+      router.push(AUTH_ROUTES.login);
     }
   };
 }

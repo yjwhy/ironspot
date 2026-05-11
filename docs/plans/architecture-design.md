@@ -405,7 +405,7 @@ Spring Boot Layer Structure:
 ### Auth Flow (Supabase Auth + Spring Security)
 
 ```
-User -> Social login (Google/Kakao) in app -> Supabase Auth issues JWT
+User -> Social login (Google/Kakao/Apple) in app -> Supabase Auth issues JWT
     -> App sends JWT in Authorization header
     -> Spring Security JwtAuthenticationFilter validates token
     -> SecurityContext populated with user info
@@ -415,6 +415,7 @@ User -> Social login (Google/Kakao) in app -> Supabase Auth issues JWT
 - Supabase handles OAuth flow entirely (login, token refresh)
 - Spring Boot only validates the JWT signature + extracts user claims
 - No OAuth implementation in Spring Boot
+- **Apple Sign In is required for iOS App Store submission** (App Store Review Guideline 4.8): if the app offers any third-party social login (Google, Kakao, Facebook, etc.), Apple Sign In must be offered with equivalent prominence. Currently unimplemented — see Phase 2 Pre-Launch Backlog.
 
 ### Photo Upload Pipeline (Spring Boot)
 
@@ -525,7 +526,7 @@ Return results -> Display markers on map
 
 ```
 [Auth & Authorization]
-+-- Supabase Auth (Social SSO: Google/Kakao -> JWT issued by Supabase)
++-- Supabase Auth (Social SSO: Google/Kakao/Apple -> JWT issued by Supabase)
 +-- Spring Security JwtAuthenticationFilter (validates Supabase JWT)
 +-- @PreAuthorize for role-based access control (Admin vs User)
 
@@ -697,6 +698,7 @@ Environments:
 - [ ] Location permission usage description (NSLocationWhenInUseUsageDescription)
 - [ ] Camera permission usage description
 - [ ] Photo library permission usage description
+- [ ] **Apple Sign In** — required by App Store Review Guideline 4.8 when any third-party social login is offered (Google/Kakao currently). Tracked in Phase 2 Pre-Launch Backlog.
 
 ## 19. Future Enhancements (post-Phase 3, not in current scope)
 
@@ -819,8 +821,10 @@ Profile edit:
 Account deletion:
   -> Required by Apple App Store since 2022
   -> DELETE /api/users/me
-  -> Cascade: soft-delete user, anonymize photos (keep content, remove user_id)
-  -> 30-day grace period before permanent deletion
+  -> Immediate: anonymize photos (NULL user_id, photos remain in gym data),
+     hard-delete photo_votes, set users.deleted_at (tombstone)
+  -> No recovery path, no scheduled hard-delete of the users row
+  -> Dialog copy must reflect this honestly — see Task 30 implementation.md
 ```
 
 ### Offline Support

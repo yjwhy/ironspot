@@ -84,6 +84,17 @@ describe('AuthenticatedProfile', () => {
     expect(routerPushMock).toHaveBeenCalledWith('/my-votes');
   });
 
+  it('renders an account-settings menu row', () => {
+    const { getByTestId } = render(<AuthenticatedProfile />);
+    expect(getByTestId('profile-menu-account-settings')).toBeTruthy();
+  });
+
+  it('navigates to /account-settings when the row is pressed', () => {
+    const { getByTestId } = render(<AuthenticatedProfile />);
+    fireEvent.press(getByTestId('profile-menu-account-settings'));
+    expect(routerPushMock).toHaveBeenCalledWith('/account-settings');
+  });
+
   it('calls handleLogout when logout row is pressed', () => {
     const { getByTestId } = render(<AuthenticatedProfile />);
     fireEvent.press(getByTestId('profile-menu-logout'));
