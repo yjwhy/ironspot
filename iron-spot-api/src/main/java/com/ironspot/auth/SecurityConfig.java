@@ -41,6 +41,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/machines/*/photos").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
+                // Explicit so a future permitAll for actuator-like admin tools cannot
+                // accidentally widen the surface that exposes Slack smoke.
+                .requestMatchers("/api/_admin/**").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
