@@ -25,6 +25,10 @@ function shouldReportToSentry(error: unknown): boolean {
   return false;
 }
 
+function reportErrorToSentry(error: unknown): void {
+  if (shouldReportToSentry(error)) captureError(error);
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -33,14 +37,6 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
     },
   },
-  queryCache: new QueryCache({
-    onError: function reportQueryError(error) {
-      if (shouldReportToSentry(error)) captureError(error);
-    },
-  }),
-  mutationCache: new MutationCache({
-    onError: function reportMutationError(error) {
-      if (shouldReportToSentry(error)) captureError(error);
-    },
-  }),
+  queryCache: new QueryCache({ onError: reportErrorToSentry }),
+  mutationCache: new MutationCache({ onError: reportErrorToSentry }),
 });

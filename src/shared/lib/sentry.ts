@@ -19,18 +19,21 @@ export function initSentry(): void {
   });
 }
 
-export function captureError(error: unknown, extra?: Record<string, unknown>): void {
-  Sentry.captureException(error, extra ? { extra } : undefined);
+// Single Sentry SDK call site for the app — every other helper in this file delegates here.
+type CaptureContext = Parameters<typeof Sentry.captureException>[1];
+export function captureError(error: unknown, context?: CaptureContext): void {
+  Sentry.captureException(error, context);
 }
 
 // Wired into <ErrorBoundary onError={forwardRenderErrorToSentry}> at the app root. Exported
-// as a named function so the test exercises the real callback identity and a future deletion
-// of the prop in _layout.tsx is detectable.
+// as a named function so the unit test exercises the same callback identity that _layout.tsx
+// uses (not a test-local lambda). Detecting accidental deletion of the prop in _layout.tsx
+// remains an integration-level concern, not covered here.
 export function forwardRenderErrorToSentry(
   error: Error,
   info: { componentStack?: string | null },
 ): void {
-  Sentry.captureException(error, {
+  captureError(error, {
     contexts: { react: { componentStack: info.componentStack ?? '' } },
   });
 }
