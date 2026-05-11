@@ -86,7 +86,7 @@ Phase 2:  useGymSearch hook -> gymSearchService -> ky.get('/api/gyms/search')
 
 ### 3.2 Backend
 
-- **API Server:** Spring Boot 3 + Java 25 (LTS) (Phase 2+)
+- **API Server:** Spring Boot 4 + Java 25 (LTS) (Phase 2+, pivoted from 3.5.0 in Task 31 for Sentry SDK compatibility)
   - Layered architecture: Controller / Service / Repository
   - Spring Security for JWT validation (Supabase Auth issued tokens)
   - Jakarta Validation for input validation
