@@ -9,7 +9,7 @@
 
 ## Goal
 
-Introduce Spring Boot 3 as the API layer, add social authentication (Google/Kakao via Supabase Auth), build the photo upload pipeline with Google Vision OCR, activate upvote/report, implement My Page, and migrate the frontend data source from Supabase direct → Spring Boot API.
+Introduce Spring Boot 4 as the API layer (initial setup in Task 16 used Spring Boot 3.5.0; pivoted to 4 in Task 31 due to the Sentry starter incompatibility with SB4's removed `WebClientCustomizer`). Add social authentication (Google/Kakao via Supabase Auth), build the photo upload pipeline with Google Vision OCR, activate upvote/report, implement My Page, and migrate the frontend data source from Supabase direct to Spring Boot API.
 
 ## Phase 1 → Phase 2 Transition Strategy
 
@@ -45,7 +45,7 @@ This means all existing unit tests continue to pass without modification after m
 
 | #                     | Choice                                                                 | ADR               |
 | --------------------- | ---------------------------------------------------------------------- | ----------------- |
-| API server            | Spring Boot 3 + Java 25 (LTS)                                          | 0004, 0005        |
+| API server            | Spring Boot 4 + Java 25 (LTS)                                          | 0004, 0005        |
 | API client generation | Orval                                                                  | 0012              |
 | OCR                   | Google Vision API (1,000 free/month, fallback to manual)               | 0010              |
 | Auth                  | Supabase Auth JWT — Spring Boot only validates, never issues           | 0003              |
@@ -3345,93 +3345,108 @@ git commit -m "feat(monitoring): sentry + actuator + structured JSON logging + s
 
 ## Task 32: Phase 2 Final Verification
 
-**Goal:** All E2E flows pass. Security checklist complete. Performance validated. App Store requirements met.
+**Goal:** All E2E flows pass. Security, performance, and App Store code-level checks complete. Live verification of Railway-hosted Spring Boot, Sentry (app + api), and Slack moderation alerts. Phase 2 locked and ready to hand off to Phase 3 / Pre-Launch Backlog work.
 
-**What must be complete before calling this task done:**
+### Pre-Task decisions (2026-05-12)
 
-- `pnpm jest` — all tests pass (target: 80%+ coverage)
-- `pnpm exec tsc --noEmit` — no type errors
-- `pnpm lint` — no issues
-- `./gradlew test` — all Java tests pass
-- `pnpm e2e:all` — all Maestro flows pass (5 existing + 3 new)
-- Security checklist below: all boxes checked
-- Monitoring live verification below: all boxes checked (carried over from Task 31)
-- Phase 2 PROGRESS.md updated
+Resolved via grill before implementation. Recorded here so the rationale survives the split PRs.
 
-### Monitoring live verification (carried over from Task 31)
+1. **Task 32 splits into 32a (code/docs prep) and 32b (post-Railway live verify).** Railway provisioning is a user-side external action (account, env vars, first deploy) that Claude cannot perform. Splitting avoids a long-open 32a PR blocked on external work and mirrors the Task 31 pattern of "code now, live later". 32a lands first; 32b begins after the user signals Railway is up.
+2. **Spring Boot connects to Supabase Postgres, not a separate Railway Postgres.** The ops doc's original "Railway Postgres plugin" assumption is replaced. Reason: zero data migration, single schema source of truth (Supabase migrations), Auth/Storage/DB stay in one place. Trade-off: Railway to Supabase network hop. Mitigation: conservative HikariCP `maximum-pool-size` in `application-prod.yml`. Phase 3 may revisit if Supabase pricing or latency becomes a constraint.
+3. **Sentry server-side throw verification uses a smoke endpoint, not add-then-revert.** Mirror the Task 31 Slack smoke pattern: `POST /api/_admin/sentry-smoke` is permanent code behind `@ConditionalOnProperty(ironspot.sentry.smoke.enabled=true)` plus JWT auth gate, env toggle for the 5-minute verify window, then untoggle. Avoids two extra deploys and the "forget to revert" failure mode of `/api/_admin/throw add-then-revert`. Avoids the prod-degradation risk of `unset DATABASE_URL`.
+4. **Sentry app verification uses an iOS Simulator preview build, not TestFlight or APK.** The plan's "TestFlight or APK" wording targets "non-dev build with sourcemap symbolication". `eas build --platform ios --profile preview --simulator` produces a `.app` that runs on the already-working iOS Simulator (`pnpm snap` workflow evidence) without code signing, no Apple Developer enrolment fee required at this stage. Trade-off: native-side crash reproducibility requires a physical device, deferred to pre-App-Store-submission verification. Android route declined because user has no Android device and emulator setup adds Android Studio installation time.
+5. **`login-flow.yaml` covers entry path only, not authenticated state.** Supabase OAuth uses the system browser so Maestro cannot drive it. The plan's `(manual: authenticate)` step is removed; the flow asserts "My Page entry, unauthenticated empty state, CTA tap, /(auth)/login renders Google + Kakao buttons". Authenticated-state regression is covered by the existing `AuthenticatedProfile` unit tests from Task 29. A test-only dev-login endpoint was rejected per `testing-anti-patterns` (production pollution).
+6. **Apple Sign In stays in the Pre-Launch Backlog, not Task 32.** Task 32 is Phase 2 feature verification. Apple Sign In is new feature work with external dependencies (Apple Developer enrolment, Service ID, Supabase Apple provider config). Folding it in would expand scope, force premature $99 spend, and gate the PR on multi-day Apple review. PROGRESS.md notes "Phase 2 complete is not App Store submittable" explicitly.
 
-Task 31 shipped the code + local verification only. These items require the Railway deployment that prereqs Task 32.
+### Task 32a — code/docs prep (this session, no Railway dependency)
 
-- [ ] Railway prod URL: `GET /actuator/health` returns `{"status":"UP"}` (curl from outside Railway network)
-- [ ] Railway prod logs: one `INFO` line during request handling parses as valid JSON (visual check in Railway log viewer)
-- [ ] Sentry app project: trigger a JS throw in a prod build (TestFlight or APK) → event arrives in dashboard with readable, symbolicated stack
-- [ ] Sentry server project: trigger a deliberate `RuntimeException` via a temporary endpoint or by removing a required env var → event arrives in dashboard with readable stack
-- [ ] Slack 3-path smoke: set `IRONSPOT_SLACK_SMOKE_ENABLED=true` on Railway, run `curl -H "Authorization: Bearer $JWT" -X POST $URL/api/_admin/slack-smoke/{urgent,autoblind,safesearch}` (3 calls), confirm 3 messages in the Slack channel, then unset the env var
-- [ ] `docs/harness/operations.md` env var checklist matches what is actually set in Railway (rotation owner column filled in)
+**Code**
 
-### New Maestro flows
+- [ ] `.maestro/flows/login-flow.yaml` entry-path-only flow (decision #5).
+- [ ] `.maestro/flows/upvote-flow.yaml` photo detail to upvote toggle.
+- [ ] `.maestro/config.yaml` lists both new flows.
+- [ ] `SentrySmokeController` (Spring Boot) permanent gated endpoint per decision #3. `application.yml` adds `ironspot.sentry.smoke.enabled: ${IRONSPOT_SENTRY_SMOKE_ENABLED:false}`. `SentrySmokeControllerIT` + `SentrySmokeControllerDisabledIT` mirror the Slack-smoke IT pair.
+- [ ] FilterPanel empty + error states (UX polish backlog item).
+- [ ] GymBottomSheet cross-tab leak fix (UX polish backlog item).
+- [ ] UX polish audit with a 30-minute cap. Grep `useQuery` / `useInfiniteQuery` consumers for empty/error branch gaps beyond the two known items. Findings appended to the backlog or deferred to Phase 3.
+- [ ] App Store code items: `app.json` `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` verified or added.
+- [ ] HikariCP pool config in `application-prod.yml` per decision #2.
 
-```yaml
-# .maestro/flows/login-flow.yaml
-# Flow: Launch → My Page → See login prompt → (manual: authenticate) → See profile
+**Local verification (32a)**
 
-# .maestro/flows/upvote-flow.yaml
-# Flow: Navigate to photo detail → Tap upvote → Count increments → Tap again → Count decrements
+- [ ] `pnpm jest` all tests pass.
+- [ ] `pnpm exec tsc --noEmit` no type errors.
+- [ ] `pnpm lint` no issues.
+- [ ] `./gradlew test` all Java tests pass.
+- [ ] `pnpm e2e:all` all Maestro flows pass (6 existing + login + upvote = 8).
+- [ ] FF review applied.
 
-# Update .maestro/config.yaml to include new flows
-```
+**Code audits (32a, report findings in PR description)**
+
+- [ ] Performance: `staleTime` per-endpoint actual values match plan (brands/categories Infinity, gym search 5min, photos 1min). Report and correct any drift.
+- [ ] Performance: photo upload compression. Sample dev log confirms compressed file < 500KB.
+- [ ] Performance: `getGymMachines` N+1. JOIN structure inspection (live EXPLAIN deferred to 32b).
+- [ ] Security: Spring Boot CORS. Confirm prod config allows only `ironspot://` scheme.
+- [ ] Security: `DELETE /api/users/me` cascade. Confirm photos anonymised + votes deleted via existing IT (Task 30 work).
+- [ ] Security: report rate limit. Bucket4j or equivalent presence check; document if gap.
+- [ ] Security: file upload server-side validation. Confirm `PhotoController.upload` enforces MIME + size.
+
+**Docs**
+
+- [ ] `docs/harness/operations.md` Railway env table: `DATABASE_URL` / `DATABASE_USERNAME` / `DATABASE_PASSWORD` source column updated to "Supabase Postgres (pooler URL)" per decision #2.
+- [ ] `docs/harness/operations.md` "Sentry server" smoke section: rewritten to `IRONSPOT_SENTRY_SMOKE_ENABLED` toggle pattern per decision #3.
+- [ ] `docs/harness/operations.md` env table: `IRONSPOT_SENTRY_SMOKE_ENABLED` row added.
+- [ ] `docs/harness/operations.md` Sentry app section: iOS Simulator preview build route per decision #4 + native-crash deferral note.
+- [ ] `grep -rni "spring boot 3" docs/` sweep. Fix all current-state references. Leave historical PROGRESS and ADR entries untouched.
+
+**32a is done when** the above lands on `task/32-final-verification` branch via PR. `PROGRESS.md` Completed Tasks Log is NOT updated yet; the entry is written once at the end of 32b.
+
+### Task 32b — post-Railway live verification (next session)
+
+**User external work (Claude guides step-by-step)**
+
+- [ ] Railway project created, GitHub repo connected, Dockerfile-based build successful.
+- [ ] `DATABASE_URL` set to the Supabase pooler URL; `DATABASE_USERNAME` and `DATABASE_PASSWORD` set from Supabase credentials.
+- [ ] Remaining env vars set per `docs/harness/operations.md` Railway table.
+- [ ] `IRONSPOT_SLACK_SMOKE_ENABLED=false` and `IRONSPOT_SENTRY_SMOKE_ENABLED=false` at deploy time.
+- [ ] First deploy green; `/actuator/health` UP.
+- [ ] EAS account ready, `pnpm dlx eas-cli login` successful.
+
+**Live verification (Claude executes once Railway is up)**
+
+- [ ] `curl https://<railway-url>/actuator/health` returns `{"status":"UP"}` from outside Railway network.
+- [ ] Railway log viewer: one INFO line during request handling parses as JSON with LogstashEncoder fields (`@timestamp`, `@version`, `thread_name`, `level_value`).
+- [ ] Sentry server: toggle `IRONSPOT_SENTRY_SMOKE_ENABLED=true` and redeploy, then `curl -X POST -H "Authorization: Bearer $JWT" $URL/api/_admin/sentry-smoke`. Event arrives in the `ironspot-api` Sentry project with `environment: production` and readable stack. Toggle false, redeploy, confirm 404.
+- [ ] Slack 3-path: toggle `IRONSPOT_SLACK_SMOKE_ENABLED=true`, run 3 curls, 3 messages arrive in `#ironspot-moderation`. Toggle false, confirm 404.
+- [ ] Sentry app: `eas.json` preview profile with `simulator: true` created. `eas build --platform ios --profile preview --simulator`. `.app` installed on iOS Simulator. Trigger an intentional `throw new Error("sentry app smoke " + Date.now())` via the env-gated button described in `operations.md`. Event arrives in the `ironspot-app` Sentry project with a symbolicated stack.
+
+**Docs (32b)**
+
+- [ ] `PROGRESS.md` Completed Tasks Log: Task 32 entry written (covers 32a + 32b commits, decisions reference).
+- [ ] PROGRESS.md status: "Phase 2 complete. Pre-Launch Backlog remains for App Store submission readiness (Apple Sign In, Privacy + ToS URLs)."
+
+### Out-of-scope reminders
+
+- **Apple Sign In** stays in the Pre-Launch Backlog per decision #6.
+- **Privacy policy + Terms of service URLs** are content/legal items, not Task 32 code work. Tracked in App Store submission checklist (Phase 3 launch prep).
+- **Native-side crash reproducibility on a physical iOS device** deferred per decision #4 to pre-App-Store-submission verification.
 
 ### UX polish backlog (carry-over from earlier tasks)
 
-Empty / loading / error states across screens that were left implicit during feature builds. Audit each consumer of a `useQuery` for the three missing branches.
+Empty, loading, and error states across screens that were left implicit during feature builds.
 
-- **FilterPanel** (`src/features/map/components/FilterPanel.tsx`) — when `brands` or `categories` returns `[]` (API down or genuinely empty), the panel renders an empty rounded card with no message. Add an empty state ("필터 항목이 없어요") and an error state for `query.isError` ("필터를 불러올 수 없어요"). Surfaced during Task 29 manual testing.
-- **GymBottomSheet cross-tab leak** — the map tab's `GymBottomSheet` remains visible on the My Page tab (and presumably other tabs). Either the sheet is mounted outside `app/(tabs)/index.tsx` or its `index={0}` snap point is not collapsed on tab blur. Investigate where the sheet provider is mounted and either move it under the Map route or collapse the sheet via `useFocusEffect`. Surfaced during Task 29 manual testing.
-- (Add further audit findings here as they are discovered before Task 32 begins.)
+- **FilterPanel** (`src/features/map/components/FilterPanel.tsx`): when `brands` or `categories` returns `[]`, the panel renders an empty rounded card with no message. Add empty + error states. Surfaced during Task 29 manual testing.
+- **GymBottomSheet cross-tab leak**: the map tab's `GymBottomSheet` remains visible on other tabs. Either move the sheet provider under the Map route or collapse via `useFocusEffect` on blur. Surfaced during Task 29 manual testing.
+- (32a audit appends further findings here.)
 
-### Security checklist
-
-- [ ] No private keys or secrets in app bundle (only `EXPO_PUBLIC_*` env vars)
-- [ ] All POST/PUT/DELETE endpoints return 401 without Bearer token (manual curl test)
-- [ ] File upload validates MIME type and size server-side (not just client-side)
-- [ ] Report endpoint cannot be spammed (Bucket4j rate limit — 5 reports/user/hour)
-- [ ] CORS configured: only allow `ironspot://` scheme in prod Spring Boot config
-- [ ] `DELETE /api/users/me` cascade tested: photos anonymized, votes deleted, session revoked
-
-### Performance checklist
-
-- [ ] TanStack Query `staleTime` set appropriately per endpoint (brands/categories: Infinity, gym search: 5min, photos: 1min)
-- [ ] Photo upload compression verified: compressed file < 500KB in dev logs
-- [ ] No N+1 queries: `getGymMachines` fetches brands/categories in single JOIN (verify with EXPLAIN)
-- [ ] Spring Boot startup time < 5 seconds (Railway cold start)
-
-### App Store requirements checklist
-
-- [ ] Privacy policy URL present in app settings screen
-- [ ] Terms of service URL present
-- [ ] Camera permission description in `app.json`: `"NSCameraUsageDescription": "기구 사진 촬영을 위해 카메라 접근이 필요합니다"`
-- [ ] Photo library permission: `"NSPhotoLibraryUsageDescription": "기기 사진을 업로드하기 위해 접근이 필요합니다"`
-- [ ] Account deletion flow works end-to-end (Task 28)
-- [ ] App works on iOS 16+ (Expo SDK 54 minimum)
-
-### Update Maestro config
-
-```yaml
-# .maestro/config.yaml
-flows:
-  - flows/smoke.yaml
-  - flows/gym-search.yaml
-  - flows/gym-detail.yaml
-  - flows/photo-gallery.yaml
-  - flows/photo-detail.yaml
-  - flows/upload-flow.yaml
-  - flows/upvote-flow.yaml
-```
-
-### Final commit
+### Commits
 
 ```bash
-git commit -m "feat: complete phase 2 spring boot + auth + upload + ocr"
+# 32a (this session)
+git commit -m "feat(phase-2): 32a final verification code+docs prep (maestro, smoke endpoint, ux polish, doc drift)"
+
+# 32b (next session, after Railway is up)
+git commit -m "feat(phase-2): 32b live verify on railway + simulator sentry app smoke; phase 2 closed"
 ```
 
 ---

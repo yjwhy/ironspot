@@ -4,7 +4,7 @@
 
 ## Scope (from architecture doc)
 
-1. Spring Boot 3 + Java 25 API server setup
+1. Spring Boot 4 + Java 25 API server setup (initial setup in Task 16 was on 3.5.0; pivoted to 4 in Task 31)
 2. Docker + docker-compose
 3. Supabase Auth integration (Google/Kakao social login)
 4. JWT validation with Spring Security

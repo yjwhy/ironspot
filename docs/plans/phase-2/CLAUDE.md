@@ -1,6 +1,8 @@
-# Phase 2 — Spring Boot 3 + Java 25 (LTS)
+# Phase 2 — Spring Boot 4 + Java 25 (LTS)
 
 Conventions for the Phase 2 backend service. Loaded only when working under `docs/plans/phase-2/` or the eventual `api/` directory.
+
+Note: Task 16 initially set up Spring Boot 3.5.0; Task 31 pivoted to Spring Boot 4 after the Sentry starter referenced an SB3-only API (`WebClientCustomizer`) that SB4 removed. Current and ongoing development uses Spring Boot 4.
 
 ## Architecture
 

@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Phase 2 in progress. Task 32 next (final verification, requires Railway deploy).
+Phase 2 in progress. Task 32 in progress, split into 32a (code/docs prep, no Railway dependency) and 32b (post-Railway live verify + iOS Simulator Sentry app smoke). Pre-Task decisions captured in `implementation.md` Task 32 section. Phase 2 complete is not equivalent to App Store submittable: Pre-Launch Backlog (Apple Sign In, Privacy + ToS URLs) remains separate.
 
 ### Pre-requisites status (2026-05-07)
 
