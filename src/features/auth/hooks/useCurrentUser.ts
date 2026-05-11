@@ -1,19 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 import type { UseQueryResult } from '@tanstack/react-query';
 
+import type { UserResponse } from '@/shared/generated/model/userResponse';
 import { getMe } from '@/shared/generated/users/users';
-import type { getMeResponse } from '@/shared/generated/users/users';
+import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 
 import { userKeys } from '../query-keys';
-import { useAuth } from './useAuth';
+import { useAuthenticatedUserId } from './useAuthenticatedUserId';
 
-export function useCurrentUser(): UseQueryResult<getMeResponse> {
-  const auth = useAuth();
-  const userId = auth.status === 'authenticated' ? auth.session.user.id : null;
+export function useCurrentUser(): UseQueryResult<UserResponse> {
+  const userId = useAuthenticatedUserId();
 
   return useQuery({
     queryKey: userKeys.me(userId),
-    queryFn: () => getMe(),
+    queryFn: async () => unwrapOrvalResponse(await getMe()),
     enabled: userId !== null,
   });
 }

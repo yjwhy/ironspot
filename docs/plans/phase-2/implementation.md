@@ -3262,6 +3262,14 @@ git commit -m "feat(monitoring): sentry + actuator + structured JSON logging"
 # Update .maestro/config.yaml to include new flows
 ```
 
+### UX polish backlog (carry-over from earlier tasks)
+
+Empty / loading / error states across screens that were left implicit during feature builds. Audit each consumer of a `useQuery` for the three missing branches.
+
+- **FilterPanel** (`src/features/map/components/FilterPanel.tsx`) — when `brands` or `categories` returns `[]` (API down or genuinely empty), the panel renders an empty rounded card with no message. Add an empty state ("필터 항목이 없어요") and an error state for `query.isError` ("필터를 불러올 수 없어요"). Surfaced during Task 29 manual testing.
+- **GymBottomSheet cross-tab leak** — the map tab's `GymBottomSheet` remains visible on the My Page tab (and presumably other tabs). Either the sheet is mounted outside `app/(tabs)/index.tsx` or its `index={0}` snap point is not collapsed on tab blur. Investigate where the sheet provider is mounted and either move it under the Map route or collapse the sheet via `useFocusEffect`. Surfaced during Task 29 manual testing.
+- (Add further audit findings here as they are discovered before Task 32 begins.)
+
 ### Security checklist
 
 - [ ] No private keys or secrets in app bundle (only `EXPO_PUBLIC_*` env vars)

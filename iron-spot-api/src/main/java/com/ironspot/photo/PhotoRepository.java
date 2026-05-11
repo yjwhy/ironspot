@@ -45,6 +45,17 @@ public class PhotoRepository {
             .fetch(this::toPhotoResponse);
     }
 
+    public List<PhotoResponse> findByUserId(UUID userId) {
+        return dsl.select(
+                MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.USER_ID.eq(userId))
+            .and(MACHINE_PHOTOS.IS_BLINDED.isFalse())
+            .orderBy(MACHINE_PHOTOS.CREATED_AT.desc())
+            .fetch(this::toPhotoResponse);
+    }
+
     public Map<UUID, List<PhotoResponse>> findByGymMachineIds(List<UUID> gymMachineIds) {
         if (gymMachineIds.isEmpty()) return Map.of();
         return dsl.select(
