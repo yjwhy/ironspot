@@ -1,6 +1,7 @@
 package com.ironspot.common.exception;
 
 import com.ironspot.common.dto.ErrorResponse;
+import io.sentry.Sentry;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -9,6 +10,7 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -20,6 +22,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
+        // 5xx BusinessException is rare but possible (e.g. external service degraded → 503).
+        // Surface those to Sentry; 4xx variants stay quiet (validation / auth domain errors).
+        if (e.getStatus().is5xxServerError()) {
+            Sentry.captureException(e);
+        }
         return ResponseEntity.status(e.getStatus()).body(new ErrorResponse(e.getMessage()));
     }
 
@@ -41,10 +48,24 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(message);
     }
 
+    // Without this handler Spring Boot 4's NoResourceFoundException bubbles up to handleUnexpected
+    // and becomes a 500. Map it to a proper 404 so disabled conditional controllers (e.g. the
+    // ironspot.slack.smoke.enabled=false gate on SlackSmokeController) behave as "not found"
+    // rather than "server error".
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleNotFound(NoResourceFoundException e) {
+        return new ErrorResponse("리소스를 찾을 수 없습니다");
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleUnexpected(Exception e) {
         log.error("Unexpected error", e);
+        // Any 5xx not already covered by the explicit handlers above (Bind/Constraint/NotFound
+        // are 4xx; BusinessException 5xx captures inside its own handler). Sentry.captureException
+        // no-ops when SentryConfig skipped init (empty DSN path).
+        Sentry.captureException(e);
         return new ErrorResponse(INTERNAL_ERROR_MESSAGE);
     }
 }

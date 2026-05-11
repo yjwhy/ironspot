@@ -9,9 +9,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { queryClient } from '@/shared/lib/query-client';
+import { forwardRenderErrorToSentry, initSentry } from '@/shared/lib/sentry';
 import { useAppFonts } from '@/shared/theme/fonts';
 
 import '../global.css';
+
+// Sentry must be initialised before any code that might throw — keep this at module load.
+// initSentry no-ops when EXPO_PUBLIC_SENTRY_DSN is empty (dev / first-time-setup).
+initSentry();
 
 // Expo convention: keep the native splash screen visible until fonts load
 // (or fail to load), then hide it from the effect below.
@@ -35,7 +40,7 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary onError={forwardRenderErrorToSentry}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <QueryClientProvider client={queryClient}>

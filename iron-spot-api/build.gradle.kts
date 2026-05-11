@@ -67,6 +67,15 @@ dependencies {
     // HTTP client — for Google Vision API + Naver Places proxy
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
+    // Monitoring (Task 31)
+    // Sentry core SDK only — sentry-spring-boot-starter-jakarta 8.41.0 (latest) still references
+    // Spring Boot 3.x's `WebClientCustomizer` in its auto-config, which Spring Boot 4 reorganised
+    // away. We init Sentry manually in SentryConfig and bridge unhandled exceptions through
+    // GlobalExceptionHandler. Revisit when Sentry ships a Spring Boot 4 starter.
+    implementation("io.sentry:sentry:8.41.0")
+    // Structured JSON encoder for Logback — used in prod profile via logback-spring.xml.
+    implementation("net.logstash.logback:logstash-logback-encoder:9.0")
+
     // Lombok
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")

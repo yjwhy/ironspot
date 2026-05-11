@@ -45,7 +45,7 @@ This means all existing unit tests continue to pass without modification after m
 
 | #                     | Choice                                                                 | ADR               |
 | --------------------- | ---------------------------------------------------------------------- | ----------------- |
-| API server            | Spring Boot 3 + Java 27                                                | 0004, 0005        |
+| API server            | Spring Boot 3 + Java 25 (LTS)                                          | 0004, 0005        |
 | API client generation | Orval                                                                  | 0012              |
 | OCR                   | Google Vision API (1,000 free/month, fallback to manual)               | 0010              |
 | Auth                  | Supabase Auth JWT — Spring Boot only validates, never issues           | 0003              |
@@ -63,7 +63,7 @@ This means all existing unit tests continue to pass without modification after m
 ## Pre-requisites (gates — note which task each blocks)
 
 - [x] Docker Desktop installed — Testcontainers requirement (confirmed)
-- [x] Java 27 (Temurin 25.0.3) installed — confirmed 2026-05-07
+- [x] Java 25 LTS (Temurin 25.0.3) installed — confirmed 2026-05-07
 - [ ] Google Cloud project + Vision API key — blocks Task 24
 - [ ] Google OAuth app configured in Supabase Dashboard → Auth → Providers — blocks Task 20
 - [ ] Kakao OAuth app configured in Supabase Dashboard → Auth → Providers — blocks Task 20
@@ -3271,96 +3271,74 @@ git commit -m "feat(account): nickname edit + account deletion (app store requir
 
 ## Task 31: Monitoring + Sentry + Admin Alerts
 
-**Goal:** Error tracking in app and API. Actuator health endpoint. Structured logging for Railway log drain. Wire admin Slack webhook (Task 27 deferred operational setup).
+**Goal:** Sentry error tracking in app and API (DSN-gated, fail-open). Structured JSON logging via Logback in prod profile. Slack admin webhook operations playbook + repeatable smoke endpoint. Code + local verification only — live "in production" verification of all three paths moves to Task 32 (post-Railway deploy).
 
-**What must be complete before calling this task done:**
+### Pre-Task decisions (2026-05-11)
 
-- Sentry captures unhandled exceptions in the app
-- Sentry captures unhandled exceptions in Spring Boot
-- `GET /actuator/health` returns `{"status":"UP"}` in production
-- Spring Boot logs in JSON format in prod profile
-- Slack admin webhook delivers a test message from each of `notifyUrgentReport` / `notifyAutoBlind` / `notifySafeSearchQueue` paths
+Resolved via grill before implementation. Recorded here so the rationale survives the PR.
 
-### Admin Slack webhook (Task 27 carry-over)
+1. **"in production" verification splits to Task 32.** Spec's "actuator/health UP in production", "logs JSON in prod profile (live)", "Slack 3-path live delivery" all require Railway deployment which prereqs Task 32. Task 31 scope: code + settings + local verification + operations playbook. Live prod verification: Task 32 done criteria.
+2. **Sentry SDK pins (exact, no caret).**
+   - App: `@sentry/react-native@8.9.2`. Latest is 8.11.0 but 8.10+ has an iOS crash with `AVAssetDownloadURLSession` (upstream `getsentry/sentry-react-native#7886`). 8.9.2 ships sentry-cocoa 9.11.0 which is the safe baseline. Bump when fix lands.
+   - Server: `io.sentry:sentry:8.41.0` (core SDK only). The Spring Boot starter `sentry-spring-boot-starter-jakarta:8.41.0` still references Spring Boot 3.x's `WebClientCustomizer` in its auto-config, which Spring Boot 4 reorganised away. Initialise manually in `SentryConfig` and bridge unhandled exceptions through `GlobalExceptionHandler`. Revisit when Sentry ships a Spring Boot 4 starter.
+   - Logstash encoder: `net.logstash.logback:logstash-logback-encoder:9.0` (latest stable 2025-10-26).
+3. **DSN-missing → fail-open, never throw.** App: skip `Sentry.init` when `EXPO_PUBLIC_SENTRY_DSN` is empty/undefined, log one debug line. Server: `SentryConfig.initSentry` skips `Sentry.init` entirely when `sentry.dsn` is empty/blank — no separate `enabled` flag, the empty-DSN contract is the single source of truth. Result: dev environments emit zero Sentry traffic without manual setup.
+4. **Single external-setup checkpoint = PR merge.** All code lands with empty env defaults. User provisions Sentry org + 2 projects (app/server), Slack webhook, and EAS sourcemap auth token after merge. Operational smoke (Task 32) consumes these.
+5. **Two Sentry projects, not one.** App and server use different SDKs and have different release cadences. Separate projects keep dashboards readable. `EXPO_PUBLIC_SENTRY_DSN` (app) ≠ `SENTRY_DSN` (server).
+6. **Logging strategy = `logback-spring.xml` with profile split.** Remove the manual `logging.pattern.console` JSON from `application-prod.yml` (manual JSON breaks on stack traces and multi-line messages; was prod-only already so dev was unaffected). Prod profile → `LogstashEncoder` via logback xml. Non-prod → Spring Boot default (`base.xml`, human-readable colour console). `application-prod.yml` holds Sentry prod overrides; logging stays in xml.
+7. **Slack smoke = gated admin endpoint, not 4-account flow.** Reproducing all 3 webhook paths via real reports needs 4 distinct Google accounts + a SafeSearch `LIKELY` borderline image (sourcing problem). Instead ship `POST /api/_admin/slack-smoke/{path}` with two gates: JWT-authenticated AND `IRONSPOT_SLACK_SMOKE_ENABLED=true` env. Toggle env in Railway for the 5-minute smoke window in Task 32, then untoggle. Business-logic correctness of report flow is covered by existing IT tests; the smoke endpoint exists only to verify webhook reachability post-deploy.
+8. **Sentry RN integration = full (plugin + sourcemaps), not JS-only.** JS-only `Sentry.init` misses native crashes (`NSException`, JVM `NoSuchMethodError`). Add `@sentry/react-native/expo` Expo config plugin so iOS/Android native layers are instrumented. Wire sourcemap upload via `@sentry/expo-upload-sourcemaps` (already bundled in 8.9.2) so prod Hermes stack traces are readable.
+9. **TanStack Query errors → Sentry only on 5xx + network.** Configure `QueryCache`/`MutationCache` global `onError`. Filter: HTTPError with `response.status >= 500` OR `TypeError` (network failure) → `Sentry.captureException`. 4xx (validation, auth) is user-impact noise and goes to toast only. Component-level `onError` handlers continue to receive everything.
+10. **Sentry user context = id only on auth, cleared on logout.** `Sentry.setUser({ id: session.user.id })` after `useAuth` resolves authenticated, `Sentry.setUser(null)` on `signOut`. No email/nickname (PII minimisation).
+11. **Sentry environment + release + sample rates.**
+    - App: `environment: __DEV__ ? 'development' : 'production'`. Release auto-derived by Expo plugin. `tracesSampleRate: __DEV__ ? 1.0 : 0.1`.
+    - Server: prod profile `environment: production` + `traces-sample-rate: 0.05`. Dev profile `environment: development` + `traces-sample-rate: 0.5` (cheap signal during integration testing). Release derives from build info if available, else SDK-inferred.
+12. **Coverage rule waived for SDK-wiring code.** `Sentry.init` is mock-mirror-only if tested; same for `application-prod.yml` and `logback-spring.xml`. Per `~/.claude/rules/testing.md` anti-patterns: do not mock the SDK to assert its own surface. Two real tests instead:
+    - Frontend: extend `ErrorBoundary.test.tsx` with one case mocking `@sentry/react-native`'s `captureException` only (not `init`) and asserting the onError path invokes it once.
+    - Backend: `LogbackProdProfileIT` boots with `@ActiveProfiles("prod")` + `OutputCaptureExtension`, emits one log line, asserts the stdout line parses as JSON via `ObjectMapper.readTree` and includes LogstashEncoder-specific fields (`@version`, `thread_name`) so a regression to the old manual `logging.pattern.console` JSON would fail.
+    - Backend: `SlackSmokeControllerIT` + `SlackSmokeControllerDisabledIT` — unauthenticated → 401; authenticated + env disabled → 404 (controller bean not registered); authenticated + env enabled → 204 + mocked `AdminNotificationService` invoked with the sentinel UUIDs.
+    - Backend: `GlobalExceptionHandler` is touched (Sentry.captureException on 5xx BusinessException + 5xx unexpected; NoResourceFoundException → 404). Existing handler tests still pass; the Sentry call is intentionally not asserted (would be a mock-mirror) — it no-ops on empty DSN which is the test default.
 
-Code is shipped (`AdminNotificationService` no-ops on empty URL); only operational wiring remains.
+### What must be complete before calling this task done (Task 31 scope)
 
-1. Create or reuse a Slack workspace.
-2. Add **Incoming Webhooks** integration → choose channel (e.g. `#ironspot-moderation`) → copy webhook URL.
-3. Set `SLACK_ADMIN_WEBHOOK_URL` env var on the Spring Boot deployment (Railway / equivalent).
-4. Smoke test: POST a fake report through `POST /api/photos/{id}/reports` 3 times from 3 distinct users → verify Slack receives the auto-blind alert. Repeat with `LEGAL_PERSONAL` to test the urgent path.
-5. Document the channel + webhook owner in `docs/harness/operations.md` (create if missing) for rotation later.
+Local + code-level only. Anything labelled "(prod)" moves to Task 32.
 
-### Frontend: Sentry
+- `@sentry/react-native@8.9.2` exact-pinned in `package.json`. Expo config plugin registered in `app.config.ts`.
+- App: `Sentry.init` wired in `app/_layout.tsx` with DSN-empty fail-open.
+- App: `ErrorBoundary` `onError` → `Sentry.captureException(error, { extra: { componentStack } })`.
+- App: `queryClient` has `QueryCache`/`MutationCache` `onError` reporting 5xx + network errors to Sentry.
+- App: `useAuth` state change → `Sentry.setUser({ id })` or `setUser(null)`. Single hook entry, not scattered.
+- Server: `io.sentry:sentry:8.41.0` (core SDK) added; `SentryConfig` reads `sentry.dsn` / `sentry.environment` / `sentry.traces-sample-rate` and calls `Sentry.init` manually, skipping when DSN is blank. `application.yml` holds dev defaults, `application-prod.yml` overrides to prod values.
+- Server: `logstash-logback-encoder:9.0` added; `logback-spring.xml` profiles prod (LogstashEncoder) vs `!prod` (`base.xml`).
+- Server: `logging.pattern.console` removed from `application-prod.yml` (Logback xml owns the prod format now).
+- Server: `application-prod.yml` populated with Sentry env wiring + `spring.profiles.active=prod` documentation.
+- Server: `POST /api/_admin/slack-smoke/{path}` controller behind two gates (JWT + `IRONSPOT_SLACK_SMOKE_ENABLED`).
+- `.env.example` (app) adds `EXPO_PUBLIC_SENTRY_DSN=` and `SENTRY_AUTH_TOKEN=` (empty placeholders, comments explaining purpose + how to obtain).
+- `iron-spot-api/.env.example` adds `SENTRY_DSN=`, `SLACK_ADMIN_WEBHOOK_URL=`, `IRONSPOT_SLACK_SMOKE_ENABLED=false`.
+- `docs/harness/operations.md` created: Sentry org/project setup, Slack workspace + webhook, EAS sourcemap auth token, env var checklist for Railway, smoke endpoint usage procedure, webhook rotation cadence.
+- Tests above (12 in decisions): `ErrorBoundary` Sentry case, `LogbackProdProfileIT`, `SlackSmokeControllerIT`. All existing tests still green.
+- Local verification captured in PR description: `curl localhost:8080/actuator/health` → `{"status":"UP"}`; `SPRING_PROFILES_ACTIVE=prod ./gradlew bootRun` stdout line parses as JSON.
 
-```bash
-pnpm expo install @sentry/react-native
-```
+### Deferred to Task 32 (Phase 2 Final Verification, post-Railway)
 
-```typescript
-// app/_layout.tsx — add before rendering
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  environment: __DEV__ ? 'development' : 'production',
-  enableNativeFramesTracking: !__DEV__,
-  tracesSampleRate: __DEV__ ? 1.0 : 0.1,
-});
-```
+- Live `GET /actuator/health` → UP on Railway URL.
+- Live `SPRING_PROFILES_ACTIVE=prod` log line shape verified in Railway logs.
+- Slack 3-path smoke via toggle: set `IRONSPOT_SLACK_SMOKE_ENABLED=true` → 3× `curl POST /api/_admin/slack-smoke/{urgent,autoblind,safesearch}` → confirm 3 Slack messages → untoggle.
+- Sentry app + server: intentional throw in prod build, verify event reaches each dashboard with readable symbolicated stack.
 
-Update `ErrorBoundary` to capture via Sentry:
+### Subtask order
 
-```tsx
-<ErrorBoundaryLib
-  onError={(error, info) => {
-    Sentry.captureException(error, {
-      extra: { componentStack: info.componentStack },
-    });
-  }}
-  ...
->
-```
-
-### Backend: Sentry
-
-```kotlin
-// build.gradle.kts
-implementation("io.sentry:sentry-spring-boot-starter-jakarta:8.x")
-```
-
-```yaml
-# application-prod.yml
-sentry:
-  dsn: ${SENTRY_DSN}
-  environment: production
-  traces-sample-rate: 0.05
-```
-
-### Logback JSON (prod profile)
-
-```kotlin
-// build.gradle.kts
-implementation("net.logstash.logback:logstash-logback-encoder:8.0")
-```
-
-```xml
-<!-- src/main/resources/logback-spring.xml -->
-<configuration>
-  <springProfile name="prod">
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-      <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
-    </appender>
-    <root level="INFO"><appender-ref ref="STDOUT" /></root>
-  </springProfile>
-  <springProfile name="!prod">
-    <include resource="org/springframework/boot/logging/logback/base.xml" />
-  </springProfile>
-</configuration>
-```
+1. **Backend monitoring base** — Sentry starter + Logback profile split + `application-prod.yml` + remove manual JSON pattern from `application.yml`. Local verify: prod profile boot emits parseable JSON.
+2. **Slack smoke endpoint** — controller + two-gate security + `IRONSPOT_SLACK_SMOKE_ENABLED` env binding + IT. Local verify: env disabled → 404, env enabled + auth → 200.
+3. **Frontend Sentry wiring** — `pnpm expo install @sentry/react-native` (pin downgraded to 8.9.2 after install), Expo plugin in `app.config.ts`, `Sentry.init` in `_layout.tsx` with fail-open, `ErrorBoundary` onError, `queryClient` cache onError filters, `useAuth` user context wiring, sourcemap upload script.
+4. **Env examples** — both `.env.example` files updated.
+5. **Operations playbook** — `docs/harness/operations.md` written with all setup steps and the smoke procedure.
+6. **Decisions log + Java fix** — append Task 31 decisions to this file, fix Java 27 → 25 strays (already done pre-implementation).
 
 ### Commit
 
 ```bash
-git commit -m "feat(monitoring): sentry + actuator + structured JSON logging"
+git commit -m "feat(monitoring): sentry + actuator + structured JSON logging + slack smoke"
 ```
 
 ---
@@ -3377,7 +3355,19 @@ git commit -m "feat(monitoring): sentry + actuator + structured JSON logging"
 - `./gradlew test` — all Java tests pass
 - `pnpm e2e:all` — all Maestro flows pass (5 existing + 3 new)
 - Security checklist below: all boxes checked
+- Monitoring live verification below: all boxes checked (carried over from Task 31)
 - Phase 2 PROGRESS.md updated
+
+### Monitoring live verification (carried over from Task 31)
+
+Task 31 shipped the code + local verification only. These items require the Railway deployment that prereqs Task 32.
+
+- [ ] Railway prod URL: `GET /actuator/health` returns `{"status":"UP"}` (curl from outside Railway network)
+- [ ] Railway prod logs: one `INFO` line during request handling parses as valid JSON (visual check in Railway log viewer)
+- [ ] Sentry app project: trigger a JS throw in a prod build (TestFlight or APK) → event arrives in dashboard with readable, symbolicated stack
+- [ ] Sentry server project: trigger a deliberate `RuntimeException` via a temporary endpoint or by removing a required env var → event arrives in dashboard with readable stack
+- [ ] Slack 3-path smoke: set `IRONSPOT_SLACK_SMOKE_ENABLED=true` on Railway, run `curl -H "Authorization: Bearer $JWT" -X POST $URL/api/_admin/slack-smoke/{urgent,autoblind,safesearch}` (3 calls), confirm 3 messages in the Slack channel, then unset the env var
+- [ ] `docs/harness/operations.md` env var checklist matches what is actually set in Railway (rotation owner column filled in)
 
 ### New Maestro flows
 

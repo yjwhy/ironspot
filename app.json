@@ -26,7 +26,8 @@
         {
           "client_id": "ty0sd0ldl9"
         }
-      ]
+      ],
+      "@sentry/react-native/expo"
     ],
     "experiments": {
       "typedRoutes": true,

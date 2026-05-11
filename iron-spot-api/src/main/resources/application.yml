@@ -32,6 +32,16 @@ naver:
 ironspot:
   slack:
     admin-webhook-url: ${SLACK_ADMIN_WEBHOOK_URL:}
+    smoke:
+      # Gate for /api/_admin/slack-smoke/{path} ops verification endpoint.
+      # MUST remain false outside the post-deploy smoke window — toggle on, run 3 curls, toggle off.
+      enabled: ${IRONSPOT_SLACK_SMOKE_ENABLED:false}
+
+sentry:
+  # Empty DSN → SentryConfig skips Sentry.init entirely (fail-open, zero traffic in dev/test).
+  dsn: ${SENTRY_DSN:}
+  environment: development
+  traces-sample-rate: 0.5
 
 server:
   port: 8080
