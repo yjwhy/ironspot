@@ -53,7 +53,20 @@
       "supportsTablet": false
     },
     "android": {
-      "package": "com.ironspot.app"
-    }
+      "package": "com.ironspot.app",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "88649f92-d4e0-4318-8196-a5baaf75bc11"
+      }
+    },
+    "owner": "yjwhy"
   }
 }
