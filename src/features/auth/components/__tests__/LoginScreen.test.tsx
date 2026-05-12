@@ -1,7 +1,12 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 
 import { AUTH_REDIRECT_URL } from '../../constants';
 import { LoginScreen } from '../LoginScreen';
+
+function setPlatform(os: typeof Platform.OS) {
+  Object.defineProperty(Platform, 'OS', { value: os, configurable: true, writable: true });
+}
 
 jest.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -28,9 +33,16 @@ function getBurntMock() {
   return require('burnt') as { toast: jest.Mock };
 }
 
+const originalPlatformOS = Platform.OS;
+
 beforeEach(() => {
   jest.clearAllMocks();
   getSupabaseMock().auth.signInWithOAuth.mockResolvedValue({ error: null });
+  setPlatform('ios');
+});
+
+afterEach(() => {
+  setPlatform(originalPlatformOS);
 });
 
 describe('LoginScreen', () => {
@@ -38,6 +50,30 @@ describe('LoginScreen', () => {
     const { getByRole } = render(<LoginScreen onBrowseAsGuest={() => undefined} />);
     expect(getByRole('button', { name: 'Google로 계속하기' })).toBeTruthy();
     expect(getByRole('button', { name: 'Kakao로 계속하기' })).toBeTruthy();
+  });
+
+  it('renders Apple login button on iOS', () => {
+    const { getByRole } = render(<LoginScreen onBrowseAsGuest={() => undefined} />);
+    expect(getByRole('button', { name: 'Apple로 계속하기' })).toBeTruthy();
+  });
+
+  it('does not render Apple login button on Android', () => {
+    setPlatform('android');
+    const { queryByRole } = render(<LoginScreen onBrowseAsGuest={() => undefined} />);
+    expect(queryByRole('button', { name: 'Apple로 계속하기' })).toBeNull();
+  });
+
+  it('calls signInWithOAuth with apple provider when Apple button is pressed', async () => {
+    const { getByRole } = render(<LoginScreen onBrowseAsGuest={() => undefined} />);
+    act(() => {
+      fireEvent.press(getByRole('button', { name: 'Apple로 계속하기' }));
+    });
+    await waitFor(() => {
+      expect(getSupabaseMock().auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'apple',
+        options: { redirectTo: AUTH_REDIRECT_URL },
+      });
+    });
   });
 
   it('renders "로그인 없이 둘러보기" button', () => {
