@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Phase 2 in progress. Task 32 in progress, split into 32a (code/docs prep, no hosting-platform dependency) and 32b (post-Render-provisioning live verify + iOS Simulator Sentry app smoke). Pre-Task decisions captured in `implementation.md` Task 32 section, including the Railway-to-Render hosting pivot (decision #7). Phase 2 complete is not equivalent to App Store submittable: Pre-Launch Backlog (Apple Sign In, Privacy + ToS URLs) remains separate.
+Phase 2 backend verification complete. Task 32 split into 32a (merged) and 32b (in PR #45). 32b backend portion finished: Render deploy Live on the free tier, `/actuator/health` UP, prod JSON logs verified, Sentry server smoke and Slack 3-path smoke both green via the gated `@ConditionalOnProperty` endpoints. Remaining 32b item: iOS Simulator Sentry app smoke via EAS preview-simulator build (requires user terminal for `eas login` OAuth). Pre-Task decisions captured in `implementation.md` Task 32 section, including the Railway-to-Render hosting pivot (decision #7). Phase 2 complete is not equivalent to App Store submittable: Pre-Launch Backlog (Apple Sign In, Privacy + ToS URLs) remains separate.
 
 ### Pre-requisites status (2026-05-07)
 
