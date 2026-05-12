@@ -5,12 +5,14 @@ sentry:
 spring:
   datasource:
     hikari:
-      # Conservative pool size for the Supabase Postgres pooler (Task 32 decision #2).
-      # Supabase free tier allows 60 concurrent pgbouncer connections per project; keeping
-      # the per-instance pool well below that leaves headroom for migrations, the dashboard,
-      # and frontend service-role-key calls. Raise after measuring real load.
-      maximum-pool-size: 10
-      minimum-idle: 2
+      # Conservative pool sized for two simultaneous constraints (Task 32 decisions #2 + #7):
+      #   1. Supabase free tier pgbouncer caps at 60 concurrent connections per project.
+      #   2. Render free web service caps at 512MB RAM. Each idle Hikari connection holds
+      #      socket buffers + pgbouncer-side state, so a smaller pool leaves more headroom
+      #      for the JVM heap, Tomcat threads, and Spring Boot's working set.
+      # 5 is enough for low-launch traffic; raise after measuring real load.
+      maximum-pool-size: 5
+      minimum-idle: 1
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000

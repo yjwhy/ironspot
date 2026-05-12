@@ -50,7 +50,10 @@ sentry:
   traces-sample-rate: 0.5
 
 server:
-  port: 8080
+  # Bind to PORT env var when present (Render injects PORT=10000 by default and
+  # routes health checks + traffic to that exact port). Fall back to 8080 for
+  # local dev via `pnpm dlx ... bootRun` and docker-compose.
+  port: ${PORT:8080}
 
 springdoc:
   api-docs:

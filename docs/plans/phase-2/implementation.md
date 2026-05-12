@@ -30,7 +30,7 @@ This means all existing unit tests continue to pass without modification after m
      |
      |— ky HTTP client (with JWT Bearer header, 10s timeout)
      |
-[Spring Boot API — localhost:8080 dev / Railway prod]
+[Spring Boot API — localhost:8080 dev / Render prod]
      |
      |— Spring Security (validates Supabase-issued JWT, never issues tokens)
      |— Controllers → Services → Repositories (JdbcTemplate)
@@ -68,7 +68,7 @@ This means all existing unit tests continue to pass without modification after m
 - [ ] Google OAuth app configured in Supabase Dashboard → Auth → Providers — blocks Task 20
 - [ ] Kakao OAuth app configured in Supabase Dashboard → Auth → Providers — blocks Task 20
 - [ ] Naver Places API key (separate from Maps key — apply at ncloud.biz) — blocks Task 28
-- [ ] Railway account (or Fly.io) for deployment — blocks Task 32
+- [ ] Render account for deployment — blocks Task 32 (Task 32 decision #7: free Web Service tier on Render; UptimeRobot 5-minute keep-warm ping for the 15-minute idle sleep)
 - [ ] `.env` updated with `EXPO_PUBLIC_API_URL` — blocks Task 21
 
 ---
@@ -240,7 +240,7 @@ info:
     version: '@project.version@'
 ```
 
-`application-prod.yml` overrides logging format to JSON for Railway log drains.
+`application-prod.yml` overrides logging format to JSON for the hosting platform's log viewer (Render log streams per Task 32 decision #7).
 
 ### Step 4: `.env.example` (inside `iron-spot-api/`)
 
@@ -3345,20 +3345,21 @@ git commit -m "feat(monitoring): sentry + actuator + structured JSON logging + s
 
 ## Task 32: Phase 2 Final Verification
 
-**Goal:** All E2E flows pass. Security, performance, and App Store code-level checks complete. Live verification of Railway-hosted Spring Boot, Sentry (app + api), and Slack moderation alerts. Phase 2 locked and ready to hand off to Phase 3 / Pre-Launch Backlog work.
+**Goal:** All E2E flows pass. Security, performance, and App Store code-level checks complete. Live verification of Render-hosted Spring Boot, Sentry (app + api), and Slack moderation alerts. Phase 2 locked and ready to hand off to Phase 3 / Pre-Launch Backlog work.
 
 ### Pre-Task decisions (2026-05-12)
 
 Resolved via grill before implementation. Recorded here so the rationale survives the split PRs.
 
-1. **Task 32 splits into 32a (code/docs prep) and 32b (post-Railway live verify).** Railway provisioning is a user-side external action (account, env vars, first deploy) that Claude cannot perform. Splitting avoids a long-open 32a PR blocked on external work and mirrors the Task 31 pattern of "code now, live later". 32a lands first; 32b begins after the user signals Railway is up.
-2. **Spring Boot connects to Supabase Postgres, not a separate Railway Postgres.** The ops doc's original "Railway Postgres plugin" assumption is replaced. Reason: zero data migration, single schema source of truth (Supabase migrations), Auth/Storage/DB stay in one place. Trade-off: Railway to Supabase network hop. Mitigation: conservative HikariCP `maximum-pool-size` in `application-prod.yml`. Phase 3 may revisit if Supabase pricing or latency becomes a constraint.
+1. **Task 32 splits into 32a (code/docs prep) and 32b (post-provisioning live verify).** Hosting provisioning is a user-side external action (account, env vars, first deploy) that Claude cannot perform. Splitting avoids a long-open 32a PR blocked on external work and mirrors the Task 31 pattern of "code now, live later". 32a lands first; 32b begins after the user signals the service is up.
+2. **Spring Boot connects to Supabase Postgres, not a separate managed Postgres on the hosting platform.** Reason: zero data migration, single schema source of truth (Supabase migrations), Auth/Storage/DB stay in one place. Trade-off: hosting-platform-to-Supabase network hop. Mitigation: conservative HikariCP `maximum-pool-size` in `application-prod.yml`. Phase 3 may revisit if Supabase pricing or latency becomes a constraint.
 3. **Sentry server-side throw verification uses a smoke endpoint, not add-then-revert.** Mirror the Task 31 Slack smoke pattern: `POST /api/_admin/sentry-smoke` is permanent code behind `@ConditionalOnProperty(ironspot.sentry.smoke.enabled=true)` plus JWT auth gate, env toggle for the 5-minute verify window, then untoggle. Avoids two extra deploys and the "forget to revert" failure mode of `/api/_admin/throw add-then-revert`. Avoids the prod-degradation risk of `unset DATABASE_URL`.
 4. **Sentry app verification uses an iOS Simulator preview build, not TestFlight or APK.** The plan's "TestFlight or APK" wording targets "non-dev build with sourcemap symbolication". `eas build --platform ios --profile preview --simulator` produces a `.app` that runs on the already-working iOS Simulator (`pnpm snap` workflow evidence) without code signing, no Apple Developer enrolment fee required at this stage. Trade-off: native-side crash reproducibility requires a physical device, deferred to pre-App-Store-submission verification. Android route declined because user has no Android device and emulator setup adds Android Studio installation time.
 5. **`login-flow.yaml` covers entry path only, not authenticated state.** Supabase OAuth uses the system browser so Maestro cannot drive it. The plan's `(manual: authenticate)` step is removed; the flow asserts "My Page entry, unauthenticated empty state, CTA tap, /(auth)/login renders Google + Kakao buttons". Authenticated-state regression is covered by the existing `AuthenticatedProfile` unit tests from Task 29. A test-only dev-login endpoint was rejected per `testing-anti-patterns` (production pollution).
 6. **Apple Sign In stays in the Pre-Launch Backlog, not Task 32.** Task 32 is Phase 2 feature verification. Apple Sign In is new feature work with external dependencies (Apple Developer enrolment, Service ID, Supabase Apple provider config). Folding it in would expand scope, force premature $99 spend, and gate the PR on multi-day Apple review. PROGRESS.md notes "Phase 2 complete is not App Store submittable" explicitly.
+7. **Backend hosting: Render free, not Railway.** 32b started on Railway trial credit but the choice was re-evaluated mid-execution under the user constraint of "free hosting + reasonable performance + low operational overhead". Comparison covered Oracle Cloud Free Tier ARM VM (truly free + best performance, but 4~8h manual VM setup and ARM capacity scarcity in Seoul region), Cloud Run min=0 (free at low traffic, 2~5s Java cold start), Fly.io (free tier removed October 2024), Northflank free (memory too tight at 320MB-ish for Spring Boot 4), and Render free web service. Render won on "free + same deploy ergonomics as Railway": Dockerfile-based + GitHub auto-deploy, $0/month indefinitely, 512MB RAM + 0.1 vCPU sufficient with JVM heap tuning (`MaxRAMPercentage=70`, `UseSerialGC`, `ExitOnOutOfMemoryError`). Trade-off: 15-minute idle sleep + 30~90s cold start, mitigated by an external 5-minute keep-warm ping (UptimeRobot free monitor, fallback to GitHub Actions cron). Apple App Store $99/year + Google Play $25 one-time remain unavoidable for production app distribution regardless of backend host choice.
 
-### Task 32a — code/docs prep (this session, no Railway dependency)
+### Task 32a — code/docs prep (this session, no hosting-platform dependency)
 
 **Code**
 
@@ -3393,7 +3394,7 @@ Resolved via grill before implementation. Recorded here so the rationale survive
 
 **Docs**
 
-- [ ] `docs/harness/operations.md` Railway env table: `DATABASE_URL` / `DATABASE_USERNAME` / `DATABASE_PASSWORD` source column updated to "Supabase Postgres (pooler URL)" per decision #2.
+- [ ] `docs/harness/operations.md` hosting env table: `DATABASE_URL` / `DATABASE_USERNAME` / `DATABASE_PASSWORD` source column updated to "Supabase Postgres (pooler URL)" per decision #2.
 - [ ] `docs/harness/operations.md` "Sentry server" smoke section: rewritten to `IRONSPOT_SENTRY_SMOKE_ENABLED` toggle pattern per decision #3.
 - [ ] `docs/harness/operations.md` env table: `IRONSPOT_SENTRY_SMOKE_ENABLED` row added.
 - [ ] `docs/harness/operations.md` Sentry app section: iOS Simulator preview build route per decision #4 + native-crash deferral note.
@@ -3401,24 +3402,25 @@ Resolved via grill before implementation. Recorded here so the rationale survive
 
 **32a is done when** the above lands on `task/32-final-verification` branch via PR. `PROGRESS.md` Completed Tasks Log is NOT updated yet; the entry is written once at the end of 32b.
 
-### Task 32b — post-Railway live verification (next session)
+### Task 32b — post-Render live verification (next session)
 
 **User external work (Claude guides step-by-step)**
 
-- [ ] Railway project created, GitHub repo connected, Dockerfile-based build successful.
+- [ ] Render account created, new Web Service connected to the `ironspot` GitHub repo with Root Directory `iron-spot-api`, Dockerfile builder, Free instance.
 - [ ] `DATABASE_URL` set to the Supabase pooler URL; `DATABASE_USERNAME` and `DATABASE_PASSWORD` set from Supabase credentials.
-- [ ] Remaining env vars set per `docs/harness/operations.md` Railway table.
+- [ ] Remaining env vars set per `docs/harness/operations.md` Render env table.
 - [ ] `IRONSPOT_SLACK_SMOKE_ENABLED=false` and `IRONSPOT_SENTRY_SMOKE_ENABLED=false` at deploy time.
-- [ ] First deploy green; `/actuator/health` UP.
-- [ ] EAS account ready, `pnpm dlx eas-cli login` successful.
+- [ ] First deploy green; `/actuator/health` UP. Render auto-assigned URL captured (form: `https://<service>.onrender.com`).
+- [ ] UptimeRobot monitor pointing at `/actuator/health` on a 5-minute interval to prevent the 15-minute idle sleep.
+- [ ] EAS account ready, `pnpm dlx eas-cli login` successful, `eas secret:create` populated with `EXPO_PUBLIC_API_URL` = Render service URL plus the other secrets listed in `operations.md`.
 
-**Live verification (Claude executes once Railway is up)**
+**Live verification (Claude executes once Render is up)**
 
-- [ ] `curl https://<railway-url>/actuator/health` returns `{"status":"UP"}` from outside Railway network.
-- [ ] Railway log viewer: one INFO line during request handling parses as JSON with LogstashEncoder fields (`@timestamp`, `@version`, `thread_name`, `level_value`).
+- [ ] `curl https://<service>.onrender.com/actuator/health` returns `{"status":"UP"}` from outside the Render network.
+- [ ] Render log viewer: one INFO line during request handling parses as JSON with LogstashEncoder fields (`@timestamp`, `@version`, `thread_name`, `level_value`).
 - [ ] Sentry server: toggle `IRONSPOT_SENTRY_SMOKE_ENABLED=true` and redeploy, then `curl -X POST -H "Authorization: Bearer $JWT" $URL/api/_admin/sentry-smoke`. Event arrives in the `ironspot-api` Sentry project with `environment: production` and readable stack. Toggle false, redeploy, confirm 404.
 - [ ] Slack 3-path: toggle `IRONSPOT_SLACK_SMOKE_ENABLED=true`, run 3 curls, 3 messages arrive in `#ironspot-moderation`. Toggle false, confirm 404.
-- [ ] Sentry app: `eas.json` preview profile with `simulator: true` created. `eas build --platform ios --profile preview --simulator`. `.app` installed on iOS Simulator. Trigger an intentional `throw new Error("sentry app smoke " + Date.now())` via the env-gated button described in `operations.md`. Event arrives in the `ironspot-app` Sentry project with a symbolicated stack.
+- [ ] Sentry app: `eas.json` preview profile with `simulator: true` created. `eas build --platform ios --profile preview --simulator`. `.app` installed on iOS Simulator. Open Profile tab, tap "Sentry smoke test (ops only)". Event arrives in the `ironspot-app` Sentry project with a symbolicated stack.
 
 **Docs (32b)**
 
@@ -3445,8 +3447,8 @@ Empty, loading, and error states across screens that were left implicit during f
 # 32a (this session)
 git commit -m "feat(phase-2): 32a final verification code+docs prep (maestro, smoke endpoint, ux polish, doc drift)"
 
-# 32b (next session, after Railway is up)
-git commit -m "feat(phase-2): 32b live verify on railway + simulator sentry app smoke; phase 2 closed"
+# 32b (next session, after Render is up)
+git commit -m "feat(phase-2): 32b live verify on render + simulator sentry app smoke; phase 2 closed"
 ```
 
 ---

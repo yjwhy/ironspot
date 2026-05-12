@@ -81,4 +81,17 @@ module.exports = defineConfig([
       'react-native/split-platform-components': 'off',
     },
   },
+  {
+    // SentrySmokeButton.test.tsx mutates `(globalThis as DevGlobal).__DEV__`
+    // to simulate dev vs prod builds. RN's global `__DEV__` declaration widens
+    // the cast result so the @typescript-eslint/no-unsafe-* rules flag the
+    // narrow even though the test owns the override contract. The override
+    // lives here (not as an in-file directive) so `eslint --fix` in lint-staged
+    // does not strip it as "unused" locally.
+    files: ['src/features/profile/components/__tests__/SentrySmokeButton.test.tsx'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+    },
+  },
 ]);
