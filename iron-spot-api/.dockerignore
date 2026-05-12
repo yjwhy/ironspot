@@ -1,0 +1,17 @@
+# Build artefacts — re-created inside the builder stage.
+build/
+.gradle/
+
+# IDE noise.
+.idea/
+*.iml
+.vscode/
+
+# Local-only files.
+.env
+.env.local
+*.log
+
+# Docs and CI files do not affect the build.
+README.md
+HELP.md

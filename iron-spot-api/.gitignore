@@ -1,7 +1,12 @@
 HELP.md
 .gradle
 build/
-src/main/generated/
+# jOOQ-generated sources are committed (Task 32 Railway deploy follow-up).
+# Railway source-based builds run inside a Dockerfile without Docker-in-Docker, so
+# `generateJooq` (which needs Testcontainers PostgreSQL) cannot run during the deploy build.
+# Committing the generated code mirrors the Orval-generated frontend client pattern.
+# Regenerate locally with `./gradlew generateJooq` after any schema migration and commit.
+# src/main/generated/  ← intentionally NOT ignored
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/

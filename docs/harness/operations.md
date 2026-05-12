@@ -46,6 +46,21 @@ Set on the Railway service that runs `iron-spot-api`. Missing required values wi
 
 DB choice rationale (Task 32 decision #2): Spring Boot uses the Supabase Postgres directly via the pooler URL rather than a separate Railway Postgres. This avoids a schema export/import step and keeps Supabase as the single source of truth for migrations. Set HikariCP `maximum-pool-size` conservatively in `application-prod.yml` to stay inside Supabase pooler limits.
 
+## EAS build secrets (preview-simulator profile)
+
+Set on the EAS project via `pnpm dlx eas-cli secret:create --scope project --name <NAME> --value <VALUE>`. Used by the `preview-simulator` build profile in `eas.json` (Task 32b iOS Simulator Sentry app smoke).
+
+| Variable                          | Required? | Source                                                                         |
+| --------------------------------- | --------- | ------------------------------------------------------------------------------ |
+| `EXPO_PUBLIC_SUPABASE_URL`        | Yes       | Supabase project URL                                                           |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY`   | Yes       | Supabase anon key (publishable in client bundles)                              |
+| `EXPO_PUBLIC_NAVER_MAP_CLIENT_ID` | Yes       | ncloud Naver Maps client ID (Phase 1 setup)                                    |
+| `EXPO_PUBLIC_API_URL`             | Yes       | Railway public URL (e.g. `https://ironspot-api-production.up.railway.app`)     |
+| `EXPO_PUBLIC_SENTRY_DSN`          | No        | Sentry `ironspot-app` project DSN. Empty value skips Sentry init (fail-open).  |
+| `SENTRY_AUTH_TOKEN`               | Yes\*     | Sentry auth token (`project:releases` scope). \*Required for sourcemap upload. |
+
+`eas.json` itself only bakes the non-secret `EXPO_PUBLIC_SENTRY_SMOKE=true` into the preview-simulator profile so the smoke button gates correctly.
+
 ## Post-deploy smoke procedures (Task 32 timing)
 
 ### Sentry app
@@ -54,8 +69,8 @@ Per Task 32 decision #4, the app-side verification uses an iOS Simulator preview
 
 1. Ensure `eas.json` has a preview profile with `"simulator": true` for iOS. Run `eas build --platform ios --profile preview --simulator`. Download the resulting `.app` archive.
 2. Open iOS Simulator (the same one `pnpm snap` already targets) and drag the `.app` onto the simulator window to install.
-3. Add a "throw test" button gated by an env flag so it cannot ship by accident: render it only when `__DEV__` is false AND `process.env.EXPO_PUBLIC_SENTRY_SMOKE === 'true'`. The button's onPress calls `throw new Error("ironspot sentry smoke " + Date.now())`. Mirrors the server `IRONSPOT_SLACK_SMOKE_ENABLED` toggle pattern.
-4. Build with `EXPO_PUBLIC_SENTRY_SMOKE=true`, reinstall, press once. Sentry dashboard, `ironspot-app` project: confirm the event appears with a symbolicated stack (sourcemap upload working) and `environment: production`.
+3. The smoke button lives in `src/features/profile/components/SentrySmokeButton.tsx`. It renders only when both `__DEV__ === false` AND `process.env.EXPO_PUBLIC_SENTRY_SMOKE === 'true'`. The onPress emits `new Error("ironspot sentry smoke " + Date.now())` through `captureError` (the same path the global error handler uses for unhandled exceptions). The button appears at the bottom of the Profile tab regardless of auth state.
+4. The `preview-simulator` profile in `eas.json` bakes `EXPO_PUBLIC_SENTRY_SMOKE=true` into the bundle. After building with that profile and installing the `.app`, open the Profile tab, tap the "Sentry smoke test (ops only)" control. Sentry dashboard, `ironspot-app` project: confirm the event appears with a symbolicated stack (sourcemap upload working) and `environment: production`.
 5. Rebuild without the flag for any subsequent verify or release build. Leaving the button code in the bundle is fine; it just never renders.
 
 Deferred to pre-App-Store-submission: native-side crash reproducibility (Objective-C / Swift signals, JVM `NoSuchMethodError`) which cannot be reliably triggered in iOS Simulator. Run one physical-device pass before App Store submission.
