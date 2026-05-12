@@ -1,3 +1,16 @@
 sentry:
   environment: production
   traces-sample-rate: 0.05
+
+spring:
+  datasource:
+    hikari:
+      # Conservative pool size for the Supabase Postgres pooler (Task 32 decision #2).
+      # Supabase free tier allows 60 concurrent pgbouncer connections per project; keeping
+      # the per-instance pool well below that leaves headroom for migrations, the dashboard,
+      # and frontend service-role-key calls. Raise after measuring real load.
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000

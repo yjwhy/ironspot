@@ -1,0 +1,16 @@
+# Login entry path — verifies the unauthenticated user can reach the social-login screen
+# from the My tab. Per Task 32 decision #5, the OAuth step itself is NOT automated
+# (Supabase OAuth opens the system browser; Maestro cannot drive that). Coverage for
+# the authenticated state lives in AuthenticatedProfile unit tests (Task 29).
+appId: com.ironspot.app
+---
+- launchApp
+- tapOn:
+    id: tab-bar-my
+- assertVisible: '로그인하기'
+# Plain text matcher: the shared Button component does not set an explicit
+# accessibilityLabel on its Pressable, so RN's auto-synthesised label from child
+# Text is implementation-dependent. The text match is the stable selector.
+- tapOn: '로그인하기'
+- assertVisible: 'Google로 계속하기'
+- assertVisible: 'Kakao로 계속하기'

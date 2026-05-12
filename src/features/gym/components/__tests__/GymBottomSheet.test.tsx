@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import type * as ReactType from 'react';
 
 import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
 import type { GymWithMachineCount } from '@/shared/types/database';
@@ -10,6 +11,21 @@ import { GymBottomSheet } from '../GymBottomSheet';
 jest.mock('@react-navigation/bottom-tabs', () => ({
   useBottomTabBarHeight: jest.fn(() => 83),
 }));
+
+// Stand-in for expo-router's useFocusEffect: behaves like useEffect with [] so the
+// "present + snap on mount" branch fires in unit tests where no navigation container
+// is mounted. Returned cleanup runs on unmount, mirroring the real blur-on-tab-change
+// dismiss path. Uses require() inside the factory because jest.mock hoists above
+// imports and cannot reference outer-scope React.
+jest.mock('expo-router', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const ReactModule = require('react') as typeof ReactType;
+  return {
+    useFocusEffect: (effect: () => (() => void) | undefined) => {
+      ReactModule.useEffect(effect, []);
+    },
+  };
+});
 
 jest.mock('@gorhom/bottom-sheet', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

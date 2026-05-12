@@ -6,7 +6,8 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { FlashList } from '@shopify/flash-list';
-import { useEffect, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
@@ -44,22 +45,35 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   const ref = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
   const tabBarHeight = useBottomTabBarHeight();
 
-  useEffect(function presentAfterNavigationSettles() {
-    let snapId: ReturnType<typeof setTimeout> | undefined;
-    const id = setTimeout(() => {
-      ref.current?.present();
-      // bottom-sheet v5.2.10: present() skips snapToIndex on first mount
-      // because mounted.current is false; delay gives React time to commit
-      // the setState({mount:true}) before we snap to index 1.
-      snapId = setTimeout(() => {
-        ref.current?.snapToIndex(1);
-      }, SNAP_DELAY_MS);
-    }, PRESENT_DELAY_MS);
-    return () => {
-      clearTimeout(id);
-      clearTimeout(snapId);
-    };
-  }, []);
+  // useFocusEffect (not useEffect) so the portaled BottomSheetModal dismisses when the user
+  // leaves the Map tab. Without dismiss-on-blur, the gorhom portal — mounted at the (tabs)
+  // layout provider — keeps the sheet visible across tabs. Re-presents on refocus so returning
+  // to the Map tab restores the prior content (mode is owned by MapScreen state).
+  //
+  // useCallback wrap: useFocusEffect treats its argument as a dependency of its internal
+  // useEffect, so an unstable callback identity would tear down focus listeners and re-fire
+  // the timers on every parent render. React Compiler is usually sufficient, but the explicit
+  // memo is the library-aligned posture and immune to any future 'use no memo' directive on
+  // this file. Empty deps are correct: the closure captures only `ref` (stable useRef).
+  useFocusEffect(
+    useCallback(function presentOnFocusDismissOnBlur() {
+      let snapId: ReturnType<typeof setTimeout> | undefined;
+      const id = setTimeout(() => {
+        ref.current?.present();
+        // bottom-sheet v5.2.10: present() skips snapToIndex on first mount because
+        // mounted.current is false; delay gives React time to commit the
+        // setState({mount:true}) before we snap to index 1.
+        snapId = setTimeout(() => {
+          ref.current?.snapToIndex(1);
+        }, SNAP_DELAY_MS);
+      }, PRESENT_DELAY_MS);
+      return function dismissOnBlur() {
+        clearTimeout(id);
+        clearTimeout(snapId);
+        ref.current?.dismiss();
+      };
+    }, []),
+  );
 
   return (
     <BottomSheetModal

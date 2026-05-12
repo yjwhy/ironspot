@@ -24,8 +24,8 @@ export function MapScreen() {
   const router = useRouter();
   const locationState = useCurrentLocation();
   const { filters, setBrand, setCategory, clear: clearFilters } = useFilters();
-  const { data: brands = [] } = useBrands();
-  const { data: categories = [] } = useCategories();
+  const { data: brands = [], isError: brandsError } = useBrands();
+  const { data: categories = [], isError: categoriesError } = useCategories();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   const initialLocation = locationState.status !== 'loading' ? locationState.location : null;
@@ -103,6 +103,8 @@ export function MapScreen() {
           visible={filterPanelOpen}
           brands={brands}
           categories={categories}
+          brandsError={brandsError}
+          categoriesError={categoriesError}
           selectedBrandId={filters.brandId}
           selectedCategoryId={filters.categoryId}
           onBrandToggle={setBrand}
