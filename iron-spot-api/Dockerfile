@@ -14,15 +14,23 @@ WORKDIR /build
 
 COPY --from=jdk25 /opt/java/openjdk /opt/jdk25
 
-# Point Gradle's toolchain auto-detection at the pre-installed JDK 25.
-# Disable auto-download so the build fails fast if /opt/jdk25 is missing.
-ENV GRADLE_OPTS="-Dorg.gradle.java.installations.paths=/opt/jdk25 -Dorg.gradle.java.installations.auto-download=false"
+# Fail fast if the JDK 25 copy is missing or broken (avoids a confusing toolchain error
+# later in the build).
+RUN test -x /opt/jdk25/bin/java && /opt/jdk25/bin/java -version
 
 # Dependency layer: copy build files only, fetch dependencies into the Gradle cache so
 # this layer can be reused while only sources change. The dependency resolution can fail
 # offline for some plugins; allow that to continue (next stage will redo what's needed).
 COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle ./gradle
+
+# Append the toolchain configuration to the committed gradle.properties. We write to the
+# file (rather than relying on GRADLE_OPTS or -D flags) because Gradle's toolchain
+# resolver reads installations.paths consistently from gradle.properties on every entry
+# point (daemon, --no-daemon, init scripts) while environment-variable propagation has
+# proven unreliable inside the Render build sandbox.
+RUN printf "\n# --- Render build sandbox toolchain config (Task 32 decision #7) ---\norg.gradle.java.installations.paths=/opt/jdk25\norg.gradle.java.installations.auto-download=false\n" >> gradle.properties
+
 RUN chmod +x ./gradlew && ./gradlew --no-daemon dependencies > /dev/null 2>&1 || true
 
 # Source layer: jOOQ generated code is committed under src/main/generated so generateJooq
@@ -31,7 +39,7 @@ COPY src ./src
 
 # Build the bootable JAR. Skip:
 #   -x generateJooq — requires Docker socket via Testcontainers; not available in the
-#     Railway build environment. Generated sources are committed.
+#     Render build sandbox. Generated sources are committed.
 #   -x test — tests run in CI (api-ci.yml), not in the deploy build path.
 RUN ./gradlew --no-daemon bootJar -x generateJooq -x test
 
