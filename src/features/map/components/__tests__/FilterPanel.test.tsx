@@ -20,6 +20,8 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof FilterPanel>
       visible={true}
       brands={brands}
       categories={categories}
+      brandsError={false}
+      categoriesError={false}
       selectedBrandId={null}
       selectedCategoryId={null}
       onBrandToggle={() => undefined}
@@ -81,5 +83,39 @@ describe('FilterPanel', () => {
     const { queryByText, queryByTestId } = renderPanel({ visible: false });
     expect(queryByText('브랜드')).toBeNull();
     expect(queryByTestId('filter-panel-backdrop')).toBeNull();
+  });
+
+  it('renders empty placeholder when brands list is empty', () => {
+    const { queryAllByText, queryByText } = renderPanel({ brands: [] });
+    // Brand section header still renders so layout stays stable; body shows the empty message.
+    expect(queryByText('브랜드')).toBeTruthy();
+    expect(queryAllByText('필터 항목이 없어요').length).toBeGreaterThan(0);
+    expect(queryByText('Hammer Strength')).toBeNull();
+  });
+
+  it('renders empty placeholder when categories list is empty', () => {
+    const { queryByText, queryAllByText } = renderPanel({ categories: [] });
+    expect(queryByText('머신 종류')).toBeTruthy();
+    expect(queryAllByText('필터 항목이 없어요').length).toBeGreaterThan(0);
+    expect(queryByText('등')).toBeNull();
+  });
+
+  it('renders error placeholder when brandsError is true', () => {
+    const { queryAllByText, queryByText } = renderPanel({ brands: [], brandsError: true });
+    expect(queryByText('브랜드')).toBeTruthy();
+    expect(queryAllByText('필터를 불러올 수 없어요').length).toBeGreaterThan(0);
+  });
+
+  it('renders error placeholder when categoriesError is true', () => {
+    const { queryAllByText, queryByText } = renderPanel({ categories: [], categoriesError: true });
+    expect(queryByText('머신 종류')).toBeTruthy();
+    expect(queryAllByText('필터를 불러올 수 없어요').length).toBeGreaterThan(0);
+  });
+
+  it('prefers error placeholder over empty when both signal absence', () => {
+    // brands is [] (empty) AND brandsError is true; error message should win.
+    const { queryByText } = renderPanel({ brands: [], brandsError: true });
+    expect(queryByText('필터를 불러올 수 없어요')).toBeTruthy();
+    expect(queryByText('필터 항목이 없어요')).toBeNull();
   });
 });

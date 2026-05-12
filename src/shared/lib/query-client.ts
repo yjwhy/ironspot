@@ -2,8 +2,13 @@ import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 
 import { HTTPError, TimeoutError } from './api-client';
 import { captureError } from './sentry';
+import { STALE_TIME_DEFAULT_MS, STALE_TIME_PHOTOS_MS } from './stale-times';
 
-export const STALE_TIME_DEFAULT_MS = 1000 * 60 * 5;
+// Re-exported so callers that previously imported the time constants from this module
+// keep working. The actual constants live in `./stale-times` so feature hooks can pull
+// them without dragging in the full QueryClient (and its ky import which Jest's ESM
+// transform stumbles on).
+export { STALE_TIME_DEFAULT_MS, STALE_TIME_PHOTOS_MS };
 
 // Report server faults and degraded-backend signals to Sentry. 4xx (validation, auth, not-found)
 // is user-impact noise — component-level onError already routes it to toast / inline UI.

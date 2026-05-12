@@ -1,0 +1,32 @@
+# Upvote toggle flow — exercises the heart button on PhotoDetailScreen.
+# Assumes the test account is already logged in (same convention as upload-flow.yaml;
+# Supabase OAuth cannot be automated). Without controlled DB seed the count starts
+# unpredictable, so this flow asserts the button is reachable, tappable, and survives
+# a toggle cycle without crashing — the exact +1 / -1 arithmetic is covered by
+# useUpvote unit tests (Task 26).
+appId: com.ironspot.app
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'gym-card-피트니스-팩토리'
+    timeout: 15000
+- tapOn:
+    id: 'gym-card-피트니스-팩토리'
+- tapOn:
+    id: 'machine-row-low-row'
+- tapOn:
+    id: 'photo-grid-best-cut'
+# Anchor on the close button so we know PhotoDetailScreen has mounted before
+# matching "추천" — PhotoGrid also renders "추천 N" labels per card, and without
+# this wait the heart-button selector below could resolve to a grid label mid
+# transition.
+- extendedWaitUntil:
+    visible: '닫기'
+    timeout: 5000
+# Heart rendered with "추천 N" or "추천 취소" — both contain the substring "추천".
+- assertVisible: '추천'
+- tapOn: '추천'
+- assertVisible: '추천'
+- tapOn: '추천'
+- assertVisible: '추천'

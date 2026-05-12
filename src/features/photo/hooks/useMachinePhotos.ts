@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { STALE_TIME_PHOTOS_MS } from '@/shared/lib/stale-times';
+
 import { photoKeys } from '../query-keys';
 import { getMachinePhotos } from '../services/photo-list';
 
@@ -16,7 +18,7 @@ export function useMachinePhotos(gymMachineId: string | undefined) {
       }
       return getMachinePhotos(gymMachineId);
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: STALE_TIME_PHOTOS_MS,
     enabled: Boolean(gymMachineId),
   });
 }

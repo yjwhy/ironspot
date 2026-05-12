@@ -11,10 +11,72 @@ const PANEL_SLIDE_OFFSET = 8;
 // Exit is 65% of enter duration — feels responsive (ui-design.md animation principles)
 const EXIT_DURATION = Math.round(ANIMATION.microDuration * 0.65);
 
+const SECTION_EMPTY_MESSAGE = '필터 항목이 없어요';
+const SECTION_ERROR_MESSAGE = '필터를 불러올 수 없어요';
+
+interface FilterSectionItem {
+  id: string;
+  name: string;
+}
+
+interface FilterSectionProps {
+  label: string;
+  items: readonly FilterSectionItem[];
+  selectedId: string | null;
+  isError: boolean;
+  onToggle: (id: string | null) => void;
+}
+
+function FilterSection({ label, items, selectedId, isError, onToggle }: FilterSectionProps) {
+  return (
+    <View className="gap-2">
+      <AppText className="font-semibold text-body-sm text-text-secondary">{label}</AppText>
+      <FilterSectionBody
+        items={items}
+        selectedId={selectedId}
+        isError={isError}
+        onToggle={onToggle}
+      />
+    </View>
+  );
+}
+
+function FilterSectionBody({
+  items,
+  selectedId,
+  isError,
+  onToggle,
+}: Omit<FilterSectionProps, 'label'>) {
+  // Precedence: error > empty > items. An errored query whose data defaults to []
+  // would otherwise render the empty message even though the real cause is a fetch failure.
+  if (isError) {
+    return <AppText className="text-body-sm text-text-tertiary">{SECTION_ERROR_MESSAGE}</AppText>;
+  }
+  if (items.length === 0) {
+    return <AppText className="text-body-sm text-text-tertiary">{SECTION_EMPTY_MESSAGE}</AppText>;
+  }
+  return (
+    <View className="flex-row flex-wrap gap-2">
+      {items.map((item) => (
+        <Chip
+          key={item.id}
+          label={item.name}
+          selected={selectedId === item.id}
+          onPress={() => {
+            onToggle(selectedId === item.id ? null : item.id);
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 interface FilterPanelProps {
   visible: boolean;
   brands: readonly Brand[];
   categories: readonly Category[];
+  brandsError: boolean;
+  categoriesError: boolean;
   selectedBrandId: string | null;
   selectedCategoryId: string | null;
   onBrandToggle: (brandId: string | null) => void;
@@ -26,6 +88,8 @@ export function FilterPanel({
   visible,
   brands,
   categories,
+  brandsError,
+  categoriesError,
   selectedBrandId,
   selectedCategoryId,
   onBrandToggle,
@@ -67,40 +131,20 @@ export function FilterPanel({
         style={panelStyle}
         className="mx-4 mt-2 rounded-2xl bg-bg-elevated shadow-md p-4 gap-4"
       >
-        {brands.length > 0 && (
-          <View className="gap-2">
-            <AppText className="font-semibold text-body-sm text-text-secondary">브랜드</AppText>
-            <View className="flex-row flex-wrap gap-2">
-              {brands.map((brand) => (
-                <Chip
-                  key={brand.id}
-                  label={brand.name}
-                  selected={selectedBrandId === brand.id}
-                  onPress={() => {
-                    onBrandToggle(selectedBrandId === brand.id ? null : brand.id);
-                  }}
-                />
-              ))}
-            </View>
-          </View>
-        )}
-        {categories.length > 0 && (
-          <View className="gap-2">
-            <AppText className="font-semibold text-body-sm text-text-secondary">머신 종류</AppText>
-            <View className="flex-row flex-wrap gap-2">
-              {categories.map((category) => (
-                <Chip
-                  key={category.id}
-                  label={category.name}
-                  selected={selectedCategoryId === category.id}
-                  onPress={() => {
-                    onCategoryToggle(selectedCategoryId === category.id ? null : category.id);
-                  }}
-                />
-              ))}
-            </View>
-          </View>
-        )}
+        <FilterSection
+          label="브랜드"
+          items={brands}
+          selectedId={selectedBrandId}
+          isError={brandsError}
+          onToggle={onBrandToggle}
+        />
+        <FilterSection
+          label="머신 종류"
+          items={categories}
+          selectedId={selectedCategoryId}
+          isError={categoriesError}
+          onToggle={onCategoryToggle}
+        />
       </Animated.View>
     </>
   );

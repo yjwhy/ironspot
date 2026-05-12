@@ -42,7 +42,8 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
                 // Explicit so a future permitAll for actuator-like admin tools cannot
-                // accidentally widen the surface that exposes Slack smoke.
+                // accidentally widen the surface that exposes any /api/_admin smoke
+                // endpoint (Slack smoke, Sentry smoke, and any future ops verifiers).
                 .requestMatchers("/api/_admin/**").authenticated()
                 .anyRequest().authenticated()
             )

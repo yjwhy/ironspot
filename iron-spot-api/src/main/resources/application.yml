@@ -36,6 +36,12 @@ ironspot:
       # Gate for /api/_admin/slack-smoke/{path} ops verification endpoint.
       # MUST remain false outside the post-deploy smoke window — toggle on, run 3 curls, toggle off.
       enabled: ${IRONSPOT_SLACK_SMOKE_ENABLED:false}
+  sentry:
+    smoke:
+      # Gate for /api/_admin/sentry-smoke ops verification endpoint (Task 32 decision #3).
+      # Endpoint throws a RuntimeException that GlobalExceptionHandler routes through
+      # Sentry.captureException. MUST remain false outside the Task 32b verify window.
+      enabled: ${IRONSPOT_SENTRY_SMOKE_ENABLED:false}
 
 sentry:
   # Empty DSN → SentryConfig skips Sentry.init entirely (fail-open, zero traffic in dev/test).
