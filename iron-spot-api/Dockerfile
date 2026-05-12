@@ -40,4 +40,16 @@ FROM eclipse-temurin:25-jre-alpine AS runtime
 WORKDIR /app
 COPY --from=builder /build/build/libs/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
+# JVM flags tuned for Render free web service (512MB container, 0.1 vCPU shared).
+#   MaxRAMPercentage=70 — leave headroom for Tomcat / Netty / native memory, glibc
+#     allocator overhead, and Render's own sidecar processes inside the 512MB cap.
+#   SerialGC — lowest CPU overhead GC, best fit for single-core constrained workloads
+#     where pause time is preferable to throughput tuning.
+#   ExitOnOutOfMemoryError — fail fast on OOM so the platform restarts the container
+#     instead of degrading silently into a swap-thrash spiral.
+ENTRYPOINT ["java", \
+  "-Dspring.profiles.active=prod", \
+  "-XX:MaxRAMPercentage=70.0", \
+  "-XX:+UseSerialGC", \
+  "-XX:+ExitOnOutOfMemoryError", \
+  "-jar", "app.jar"]
