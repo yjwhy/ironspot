@@ -13,17 +13,17 @@ interface DevGlobal {
 }
 
 describe('SentrySmokeButton', () => {
-  const originalDev = (globalThis as DevGlobal).__DEV__;
+  const originalDev = (globalThis as unknown as DevGlobal).__DEV__;
   const originalEnv = process.env.EXPO_PUBLIC_SENTRY_SMOKE;
 
   afterEach(() => {
-    (globalThis as DevGlobal).__DEV__ = originalDev;
+    (globalThis as unknown as DevGlobal).__DEV__ = originalDev;
     process.env.EXPO_PUBLIC_SENTRY_SMOKE = originalEnv;
     jest.clearAllMocks();
   });
 
   it('returns null in dev builds even when the flag is on', () => {
-    (globalThis as DevGlobal).__DEV__ = true;
+    (globalThis as unknown as DevGlobal).__DEV__ = true;
     process.env.EXPO_PUBLIC_SENTRY_SMOKE = 'true';
 
     const { queryByLabelText } = render(<SentrySmokeButton />);
@@ -31,7 +31,7 @@ describe('SentrySmokeButton', () => {
   });
 
   it('returns null when EXPO_PUBLIC_SENTRY_SMOKE is unset', () => {
-    (globalThis as DevGlobal).__DEV__ = false;
+    (globalThis as unknown as DevGlobal).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_SENTRY_SMOKE;
 
     const { queryByLabelText } = render(<SentrySmokeButton />);
@@ -39,7 +39,7 @@ describe('SentrySmokeButton', () => {
   });
 
   it('renders and triggers captureError when prod build + flag on', () => {
-    (globalThis as DevGlobal).__DEV__ = false;
+    (globalThis as unknown as DevGlobal).__DEV__ = false;
     process.env.EXPO_PUBLIC_SENTRY_SMOKE = 'true';
 
     const { getByLabelText } = render(<SentrySmokeButton />);
