@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as burnt from 'burnt';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
@@ -16,7 +16,7 @@ interface LoginScreenProps {
   onBrowseAsGuest: () => void;
 }
 
-type OAuthProvider = 'google' | 'kakao';
+type OAuthProvider = 'google' | 'kakao' | 'apple';
 type LoadingProvider = OAuthProvider | null;
 
 export function LoginScreen({ onBrowseAsGuest }: LoginScreenProps) {
@@ -54,6 +54,7 @@ export function LoginScreen({ onBrowseAsGuest }: LoginScreenProps) {
             void handleOAuthLogin('google');
           }}
           loading={loading === 'google'}
+          variant="primary"
         />
         <Button
           label="Kakao로 계속하기"
@@ -63,6 +64,16 @@ export function LoginScreen({ onBrowseAsGuest }: LoginScreenProps) {
           loading={loading === 'kakao'}
           variant="secondary"
         />
+        {Platform.OS === 'ios' ? (
+          <Button
+            label="Apple로 계속하기"
+            onPress={() => {
+              void handleOAuthLogin('apple');
+            }}
+            loading={loading === 'apple'}
+            variant="secondary"
+          />
+        ) : null}
         <Pressable
           onPress={onBrowseAsGuest}
           accessibilityRole="button"
