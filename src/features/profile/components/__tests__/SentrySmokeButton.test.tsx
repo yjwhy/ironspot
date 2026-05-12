@@ -12,18 +12,24 @@ interface DevGlobal {
   __DEV__?: boolean;
 }
 
+// React Native's global `__DEV__` declaration widens to `any` after the cast,
+// so CI's @typescript-eslint/no-unsafe-assignment flags reads and writes through
+// `(globalThis as DevGlobal).__DEV__`. The narrow is safe (the property is a
+// boolean by RN's own runtime contract); the test simulates dev vs prod by
+// flipping it. File-level disable keeps the test readable without a wrapper.
+
 describe('SentrySmokeButton', () => {
-  const originalDev = (globalThis as unknown as DevGlobal).__DEV__;
+  const originalDev = (globalThis as DevGlobal).__DEV__;
   const originalEnv = process.env.EXPO_PUBLIC_SENTRY_SMOKE;
 
   afterEach(() => {
-    (globalThis as unknown as DevGlobal).__DEV__ = originalDev;
+    (globalThis as DevGlobal).__DEV__ = originalDev;
     process.env.EXPO_PUBLIC_SENTRY_SMOKE = originalEnv;
     jest.clearAllMocks();
   });
 
   it('returns null in dev builds even when the flag is on', () => {
-    (globalThis as unknown as DevGlobal).__DEV__ = true;
+    (globalThis as DevGlobal).__DEV__ = true;
     process.env.EXPO_PUBLIC_SENTRY_SMOKE = 'true';
 
     const { queryByLabelText } = render(<SentrySmokeButton />);
@@ -31,7 +37,7 @@ describe('SentrySmokeButton', () => {
   });
 
   it('returns null when EXPO_PUBLIC_SENTRY_SMOKE is unset', () => {
-    (globalThis as unknown as DevGlobal).__DEV__ = false;
+    (globalThis as DevGlobal).__DEV__ = false;
     delete process.env.EXPO_PUBLIC_SENTRY_SMOKE;
 
     const { queryByLabelText } = render(<SentrySmokeButton />);
@@ -39,7 +45,7 @@ describe('SentrySmokeButton', () => {
   });
 
   it('renders and triggers captureError when prod build + flag on', () => {
-    (globalThis as unknown as DevGlobal).__DEV__ = false;
+    (globalThis as DevGlobal).__DEV__ = false;
     process.env.EXPO_PUBLIC_SENTRY_SMOKE = 'true';
 
     const { getByLabelText } = render(<SentrySmokeButton />);
