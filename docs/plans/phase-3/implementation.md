@@ -311,33 +311,45 @@ feat(phase-3): 33 — admin role + 4 admin endpoints
 
 **Goal:** Two screens — admin queue list and admin photo detail. Gated at the route level by `useAuth().status === 'authenticated' && user.role === 'admin'`. Non-admin authenticated users get an empty state; anonymous users get redirected to login.
 
+**Carried in from Task 33 (gap):** Task 33's plan said `UserResponse` DTO would include `role` as a consequence of adding the column, but the PR shipped without modifying the DTO. Task 34 absorbs this as Step 0 (backend prereq) so the frontend `user.role === 'admin'` check has data to read.
+
 **What must be complete before calling this task done:**
 
+- `UserResponse.java` exposes `role` (Step 0 prereq absorbed from Task 33)
 - `app/admin/queue.tsx` lists pending reports, taps navigate to detail
 - `app/admin/photo/[id].tsx` shows the reported photo + action buttons (dispose actioned / dismissed / restore photo / ban user)
 - Non-admin authenticated visit shows "권한이 없습니다" empty state, not a 404 or a blank screen
 - All admin actions go through TanStack Query mutations with optimistic invalidation of `adminKeys.pendingReports()`
-- `users.role` propagates through `useCurrentUser` so the role check works (Task 33 added the column; `UserResponse` DTO now includes `role`)
+- `users.role` propagates through `useCurrentUser` so the role check works
 - 6+ frontend tests covering route gating, action dispatch, optimistic update
 
 **Files to create / change:**
 
 ```
-src/features/admin/routes.ts                                   (new)
-src/features/admin/query-keys.ts                               (new)
-src/features/admin/hooks/useAdminReports.ts                    (new)
-src/features/admin/hooks/useDisposeReport.ts                   (new)
-src/features/admin/hooks/useRestorePhoto.ts                    (new)
-src/features/admin/hooks/useBanUser.ts                         (new)
-src/features/admin/components/AdminQueueScreen.tsx             (new)
-src/features/admin/components/AdminPhotoScreen.tsx             (new)
-src/features/admin/components/AdminGuard.tsx                   (new — route gate)
-src/features/admin/components/__tests__/...                    (new — 6 tests minimum)
-app/admin/_layout.tsx                                          (new)
-app/admin/queue.tsx                                            (new — re-export)
-app/admin/photo/[id].tsx                                       (new — re-export)
-src/features/auth/hooks/useCurrentUser.ts                      (modify — UserResponse now has role)
+iron-spot-api/src/main/java/com/ironspot/auth/dto/UserResponse.java   (modify — add role field)
+iron-spot-api/src/main/java/com/ironspot/auth/UserRepository.java     (modify — SELECT USERS.ROLE in findById)
+iron-spot-api/src/test/java/com/ironspot/auth/MyContentTest.java      (modify — assert role in /me response)
+openapi.json                                                          (regen — UserResponse schema gains role)
+src/shared/generated/model/userResponse.ts                            (regen — orval picks up role)
+src/features/admin/routes.ts                                          (new)
+src/features/admin/query-keys.ts                                      (new)
+src/features/admin/hooks/useAdminReports.ts                           (new)
+src/features/admin/hooks/useDisposeReport.ts                          (new)
+src/features/admin/hooks/useRestorePhoto.ts                           (new)
+src/features/admin/hooks/useBanUser.ts                                (new)
+src/features/admin/components/AdminQueueScreen.tsx                    (new)
+src/features/admin/components/AdminPhotoScreen.tsx                    (new)
+src/features/admin/components/AdminGuard.tsx                          (new — route gate)
+src/features/admin/components/__tests__/...                           (new — 6 tests minimum)
+app/admin/_layout.tsx                                                 (new)
+app/admin/queue.tsx                                                   (new — re-export)
+app/admin/photo/[id].tsx                                              (new — re-export)
+src/features/auth/hooks/useCurrentUser.ts                             (no change needed — type updates via orval regen)
 ```
+
+### Step 0 (prereq): Surface `role` to the GET /me response
+
+`UserResponse.java` gains `String role;` field. `UserRepository.findById` adds `USERS.ROLE` to the SELECT list and to the `UserResponse.builder()` chain. `MyContentTest` is extended to assert the role is present in the response body (default `"user"` for the seeded test user). Re-run `SpecExportTest` so `openapi.json` regenerates; run `pnpm generate:api` so the orval `UserResponse` type gains `role?: string`. Without this step the frontend `AdminGuard` cannot distinguish admin from regular user — every authenticated visitor would hit the "권한이 없습니다" empty state regardless of their actual role.
 
 ### Step 1: `AdminGuard` — route gate
 

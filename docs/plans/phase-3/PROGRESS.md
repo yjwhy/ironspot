@@ -42,6 +42,10 @@ App Store submission gates carried from Phase 2:
 - [ ] **Privacy Policy + Terms of Service** — content + hosted URLs + App Store Connect link
 - [ ] **UptimeRobot keep-warm** — optional, 5-min `/actuator/health` ping
 
+## Task 33 → Task 34 absorbed prereq
+
+- **`UserResponse` DTO missing `role`** — Task 33's plan said this DTO would include `role` as a side-effect of adding the column, but the merged PR (#50) did not modify the Java DTO. Without it, the frontend `useCurrentUser` returns a `UserResponse` without `role`, so `AdminGuard` cannot tell admin from regular user. **Absorbed into Task 34 as Step 0**: `UserResponse.role` + `UserRepository.findById` SELECT + `MyContentTest` assertion + OpenAPI/Orval regen happen at the top of Task 34 before the frontend admin scaffold.
+
 ## Phase 2 carryover gaps surfaced during Task 33 (not blockers)
 
 Discovered while inspecting prod schema via Supabase MCP `list_tables`:
