@@ -12,15 +12,21 @@ import java.util.Date;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 class JwtValidatorTest {
 
     private static final String TEST_SECRET = "test-supabase-jwt-secret-for-testing-must-be-at-least-256-bits";
     private JwtValidator validator;
+    private UserRepository userRepository;
 
     @BeforeEach
     void setUp() {
-        validator = new JwtValidator(TEST_SECRET);
+        userRepository = mock(UserRepository.class);
+        given(userRepository.findAuthContext(anyString())).willReturn(Optional.empty());
+        validator = new JwtValidator(TEST_SECRET, userRepository);
     }
 
     private static final String TEST_USER_ID = "550e8400-e29b-41d4-a716-446655440000";

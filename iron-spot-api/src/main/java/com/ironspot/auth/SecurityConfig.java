@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -16,6 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -45,6 +47,11 @@ public class SecurityConfig {
                 // accidentally widen the surface that exposes any /api/_admin smoke
                 // endpoint (Slack smoke, Sentry smoke, and any future ops verifiers).
                 .requestMatchers("/api/_admin/**").authenticated()
+                // /api/admin/** falls through to anyRequest().authenticated() — role gate
+                // is enforced at the controller via @PreAuthorize("hasRole('ADMIN')").
+                // Filter-chain hasRole() was tried but routes denials through
+                // AuthenticationEntryPoint (401) instead of the AccessDeniedHandler (403),
+                // which conflicts with @PreAuthorize's 403 semantics.
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

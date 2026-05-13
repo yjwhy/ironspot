@@ -35,6 +35,23 @@ public class UserRepository {
             });
     }
 
+    public Optional<UserAuthContext> findAuthContext(String id) {
+        return dsl.select(USERS.ROLE, USERS.BANNED_AT)
+            .from(USERS)
+            .where(USERS.ID.eq(UUID.fromString(id)))
+            .and(USERS.DELETED_AT.isNull())
+            .fetchOptional(r -> new UserAuthContext(r.get(USERS.ROLE), r.get(USERS.BANNED_AT)));
+    }
+
+    public int markBanned(String id) {
+        return dsl.update(USERS)
+            .set(USERS.BANNED_AT, OffsetDateTime.now())
+            .where(USERS.ID.eq(UUID.fromString(id)))
+            .and(USERS.BANNED_AT.isNull())
+            .and(USERS.DELETED_AT.isNull())
+            .execute();
+    }
+
     public void insert(String id, String email, String nickname) {
         dsl.insertInto(USERS, USERS.ID, USERS.EMAIL, USERS.NICKNAME)
             .values(UUID.fromString(id), email, nickname)

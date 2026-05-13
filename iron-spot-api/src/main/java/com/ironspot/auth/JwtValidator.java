@@ -18,14 +18,19 @@ import java.util.UUID;
 public class JwtValidator {
 
     private final SecretKey signingKey;
+    private final UserRepository userRepository;
 
-    public JwtValidator(@Value("${security.supabase-jwt-secret}") String jwtSecret) {
+    public JwtValidator(
+        @Value("${security.supabase-jwt-secret}") String jwtSecret,
+        UserRepository userRepository
+    ) {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
             throw new IllegalStateException(
                 "SUPABASE_JWT_SECRET must be at least 32 bytes (256 bits) for HS256");
         }
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+        this.userRepository = userRepository;
     }
 
     public Optional<UserPrincipal> validate(String token) {
@@ -50,9 +55,14 @@ public class JwtValidator {
                 return Optional.empty();
             }
 
+            UserAuthContext ctx = userRepository.findAuthContext(sub)
+                .orElse(new UserAuthContext("user", null));
+
             return Optional.of(UserPrincipal.builder()
                 .userId(sub)
                 .email(email)
+                .role(ctx.role())
+                .bannedAt(ctx.bannedAt())
                 .build());
         } catch (JwtException e) {
             log.debug("Invalid JWT: {}", e.getMessage());
