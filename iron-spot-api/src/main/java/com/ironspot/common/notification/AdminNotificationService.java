@@ -33,6 +33,16 @@ public class AdminNotificationService {
         post(":mag: SafeSearch queued — photo `" + photoId + "` (verdict: " + verdict + ")");
     }
 
+    public void notifyAutoBanUploader(UUID uploaderId, int actionedCount) {
+        post(":rotating_light: Uploader auto-banned — user `" + uploaderId
+            + "` (" + actionedCount + " actioned reports)");
+    }
+
+    public void notifyAutoBanReporter(UUID reporterId, int dismissedCount) {
+        post(":rotating_light: Reporter auto-banned — user `" + reporterId
+            + "` (" + dismissedCount + " dismissed reports — possible false-report abuse)");
+    }
+
     private void post(String text) {
         if (webhookUrl == null || webhookUrl.isBlank()) {
             log.debug("Slack webhook not configured, skipping notification: {}", text);
