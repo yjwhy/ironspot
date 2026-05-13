@@ -307,124 +307,370 @@ feat(phase-3): 33 — admin role + 4 admin endpoints
 
 ---
 
-## Task 34: Admin in-app screens (Frontend)
+## Task 34: Admin in-app screens + backend admin photo endpoints + auto-ban cascades
 
-**Goal:** Two screens — admin queue list and admin photo detail. Gated at the route level by `useAuth().status === 'authenticated' && user.role === 'admin'`. Non-admin authenticated users get an empty state; anonymous users get redirected to login.
+**Goal:** Two in-app screens (admin queue, admin photo detail) plus the backend surface they need. Queue is **photo-grouped** (one row per photo with pending reports, SQL `GROUP BY`). Detail aggregates `{photo, uploader, pendingReports[]}` in one round-trip. `AdminService.updateDisposition` is extended in the same `@Transactional` boundary so that `actioned` cascades into a photo blind + uploader auto-ban (≥3 actioned), and `dismissed` cascades into a reporter auto-ban (≥5 dismissed) — symmetric self-balancing moderation. `Step 0` absorbs the `UserResponse.role` gap from Task 33. An unban backend endpoint ships (no UI; Phase 4 will surface it).
 
 **Carried in from Task 33 (gap):** Task 33's plan said `UserResponse` DTO would include `role` as a consequence of adding the column, but the PR shipped without modifying the DTO. Task 34 absorbs this as Step 0 (backend prereq) so the frontend `user.role === 'admin'` check has data to read.
 
+**Out-of-scope (deferred — see `docs/plans/phase-3/README.md`):**
+
+- Vision `LABEL_DETECTION` for off-topic photo upload defence (Phase 4 — relies on community reports + admin queue until then)
+- Weighted reporter trust scoring (Task 34 ships binary auto-ban only; graduated weighting deferred)
+- Unban UI + appeal flow (Task 34 ships endpoint only)
+- `AccountSettingsScreen` mutation wrap refactor (Task 34 introduces the rule; `AccountSettingsScreen` cleanup is a separate backlog PR)
+
 **What must be complete before calling this task done:**
 
-- `UserResponse.java` exposes `role` (Step 0 prereq absorbed from Task 33)
-- `app/admin/queue.tsx` lists pending reports, taps navigate to detail
-- `app/admin/photo/[id].tsx` shows the reported photo + action buttons (dispose actioned / dismissed / restore photo / ban user)
-- Non-admin authenticated visit shows "권한이 없습니다" empty state, not a 404 or a blank screen
-- All admin actions go through TanStack Query mutations with optimistic invalidation of `adminKeys.pendingReports()`
-- `users.role` propagates through `useCurrentUser` so the role check works
-- 6+ frontend tests covering route gating, action dispatch, optimistic update
+- `UserResponse.java` exposes `role` with `@Schema(allowableValues = {"user","admin","owner"})` so Orval narrows the type
+- 3 new admin endpoints: queue list (`GET /api/admin/photos?status=pending_review`), photo detail (`GET /api/admin/photos/{id}`), unban (`PATCH /api/admin/users/{id}/unban`)
+- 4 new admin DTOs (records): `AdminPhotoSummary`, `AdminUserSummary`, `AdminPhotoDetailResponse`, `AdminQueuePhotoSummary`
+- `AdminService.updateDisposition` extended: `actioned` → photo auto-blind + uploader auto-ban cascade (threshold 3); `dismissed` → reporter auto-ban cascade (threshold 5); both fire Slack via `AdminNotificationService`
+- `app/admin/queue.tsx` lists photo-grouped pending queue (oldest first), `app/admin/photo/[id].tsx` shows detail with per-report dispose buttons
+- Non-admin authenticated visit shows "권한이 없습니다" `EmptyState`; anonymous gets `LoginPromptEmptyState` with admin-appropriate description
+- All admin mutations go through wrapper hooks per new frontend-guideline rule
+- `LoginPromptEmptyState` relocated to `src/shared/components/` with `description?: string` prop (default text preserved)
+- `docs/harness/frontend-guidelines.md` gains the "Mutation hooks wrap by default" rule
+- 12+ backend integration tests (queue, detail, unban, auto-ban cascades both sides)
+- 6+ frontend tests (route gating, queue render, navigation, mutation dispatch, Alert confirm/cancel)
 
 **Files to create / change:**
 
 ```
-iron-spot-api/src/main/java/com/ironspot/auth/dto/UserResponse.java   (modify — add role field)
-iron-spot-api/src/main/java/com/ironspot/auth/UserRepository.java     (modify — SELECT USERS.ROLE in findById)
-iron-spot-api/src/test/java/com/ironspot/auth/MyContentTest.java      (modify — assert role in /me response)
-openapi.json                                                          (regen — UserResponse schema gains role)
-src/shared/generated/model/userResponse.ts                            (regen — orval picks up role)
-src/features/admin/routes.ts                                          (new)
-src/features/admin/query-keys.ts                                      (new)
-src/features/admin/hooks/useAdminReports.ts                           (new)
-src/features/admin/hooks/useDisposeReport.ts                          (new)
-src/features/admin/hooks/useRestorePhoto.ts                           (new)
-src/features/admin/hooks/useBanUser.ts                                (new)
-src/features/admin/components/AdminQueueScreen.tsx                    (new)
-src/features/admin/components/AdminPhotoScreen.tsx                    (new)
-src/features/admin/components/AdminGuard.tsx                          (new — route gate)
-src/features/admin/components/__tests__/...                           (new — 6 tests minimum)
-app/admin/_layout.tsx                                                 (new)
-app/admin/queue.tsx                                                   (new — re-export)
-app/admin/photo/[id].tsx                                              (new — re-export)
-src/features/auth/hooks/useCurrentUser.ts                             (no change needed — type updates via orval regen)
+# Backend
+iron-spot-api/src/main/java/com/ironspot/auth/dto/UserResponse.java                       (modify — add role + @Schema)
+iron-spot-api/src/main/java/com/ironspot/auth/UserRepository.java                         (modify — SELECT USERS.ROLE in findById; markUnbanned method)
+iron-spot-api/src/main/java/com/ironspot/auth/UserService.java                            (modify — markUnbanned passthrough)
+iron-spot-api/src/test/java/com/ironspot/auth/MyContentTest.java                          (modify — assert role in /me)
+
+iron-spot-api/src/main/java/com/ironspot/admin/dto/AdminPhotoSummary.java                 (new — record)
+iron-spot-api/src/main/java/com/ironspot/admin/dto/AdminUserSummary.java                  (new — record)
+iron-spot-api/src/main/java/com/ironspot/admin/dto/AdminPhotoDetailResponse.java          (new — record)
+iron-spot-api/src/main/java/com/ironspot/admin/dto/AdminQueuePhotoSummary.java            (new — record)
+iron-spot-api/src/main/java/com/ironspot/admin/AdminController.java                       (modify — 2 GET endpoints + unban PATCH)
+iron-spot-api/src/main/java/com/ironspot/admin/AdminService.java                          (modify — listPendingPhotos, getPhotoDetail, markUnbanned; extend updateDisposition cascades)
+iron-spot-api/src/main/java/com/ironspot/photo/PhotoRepository.java                       (modify — findForAdmin (includes is_blinded), findUploader)
+iron-spot-api/src/main/java/com/ironspot/photo/ReportRepository.java                      (modify — listPendingPhotoQueue GROUP BY query, countActionedByUploader, countDismissedByReporter)
+iron-spot-api/src/main/java/com/ironspot/common/notification/AdminNotificationService.java (modify — notifyAutoBanUploader, notifyAutoBanReporter)
+iron-spot-api/src/test/java/com/ironspot/admin/AdminControllerIT.java                     (modify — new endpoint cases + cascade cases)
+
+# Generated
+openapi.json                                                                              (regen)
+src/shared/generated/...                                                                  (regen — orval picks up new endpoints + DTOs)
+
+# Shared component move
+src/shared/components/LoginPromptEmptyState.tsx                                          (new — moved from features/profile/components, add description prop)
+src/shared/components/__tests__/LoginPromptEmptyState.test.tsx                           (new — moved)
+src/features/profile/components/__tests__/LoginPromptEmptyState.test.tsx                 (delete — moved to shared)
+src/features/profile/components/LoginPromptEmptyState.tsx                                (delete — moved to shared)
+src/features/profile/...                                                                  (modify — update imports to new path)
+
+# New admin feature
+src/features/admin/routes.ts                                                              (new)
+src/features/admin/query-keys.ts                                                          (new — adminKeys factory)
+src/features/admin/hooks/useAdminQueue.ts                                                 (new — query wrapper)
+src/features/admin/hooks/useAdminPhotoDetail.ts                                           (new — query wrapper)
+src/features/admin/hooks/useDisposeReport.ts                                              (new — mutation wrapper)
+src/features/admin/hooks/useRestorePhoto.ts                                               (new — mutation wrapper)
+src/features/admin/hooks/useBanUser.ts                                                    (new — mutation wrapper with Alert.alert)
+src/features/admin/components/AdminGuard.tsx                                              (new — route gate)
+src/features/admin/components/AdminQueueScreen.tsx                                        (new)
+src/features/admin/components/AdminPhotoScreen.tsx                                        (new)
+src/features/admin/components/__tests__/...                                               (new — 6+ tests)
+app/admin/_layout.tsx                                                                     (new)
+app/admin/queue.tsx                                                                       (new — re-export)
+app/admin/photo/[id].tsx                                                                  (new — re-export)
+
+# Docs
+docs/harness/frontend-guidelines.md                                                       (modify — add "Mutation hooks wrap by default" rule)
 ```
 
 ### Step 0 (prereq): Surface `role` to the GET /me response
 
-`UserResponse.java` gains `String role;` field. `UserRepository.findById` adds `USERS.ROLE` to the SELECT list and to the `UserResponse.builder()` chain. `MyContentTest` is extended to assert the role is present in the response body (default `"user"` for the seeded test user). Re-run `SpecExportTest` so `openapi.json` regenerates; run `pnpm generate:api` so the orval `UserResponse` type gains `role?: string`. Without this step the frontend `AdminGuard` cannot distinguish admin from regular user — every authenticated visitor would hit the "권한이 없습니다" empty state regardless of their actual role.
+`UserResponse.java` gains `String role;` with `@Schema(allowableValues = {"user", "admin", "owner"})` so Orval generates a narrowed `role?: 'user' | 'admin' | 'owner'` union (B-lite — schema hint only, Java side stays `String`). `UserRepository.findById` adds `USERS.ROLE` to the SELECT list and to the `UserResponse.builder()` chain. `MyContentTest` extended to assert the role is present in the /me response (default `"user"` for the seeded test user). Re-run `SpecExportTest` so `openapi.json` regenerates; run `pnpm generate:api` so the Orval `UserResponse` type gains the narrowed `role` union.
 
-### Step 1: `AdminGuard` — route gate
+Without this step the frontend `AdminGuard` cannot distinguish admin from regular user — every authenticated visitor would hit the "권한이 없습니다" empty state regardless of actual role.
+
+### Step 0.5: Backend admin photo endpoints + DTOs
+
+Four new records in `admin/dto/`:
+
+```java
+public record AdminPhotoSummary(
+    UUID id, UUID gymMachineId, UUID userId,
+    String photoUrl, int upvoteCount,
+    OffsetDateTime createdAt, boolean isBlinded
+) {}
+
+public record AdminUserSummary(
+    UUID id, String nickname, OffsetDateTime bannedAt
+) {}  // PII-minimized — no email
+
+public record AdminPhotoDetailResponse(
+    AdminPhotoSummary photo,
+    AdminUserSummary uploader,
+    List<AdminReportResponse> pendingReports
+) {}
+
+public record AdminQueuePhotoSummary(
+    UUID photoId, String photoUrl,
+    int pendingReportCount,
+    OffsetDateTime oldestReportAt,
+    String topReason
+) {}
+```
+
+`PhotoResponse` (public DTO) stays unchanged — `isBlinded` is admin-only and lives on `AdminPhotoSummary`. Rationale: all public photo reads already filter `is_blinded = false` at SQL, so exposing the field on the public DTO would be dead data + a leak of admin-only state.
+
+Two new endpoints on `AdminController` (class-level `@PreAuthorize("hasRole('ADMIN')")`):
+
+```
+GET  /api/admin/photos?status=pending_review     → List<AdminQueuePhotoSummary>
+GET  /api/admin/photos/{id}                      → AdminPhotoDetailResponse
+```
+
+Queue SQL (in `ReportRepository.listPendingPhotoQueue`):
+
+```sql
+SELECT mp.id, mp.photo_url,
+       count(r.id)                                    AS pending_count,
+       min(r.created_at)                              AS oldest_report_at,
+       mode() WITHIN GROUP (ORDER BY r.reason)        AS top_reason
+FROM machine_photos mp
+JOIN reports r ON r.target_id = mp.id
+WHERE r.status = 'pending'
+  AND r.target_type = 'photo'   -- defensive: future gym_machine/user reports must not leak here
+GROUP BY mp.id, mp.photo_url
+ORDER BY oldest_report_at ASC
+LIMIT 50
+```
+
+Detail endpoint composes three queries in `AdminService.getPhotoDetail`:
+
+1. `photoRepository.findForAdmin(id)` — returns `AdminPhotoSummary` (includes `is_blinded`, no `is_blinded = false` filter applied)
+2. `userRepository.findSummary(photo.userId())` — returns `AdminUserSummary`
+3. `reportRepository.findByTargetIdAndStatus(id, "pending")` — returns `List<AdminReportResponse>`
+
+### Step 0.6: Auto-ban cascade in `AdminService.updateDisposition`
+
+Extend the existing `updateDisposition` method (Task 33) within the same `@Transactional` boundary. Two thresholds, asymmetric on purpose:
+
+```java
+static final int UPLOADER_AUTO_BAN_THRESHOLD = 3;   // actioned (admin-confirmed bad photos)
+static final int REPORTER_AUTO_BAN_THRESHOLD = 5;   // dismissed (admin-confirmed false reports; noisier signal, higher threshold)
+
+@Transactional
+public void updateDisposition(UUID reportId, String disposition, String adminId) {
+    int rows = reportRepository.updateDisposition(reportId, disposition, adminId);
+    if (rows == 0) throw new ReportAlreadyDisposedException();   // existing 409 path
+
+    AdminReportResponse report = reportRepository.findById(reportId).orElseThrow();
+
+    if ("actioned".equals(disposition)) {
+        // 1. photo auto-blind (admin actioned implies the photo itself is bad)
+        photoRepository.setBlinded(report.targetId(), true);
+        // 2. uploader auto-ban cascade
+        UUID uploaderId = photoRepository.findUploader(report.targetId()).orElseThrow();
+        int actionedCount = reportRepository.countActionedByUploader(uploaderId);
+        if (actionedCount >= UPLOADER_AUTO_BAN_THRESHOLD
+                && userRepository.markBanned(uploaderId.toString()) > 0) {
+            adminNotifier.notifyAutoBanUploader(uploaderId, actionedCount);
+        }
+    } else if ("dismissed".equals(disposition)) {
+        // reporter auto-ban cascade (false-report abuse defence)
+        UUID reporterId = report.userId();
+        int dismissedCount = reportRepository.countDismissedByReporter(reporterId);
+        if (dismissedCount >= REPORTER_AUTO_BAN_THRESHOLD
+                && userRepository.markBanned(reporterId.toString()) > 0) {
+            adminNotifier.notifyAutoBanReporter(reporterId, dismissedCount);
+        }
+    }
+}
+```
+
+Why asymmetric thresholds: admin `dismissed` is noisier than admin `actioned` (some dismissed reports are genuinely ambiguous, not malice). Higher reporter threshold (5) gives benefit-of-doubt. `markBanned` returns rows-updated (0 if already banned) — prevents Slack re-fire on idempotent calls (mirrors `blindIfNotAlreadyBlinded` race-safety pattern from Phase 2 Task 27).
+
+`AdminNotificationService` gains two methods mirroring `notifyAutoBlind` (fire-and-forget on `boundedElastic`):
+
+```
+:rotating_light: Uploader auto-banned — user X (3 actioned reports)
+:rotating_light: Reporter auto-banned — user X (5 dismissed reports — possible false-report abuse)
+```
+
+### Step 0.7: Unban endpoint (B3 — backend only, no UI)
+
+```
+PATCH /api/admin/users/{id}/unban    → 200 (banned_at set to NULL) | 409 (not currently banned) | 404 (no such user)
+```
+
+`UserRepository.markUnbanned(String id)` — CAS update `WHERE banned_at IS NOT NULL`. `AdminService.markUnbanned` returns rows-updated; controller translates 0 → 409. No frontend UI in Task 34 — Phase 4 will add the admin user surface that exposes this endpoint and the appeal flow.
+
+### Step 1: `LoginPromptEmptyState` move + `AdminGuard`
+
+`LoginPromptEmptyState` moves from `src/features/profile/components/` to `src/shared/components/` and gains `description?: string` prop:
 
 ```tsx
-// AdminGuard.tsx
+const DEFAULT_DESCRIPTION = '내 사진과 추천 목록을 보려면 로그인하세요';
+
+interface Props {
+  description?: string;
+}
+
+export function LoginPromptEmptyState({ description = DEFAULT_DESCRIPTION }: Props) {
+  // ... existing implementation
+}
+```
+
+Update profile feature imports + relocate test file. Profile callers pass nothing (default preserved).
+
+```tsx
 export function AdminGuard({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const { data: user } = useCurrentUser();
 
-  if (auth.status !== 'authenticated') return <LoginPromptEmptyState />;
-  if (user?.role !== 'admin') return <EmptyState title="권한이 없습니다" />;
+  if (auth.status !== 'authenticated') {
+    return <LoginPromptEmptyState description="관리자 화면은 로그인이 필요해요" />;
+  }
+  if (user?.role !== 'admin') {
+    return <EmptyState icon="lock-outline" title="권한이 없습니다" />;
+  }
   return <>{children}</>;
 }
 ```
 
 `app/admin/_layout.tsx` wraps every admin route in `AdminGuard`.
 
-### Step 2: `useAdminReports` — pending queue hook
+### Step 2: `useAdminQueue` — photo-grouped pending queue (query wrapper)
+
+Query wrapper around plain Orval function (matches existing `useCurrentUser` / `useMyVotes` pattern):
 
 ```tsx
-export function useAdminReports() {
+export function useAdminQueue() {
   return useQuery({
-    queryKey: adminKeys.pendingReports(),
-    queryFn: () =>
-      unwrapOrvalResponse(adminApi.useGetAdminReports({ status: 'pending', limit: 50 })),
+    queryKey: adminKeys.pendingPhotos(),
+    queryFn: async () => unwrapOrvalResponse(await listAdminPhotos({ status: 'pending_review' })),
+    staleTime: STALE_TIME_DEFAULT_MS,
+  });
+}
+
+export function useAdminPhotoDetail(id: string) {
+  return useQuery({
+    queryKey: adminKeys.photoDetail(id),
+    queryFn: async () => unwrapOrvalResponse(await getAdminPhoto(id)),
     staleTime: STALE_TIME_DEFAULT_MS,
   });
 }
 ```
 
-### Step 3: Mutation hooks
+`adminKeys` factory:
 
-`useDisposeReport(reportId)`: TanStack mutation, invalidates `adminKeys.pendingReports()` + `adminKeys.report(reportId)` on success. Optimistic remove from list on `pending → actioned/dismissed`.
+```ts
+export const adminKeys = {
+  all: ['admin'] as const,
+  pendingPhotos: () => [...adminKeys.all, 'pendingPhotos'] as const,
+  photoDetail: (id: string) => [...adminKeys.all, 'photo', id] as const,
+};
+```
 
-`useRestorePhoto(photoId)`: mutation, invalidates `photoKeys.detail(photoId)`. Optimistic `is_blinded: false` in cache.
+### Step 3: Mutation wrappers (per new frontend-guideline rule)
 
-`useBanUser(userId)`: mutation, invalidates `userKeys.profile(userId)`. Confirmation `Alert.alert` before fire (matches Task 30 pattern for destructive actions).
+All three mutations go through wrappers. Adds the codebase-wide rule to `docs/harness/frontend-guidelines.md`:
+
+> **Mutation 훅은 wrap한다 (기본값).** Orval `useXxx` mutation은 도메인 동사 wrapper(`useDisposeReport`, `useBanUser` 등) 안에서 호출하고, invalidation 규칙 / 토스트 / Alert 확인 / 에러 분류를 그 안에서 처리한다. 예외: 단일 호출처 + 컴포넌트 로컬 상태에 강결합 + 한 줄 invalidation. (예외 케이스인 `AccountSettingsScreen.useUpdateMe/useDeleteMe`는 backlog 리팩터 대상.)
+
+`useDisposeReport(reportId, photoId, options?)`:
+
+- wraps Orval `useDisposition`
+- `onSuccess`: invalidate `adminKeys.pendingPhotos()` + `adminKeys.photoDetail(photoId)`, toast `'처리됨'` (actioned) or `'반려됨'` (dismissed), call `options?.onSuccess?.()` so caller can `router.back()`
+
+`useRestorePhoto(photoId, options?)`:
+
+- wraps Orval `useRestorePhoto`
+- `onSuccess`: invalidate `adminKeys.photoDetail(photoId)` + `adminKeys.pendingPhotos()` (queue may need refresh), toast `'사진 복구됨'`
+
+`useBanUser(userId, options?)`:
+
+- wraps Orval `useBanUser`, exposes a `confirmAndBan()` action that fires `Alert.alert` confirm before the mutation (mirrors Task 30 destructive action pattern)
+- `onSuccess`: invalidate `adminKeys.pendingPhotos()` (banned uploader's photos may exit queue), toast `'차단됨'`
 
 ### Step 4: `AdminQueueScreen`
 
-FlashList with `estimatedItemSize`, each row showing reporter avatar / 신고 사유 / target preview / 시간 경과. Tap → `router.push(\`/admin/photo/\${report.targetId}\`)`. Empty state when list is empty: "처리 대기 신고 없음".
+FlashList with `estimatedItemSize`. Each row:
+
+```
+[썸네일] 신고 {pendingReportCount}건 · {topReason} · {oldestReportAt 상대시간}  →
+```
+
+Tap → `router.push(\`/admin/photo/\${photoId}\`)`. Empty state when list is empty: `'처리 대기 신고 없음'`.
 
 ### Step 5: `AdminPhotoScreen`
 
-Photo preview, reporter list (all reports against this photo), reason breakdown, 4 action buttons:
+Driven by `useAdminPhotoDetail(id)`. Layout:
 
-- **처리 (Actioned)** — `useDisposeReport(reportId).mutate({ disposition: 'actioned' })`
-- **반려 (Dismissed)** — `useDisposeReport(reportId).mutate({ disposition: 'dismissed' })`
-- **사진 복구** — `useRestorePhoto(photoId).mutate()` (only when `photo.isBlinded`)
-- **업로더 차단** — `useBanUser(uploaderId).mutate()` with `Alert.alert` confirm
+1. **Photo preview** — `AdminPhotoSummary.photoUrl` via `expo-image` with `is_blinded` badge if `photo.isBlinded`
+2. **Uploader summary** — nickname + "차단됨" 배지 (when `uploader.bannedAt != null`) + 업로드 일시
+3. **Pending reports list** — each row: 신고자 nickname 단편 + 사유 + 시간 경과 + per-row `처리` / `반려` 버튼
+4. **Bottom action area**:
+   - `사진 복구` button (only when `photo.isBlinded`) — fires `useRestorePhoto(photoId)`
+   - `업로더 차단` button (only when `!uploader.bannedAt`) — fires `useBanUser(uploaderId).confirmAndBan()`
 
-After action, `router.back()` to queue.
+Per-report dispose buttons match Task 33's single-report endpoint contract. When the last pending report is disposed, `router.back()` to queue. The 처리/반려 disposition cascade (Step 0.6) handles photo blind + uploader auto-ban server-side — frontend doesn't duplicate that logic.
 
 ### Step 6: Tests
 
-- Anonymous renders `LoginPromptEmptyState`
-- Authenticated non-admin renders "권한이 없습니다"
-- Admin user sees queue with mocked reports
-- Tap queue item navigates to photo detail
-- Disposition mutation fires with correct args
-- Ban shows `Alert.alert` confirm; cancel doesn't fire mutation
+**Backend (12+ integration tests on `AdminControllerIT`):**
+
+| Endpoint                                  | Cases                                                                                                                                                                                                                                     |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /admin/photos?status=pending_review` | admin → 200 list / regular → 403 / anonymous → 401 / banned → 403; empty queue (200 []); 1 pending report across 1 photo (1 row); 3 reports same photo (1 row, count=3, topReason); reports with target_type='user' (excluded from queue) |
+| `GET /admin/photos/{id}`                  | admin → 200 detail / regular → 403; valid photo / non-existent → 404; pendingReports list populated correctly                                                                                                                             |
+| `PATCH /admin/users/{id}/unban`           | banned → 200 + banned_at NULL / not banned → 409 / non-admin → 403 / non-existent → 404                                                                                                                                                   |
+| Auto-ban cascade (uploader)               | 2 actioned same uploader → no ban; 3rd actioned → ban + Slack; subsequent actioned on already-banned → no Slack re-fire; photo `is_blinded` set on each actioned                                                                          |
+| Auto-ban cascade (reporter)               | 4 dismissed same reporter → no ban; 5th dismissed → ban + Slack; already-banned → no re-fire                                                                                                                                              |
+| `MyContentTest`                           | role exposed in /me response (default "user")                                                                                                                                                                                             |
+
+**Frontend (6+ tests on `src/features/admin/components/__tests__/`):**
+
+| Scenario                                                         | Assertion                                                                                                    |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Anonymous renders `LoginPromptEmptyState` with admin description | "관리자 화면은 로그인이 필요해요" present                                                                    |
+| Authenticated non-admin renders "권한이 없습니다"                | EmptyState with correct title                                                                                |
+| Admin user sees queue with mocked photos                         | FlashList rendered, row count matches mock                                                                   |
+| Tap queue row                                                    | `router.push` called with `/admin/photo/{photoId}`                                                           |
+| Disposition mutation                                             | `useDisposition` mutate called with correct `{reportId, disposition}`, `adminKeys.pendingPhotos` invalidated |
+| Ban confirm dialog                                               | `Alert.alert` shown with 3 buttons; cancel → no mutation; confirm → `useBanUser` mutate fires                |
 
 ### Commit
 
 ```
-feat(phase-3): 34 — admin in-app screens (queue + photo detail)
+feat(phase-3): 34 — admin in-app screens + backend admin photo endpoints + auto-ban cascades
 
-- AdminGuard route gate: anonymous → LoginPromptEmptyState, non-admin
-  authenticated → "권한이 없습니다" empty state, admin → render children.
-- AdminQueueScreen: FlashList of pending reports, tap navigates to detail.
-- AdminPhotoScreen: photo + reporter list + 4 actions (actioned /
-  dismissed / restore / ban). Ban uses Alert.alert confirm (Task 30 pattern).
-- adminKeys factory, 4 mutation hooks with optimistic invalidation.
-- UserResponse now carries `role` — useCurrentUser exposes it to gate.
-- 6 admin tests + 408 → 414 frontend tests green.
+Backend:
+- UserResponse exposes role with @Schema(allowableValues={"user","admin","owner"})
+  so Orval narrows the union; unblocks AdminGuard.
+- 3 new admin endpoints: photo queue (SQL GROUP BY, photo-grouped), photo detail
+  ({photo, uploader, pendingReports[]} aggregate), unban (endpoint only).
+- 4 new admin DTOs (records): AdminPhotoSummary (admin-only isBlinded),
+  AdminUserSummary (PII-minimized), AdminPhotoDetailResponse, AdminQueuePhotoSummary.
+- AdminService.updateDisposition extended in same @Transactional:
+    actioned → photo blind + uploader auto-ban at 3 (Slack)
+    dismissed → reporter auto-ban at 5 (Slack)
+  Symmetric self-balancing moderation; asymmetric thresholds because dismissed
+  signal is noisier than actioned.
+
+Frontend:
+- LoginPromptEmptyState moved to shared/components/ with description prop.
+- New src/features/admin/: AdminGuard, AdminQueueScreen (photo-grouped FlashList,
+  oldest first), AdminPhotoScreen (photo + uploader + per-report dispose buttons +
+  restore + ban-with-Alert), 2 query wrappers, 3 mutation wrappers, adminKeys factory.
+- app/admin/{_layout,queue,photo/[id]}.tsx.
+
+Docs:
+- docs/harness/frontend-guidelines.md: "Mutation hooks wrap by default" rule.
+- docs/plans/phase-3/README.md: deferred items updated (Vision LABEL_DETECTION,
+  weighted reporter trust scoring, unban UI + appeal flow, AccountSettings refactor).
+
+Tests: 12+ backend ITs + 6+ frontend tests green.
 ```
 
 ---
