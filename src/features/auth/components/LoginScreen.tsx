@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as burnt from 'burnt';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,30 +8,67 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
 import { pressedOpacity } from '@/shared/lib/pressable';
+import { captureError } from '@/shared/lib/sentry';
 import { supabase } from '@/shared/lib/supabase';
 import { colors } from '@/shared/theme/tokens';
 
 import { AUTH_REDIRECT_URL } from '../constants';
+import { parseAuthCallback } from '../lib/parseAuthCallback';
 
 interface LoginScreenProps {
   onBrowseAsGuest: () => void;
+  onAuthenticated: () => void;
 }
 
 type OAuthProvider = 'google' | 'kakao' | 'apple';
 type LoadingProvider = OAuthProvider | null;
 
-export function LoginScreen({ onBrowseAsGuest }: LoginScreenProps) {
+export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenProps) {
   const [loading, setLoading] = useState<LoadingProvider>(null);
 
+  /**
+   * Drives the OAuth flow end-to-end: signInWithOAuth → WebBrowser → callback parse
+   * → exchangeCodeForSession (PKCE) or setSession (implicit) → onAuthenticated().
+   *
+   * User-cancelled WebBrowser sessions (`result.type !== 'success'`) return silently —
+   * no toast, no Sentry, no onAuthenticated. Every other failure goes through `catch`
+   * which reports to Sentry and shows the same user-facing toast.
+   */
   async function handleOAuthLogin(provider: OAuthProvider) {
     setLoading(provider);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: AUTH_REDIRECT_URL },
+        options: { redirectTo: AUTH_REDIRECT_URL, skipBrowserRedirect: true },
       });
       if (error) throw error;
-    } catch {
+      if (!data.url) throw new Error('Missing OAuth URL');
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, AUTH_REDIRECT_URL);
+      if (result.type !== 'success' || !result.url) return;
+
+      const parsed = parseAuthCallback(result.url);
+      switch (parsed.kind) {
+        case 'pkce': {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(parsed.code);
+          if (exchangeError) throw exchangeError;
+          break;
+        }
+        case 'implicit': {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: parsed.accessToken,
+            refresh_token: parsed.refreshToken,
+          });
+          if (sessionError) throw sessionError;
+          break;
+        }
+        case 'invalid':
+          throw new Error(`OAuth callback invalid: ${parsed.reason}`);
+      }
+
+      onAuthenticated();
+    } catch (err) {
+      captureError(err);
       burnt.toast({ title: '로그인에 실패했습니다', preset: 'error' });
     } finally {
       setLoading(null);

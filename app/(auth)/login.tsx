@@ -9,5 +9,11 @@ export default function LoginRoute() {
     router.replace('/(tabs)');
   }
 
-  return <LoginScreen onBrowseAsGuest={handleBrowseAsGuest} />;
+  function handleAuthenticated() {
+    router.replace('/(tabs)');
+  }
+
+  return (
+    <LoginScreen onBrowseAsGuest={handleBrowseAsGuest} onAuthenticated={handleAuthenticated} />
+  );
 }
