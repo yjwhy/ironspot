@@ -5,10 +5,12 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
+import type { UserResponseRole } from './userResponseRole';
 
 export interface UserResponse {
   id?: string;
   email?: string;
   nickname?: string;
   createdAt?: string;
+  role?: UserResponseRole;
 }

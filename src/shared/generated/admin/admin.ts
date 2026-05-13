@@ -21,12 +21,85 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { AdminReportResponse, DispositionRequest, ListReportsParams } from '../model';
+import type {
+  AdminPhotoDetailResponse,
+  AdminQueuePhotoSummary,
+  AdminReportResponse,
+  DispositionRequest,
+  ListPendingPhotosParams,
+  ListReportsParams,
+} from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+export type unbanUserResponse200 = {
+  data: void;
+  status: 200;
+};
+
+export type unbanUserResponseSuccess = unbanUserResponse200 & {
+  headers: Headers;
+};
+export type unbanUserResponse = unbanUserResponseSuccess;
+
+export const getUnbanUserUrl = (id: string) => {
+  return `/api/admin/users/${id}/unban`;
+};
+
+export const unbanUser = async (id: string, options?: RequestInit): Promise<unbanUserResponse> => {
+  return apiClient<unbanUserResponse>(getUnbanUserUrl(id), {
+    ...options,
+    method: 'PATCH',
+  });
+};
+
+export const getUnbanUserMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unbanUser>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<Awaited<ReturnType<typeof unbanUser>>, TError, { id: string }, TContext> => {
+  const mutationKey = ['unbanUser'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof unbanUser>>, { id: string }> = (
+    props,
+  ) => {
+    const { id } = props ?? {};
+
+    return unbanUser(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnbanUserMutationResult = NonNullable<Awaited<ReturnType<typeof unbanUser>>>;
+
+export type UnbanUserMutationError = unknown;
+
+export const useUnbanUser = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof unbanUser>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof unbanUser>>, TError, { id: string }, TContext> => {
+  return useMutation(getUnbanUserMutationOptions(options), queryClient);
+};
 export type banUserResponse200 = {
   data: void;
   status: 200;
@@ -372,6 +445,255 @@ export function useListReports<TData = Awaited<ReturnType<typeof listReports>>, 
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getListReportsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export type listPendingPhotosResponse200 = {
+  data: AdminQueuePhotoSummary[];
+  status: 200;
+};
+
+export type listPendingPhotosResponseSuccess = listPendingPhotosResponse200 & {
+  headers: Headers;
+};
+export type listPendingPhotosResponse = listPendingPhotosResponseSuccess;
+
+export const getListPendingPhotosUrl = (params?: ListPendingPhotosParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/photos?${stringifiedParams}`
+    : `/api/admin/photos`;
+};
+
+export const listPendingPhotos = async (
+  params?: ListPendingPhotosParams,
+  options?: RequestInit,
+): Promise<listPendingPhotosResponse> => {
+  return apiClient<listPendingPhotosResponse>(getListPendingPhotosUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListPendingPhotosQueryKey = (params?: ListPendingPhotosParams) => {
+  return [`/api/admin/photos`, ...(params ? [params] : [])] as const;
+};
+
+export const getListPendingPhotosQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPendingPhotos>>,
+  TError = unknown,
+>(
+  params?: ListPendingPhotosParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingPhotos>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPendingPhotosQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPendingPhotos>>> = ({ signal }) =>
+    listPendingPhotos(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingPhotos>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListPendingPhotosQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPendingPhotos>>
+>;
+export type ListPendingPhotosQueryError = unknown;
+
+export function useListPendingPhotos<
+  TData = Awaited<ReturnType<typeof listPendingPhotos>>,
+  TError = unknown,
+>(
+  params: undefined | ListPendingPhotosParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingPhotos>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPendingPhotos>>,
+          TError,
+          Awaited<ReturnType<typeof listPendingPhotos>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListPendingPhotos<
+  TData = Awaited<ReturnType<typeof listPendingPhotos>>,
+  TError = unknown,
+>(
+  params?: ListPendingPhotosParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingPhotos>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPendingPhotos>>,
+          TError,
+          Awaited<ReturnType<typeof listPendingPhotos>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListPendingPhotos<
+  TData = Awaited<ReturnType<typeof listPendingPhotos>>,
+  TError = unknown,
+>(
+  params?: ListPendingPhotosParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingPhotos>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useListPendingPhotos<
+  TData = Awaited<ReturnType<typeof listPendingPhotos>>,
+  TError = unknown,
+>(
+  params?: ListPendingPhotosParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingPhotos>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListPendingPhotosQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export type getPhotoResponse200 = {
+  data: AdminPhotoDetailResponse;
+  status: 200;
+};
+
+export type getPhotoResponseSuccess = getPhotoResponse200 & {
+  headers: Headers;
+};
+export type getPhotoResponse = getPhotoResponseSuccess;
+
+export const getGetPhotoUrl = (id: string) => {
+  return `/api/admin/photos/${id}`;
+};
+
+export const getPhoto = async (id: string, options?: RequestInit): Promise<getPhotoResponse> => {
+  return apiClient<getPhotoResponse>(getGetPhotoUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetPhotoQueryKey = (id: string) => {
+  return [`/api/admin/photos/${id}`] as const;
+};
+
+export const getGetPhotoQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPhoto>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPhoto>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPhotoQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPhoto>>> = ({ signal }) =>
+    getPhoto(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPhoto>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetPhotoQueryResult = NonNullable<Awaited<ReturnType<typeof getPhoto>>>;
+export type GetPhotoQueryError = unknown;
+
+export function useGetPhoto<TData = Awaited<ReturnType<typeof getPhoto>>, TError = unknown>(
+  id: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPhoto>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPhoto>>,
+          TError,
+          Awaited<ReturnType<typeof getPhoto>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPhoto<TData = Awaited<ReturnType<typeof getPhoto>>, TError = unknown>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPhoto>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPhoto>>,
+          TError,
+          Awaited<ReturnType<typeof getPhoto>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPhoto<TData = Awaited<ReturnType<typeof getPhoto>>, TError = unknown>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPhoto>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetPhoto<TData = Awaited<ReturnType<typeof getPhoto>>, TError = unknown>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPhoto>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetPhotoQueryOptions(id, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
