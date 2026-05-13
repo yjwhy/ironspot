@@ -1,5 +1,7 @@
 package com.ironspot.admin;
 
+import com.ironspot.admin.dto.AdminPhotoDetailResponse;
+import com.ironspot.admin.dto.AdminQueuePhotoSummary;
 import com.ironspot.admin.dto.AdminReportResponse;
 import com.ironspot.admin.dto.DispositionRequest;
 import com.ironspot.auth.UserPrincipal;
@@ -46,6 +48,19 @@ public class AdminController {
         return adminService.disposeReport(id, body.disposition(), admin.getUserId());
     }
 
+    @GetMapping("/photos")
+    public List<AdminQueuePhotoSummary> listPendingPhotos(
+        @RequestParam(defaultValue = "pending_review") String status,
+        @RequestParam(defaultValue = "50") int limit
+    ) {
+        return adminService.listPendingPhotos(limit);
+    }
+
+    @GetMapping("/photos/{id}")
+    public AdminPhotoDetailResponse getPhoto(@PathVariable UUID id) {
+        return adminService.getPhotoDetail(id);
+    }
+
     @PatchMapping("/photos/{id}/restore")
     public ResponseEntity<Void> restorePhoto(@PathVariable UUID id) {
         adminService.restorePhoto(id);
@@ -55,6 +70,12 @@ public class AdminController {
     @PatchMapping("/users/{id}/ban")
     public ResponseEntity<Void> banUser(@PathVariable UUID id) {
         adminService.banUser(id.toString());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/users/{id}/unban")
+    public ResponseEntity<Void> unbanUser(@PathVariable UUID id) {
+        adminService.unbanUser(id.toString());
         return ResponseEntity.noContent().build();
     }
 }

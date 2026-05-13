@@ -1,5 +1,6 @@
 package com.ironspot.photo;
 
+import com.ironspot.admin.dto.AdminPhotoSummary;
 import com.ironspot.photo.dto.PhotoResponse;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
@@ -93,6 +94,31 @@ public class PhotoRepository {
         dsl.deleteFrom(MACHINE_PHOTOS)
             .where(MACHINE_PHOTOS.ID.eq(photoId))
             .execute();
+    }
+
+    public Optional<AdminPhotoSummary> findForAdmin(UUID photoId) {
+        return dsl.select(
+                MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT,
+                MACHINE_PHOTOS.CREATED_AT, MACHINE_PHOTOS.IS_BLINDED)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .fetchOptional(r -> new AdminPhotoSummary(
+                r.get(MACHINE_PHOTOS.ID),
+                r.get(MACHINE_PHOTOS.GYM_MACHINE_ID),
+                r.get(MACHINE_PHOTOS.USER_ID),
+                r.get(MACHINE_PHOTOS.PHOTO_URL),
+                Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.UPVOTE_COUNT), 0),
+                r.get(MACHINE_PHOTOS.CREATED_AT),
+                Boolean.TRUE.equals(r.get(MACHINE_PHOTOS.IS_BLINDED))
+            ));
+    }
+
+    public Optional<UUID> findUploader(UUID photoId) {
+        return dsl.select(MACHINE_PHOTOS.USER_ID)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .fetchOptional(r -> r.get(MACHINE_PHOTOS.USER_ID));
     }
 
     public boolean isOwner(UUID photoId, UUID userId) {

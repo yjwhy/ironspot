@@ -49,7 +49,9 @@ class UserControllerTest extends IntegrationTestBase {
             "/api/users/me", HttpMethod.GET, bearerRequest(null), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("test@example.com");
+        assertThat(response.getBody())
+            .contains("test@example.com")
+            .contains("\"role\":\"user\"");
     }
 
     @Test

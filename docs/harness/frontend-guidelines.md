@@ -339,6 +339,51 @@ if (!nameValidation.ok) {
 }
 ```
 
+## Mutation 훅은 wrap한다 (기본값)
+
+**Rule:** Orval이 생성한 `useXxx` mutation은 도메인 동사 wrapper (`useDisposeReport`,
+`useBanUser` 등) 안에서 호출하고, invalidation 규칙 / 토스트 / Alert 확인 / 에러
+분류를 그 안에서 처리한다. 컴포넌트는 wrapper의 의도가 드러나는 동사
+(`handleDispose`, `confirmAndBan`)만 호출한다.
+
+**예외:** 단일 호출처 + 컴포넌트 로컬 상태에 강결합 + 한 줄 invalidation만 필요한
+경우. (현재 코드베이스에 남아 있는 예외는 `AccountSettingsScreen`의
+`useUpdateMe` / `useDeleteMe` — backlog 리팩터 대상.)
+
+**Reasoning:**
+
+- Orval `useXxx`를 컴포넌트에서 직접 쓰면 invalidation/토스트/Alert가 컴포넌트마다
+  중복되고 정책이 흩어진다. wrapper에 모으면 한 곳에서 정책 변경이 가능하다.
+- "컴포넌트는 정책을 모른다 — 의도만 호출한다"는 SRP를 강제한다.
+
+#### Recommended Pattern:
+
+```typescript
+// hooks/useDisposeReport.ts
+export function useDisposeReport(reportId: string, photoId: string, options?: { onSuccess?: () => void }) {
+  const queryClient = useQueryClient();
+  const mutation = useDisposition({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        burnt.toast({ title: variables.data.disposition === 'actioned' ? '처리됨' : '반려됨', preset: 'done' });
+        queryClient.invalidateQueries({ queryKey: adminKeys.pendingPhotos() });
+        queryClient.invalidateQueries({ queryKey: adminKeys.photoDetail(photoId) });
+        options?.onSuccess?.();
+      },
+      onError: () => burnt.toast({ title: '신고 처리에 실패했어요', preset: 'error' }),
+    },
+  });
+  return {
+    handleDispose: (d: 'actioned' | 'dismissed') => mutation.mutate({ id: reportId, data: { disposition: d } }),
+    isPending: mutation.isPending,
+  };
+}
+
+// In the screen — no policy, just intent.
+const dispose = useDisposeReport(report.id, photoId, { onSuccess: () => router.back() });
+<Button onPress={() => dispose.handleDispose('actioned')} />
+```
+
 ## Revealing Hidden Logic (Single Responsibility)
 
 **Rule:** Avoid hidden side effects; functions should only perform actions

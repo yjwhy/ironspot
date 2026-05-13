@@ -6,7 +6,11 @@
  * OpenAPI spec version: v1
  */
 
+export * from './adminPhotoDetailResponse';
+export * from './adminPhotoSummary';
+export * from './adminQueuePhotoSummary';
 export * from './adminReportResponse';
+export * from './adminUserSummary';
 export * from './brandResponse';
 export * from './categoryResponse';
 export * from './createGymRequest';
@@ -17,6 +21,7 @@ export * from './errorResponse';
 export * from './gymDetailResponse';
 export * from './gymMachineResponse';
 export * from './gymWithMachineCountResponse';
+export * from './listPendingPhotosParams';
 export * from './listReportsParams';
 export * from './machineTemplateSuggestion';
 export * from './naverPlaceResult';
@@ -29,3 +34,4 @@ export * from './uploadBody';
 export * from './uploadParams';
 export * from './upvoteResponse';
 export * from './userResponse';
+export * from './userResponseRole';

@@ -1,5 +1,6 @@
 package com.ironspot.auth;
 
+import com.ironspot.admin.dto.AdminUserSummary;
 import com.ironspot.auth.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
@@ -20,7 +21,7 @@ public class UserRepository {
     private final DSLContext dsl;
 
     public Optional<UserResponse> findById(String id) {
-        return dsl.select(USERS.ID, USERS.EMAIL, USERS.NICKNAME, USERS.CREATED_AT)
+        return dsl.select(USERS.ID, USERS.EMAIL, USERS.NICKNAME, USERS.CREATED_AT, USERS.ROLE)
             .from(USERS)
             .where(USERS.ID.eq(UUID.fromString(id)))
             .and(USERS.DELETED_AT.isNull())
@@ -31,6 +32,7 @@ public class UserRepository {
                     .email(r.get(USERS.EMAIL))
                     .nickname(r.get(USERS.NICKNAME))
                     .createdAt(createdAt != null ? createdAt.toString() : null)
+                    .role(r.get(USERS.ROLE))
                     .build();
             });
     }
@@ -50,6 +52,27 @@ public class UserRepository {
             .and(USERS.BANNED_AT.isNull())
             .and(USERS.DELETED_AT.isNull())
             .execute();
+    }
+
+    public int markUnbanned(String id) {
+        return dsl.update(USERS)
+            .setNull(USERS.BANNED_AT)
+            .where(USERS.ID.eq(UUID.fromString(id)))
+            .and(USERS.BANNED_AT.isNotNull())
+            .and(USERS.DELETED_AT.isNull())
+            .execute();
+    }
+
+    public Optional<AdminUserSummary> findSummary(UUID id) {
+        return dsl.select(USERS.ID, USERS.NICKNAME, USERS.BANNED_AT)
+            .from(USERS)
+            .where(USERS.ID.eq(id))
+            .and(USERS.DELETED_AT.isNull())
+            .fetchOptional(r -> new AdminUserSummary(
+                r.get(USERS.ID),
+                r.get(USERS.NICKNAME),
+                r.get(USERS.BANNED_AT)
+            ));
     }
 
     public void insert(String id, String email, String nickname) {
