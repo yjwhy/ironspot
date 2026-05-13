@@ -5,10 +5,7 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import {
-  useMutation,
-  useQuery
-} from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
@@ -21,7 +18,7 @@ import type {
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
-  UseQueryResult
+  UseQueryResult,
 } from '@tanstack/react-query';
 
 import type {
@@ -30,447 +27,474 @@ import type {
   GymWithMachineCountResponse,
   NaverPlaceResult,
   SearchParams,
-  SearchPlacesParams
+  SearchPlacesParams,
 } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
-
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
-
-
 export type createGymResponse200 = {
-  data: GymDetailResponse
-  status: 200
-}
+  data: GymDetailResponse;
+  status: 200;
+};
 
-export type createGymResponseSuccess = (createGymResponse200) & {
+export type createGymResponseSuccess = createGymResponse200 & {
   headers: Headers;
 };
-;
-
-export type createGymResponse = (createGymResponseSuccess)
+export type createGymResponse = createGymResponseSuccess;
 
 export const getCreateGymUrl = () => {
-
-
-
-
-  return `/api/gyms`
-}
+  return `/api/gyms`;
+};
 
 /**
  * Auth required. Idempotent on naverPlaceId — repeated calls return the same gym.
  * @summary Register a new gym from a Naver place
  */
-export const createGym = async (createGymRequest: CreateGymRequest, options?: RequestInit): Promise<createGymResponse> => {
-
-  return apiClient<createGymResponse>(getCreateGymUrl(),
-  {
+export const createGym = async (
+  createGymRequest: CreateGymRequest,
+  options?: RequestInit,
+): Promise<createGymResponse> => {
+  return apiClient<createGymResponse>(getCreateGymUrl(), {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      createGymRequest,)
-  }
-);}
+    body: JSON.stringify(createGymRequest),
+  });
+};
 
+export const getCreateGymMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createGym>>,
+    TError,
+    { data: CreateGymRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createGym>>,
+  TError,
+  { data: CreateGymRequest },
+  TContext
+> => {
+  const mutationKey = ['createGym'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
 
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createGym>>,
+    { data: CreateGymRequest }
+  > = (props) => {
+    const { data } = props ?? {};
 
+    return createGym(data, requestOptions);
+  };
 
-export const getCreateGymMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGym>>, TError,{data: CreateGymRequest}, TContext>, request?: SecondParameter<typeof apiClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof createGym>>, TError,{data: CreateGymRequest}, TContext> => {
+  return { mutationFn, ...mutationOptions };
+};
 
-const mutationKey = ['createGym'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
+export type CreateGymMutationResult = NonNullable<Awaited<ReturnType<typeof createGym>>>;
+export type CreateGymMutationBody = CreateGymRequest;
+export type CreateGymMutationError = unknown;
 
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGym>>, {data: CreateGymRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  createGym(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateGymMutationResult = NonNullable<Awaited<ReturnType<typeof createGym>>>
-    export type CreateGymMutationBody = CreateGymRequest
-    export type CreateGymMutationError = unknown
-
-    /**
+/**
  * @summary Register a new gym from a Naver place
  */
-export const useCreateGym = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGym>>, TError,{data: CreateGymRequest}, TContext>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createGym>>,
-        TError,
-        {data: CreateGymRequest},
-        TContext
-      > => {
-      return useMutation(getCreateGymMutationOptions(options), queryClient);
-    }
-    export type getByIdResponse200 = {
-  data: GymDetailResponse
-  status: 200
-}
+export const useCreateGym = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createGym>>,
+      TError,
+      { data: CreateGymRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createGym>>,
+  TError,
+  { data: CreateGymRequest },
+  TContext
+> => {
+  return useMutation(getCreateGymMutationOptions(options), queryClient);
+};
+export type getByIdResponse200 = {
+  data: GymDetailResponse;
+  status: 200;
+};
 
-export type getByIdResponseSuccess = (getByIdResponse200) & {
+export type getByIdResponseSuccess = getByIdResponse200 & {
   headers: Headers;
 };
-;
+export type getByIdResponse = getByIdResponseSuccess;
 
-export type getByIdResponse = (getByIdResponseSuccess)
-
-export const getGetByIdUrl = (id: string,) => {
-
-
-
-
-  return `/api/gyms/${id}`
-}
+export const getGetByIdUrl = (id: string) => {
+  return `/api/gyms/${id}`;
+};
 
 /**
  * @summary Get gym detail
  */
 export const getById = async (id: string, options?: RequestInit): Promise<getByIdResponse> => {
-
-  return apiClient<getByIdResponse>(getGetByIdUrl(id),
-  {
+  return apiClient<getByIdResponse>(getGetByIdUrl(id), {
     ...options,
-    method: 'GET'
+    method: 'GET',
+  });
+};
 
+export const getGetByIdQueryKey = (id: string) => {
+  return [`/api/gyms/${id}`] as const;
+};
 
-  }
-);}
-
-
-
-
-
-export const getGetByIdQueryKey = (id: string,) => {
-    return [
-    `/api/gyms/${id}`
-    ] as const;
-    }
-
-
-export const getGetByIdQueryOptions = <TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+export const getGetByIdQueryOptions = <
+  TData = Awaited<ReturnType<typeof getById>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
 ) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetByIdQueryKey(id);
 
-  const queryKey =  queryOptions?.queryKey ?? getGetByIdQueryKey(id);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getById>>> = ({ signal }) =>
+    getById(id, { signal, ...requestOptions });
 
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getById>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
 
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getById>>> = ({ signal }) => getById(id, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetByIdQueryResult = NonNullable<Awaited<ReturnType<typeof getById>>>
-export type GetByIdQueryError = unknown
-
+export type GetByIdQueryResult = NonNullable<Awaited<ReturnType<typeof getById>>>;
+export type GetByIdQueryError = unknown;
 
 export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(
- id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>> & Pick<
+  id: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>> &
+      Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getById>>,
           TError,
           Awaited<ReturnType<typeof getById>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>> & Pick<
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>> &
+      Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getById>>,
           TError,
           Awaited<ReturnType<typeof getById>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary Get gym detail
  */
 
 export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getById>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetByIdQueryOptions(id, options);
 
-  const queryOptions = getGetByIdQueryOptions(id,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-
-
-
-
-
 export type searchResponse200 = {
-  data: GymWithMachineCountResponse[]
-  status: 200
-}
+  data: GymWithMachineCountResponse[];
+  status: 200;
+};
 
-export type searchResponseSuccess = (searchResponse200) & {
+export type searchResponseSuccess = searchResponse200 & {
   headers: Headers;
 };
-;
+export type searchResponse = searchResponseSuccess;
 
-export type searchResponse = (searchResponseSuccess)
-
-export const getSearchUrl = (params: SearchParams,) => {
+export const getSearchUrl = (params: SearchParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-
     if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
     }
   });
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/gyms/search?${stringifiedParams}` : `/api/gyms/search`
-}
+  return stringifiedParams.length > 0
+    ? `/api/gyms/search?${stringifiedParams}`
+    : `/api/gyms/search`;
+};
 
 /**
  * @summary Search gyms within map bounds
  */
-export const search = async (params: SearchParams, options?: RequestInit): Promise<searchResponse> => {
-
-  return apiClient<searchResponse>(getSearchUrl(params),
-  {
+export const search = async (
+  params: SearchParams,
+  options?: RequestInit,
+): Promise<searchResponse> => {
+  return apiClient<searchResponse>(getSearchUrl(params), {
     ...options,
-    method: 'GET'
+    method: 'GET',
+  });
+};
 
+export const getSearchQueryKey = (params?: SearchParams) => {
+  return [`/api/gyms/search`, ...(params ? [params] : [])] as const;
+};
 
-  }
-);}
-
-
-
-
-
-export const getSearchQueryKey = (params?: SearchParams,) => {
-    return [
-    `/api/gyms/search`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getSearchQueryOptions = <TData = Awaited<ReturnType<typeof search>>, TError = unknown>(params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+export const getSearchQueryOptions = <TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
+  params: SearchParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
 ) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getSearchQueryKey(params);
 
-  const queryKey =  queryOptions?.queryKey ?? getSearchQueryKey(params);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof search>>> = ({ signal }) =>
+    search(params, { signal, ...requestOptions });
 
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof search>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
 
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof search>>> = ({ signal }) => search(params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type SearchQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>
-export type SearchQueryError = unknown
-
+export type SearchQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>;
+export type SearchQueryError = unknown;
 
 export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
- params: SearchParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
+  params: SearchParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> &
+      Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof search>>,
           TError,
           Awaited<ReturnType<typeof search>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
- params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
+  params: SearchParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> &
+      Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof search>>,
           TError,
           Awaited<ReturnType<typeof search>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
- params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  params: SearchParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary Search gyms within map bounds
  */
 
 export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
- params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  params: SearchParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getSearchQueryOptions(params, options);
 
-  const queryOptions = getSearchQueryOptions(params,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-
-
-
-
-
 export type searchPlacesResponse200 = {
-  data: NaverPlaceResult[]
-  status: 200
-}
+  data: NaverPlaceResult[];
+  status: 200;
+};
 
-export type searchPlacesResponseSuccess = (searchPlacesResponse200) & {
+export type searchPlacesResponseSuccess = searchPlacesResponse200 & {
   headers: Headers;
 };
-;
+export type searchPlacesResponse = searchPlacesResponseSuccess;
 
-export type searchPlacesResponse = (searchPlacesResponseSuccess)
-
-export const getSearchPlacesUrl = (params: SearchPlacesParams,) => {
+export const getSearchPlacesUrl = (params: SearchPlacesParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-
     if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
     }
   });
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/gyms/places-search?${stringifiedParams}` : `/api/gyms/places-search`
-}
+  return stringifiedParams.length > 0
+    ? `/api/gyms/places-search?${stringifiedParams}`
+    : `/api/gyms/places-search`;
+};
 
 /**
  * Auth required (JWT). Naver quota guard — anonymous calls would drain it.
  * @summary Search Naver 지역검색 for unregistered gyms
  */
-export const searchPlaces = async (params: SearchPlacesParams, options?: RequestInit): Promise<searchPlacesResponse> => {
-
-  return apiClient<searchPlacesResponse>(getSearchPlacesUrl(params),
-  {
+export const searchPlaces = async (
+  params: SearchPlacesParams,
+  options?: RequestInit,
+): Promise<searchPlacesResponse> => {
+  return apiClient<searchPlacesResponse>(getSearchPlacesUrl(params), {
     ...options,
-    method: 'GET'
+    method: 'GET',
+  });
+};
 
+export const getSearchPlacesQueryKey = (params?: SearchPlacesParams) => {
+  return [`/api/gyms/places-search`, ...(params ? [params] : [])] as const;
+};
 
-  }
-);}
-
-
-
-
-
-export const getSearchPlacesQueryKey = (params?: SearchPlacesParams,) => {
-    return [
-    `/api/gyms/places-search`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getSearchPlacesQueryOptions = <TData = Awaited<ReturnType<typeof searchPlaces>>, TError = unknown>(params: SearchPlacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+export const getSearchPlacesQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchPlaces>>,
+  TError = unknown,
+>(
+  params: SearchPlacesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
 ) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getSearchPlacesQueryKey(params);
 
-  const queryKey =  queryOptions?.queryKey ?? getSearchPlacesQueryKey(params);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof searchPlaces>>> = ({ signal }) =>
+    searchPlaces(params, { signal, ...requestOptions });
 
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchPlaces>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
 
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchPlaces>>> = ({ signal }) => searchPlaces(params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type SearchPlacesQueryResult = NonNullable<Awaited<ReturnType<typeof searchPlaces>>>
-export type SearchPlacesQueryError = unknown
-
+export type SearchPlacesQueryResult = NonNullable<Awaited<ReturnType<typeof searchPlaces>>>;
+export type SearchPlacesQueryError = unknown;
 
 export function useSearchPlaces<TData = Awaited<ReturnType<typeof searchPlaces>>, TError = unknown>(
- params: SearchPlacesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>> & Pick<
+  params: SearchPlacesParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>> &
+      Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof searchPlaces>>,
           TError,
           Awaited<ReturnType<typeof searchPlaces>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSearchPlaces<TData = Awaited<ReturnType<typeof searchPlaces>>, TError = unknown>(
- params: SearchPlacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>> & Pick<
+  params: SearchPlacesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>> &
+      Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof searchPlaces>>,
           TError,
           Awaited<ReturnType<typeof searchPlaces>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSearchPlaces<TData = Awaited<ReturnType<typeof searchPlaces>>, TError = unknown>(
- params: SearchPlacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  params: SearchPlacesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary Search Naver 지역검색 for unregistered gyms
  */
 
 export function useSearchPlaces<TData = Awaited<ReturnType<typeof searchPlaces>>, TError = unknown>(
- params: SearchPlacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  params: SearchPlacesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchPlaces>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getSearchPlacesQueryOptions(params, options);
 
-  const queryOptions = getSearchPlacesQueryOptions(params,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
-
-
-

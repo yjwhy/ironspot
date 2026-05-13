@@ -8,34 +8,34 @@
 
 export interface CreateGymRequest {
   /**
-     * @minLength 0
-     * @maxLength 200
-     */
+   * @minLength 0
+   * @maxLength 200
+   */
   name: string;
   /**
-     * @minLength 0
-     * @maxLength 500
-     */
+   * @minLength 0
+   * @maxLength 500
+   */
   address: string;
   /**
-     * @minimum -90
-     * @maximum 90
-     */
+   * @minimum -90
+   * @maximum 90
+   */
   latitude: number;
   /**
-     * @minimum -180
-     * @maximum 180
-     */
+   * @minimum -180
+   * @maximum 180
+   */
   longitude: number;
   /**
-     * @minLength 0
-     * @maxLength 50
-     */
+   * @minLength 0
+   * @maxLength 50
+   */
   phone?: string;
   /**
-     * Stable id from NaverSearchService.search() — used for dedup against existing gyms.
-     * @minLength 0
-     * @maxLength 100
-     */
+   * Stable id from NaverSearchService.search() — used for dedup against existing gyms.
+   * @minLength 0
+   * @maxLength 100
+   */
   naverPlaceId: string;
 }

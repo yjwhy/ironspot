@@ -6,10 +6,10 @@
  * OpenAPI spec version: v1
  */
 
-export type SearchPlacesParams = {
+export interface DispositionRequest {
   /**
-   * @minLength 0
-   * @maxLength 100
+   * @minLength 1
+   * @pattern actioned|dismissed
    */
-  query: string;
-};
+  disposition: string;
+}

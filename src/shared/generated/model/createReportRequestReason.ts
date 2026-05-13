@@ -6,8 +6,8 @@
  * OpenAPI spec version: v1
  */
 
-export type CreateReportRequestReason = typeof CreateReportRequestReason[keyof typeof CreateReportRequestReason];
-
+export type CreateReportRequestReason =
+  (typeof CreateReportRequestReason)[keyof typeof CreateReportRequestReason];
 
 export const CreateReportRequestReason = {
   INAPPROPRIATE: 'INAPPROPRIATE',

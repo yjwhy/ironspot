@@ -5,9 +5,7 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import {
-  useQuery
-} from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
@@ -17,129 +15,120 @@ import type {
   QueryKey,
   UndefinedInitialDataOptions,
   UseQueryOptions,
-  UseQueryResult
+  UseQueryResult,
 } from '@tanstack/react-query';
 
-import type {
-  BrandResponse
-} from '../model';
+import type { BrandResponse } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
-
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
-
-
 export type listBrandsResponse200 = {
-  data: BrandResponse[]
-  status: 200
-}
+  data: BrandResponse[];
+  status: 200;
+};
 
-export type listBrandsResponseSuccess = (listBrandsResponse200) & {
+export type listBrandsResponseSuccess = listBrandsResponse200 & {
   headers: Headers;
 };
-;
-
-export type listBrandsResponse = (listBrandsResponseSuccess)
+export type listBrandsResponse = listBrandsResponseSuccess;
 
 export const getListBrandsUrl = () => {
-
-
-
-
-  return `/api/brands`
-}
+  return `/api/brands`;
+};
 
 /**
  * @summary List all brands
  */
-export const listBrands = async ( options?: RequestInit): Promise<listBrandsResponse> => {
-
-  return apiClient<listBrandsResponse>(getListBrandsUrl(),
-  {
+export const listBrands = async (options?: RequestInit): Promise<listBrandsResponse> => {
+  return apiClient<listBrandsResponse>(getListBrandsUrl(), {
     ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
+    method: 'GET',
+  });
+};
 
 export const getListBrandsQueryKey = () => {
-    return [
-    `/api/brands`
-    ] as const;
-    }
+  return [`/api/brands`] as const;
+};
 
+export const getListBrandsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listBrands>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>;
+  request?: SecondParameter<typeof apiClient>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-export const getListBrandsQueryOptions = <TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
-) => {
+  const queryKey = queryOptions?.queryKey ?? getListBrandsQueryKey();
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listBrands>>> = ({ signal }) =>
+    listBrands({ signal, ...requestOptions });
 
-  const queryKey =  queryOptions?.queryKey ?? getListBrandsQueryKey();
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listBrands>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
 
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBrands>>> = ({ signal }) => listBrands({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListBrandsQueryResult = NonNullable<Awaited<ReturnType<typeof listBrands>>>
-export type ListBrandsQueryError = unknown
-
+export type ListBrandsQueryResult = NonNullable<Awaited<ReturnType<typeof listBrands>>>;
+export type ListBrandsQueryError = unknown;
 
 export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> & Pick<
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> &
+      Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listBrands>>,
           TError,
           Awaited<ReturnType<typeof listBrands>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> & Pick<
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> &
+      Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listBrands>>,
           TError,
           Awaited<ReturnType<typeof listBrands>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary List all brands
  */
 
 export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListBrandsQueryOptions(options);
 
-  const queryOptions = getListBrandsQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
-
-
-

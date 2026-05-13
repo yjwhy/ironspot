@@ -10,9 +10,9 @@ import type { CreateReportRequestReason } from './createReportRequestReason';
 export interface CreateReportRequest {
   reason: CreateReportRequestReason;
   /**
-     * Optional free-text detail (used when reason = OTHER)
-     * @minLength 0
-     * @maxLength 500
-     */
+   * Optional free-text detail (used when reason = OTHER)
+   * @minLength 0
+   * @maxLength 500
+   */
   detail?: string;
 }

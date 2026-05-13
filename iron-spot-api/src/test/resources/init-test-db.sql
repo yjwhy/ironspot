@@ -56,11 +56,14 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
   email TEXT NOT NULL,
   nickname TEXT NOT NULL,
-  role TEXT DEFAULT 'user',
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  banned_at TIMESTAMPTZ,
   deleted_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role) WHERE role = 'admin';
 
 CREATE TABLE IF NOT EXISTS machine_photos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -87,6 +90,8 @@ CREATE TABLE IF NOT EXISTS reports (
   reason TEXT NOT NULL,
   detail TEXT,
   status TEXT DEFAULT 'pending',
+  disposed_by UUID REFERENCES users(id),
+  disposed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT reports_unique_reporter_target UNIQUE (user_id, target_id)
 );

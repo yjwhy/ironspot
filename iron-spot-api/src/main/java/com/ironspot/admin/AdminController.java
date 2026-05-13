@@ -1,0 +1,60 @@
+package com.ironspot.admin;
+
+import com.ironspot.admin.dto.AdminReportResponse;
+import com.ironspot.admin.dto.DispositionRequest;
+import com.ironspot.auth.UserPrincipal;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/admin")
+@PreAuthorize("hasRole('ADMIN')")
+@RequiredArgsConstructor
+@Tag(name = "admin", description = "Admin-only moderation surface")
+public class AdminController {
+
+    private final AdminService adminService;
+
+    @GetMapping("/reports")
+    public List<AdminReportResponse> listReports(
+        @RequestParam(defaultValue = "pending") String status,
+        @RequestParam(defaultValue = "50") int limit
+    ) {
+        return adminService.listReports(status, limit);
+    }
+
+    @PatchMapping("/reports/{id}")
+    public AdminReportResponse disposition(
+        @PathVariable UUID id,
+        @Valid @RequestBody DispositionRequest body,
+        @AuthenticationPrincipal UserPrincipal admin
+    ) {
+        return adminService.disposeReport(id, body.disposition(), admin.getUserId());
+    }
+
+    @PatchMapping("/photos/{id}/restore")
+    public ResponseEntity<Void> restorePhoto(@PathVariable UUID id) {
+        adminService.restorePhoto(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/users/{id}/ban")
+    public ResponseEntity<Void> banUser(@PathVariable UUID id) {
+        adminService.banUser(id.toString());
+        return ResponseEntity.noContent().build();
+    }
+}

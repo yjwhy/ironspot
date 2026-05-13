@@ -4,6 +4,7 @@
 package com.ironspot.jooq.tables;
 
 
+import com.ironspot.jooq.Indexes;
 import com.ironspot.jooq.Keys;
 import com.ironspot.jooq.Public;
 import com.ironspot.jooq.tables.MachinePhotos.MachinePhotosPath;
@@ -11,12 +12,16 @@ import com.ironspot.jooq.tables.PhotoVotes.PhotoVotesPath;
 import com.ironspot.jooq.tables.Reports.ReportsPath;
 
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -32,6 +37,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -75,7 +81,12 @@ public class Users extends TableImpl<Record> {
     /**
      * The column <code>public.users.role</code>.
      */
-    public final TableField<Record, String> ROLE = createField(DSL.name("role"), SQLDataType.CLOB.defaultValue(DSL.field(DSL.raw("'user'::text"), SQLDataType.CLOB)), this, "");
+    public final TableField<Record, String> ROLE = createField(DSL.name("role"), SQLDataType.CLOB.nullable(false).defaultValue(DSL.field(DSL.raw("'user'::text"), SQLDataType.CLOB)), this, "");
+
+    /**
+     * The column <code>public.users.banned_at</code>.
+     */
+    public final TableField<Record, OffsetDateTime> BANNED_AT = createField(DSL.name("banned_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
 
     /**
      * The column <code>public.users.deleted_at</code>.
@@ -160,6 +171,11 @@ public class Users extends TableImpl<Record> {
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.IDX_USERS_ROLE);
+    }
+
+    @Override
     public UniqueKey<Record> getPrimaryKey() {
         return Keys.USERS_PKEY;
     }
@@ -190,17 +206,37 @@ public class Users extends TableImpl<Record> {
         return _photoVotes;
     }
 
-    private transient ReportsPath _reports;
+    private transient ReportsPath _reportsDisposedByFkey;
 
     /**
      * Get the implicit to-many join path to the <code>public.reports</code>
-     * table
+     * table, via the <code>reports_disposed_by_fkey</code> key
      */
-    public ReportsPath reports() {
-        if (_reports == null)
-            _reports = new ReportsPath(this, null, Keys.REPORTS__REPORTS_USER_ID_FKEY.getInverseKey());
+    public ReportsPath reportsDisposedByFkey() {
+        if (_reportsDisposedByFkey == null)
+            _reportsDisposedByFkey = new ReportsPath(this, null, Keys.REPORTS__REPORTS_DISPOSED_BY_FKEY.getInverseKey());
 
-        return _reports;
+        return _reportsDisposedByFkey;
+    }
+
+    private transient ReportsPath _reportsUserIdFkey;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.reports</code>
+     * table, via the <code>reports_user_id_fkey</code> key
+     */
+    public ReportsPath reportsUserIdFkey() {
+        if (_reportsUserIdFkey == null)
+            _reportsUserIdFkey = new ReportsPath(this, null, Keys.REPORTS__REPORTS_USER_ID_FKEY.getInverseKey());
+
+        return _reportsUserIdFkey;
+    }
+
+    @Override
+    public List<Check<Record>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("users_role_check"), "((role = ANY (ARRAY['user'::text, 'admin'::text])))", true)
+        );
     }
 
     @Override

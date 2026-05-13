@@ -5,107 +5,106 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import {
-  useMutation
-} from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import type {
   MutationFunction,
   QueryClient,
   UseMutationOptions,
-  UseMutationResult
+  UseMutationResult,
 } from '@tanstack/react-query';
 
-import type {
-  CreateReportRequest
-} from '../model';
+import type { CreateReportRequest } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
-
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
-
-
 export type reportPhotoResponse201 = {
-  data: void
-  status: 201
-}
+  data: void;
+  status: 201;
+};
 
-export type reportPhotoResponseSuccess = (reportPhotoResponse201) & {
+export type reportPhotoResponseSuccess = reportPhotoResponse201 & {
   headers: Headers;
 };
-;
+export type reportPhotoResponse = reportPhotoResponseSuccess;
 
-export type reportPhotoResponse = (reportPhotoResponseSuccess)
-
-export const getReportPhotoUrl = (photoId: string,) => {
-
-
-
-
-  return `/api/photos/${photoId}/reports`
-}
+export const getReportPhotoUrl = (photoId: string) => {
+  return `/api/photos/${photoId}/reports`;
+};
 
 /**
  * @summary Report a photo
  */
-export const reportPhoto = async (photoId: string,
-    createReportRequest: CreateReportRequest, options?: RequestInit): Promise<reportPhotoResponse> => {
-
-  return apiClient<reportPhotoResponse>(getReportPhotoUrl(photoId),
-  {
+export const reportPhoto = async (
+  photoId: string,
+  createReportRequest: CreateReportRequest,
+  options?: RequestInit,
+): Promise<reportPhotoResponse> => {
+  return apiClient<reportPhotoResponse>(getReportPhotoUrl(photoId), {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      createReportRequest,)
-  }
-);}
+    body: JSON.stringify(createReportRequest),
+  });
+};
 
+export const getReportPhotoMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportPhoto>>,
+    TError,
+    { photoId: string; data: CreateReportRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reportPhoto>>,
+  TError,
+  { photoId: string; data: CreateReportRequest },
+  TContext
+> => {
+  const mutationKey = ['reportPhoto'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
 
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reportPhoto>>,
+    { photoId: string; data: CreateReportRequest }
+  > = (props) => {
+    const { photoId, data } = props ?? {};
 
+    return reportPhoto(photoId, data, requestOptions);
+  };
 
-export const getReportPhotoMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportPhoto>>, TError,{photoId: string;data: CreateReportRequest}, TContext>, request?: SecondParameter<typeof apiClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof reportPhoto>>, TError,{photoId: string;data: CreateReportRequest}, TContext> => {
+  return { mutationFn, ...mutationOptions };
+};
 
-const mutationKey = ['reportPhoto'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
+export type ReportPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof reportPhoto>>>;
+export type ReportPhotoMutationBody = CreateReportRequest;
+export type ReportPhotoMutationError = unknown;
 
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportPhoto>>, {photoId: string;data: CreateReportRequest}> = (props) => {
-          const {photoId,data} = props ?? {};
-
-          return  reportPhoto(photoId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type ReportPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof reportPhoto>>>
-    export type ReportPhotoMutationBody = CreateReportRequest
-    export type ReportPhotoMutationError = unknown
-
-    /**
+/**
  * @summary Report a photo
  */
-export const useReportPhoto = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportPhoto>>, TError,{photoId: string;data: CreateReportRequest}, TContext>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof reportPhoto>>,
-        TError,
-        {photoId: string;data: CreateReportRequest},
-        TContext
-      > => {
-      return useMutation(getReportPhotoMutationOptions(options), queryClient);
-    }
+export const useReportPhoto = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reportPhoto>>,
+      TError,
+      { photoId: string; data: CreateReportRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reportPhoto>>,
+  TError,
+  { photoId: string; data: CreateReportRequest },
+  TContext
+> => {
+  return useMutation(getReportPhotoMutationOptions(options), queryClient);
+};

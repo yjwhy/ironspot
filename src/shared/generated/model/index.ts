@@ -6,15 +6,18 @@
  * OpenAPI spec version: v1
  */
 
+export * from './adminReportResponse';
 export * from './brandResponse';
 export * from './categoryResponse';
 export * from './createGymRequest';
 export * from './createReportRequest';
 export * from './createReportRequestReason';
+export * from './dispositionRequest';
 export * from './errorResponse';
 export * from './gymDetailResponse';
 export * from './gymMachineResponse';
 export * from './gymWithMachineCountResponse';
+export * from './listReportsParams';
 export * from './machineTemplateSuggestion';
 export * from './naverPlaceResult';
 export * from './photoResponse';

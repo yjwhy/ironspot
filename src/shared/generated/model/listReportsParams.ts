@@ -6,10 +6,7 @@
  * OpenAPI spec version: v1
  */
 
-export type SearchPlacesParams = {
-  /**
-   * @minLength 0
-   * @maxLength 100
-   */
-  query: string;
+export type ListReportsParams = {
+  status?: string;
+  limit?: number;
 };

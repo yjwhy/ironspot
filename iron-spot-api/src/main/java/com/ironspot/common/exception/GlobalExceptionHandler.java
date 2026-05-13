@@ -6,6 +6,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -56,6 +57,15 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleNotFound(NoResourceFoundException e) {
         return new ErrorResponse("리소스를 찾을 수 없습니다");
+    }
+
+    // @PreAuthorize denials (Spring Security 6 method-level authorization) throw
+    // AuthorizationDeniedException which extends AccessDeniedException. Without this handler
+    // they bubble to handleUnexpected → 500 + Sentry noise.
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleAccessDenied(AccessDeniedException e) {
+        return new ErrorResponse("접근 권한이 없습니다");
     }
 
     @ExceptionHandler(Exception.class)

@@ -8,8 +8,8 @@
 
 export interface UpdateUserRequest {
   /**
-     * @minLength 2
-     * @maxLength 20
-     */
+   * @minLength 2
+   * @maxLength 20
+   */
   nickname: string;
 }

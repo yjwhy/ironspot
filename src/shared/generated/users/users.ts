@@ -5,10 +5,7 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import {
-  useMutation,
-  useQuery
-} from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
@@ -21,518 +18,484 @@ import type {
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
-  UseQueryResult
+  UseQueryResult,
 } from '@tanstack/react-query';
 
-import type {
-  PhotoResponse,
-  UpdateUserRequest,
-  UserResponse
-} from '../model';
+import type { PhotoResponse, UpdateUserRequest, UserResponse } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
-
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
-
-
 export type getMeResponse200 = {
-  data: UserResponse
-  status: 200
-}
+  data: UserResponse;
+  status: 200;
+};
 
-export type getMeResponseSuccess = (getMeResponse200) & {
+export type getMeResponseSuccess = getMeResponse200 & {
   headers: Headers;
 };
-;
-
-export type getMeResponse = (getMeResponseSuccess)
+export type getMeResponse = getMeResponseSuccess;
 
 export const getGetMeUrl = () => {
-
-
-
-
-  return `/api/users/me`
-}
+  return `/api/users/me`;
+};
 
 /**
  * @summary Get current user profile
  */
-export const getMe = async ( options?: RequestInit): Promise<getMeResponse> => {
-
-  return apiClient<getMeResponse>(getGetMeUrl(),
-  {
+export const getMe = async (options?: RequestInit): Promise<getMeResponse> => {
+  return apiClient<getMeResponse>(getGetMeUrl(), {
     ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
+    method: 'GET',
+  });
+};
 
 export const getGetMeQueryKey = () => {
-    return [
-    `/api/users/me`
-    ] as const;
-    }
+  return [`/api/users/me`] as const;
+};
 
+export const getGetMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMe>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>;
+  request?: SecondParameter<typeof apiClient>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-export const getGetMeQueryOptions = <TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
-) => {
+  const queryKey = queryOptions?.queryKey ?? getGetMeQueryKey();
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMe>>> = ({ signal }) =>
+    getMe({ signal, ...requestOptions });
 
-  const queryKey =  queryOptions?.queryKey ?? getGetMeQueryKey();
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMe>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
 
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMe>>> = ({ signal }) => getMe({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>
-export type GetMeQueryError = unknown
-
+export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>;
+export type GetMeQueryError = unknown;
 
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> & Pick<
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> &
+      Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMe>>,
           TError,
           Awaited<ReturnType<typeof getMe>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> & Pick<
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> &
+      Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMe>>,
           TError,
           Awaited<ReturnType<typeof getMe>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary Get current user profile
  */
 
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetMeQueryOptions(options);
 
-  const queryOptions = getGetMeQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-
-
-
-
-
 export type updateMeResponse200 = {
-  data: UserResponse
-  status: 200
-}
+  data: UserResponse;
+  status: 200;
+};
 
-export type updateMeResponseSuccess = (updateMeResponse200) & {
+export type updateMeResponseSuccess = updateMeResponse200 & {
   headers: Headers;
 };
-;
-
-export type updateMeResponse = (updateMeResponseSuccess)
+export type updateMeResponse = updateMeResponseSuccess;
 
 export const getUpdateMeUrl = () => {
-
-
-
-
-  return `/api/users/me`
-}
+  return `/api/users/me`;
+};
 
 /**
  * @summary Update current user nickname
  */
-export const updateMe = async (updateUserRequest: UpdateUserRequest, options?: RequestInit): Promise<updateMeResponse> => {
-
-  return apiClient<updateMeResponse>(getUpdateMeUrl(),
-  {
+export const updateMe = async (
+  updateUserRequest: UpdateUserRequest,
+  options?: RequestInit,
+): Promise<updateMeResponse> => {
+  return apiClient<updateMeResponse>(getUpdateMeUrl(), {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      updateUserRequest,)
-  }
-);}
+    body: JSON.stringify(updateUserRequest),
+  });
+};
 
+export const getUpdateMeMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMe>>,
+    TError,
+    { data: UpdateUserRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMe>>,
+  TError,
+  { data: UpdateUserRequest },
+  TContext
+> => {
+  const mutationKey = ['updateMe'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
 
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMe>>,
+    { data: UpdateUserRequest }
+  > = (props) => {
+    const { data } = props ?? {};
 
+    return updateMe(data, requestOptions);
+  };
 
-export const getUpdateMeMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError,{data: UpdateUserRequest}, TContext>, request?: SecondParameter<typeof apiClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError,{data: UpdateUserRequest}, TContext> => {
+  return { mutationFn, ...mutationOptions };
+};
 
-const mutationKey = ['updateMe'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
+export type UpdateMeMutationResult = NonNullable<Awaited<ReturnType<typeof updateMe>>>;
+export type UpdateMeMutationBody = UpdateUserRequest;
+export type UpdateMeMutationError = unknown;
 
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMe>>, {data: UpdateUserRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  updateMe(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UpdateMeMutationResult = NonNullable<Awaited<ReturnType<typeof updateMe>>>
-    export type UpdateMeMutationBody = UpdateUserRequest
-    export type UpdateMeMutationError = unknown
-
-    /**
+/**
  * @summary Update current user nickname
  */
-export const useUpdateMe = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError,{data: UpdateUserRequest}, TContext>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof updateMe>>,
-        TError,
-        {data: UpdateUserRequest},
-        TContext
-      > => {
-      return useMutation(getUpdateMeMutationOptions(options), queryClient);
-    }
-    export type deleteMeResponse204 = {
-  data: void
-  status: 204
-}
+export const useUpdateMe = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateMe>>,
+      TError,
+      { data: UpdateUserRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateMe>>,
+  TError,
+  { data: UpdateUserRequest },
+  TContext
+> => {
+  return useMutation(getUpdateMeMutationOptions(options), queryClient);
+};
+export type deleteMeResponse204 = {
+  data: void;
+  status: 204;
+};
 
-export type deleteMeResponseSuccess = (deleteMeResponse204) & {
+export type deleteMeResponseSuccess = deleteMeResponse204 & {
   headers: Headers;
 };
-;
-
-export type deleteMeResponse = (deleteMeResponseSuccess)
+export type deleteMeResponse = deleteMeResponseSuccess;
 
 export const getDeleteMeUrl = () => {
-
-
-
-
-  return `/api/users/me`
-}
+  return `/api/users/me`;
+};
 
 /**
  * @summary Delete current user account
  */
-export const deleteMe = async ( options?: RequestInit): Promise<deleteMeResponse> => {
-
-  return apiClient<deleteMeResponse>(getDeleteMeUrl(),
-  {
+export const deleteMe = async (options?: RequestInit): Promise<deleteMeResponse> => {
+  return apiClient<deleteMeResponse>(getDeleteMeUrl(), {
     ...options,
-    method: 'DELETE'
+    method: 'DELETE',
+  });
+};
 
+export const getDeleteMeMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteMe>>, TError, void, TContext>;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<Awaited<ReturnType<typeof deleteMe>>, TError, void, TContext> => {
+  const mutationKey = ['deleteMe'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
 
-  }
-);}
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMe>>, void> = () => {
+    return deleteMe(requestOptions);
+  };
 
+  return { mutationFn, ...mutationOptions };
+};
 
+export type DeleteMeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMe>>>;
 
+export type DeleteMeMutationError = unknown;
 
-export const getDeleteMeMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMe>>, TError,void, TContext>, request?: SecondParameter<typeof apiClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteMe>>, TError,void, TContext> => {
-
-const mutationKey = ['deleteMe'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMe>>, void> = () => {
-
-
-          return  deleteMe(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DeleteMeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMe>>>
-
-    export type DeleteMeMutationError = unknown
-
-    /**
+/**
  * @summary Delete current user account
  */
-export const useDeleteMe = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMe>>, TError,void, TContext>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteMe>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getDeleteMeMutationOptions(options), queryClient);
-    }
-    export type getMyVotesResponse200 = {
-  data: PhotoResponse[]
-  status: 200
-}
+export const useDeleteMe = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteMe>>, TError, void, TContext>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof deleteMe>>, TError, void, TContext> => {
+  return useMutation(getDeleteMeMutationOptions(options), queryClient);
+};
+export type getMyVotesResponse200 = {
+  data: PhotoResponse[];
+  status: 200;
+};
 
-export type getMyVotesResponseSuccess = (getMyVotesResponse200) & {
+export type getMyVotesResponseSuccess = getMyVotesResponse200 & {
   headers: Headers;
 };
-;
-
-export type getMyVotesResponse = (getMyVotesResponseSuccess)
+export type getMyVotesResponse = getMyVotesResponseSuccess;
 
 export const getGetMyVotesUrl = () => {
-
-
-
-
-  return `/api/users/me/votes`
-}
+  return `/api/users/me/votes`;
+};
 
 /**
  * @summary List photos the current user has upvoted (most recently voted first)
  */
-export const getMyVotes = async ( options?: RequestInit): Promise<getMyVotesResponse> => {
-
-  return apiClient<getMyVotesResponse>(getGetMyVotesUrl(),
-  {
+export const getMyVotes = async (options?: RequestInit): Promise<getMyVotesResponse> => {
+  return apiClient<getMyVotesResponse>(getGetMyVotesUrl(), {
     ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
+    method: 'GET',
+  });
+};
 
 export const getGetMyVotesQueryKey = () => {
-    return [
-    `/api/users/me/votes`
-    ] as const;
-    }
+  return [`/api/users/me/votes`] as const;
+};
 
+export const getGetMyVotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyVotes>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>;
+  request?: SecondParameter<typeof apiClient>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-export const getGetMyVotesQueryOptions = <TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
-) => {
+  const queryKey = queryOptions?.queryKey ?? getGetMyVotesQueryKey();
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyVotes>>> = ({ signal }) =>
+    getMyVotes({ signal, ...requestOptions });
 
-  const queryKey =  queryOptions?.queryKey ?? getGetMyVotesQueryKey();
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyVotes>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
 
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyVotes>>> = ({ signal }) => getMyVotes({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetMyVotesQueryResult = NonNullable<Awaited<ReturnType<typeof getMyVotes>>>
-export type GetMyVotesQueryError = unknown
-
+export type GetMyVotesQueryResult = NonNullable<Awaited<ReturnType<typeof getMyVotes>>>;
+export type GetMyVotesQueryError = unknown;
 
 export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>> & Pick<
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>> &
+      Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMyVotes>>,
           TError,
           Awaited<ReturnType<typeof getMyVotes>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>> & Pick<
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>> &
+      Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMyVotes>>,
           TError,
           Awaited<ReturnType<typeof getMyVotes>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary List photos the current user has upvoted (most recently voted first)
  */
 
 export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetMyVotesQueryOptions(options);
 
-  const queryOptions = getGetMyVotesQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-
-
-
-
-
 export type getMyPhotosResponse200 = {
-  data: PhotoResponse[]
-  status: 200
-}
+  data: PhotoResponse[];
+  status: 200;
+};
 
-export type getMyPhotosResponseSuccess = (getMyPhotosResponse200) & {
+export type getMyPhotosResponseSuccess = getMyPhotosResponse200 & {
   headers: Headers;
 };
-;
-
-export type getMyPhotosResponse = (getMyPhotosResponseSuccess)
+export type getMyPhotosResponse = getMyPhotosResponseSuccess;
 
 export const getGetMyPhotosUrl = () => {
-
-
-
-
-  return `/api/users/me/photos`
-}
+  return `/api/users/me/photos`;
+};
 
 /**
  * @summary List photos uploaded by the current user (newest first, excludes blinded)
  */
-export const getMyPhotos = async ( options?: RequestInit): Promise<getMyPhotosResponse> => {
-
-  return apiClient<getMyPhotosResponse>(getGetMyPhotosUrl(),
-  {
+export const getMyPhotos = async (options?: RequestInit): Promise<getMyPhotosResponse> => {
+  return apiClient<getMyPhotosResponse>(getGetMyPhotosUrl(), {
     ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
+    method: 'GET',
+  });
+};
 
 export const getGetMyPhotosQueryKey = () => {
-    return [
-    `/api/users/me/photos`
-    ] as const;
-    }
+  return [`/api/users/me/photos`] as const;
+};
 
+export const getGetMyPhotosQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyPhotos>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>;
+  request?: SecondParameter<typeof apiClient>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
 
-export const getGetMyPhotosQueryOptions = <TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
-) => {
+  const queryKey = queryOptions?.queryKey ?? getGetMyPhotosQueryKey();
 
-const {query: queryOptions, request: requestOptions} = options ?? {};
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPhotos>>> = ({ signal }) =>
+    getMyPhotos({ signal, ...requestOptions });
 
-  const queryKey =  queryOptions?.queryKey ?? getGetMyPhotosQueryKey();
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyPhotos>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
 
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPhotos>>> = ({ signal }) => getMyPhotos({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetMyPhotosQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPhotos>>>
-export type GetMyPhotosQueryError = unknown
-
+export type GetMyPhotosQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPhotos>>>;
+export type GetMyPhotosQueryError = unknown;
 
 export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>> & Pick<
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>> &
+      Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMyPhotos>>,
           TError,
           Awaited<ReturnType<typeof getMyPhotos>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>> & Pick<
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>> &
+      Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMyPhotos>>,
           TError,
           Awaited<ReturnType<typeof getMyPhotos>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary List photos uploaded by the current user (newest first, excludes blinded)
  */
 
 export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetMyPhotosQueryOptions(options);
 
-  const queryOptions = getGetMyPhotosQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
-
-
-
