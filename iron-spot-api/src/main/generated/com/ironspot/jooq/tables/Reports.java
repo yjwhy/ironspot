@@ -95,6 +95,16 @@ public class Reports extends TableImpl<Record> {
     public final TableField<Record, String> STATUS = createField(DSL.name("status"), SQLDataType.CLOB.defaultValue(DSL.field(DSL.raw("'pending'::text"), SQLDataType.CLOB)), this, "");
 
     /**
+     * The column <code>public.reports.disposed_by</code>.
+     */
+    public final TableField<Record, UUID> DISPOSED_BY = createField(DSL.name("disposed_by"), SQLDataType.UUID, this, "");
+
+    /**
+     * The column <code>public.reports.disposed_at</code>.
+     */
+    public final TableField<Record, OffsetDateTime> DISPOSED_AT = createField(DSL.name("disposed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
+
+    /**
      * The column <code>public.reports.created_at</code>.
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
@@ -183,19 +193,33 @@ public class Reports extends TableImpl<Record> {
 
     @Override
     public List<ForeignKey<Record, ?>> getReferences() {
-        return Arrays.asList(Keys.REPORTS__REPORTS_USER_ID_FKEY);
+        return Arrays.asList(Keys.REPORTS__REPORTS_DISPOSED_BY_FKEY, Keys.REPORTS__REPORTS_USER_ID_FKEY);
     }
 
-    private transient UsersPath _users;
+    private transient UsersPath _reportsDisposedByFkey;
 
     /**
-     * Get the implicit join path to the <code>public.users</code> table.
+     * Get the implicit join path to the <code>public.users</code> table, via
+     * the <code>reports_disposed_by_fkey</code> key.
      */
-    public UsersPath users() {
-        if (_users == null)
-            _users = new UsersPath(this, Keys.REPORTS__REPORTS_USER_ID_FKEY, null);
+    public UsersPath reportsDisposedByFkey() {
+        if (_reportsDisposedByFkey == null)
+            _reportsDisposedByFkey = new UsersPath(this, Keys.REPORTS__REPORTS_DISPOSED_BY_FKEY, null);
 
-        return _users;
+        return _reportsDisposedByFkey;
+    }
+
+    private transient UsersPath _reportsUserIdFkey;
+
+    /**
+     * Get the implicit join path to the <code>public.users</code> table, via
+     * the <code>reports_user_id_fkey</code> key.
+     */
+    public UsersPath reportsUserIdFkey() {
+        if (_reportsUserIdFkey == null)
+            _reportsUserIdFkey = new UsersPath(this, Keys.REPORTS__REPORTS_USER_ID_FKEY, null);
+
+        return _reportsUserIdFkey;
     }
 
     @Override
