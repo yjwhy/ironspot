@@ -11,7 +11,7 @@ jest.mock('@/features/auth/hooks/useAuth', () => ({
 jest.mock('../AuthenticatedProfile', () => ({
   AuthenticatedProfile: jest.fn(() => null),
 }));
-jest.mock('../LoginPromptEmptyState', () => ({
+jest.mock('@/shared/components/LoginPromptEmptyState', () => ({
   LoginPromptEmptyState: jest.fn(() => null),
 }));
 jest.mock('../ProfileSkeleton', () => ({
@@ -26,7 +26,9 @@ function getMocks() {
     AuthenticatedProfile: jest.Mock;
   };
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const login = require('../LoginPromptEmptyState') as { LoginPromptEmptyState: jest.Mock };
+  const login = require('@/shared/components/LoginPromptEmptyState') as {
+    LoginPromptEmptyState: jest.Mock;
+  };
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const skeleton = require('../ProfileSkeleton') as { ProfileSkeleton: jest.Mock };
   return {

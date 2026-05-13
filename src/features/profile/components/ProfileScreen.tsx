@@ -1,7 +1,7 @@
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { LoginPromptEmptyState } from '@/shared/components/LoginPromptEmptyState';
 
 import { AuthenticatedProfile } from './AuthenticatedProfile';
-import { LoginPromptEmptyState } from './LoginPromptEmptyState';
 import { ProfileSkeleton } from './ProfileSkeleton';
 import { SentrySmokeButton } from './SentrySmokeButton';
 

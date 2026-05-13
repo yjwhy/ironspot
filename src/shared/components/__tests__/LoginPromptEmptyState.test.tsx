@@ -14,10 +14,18 @@ beforeEach(() => {
 });
 
 describe('LoginPromptEmptyState', () => {
-  it('renders the prompt title and description', () => {
+  it('renders the prompt title and default description', () => {
     const { getByText } = render(<LoginPromptEmptyState />);
     expect(getByText('로그인이 필요해요')).toBeTruthy();
     expect(getByText('내 사진과 추천 목록을 보려면 로그인하세요')).toBeTruthy();
+  });
+
+  it('renders the provided custom description', () => {
+    const { getByText, queryByText } = render(
+      <LoginPromptEmptyState description="관리자 화면은 로그인이 필요해요" />,
+    );
+    expect(getByText('관리자 화면은 로그인이 필요해요')).toBeTruthy();
+    expect(queryByText('내 사진과 추천 목록을 보려면 로그인하세요')).toBeNull();
   });
 
   it('navigates to login when CTA is pressed', () => {
