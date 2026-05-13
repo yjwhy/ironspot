@@ -7,27 +7,27 @@
  */
 
 export type SearchParams = {
-/**
- * @minimum -90
- * @maximum 90
- */
-minLat: number;
-/**
- * @minimum -90
- * @maximum 90
- */
-maxLat: number;
-/**
- * @minimum -180
- * @maximum 180
- */
-minLng: number;
-/**
- * @minimum -180
- * @maximum 180
- */
-maxLng: number;
-brandId?: string;
-categoryId?: string;
-loadingType?: string;
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  minLat: number;
+  /**
+   * @minimum -90
+   * @maximum 90
+   */
+  maxLat: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  minLng: number;
+  /**
+   * @minimum -180
+   * @maximum 180
+   */
+  maxLng: number;
+  brandId?: string;
+  categoryId?: string;
+  loadingType?: string;
 };

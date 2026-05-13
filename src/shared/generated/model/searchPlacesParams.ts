@@ -7,9 +7,9 @@
  */
 
 export type SearchPlacesParams = {
-/**
- * @minLength 0
- * @maxLength 100
- */
-query: string;
+  /**
+   * @minLength 0
+   * @maxLength 100
+   */
+  query: string;
 };

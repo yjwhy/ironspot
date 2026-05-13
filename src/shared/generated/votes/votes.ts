@@ -5,186 +5,194 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import {
-  useMutation
-} from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import type {
   MutationFunction,
   QueryClient,
   UseMutationOptions,
-  UseMutationResult
+  UseMutationResult,
 } from '@tanstack/react-query';
 
-import type {
-  UpvoteResponse
-} from '../model';
+import type { UpvoteResponse } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
-
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
-
-
 export type upvotePhotoResponse200 = {
-  data: UpvoteResponse
-  status: 200
-}
+  data: UpvoteResponse;
+  status: 200;
+};
 
-export type upvotePhotoResponseSuccess = (upvotePhotoResponse200) & {
+export type upvotePhotoResponseSuccess = upvotePhotoResponse200 & {
   headers: Headers;
 };
-;
+export type upvotePhotoResponse = upvotePhotoResponseSuccess;
 
-export type upvotePhotoResponse = (upvotePhotoResponseSuccess)
-
-export const getUpvotePhotoUrl = (photoId: string,) => {
-
-
-
-
-  return `/api/photos/${photoId}/upvote`
-}
+export const getUpvotePhotoUrl = (photoId: string) => {
+  return `/api/photos/${photoId}/upvote`;
+};
 
 /**
  * @summary Upvote a photo
  */
-export const upvotePhoto = async (photoId: string, options?: RequestInit): Promise<upvotePhotoResponse> => {
-
-  return apiClient<upvotePhotoResponse>(getUpvotePhotoUrl(photoId),
-  {
+export const upvotePhoto = async (
+  photoId: string,
+  options?: RequestInit,
+): Promise<upvotePhotoResponse> => {
+  return apiClient<upvotePhotoResponse>(getUpvotePhotoUrl(photoId), {
     ...options,
-    method: 'POST'
+    method: 'POST',
+  });
+};
 
+export const getUpvotePhotoMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upvotePhoto>>,
+    TError,
+    { photoId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upvotePhoto>>,
+  TError,
+  { photoId: string },
+  TContext
+> => {
+  const mutationKey = ['upvotePhoto'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
 
-  }
-);}
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upvotePhoto>>,
+    { photoId: string }
+  > = (props) => {
+    const { photoId } = props ?? {};
 
+    return upvotePhoto(photoId, requestOptions);
+  };
 
+  return { mutationFn, ...mutationOptions };
+};
 
+export type UpvotePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof upvotePhoto>>>;
 
-export const getUpvotePhotoMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upvotePhoto>>, TError,{photoId: string}, TContext>, request?: SecondParameter<typeof apiClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof upvotePhoto>>, TError,{photoId: string}, TContext> => {
+export type UpvotePhotoMutationError = unknown;
 
-const mutationKey = ['upvotePhoto'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upvotePhoto>>, {photoId: string}> = (props) => {
-          const {photoId} = props ?? {};
-
-          return  upvotePhoto(photoId,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UpvotePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof upvotePhoto>>>
-
-    export type UpvotePhotoMutationError = unknown
-
-    /**
+/**
  * @summary Upvote a photo
  */
-export const useUpvotePhoto = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upvotePhoto>>, TError,{photoId: string}, TContext>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof upvotePhoto>>,
-        TError,
-        {photoId: string},
-        TContext
-      > => {
-      return useMutation(getUpvotePhotoMutationOptions(options), queryClient);
-    }
-    export type removeUpvotePhotoResponse204 = {
-  data: void
-  status: 204
-}
+export const useUpvotePhoto = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof upvotePhoto>>,
+      TError,
+      { photoId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof upvotePhoto>>,
+  TError,
+  { photoId: string },
+  TContext
+> => {
+  return useMutation(getUpvotePhotoMutationOptions(options), queryClient);
+};
+export type removeUpvotePhotoResponse204 = {
+  data: void;
+  status: 204;
+};
 
-export type removeUpvotePhotoResponseSuccess = (removeUpvotePhotoResponse204) & {
+export type removeUpvotePhotoResponseSuccess = removeUpvotePhotoResponse204 & {
   headers: Headers;
 };
-;
+export type removeUpvotePhotoResponse = removeUpvotePhotoResponseSuccess;
 
-export type removeUpvotePhotoResponse = (removeUpvotePhotoResponseSuccess)
-
-export const getRemoveUpvotePhotoUrl = (photoId: string,) => {
-
-
-
-
-  return `/api/photos/${photoId}/upvote`
-}
+export const getRemoveUpvotePhotoUrl = (photoId: string) => {
+  return `/api/photos/${photoId}/upvote`;
+};
 
 /**
  * @summary Remove upvote from a photo
  */
-export const removeUpvotePhoto = async (photoId: string, options?: RequestInit): Promise<removeUpvotePhotoResponse> => {
-
-  return apiClient<removeUpvotePhotoResponse>(getRemoveUpvotePhotoUrl(photoId),
-  {
+export const removeUpvotePhoto = async (
+  photoId: string,
+  options?: RequestInit,
+): Promise<removeUpvotePhotoResponse> => {
+  return apiClient<removeUpvotePhotoResponse>(getRemoveUpvotePhotoUrl(photoId), {
     ...options,
-    method: 'DELETE'
+    method: 'DELETE',
+  });
+};
 
+export const getRemoveUpvotePhotoMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeUpvotePhoto>>,
+    TError,
+    { photoId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeUpvotePhoto>>,
+  TError,
+  { photoId: string },
+  TContext
+> => {
+  const mutationKey = ['removeUpvotePhoto'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
 
-  }
-);}
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeUpvotePhoto>>,
+    { photoId: string }
+  > = (props) => {
+    const { photoId } = props ?? {};
 
+    return removeUpvotePhoto(photoId, requestOptions);
+  };
 
+  return { mutationFn, ...mutationOptions };
+};
 
+export type RemoveUpvotePhotoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeUpvotePhoto>>
+>;
 
-export const getRemoveUpvotePhotoMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeUpvotePhoto>>, TError,{photoId: string}, TContext>, request?: SecondParameter<typeof apiClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof removeUpvotePhoto>>, TError,{photoId: string}, TContext> => {
+export type RemoveUpvotePhotoMutationError = unknown;
 
-const mutationKey = ['removeUpvotePhoto'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeUpvotePhoto>>, {photoId: string}> = (props) => {
-          const {photoId} = props ?? {};
-
-          return  removeUpvotePhoto(photoId,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RemoveUpvotePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof removeUpvotePhoto>>>
-
-    export type RemoveUpvotePhotoMutationError = unknown
-
-    /**
+/**
  * @summary Remove upvote from a photo
  */
-export const useRemoveUpvotePhoto = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeUpvotePhoto>>, TError,{photoId: string}, TContext>, request?: SecondParameter<typeof apiClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof removeUpvotePhoto>>,
-        TError,
-        {photoId: string},
-        TContext
-      > => {
-      return useMutation(getRemoveUpvotePhotoMutationOptions(options), queryClient);
-    }
+export const useRemoveUpvotePhoto = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof removeUpvotePhoto>>,
+      TError,
+      { photoId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof removeUpvotePhoto>>,
+  TError,
+  { photoId: string },
+  TContext
+> => {
+  return useMutation(getRemoveUpvotePhotoMutationOptions(options), queryClient);
+};

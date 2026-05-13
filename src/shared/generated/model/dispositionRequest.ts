@@ -8,8 +8,8 @@
 
 export interface DispositionRequest {
   /**
-     * @minLength 1
-     * @pattern actioned|dismissed
-     */
+   * @minLength 1
+   * @pattern actioned|dismissed
+   */
   disposition: string;
 }

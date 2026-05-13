@@ -7,6 +7,6 @@
  */
 
 export type ListReportsParams = {
-status?: string;
-limit?: number;
+  status?: string;
+  limit?: number;
 };
