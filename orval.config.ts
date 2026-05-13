@@ -11,6 +11,9 @@ export default defineConfig({
       target: 'src/shared/generated/api.ts',
       schemas: 'src/shared/generated/model',
       client: 'react-query',
+      // Orval's `prettier: true` was tried but is a no-op in v8.9.1 even
+      // without .prettierignore blocking — the `generate:api` script chains
+      // `prettier --write` directly after orval instead.
       override: {
         mutator: {
           path: 'src/shared/lib/api-client.ts',

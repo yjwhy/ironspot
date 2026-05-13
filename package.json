@@ -17,7 +17,7 @@
     "e2e:flow": "maestro test",
     "e2e:all": "maestro test .maestro",
     "prepare": "husky",
-    "generate:api": "orval --config orval.config.ts"
+    "generate:api": "orval --config orval.config.ts && prettier --write \"src/shared/generated/**/*.ts\""
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
