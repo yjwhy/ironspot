@@ -56,10 +56,11 @@ dependencies {
     // OpenAPI (SpringDoc) — 3.x required for Spring Boot 4.x / Spring Framework 7.x
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
-    // JWT — Supabase Auth token validation
-    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+    // JWT — Supabase Auth token validation via JWKS (ES256 asymmetric keys).
+    // Supabase auto-migrated all projects from legacy HS256 shared secret to ECC P-256
+    // signing keys (as of 2026-04). spring-boot-starter-oauth2-resource-server pulls
+    // NimbusJwtDecoder which handles JWKS fetch + cache + ES256/RS256 verification.
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
     // PostgreSQL / PostGIS
     runtimeOnly("org.postgresql:postgresql")

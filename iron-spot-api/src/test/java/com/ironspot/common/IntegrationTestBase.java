@@ -27,7 +27,10 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("security.supabase-jwt-secret",
-            () -> "test-supabase-jwt-secret-for-integration-tests-must-be-at-least-32-chars");
+        // NimbusJwtDecoder lazily fetches the JWKS on first decode, so a dummy
+        // URL is fine here — every IT mocks JwtValidator so the decoder is never
+        // called. Only Spring bean construction needs the property to be present.
+        registry.add("security.supabase-jwks-url",
+            () -> "http://127.0.0.1:1/jwks-not-used-in-tests");
     }
 }
