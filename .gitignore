@@ -52,3 +52,6 @@ coverage/
 
 # Local screenshots from scripts/snap.sh (AI-assisted dev workflow)
 .tmp/
+
+# Git worktrees (local development)
+.worktrees/
