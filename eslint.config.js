@@ -28,6 +28,7 @@ module.exports = defineConfig([
       'jest.config.js',
       'eslint.config.js',
       'tailwind.config.js',
+      'jest.setup.js',
       'scripts/**',
     ],
   },

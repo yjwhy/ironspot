@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 
 import { env } from './env';
 
-const storage = new MMKV({ id: 'supabase-auth' });
+const storage = createMMKV({ id: 'supabase-auth' });
 
 const mmkvStorage = {
   getItem: (key: string) => storage.getString(key) ?? null,
@@ -11,7 +11,7 @@ const mmkvStorage = {
     storage.set(key, value);
   },
   removeItem: (key: string) => {
-    storage.delete(key);
+    storage.remove(key);
   },
 };
 
