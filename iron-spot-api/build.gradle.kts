@@ -7,7 +7,7 @@ buildscript {
         classpath("org.testcontainers:testcontainers:1.20.4")
         classpath("org.testcontainers:postgresql:1.20.4")
         classpath("org.postgresql:postgresql:42.7.4")
-        classpath("org.slf4j:slf4j-nop:2.0.13")
+        classpath("org.slf4j:slf4j-nop:2.0.18")
     }
 }
 
