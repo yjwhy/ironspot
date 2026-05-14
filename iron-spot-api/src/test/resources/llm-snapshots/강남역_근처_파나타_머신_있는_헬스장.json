@@ -1,0 +1,18 @@
+{
+  "location": {
+    "type": "named_place",
+    "name": "강남역",
+    "coordinates": null,
+    "radiusKm": 1.0
+  },
+  "machineFilters": [
+    {
+      "brand": "Panatta",
+      "machineName": null,
+      "category": null,
+      "minCount": 1,
+      "scope": "each"
+    }
+  ],
+  "error": null
+}

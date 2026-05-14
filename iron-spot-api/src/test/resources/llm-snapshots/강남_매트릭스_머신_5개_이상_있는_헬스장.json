@@ -1,0 +1,18 @@
+{
+  "location": {
+    "type": "named_place",
+    "name": "강남",
+    "coordinates": null,
+    "radiusKm": 1.0
+  },
+  "machineFilters": [
+    {
+      "brand": "Matrix",
+      "machineName": null,
+      "category": null,
+      "minCount": 5,
+      "scope": "each"
+    }
+  ],
+  "error": null
+}

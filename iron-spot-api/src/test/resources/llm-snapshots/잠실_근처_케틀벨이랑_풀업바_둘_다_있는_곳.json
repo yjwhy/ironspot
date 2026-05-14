@@ -1,0 +1,25 @@
+{
+  "location": {
+    "type": "named_place",
+    "name": "잠실",
+    "coordinates": null,
+    "radiusKm": 1.0
+  },
+  "machineFilters": [
+    {
+      "brand": null,
+      "machineName": "Kettlebell",
+      "category": null,
+      "minCount": 1,
+      "scope": "each"
+    },
+    {
+      "brand": null,
+      "machineName": "Pull-up Bar",
+      "category": null,
+      "minCount": 1,
+      "scope": "each"
+    }
+  ],
+  "error": null
+}

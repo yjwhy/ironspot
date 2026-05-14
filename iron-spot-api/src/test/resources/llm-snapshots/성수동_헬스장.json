@@ -1,0 +1,10 @@
+{
+  "location": {
+    "type": "named_place",
+    "name": "성수동",
+    "coordinates": null,
+    "radiusKm": 1.0
+  },
+  "machineFilters": [],
+  "error": null
+}

@@ -1,0 +1,16 @@
+{
+  "location": {
+    "type": "current",
+    "radiusKm": 1.0
+  },
+  "machineFilters": [
+    {
+      "brand": "Hammer Strength",
+      "machineName": "Lat Pull Down",
+      "category": null,
+      "minCount": 1,
+      "scope": "each"
+    }
+  ],
+  "error": null
+}

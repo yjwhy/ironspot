@@ -1,0 +1,16 @@
+{
+  "location": {
+    "type": "current",
+    "radiusKm": 1.0
+  },
+  "machineFilters": [
+    {
+      "brand": null,
+      "machineName": null,
+      "category": "Chest",
+      "minCount": 1,
+      "scope": "each"
+    }
+  ],
+  "error": null
+}

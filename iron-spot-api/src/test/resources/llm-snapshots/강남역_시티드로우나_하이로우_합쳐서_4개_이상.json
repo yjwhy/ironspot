@@ -1,0 +1,25 @@
+{
+  "location": {
+    "type": "named_place",
+    "name": "강남역",
+    "coordinates": null,
+    "radiusKm": 1.0
+  },
+  "machineFilters": [
+    {
+      "brand": null,
+      "machineName": "Seated Row",
+      "category": null,
+      "minCount": 4,
+      "scope": "combined"
+    },
+    {
+      "brand": null,
+      "machineName": "High Row",
+      "category": null,
+      "minCount": 4,
+      "scope": "combined"
+    }
+  ],
+  "error": null
+}

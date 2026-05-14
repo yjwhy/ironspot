@@ -120,8 +120,8 @@ All paid tiers require explicit account upgrade with billing setup — never aut
 
 ## Pre-requisites (gates — note which task each blocks)
 
-- [ ] **Groq account** with API key — blocks Task 35 (no credit card; sign up at console.groq.com, confirm no billing setup screen appears during signup)
-- [ ] **Google Cloud Gemini API key** — blocks Task 35 (Gemini API in AI Studio at aistudio.google.com; confirm "Get API key" path without billing activation)
+- [x] **Groq account** with API key — blocks Task 35 (2026-05-14, no credit card screen during signup, key in iron-spot-api/.env)
+- [x] **Google Cloud Gemini API key** — blocks Task 35 (2026-05-14, AI Studio auto-created project, no billing, key in iron-spot-api/.env)
 - [ ] **`expo-speech-recognition` package** + plist + manifest entries — blocks Task 38
 - [ ] **First admin user designation** — Phase 3 launches without an admin UI to promote users, so the founding admin is set via direct SQL: `UPDATE users SET role = 'admin' WHERE id = '<your-user-id>'`. This unblocks Task 34 verification (need an admin account to load admin screens).
 - [ ] **Sentry app + api projects** (Task 31) confirmed live — Phase 3 reuses for NL Search breadcrumb. No new project needed.
@@ -772,7 +772,9 @@ Map 429 → `LlmException(RATE_LIMIT)`. Map timeout → `LlmException(TIMEOUT)`.
 
 ### Step 4: `GeminiFlashClient`
 
-WebClient call to `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`. Different request shape but same `SearchDsl` parse target. `responseMimeType: application/json` + `responseSchema: <SearchDsl JSON schema>` for strict validation.
+WebClient call to `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`. Different request shape but same `SearchDsl` parse target. `responseMimeType: application/json` only — `responseSchema` deferred because the static `MAPPER.readValue(SearchDsl.class)` + the record's compact-constructor invariants already catch malformed responses, and a JSON schema would double the maintenance cost as the DSL evolves.
+
+**Model selection note (2026-05-14):** The original spec named `gemini-2.0-flash`, but the free tier on that model returned `429 RESOURCE_EXHAUSTED` with `limit: 0` on the unmonetized Phase 3 project (confirmed by empirical probe). Switched to `gemini-flash-lite-latest`, which currently aliases `gemini-3.1-flash-lite` and works on the free tier. Using the `-latest` alias avoids re-coding the model name as Google retires older lite variants.
 
 ### Step 5: `FallbackLlmClient` composite
 
