@@ -32,6 +32,14 @@ naver:
     client-id: ${NAVER_SEARCH_CLIENT_ID}
     client-secret: ${NAVER_SEARCH_CLIENT_SECRET}
 
+groq:
+  # Empty → GroqLlamaClient logs warning at startup, throws TRANSPORT at runtime.
+  api-key: ${GROQ_API_KEY:}
+
+gemini:
+  # Empty → GeminiFlashClient logs warning at startup, throws TRANSPORT at runtime.
+  api-key: ${GEMINI_API_KEY:}
+
 ironspot:
   slack:
     admin-webhook-url: ${SLACK_ADMIN_WEBHOOK_URL:}
