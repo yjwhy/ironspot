@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # Kotlin DSL (embedded in Gradle 8.x) cannot parse Java 25 version strings.
       # Workaround: run the Gradle daemon on Java 24 (via JAVA_HOME override below)
       # while the build toolchain still compiles sources with Java 25.
