@@ -1,0 +1,18 @@
+{
+  "location": {
+    "type": "named_place",
+    "name": "잠실",
+    "coordinates": null,
+    "radiusKm": 1.0
+  },
+  "machineFilters": [
+    {
+      "brand": "Cybex",
+      "machineName": null,
+      "category": null,
+      "minCount": 1,
+      "scope": "each"
+    }
+  ],
+  "error": null
+}

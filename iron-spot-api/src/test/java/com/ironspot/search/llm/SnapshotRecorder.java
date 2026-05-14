@@ -35,7 +35,8 @@ public final class SnapshotRecorder {
     private static final Path QUERIES_PATH = Paths.get("src/test/resources/llm-snapshots/queries.txt");
     private static final Path OUTPUT_DIR = Paths.get("src/test/resources/llm-snapshots");
     private static final Pattern UNSAFE_CHARS = Pattern.compile("[\\\\/:*?\"<>|\\s]+");
-    private static final Duration THROTTLE = Duration.ofSeconds(2);
+    private static final Duration THROTTLE = Duration.ofSeconds(5);
+    private static final Duration RATE_LIMIT_BACKOFF = Duration.ofSeconds(60);
     private static final ObjectMapper PRETTY = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
     private SnapshotRecorder() {}
@@ -53,19 +54,27 @@ public final class SnapshotRecorder {
 
         int ok = 0;
         int err = 0;
+        int skipped = 0;
         boolean first = true;
         for (String line : Files.readAllLines(QUERIES_PATH, StandardCharsets.UTF_8)) {
             String query = line.trim();
             if (query.isEmpty() || query.startsWith("#")) continue;
 
-            if (!first) Thread.sleep(THROTTLE.toMillis());
-            first = false;
-
             String base = sanitize(query);
             Path jsonOut = OUTPUT_DIR.resolve(base + ".json");
             Path errOut = OUTPUT_DIR.resolve(base + ".error.txt");
+
+            if (Files.exists(jsonOut)) {
+                System.out.println("SKIP " + query + "  (already recorded)");
+                skipped++;
+                continue;
+            }
+
+            if (!first) Thread.sleep(THROTTLE.toMillis());
+            first = false;
+
             try {
-                SearchDsl dsl = client.parse(query);
+                SearchDsl dsl = callWithRateLimitRetry(client, query);
                 PRETTY.writeValue(jsonOut.toFile(), dsl);
                 Files.deleteIfExists(errOut);
                 System.out.println("OK   " + query + "  →  " + jsonOut.getFileName());
@@ -83,8 +92,19 @@ public final class SnapshotRecorder {
         }
 
         System.out.println();
-        System.out.println("=== SnapshotRecorder done: " + ok + " ok, " + err + " errors ===");
+        System.out.println("=== SnapshotRecorder done: " + ok + " ok, " + skipped + " skipped, " + err + " errors ===");
         if (err > 0) System.exit(2);
+    }
+
+    private static SearchDsl callWithRateLimitRetry(GroqLlamaClient client, String query) throws InterruptedException {
+        try {
+            return client.parse(query);
+        } catch (LlmException e) {
+            if (e.kind() != LlmException.Kind.RATE_LIMIT) throw e;
+            System.err.println("     rate-limited, backing off " + RATE_LIMIT_BACKOFF.toSeconds() + "s before single retry");
+            Thread.sleep(RATE_LIMIT_BACKOFF.toMillis());
+            return client.parse(query);
+        }
     }
 
     private static GroqLlamaClient buildClient(String apiKey) throws IOException {

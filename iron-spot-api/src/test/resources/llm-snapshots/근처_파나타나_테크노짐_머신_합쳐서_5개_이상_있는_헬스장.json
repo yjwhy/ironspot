@@ -1,0 +1,23 @@
+{
+  "location": {
+    "type": "current",
+    "radiusKm": 1.0
+  },
+  "machineFilters": [
+    {
+      "brand": "Panatta",
+      "machineName": null,
+      "category": null,
+      "minCount": 5,
+      "scope": "combined"
+    },
+    {
+      "brand": "Technogym",
+      "machineName": null,
+      "category": null,
+      "minCount": 5,
+      "scope": "combined"
+    }
+  ],
+  "error": null
+}

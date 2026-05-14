@@ -1,0 +1,10 @@
+{
+  "location": {
+    "type": "named_place",
+    "name": "강남역",
+    "coordinates": null,
+    "radiusKm": 1.0
+  },
+  "machineFilters": [],
+  "error": null
+}

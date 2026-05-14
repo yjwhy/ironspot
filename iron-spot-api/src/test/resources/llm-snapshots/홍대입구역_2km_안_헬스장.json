@@ -1,0 +1,10 @@
+{
+  "location": {
+    "type": "named_place",
+    "name": "홍대입구역",
+    "coordinates": null,
+    "radiusKm": 2.0
+  },
+  "machineFilters": [],
+  "error": null
+}

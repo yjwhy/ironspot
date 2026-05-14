@@ -1,0 +1,8 @@
+{
+  "location": {
+    "type": "current",
+    "radiusKm": 1.0
+  },
+  "machineFilters": [],
+  "error": null
+}

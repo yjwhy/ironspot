@@ -128,6 +128,10 @@ tasks.register<JavaExec>("recordEvalSnapshots") {
     mainClass.set("com.ironspot.search.llm.SnapshotRecorder")
     classpath = sourceSets["test"].runtimeClasspath
     workingDir = projectDir
+    // Pin to the project's Java 25 toolchain — JavaExec otherwise picks up the system
+    // default JRE (often older) and fails with UnsupportedClassVersionError on class
+    // files compiled by the toolchain.
+    javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
     val apiKey = System.getenv("GROQ_API_KEY") ?: dotEnv["GROQ_API_KEY"]
     if (!apiKey.isNullOrBlank()) environment("GROQ_API_KEY", apiKey)
 }

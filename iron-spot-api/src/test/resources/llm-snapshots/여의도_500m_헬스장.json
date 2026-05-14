@@ -1,0 +1,10 @@
+{
+  "location": {
+    "type": "named_place",
+    "name": "여의도",
+    "coordinates": null,
+    "radiusKm": 0.5
+  },
+  "machineFilters": [],
+  "error": null
+}
