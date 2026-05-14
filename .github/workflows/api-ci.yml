@@ -24,7 +24,7 @@ jobs:
         with:
           java-version: '25'
           distribution: 'temurin'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Run tests
         working-directory: iron-spot-api
         run: ./gradlew test
