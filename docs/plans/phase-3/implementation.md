@@ -120,8 +120,8 @@ All paid tiers require explicit account upgrade with billing setup — never aut
 
 ## Pre-requisites (gates — note which task each blocks)
 
-- [ ] **Groq account** with API key — blocks Task 35 (no credit card; sign up at console.groq.com, confirm no billing setup screen appears during signup)
-- [ ] **Google Cloud Gemini API key** — blocks Task 35 (Gemini API in AI Studio at aistudio.google.com; confirm "Get API key" path without billing activation)
+- [x] **Groq account** with API key — blocks Task 35 (2026-05-14, no credit card screen during signup, key in iron-spot-api/.env)
+- [x] **Google Cloud Gemini API key** — blocks Task 35 (2026-05-14, AI Studio auto-created project, no billing, key in iron-spot-api/.env)
 - [ ] **`expo-speech-recognition` package** + plist + manifest entries — blocks Task 38
 - [ ] **First admin user designation** — Phase 3 launches without an admin UI to promote users, so the founding admin is set via direct SQL: `UPDATE users SET role = 'admin' WHERE id = '<your-user-id>'`. This unblocks Task 34 verification (need an admin account to load admin screens).
 - [ ] **Sentry app + api projects** (Task 31) confirmed live — Phase 3 reuses for NL Search breadcrumb. No new project needed.

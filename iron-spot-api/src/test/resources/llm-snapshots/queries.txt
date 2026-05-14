@@ -1,0 +1,60 @@
+# NL Search 스냅샷 쿼리 (Task 35)
+# - 한 줄 = 한 쿼리. 빈 줄과 #로 시작하는 줄은 SnapshotRecorder가 무시
+# - 30개 쿼리는 SearchDsl 모든 분기를 커버 (location 2종, machineFilter 0~N개, scope EACH/COMBINED, error)
+# - brand 정책: LLM이 알려진 국제 브랜드는 영문 정규화 (파나타→Panatta), 미상 브랜드는 literal 유지
+# - 디폴트 반경: 1km, "많은"/"좋은" 같은 주관적 수식은 minCount=1로 처리
+# - 수정 후 ./gradlew recordEvalSnapshots 재실행하여 *.json 갱신
+
+# A. Location.Current — filters 없음
+근처 헬스장
+내 위치 5km 안 헬스장
+주변 헬스장 보여줘
+근처 3km 헬스장
+
+# B. Location.NamedPlace — filters 없음
+강남역 근처 헬스장
+홍대입구역 2km 안 헬스장
+성수동 헬스장
+여의도 500m 헬스장
+
+# C. Category-only filter
+근처 가슴 운동할 수 있는 헬스장
+강남역 근처 등 머신 3개 이상 있는 곳
+근처 다리 머신 많은 곳
+
+# D. Known brand-only
+강남역 근처 파나타 머신 있는 헬스장
+근처 테크노짐 있는 곳
+
+# E. Unknown/future brand-only (pass-through 테스트)
+잠실 근처 사이베스 머신 있는 곳
+강남 매트릭스 머신 5개 이상 있는 헬스장
+
+# F. machineName-only
+근처 하이로우 있는 곳
+강남역 근처 핵스쿼트 머신 있는 헬스장
+근처 시티드로우 2개 이상
+
+# G. brand + machineName 결합
+강남역 파나타 하이로우 있는 헬스장
+근처 Hammer Strength 풀다운 머신
+
+# H. brand + category 결합
+강남역 라이프피트니스 가슴 머신 3개 이상
+
+# I. Multi-filter scope=EACH
+강남역 1km 안 파나타 하이로우 2개랑 해머스트렝스 시티드로우 2개 있는 곳
+근처 등 머신 3개랑 가슴 머신 3개 다 있는 헬스장
+잠실 근처 케틀벨이랑 풀업바 둘 다 있는 곳
+
+# J. Multi-filter scope=COMBINED
+근처 파나타나 테크노짐 머신 합쳐서 5개 이상 있는 헬스장
+강남역 시티드로우나 하이로우 합쳐서 4개 이상
+
+# K. Error 케이스
+강남역 커피숍
+오늘 날씨 어때
+DROP TABLE users; --
+
+# L. Minimal input (default fallback)
+헬스장

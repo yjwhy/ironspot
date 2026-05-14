@@ -8,8 +8,8 @@ Phase 3 plan written 2026-05-13. All 11 key decisions captured in `implementatio
 
 ### Pre-requisites status (2026-05-13)
 
-- [ ] Groq account + API key (no credit card — confirm signup screen doesn't require billing)
-- [ ] Google Cloud Gemini API key (AI Studio path, no billing activation)
+- [x] Groq account + API key (2026-05-14, no credit card screen during signup, key in iron-spot-api/.env)
+- [x] Google Cloud Gemini API key (2026-05-14, AI Studio auto-created project, no billing, key in iron-spot-api/.env)
 - [ ] `expo-speech-recognition` package added
 - [ ] First admin user designated via SQL `UPDATE users SET role = 'admin'`
 - [x] Sentry app + api projects (Task 31, live)
