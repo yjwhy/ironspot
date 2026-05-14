@@ -64,4 +64,82 @@ class FuzzyMatchServiceTest {
 
         assertThat(results).isEmpty();
     }
+
+    @Test
+    void findTemplateIdsReturnsEmptyWhenMachineNameNull() {
+        List<UUID> ids = fuzzyMatchService.findTemplateIds(null, null, null);
+        assertThat(ids).isEmpty();
+    }
+
+    @Test
+    void findTemplateIdsMatchesNameOnlyIgnoringBrand() {
+        UUID panattaHighRow = UUID.randomUUID();
+        UUID cybexHighRow = UUID.randomUUID();
+
+        when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
+            new MachineTemplateSummary(panattaHighRow, "Panatta", "High Row"),
+            new MachineTemplateSummary(cybexHighRow, "Cybex", "High Row")
+        ));
+
+        List<UUID> ids = fuzzyMatchService.findTemplateIds("High Row", null, null);
+
+        assertThat(ids).containsExactlyInAnyOrder(panattaHighRow, cybexHighRow);
+    }
+
+    @Test
+    void findTemplateIdsLongBrandNameDoesNotDragJaccardBelowThreshold() {
+        UUID id = UUID.randomUUID();
+
+        when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
+            new MachineTemplateSummary(id, "Hammer Strength Plate Loaded International", "Row")
+        ));
+
+        List<UUID> ids = fuzzyMatchService.findTemplateIds("Row", null, null);
+
+        assertThat(ids).containsExactly(id);
+    }
+
+    @Test
+    void findTemplateIdsHonoursBrandPreFilter() {
+        UUID panattaId = UUID.randomUUID();
+        UUID onlyPanattaHighRow = UUID.randomUUID();
+
+        when(templateRepository.findApprovedByOptionalFilters(panattaId, null)).thenReturn(List.of(
+            new MachineTemplateSummary(onlyPanattaHighRow, "Panatta", "High Row")
+        ));
+
+        List<UUID> ids = fuzzyMatchService.findTemplateIds("High Row", panattaId, null);
+
+        assertThat(ids).containsExactly(onlyPanattaHighRow);
+    }
+
+    @Test
+    void findTemplateIdsReturnsEmptyWhenFuzzyBelowThreshold() {
+        UUID legPressId = UUID.randomUUID();
+
+        when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
+            new MachineTemplateSummary(legPressId, "Cybex", "Leg Press")
+        ));
+
+        List<UUID> ids = fuzzyMatchService.findTemplateIds("High Row", null, null);
+
+        assertThat(ids).isEmpty();
+    }
+
+    @Test
+    void findTemplateIdsReturnsAllNameVariantsAboveThreshold() {
+        UUID highRowLite = UUID.randomUUID();
+        UUID highRowPro = UUID.randomUUID();
+        UUID treadmill = UUID.randomUUID();
+
+        when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
+            new MachineTemplateSummary(highRowLite, "Panatta", "High Row Lite"),
+            new MachineTemplateSummary(highRowPro, "Panatta", "Pro High Row"),
+            new MachineTemplateSummary(treadmill, "Cybex", "Treadmill")
+        ));
+
+        List<UUID> ids = fuzzyMatchService.findTemplateIds("High Row", null, null);
+
+        assertThat(ids).containsExactlyInAnyOrder(highRowLite, highRowPro);
+    }
 }

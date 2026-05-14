@@ -97,9 +97,22 @@ Max 5 review iterations per subtask — stop and report if exceeded.
 
 1. **`/verify` as a slash command** — required when the diff against `origin/main` touches frontend code (`app/`, `src/`, `tailwind.config.js`, `babel.config.js`, `metro.config.js`, `app.json`, `app.config.{js,ts}`, `nativewind-env.d.ts`, `expo-env.d.ts`, `package.json`, `pnpm-lock.yaml`). Never substitute `pnpm jest && pnpm lint && pnpm tsc` — those skip step 4 (FF review). Docs/CI/Maestro-only diffs: pnpm trio is sufficient.
 2. Check `docs/harness/e2e-strategy.md` and run mapped E2E flows.
-3. `/commit-task <N>` to create PR targeting `main`.
-4. Update `PROGRESS.md`.
-5. Stop and notify user.
+3. **Slice the PR into 3–6 review-gated commits** along the plan's component boundaries before running `/commit-task`. Each slice must be self-contained: it compiles and its own tests pass when applied on top of previous slices. Standard slice types: (a) DTOs/records, (b) repository/persistence extensions, (c) domain service/validator, (d) execution + presentation (SQL builder, formatters, UI components), (e) wiring + integration test + OpenAPI/Orval regen. Auto-generated artefacts (jOOQ regen, Orval regen on backend-only Tasks) go in a separate `chore(...)` commit. Single-commit PRs are acceptable only for trivial Tasks (<200 LOC across <10 files). Reference examples: Task 35 PR #58 (5 slices), Task 36 PR #76 (7 slices including chore + docs).
+4. `/commit-task <N>` to create PR targeting `main`.
+5. Update `PROGRESS.md`.
+6. Stop and notify user.
+
+### Commit message convention
+
+`<type>(<scope>): <description>` — Conventional Commits with scope.
+
+- **Types**: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `ci`.
+- **Scope for Phase tasks**: `(phase-N)`. Subject pattern: `<task-N>[<slice-letter>] — <description>` with em dash. Examples: `feat(phase-3): 36a — DTOs + resolved-state records`, `chore(phase-3): 33 — regenerate JOOQ + OpenAPI + Orval client`, `docs(phase-3): mark Task 36 complete + PR #76 in PROGRESS`.
+- **Scope for feature/module work**: domain or area, e.g. `(gym)`, `(map)`, `(photo)`, `(upload)`, `(auth)`, `(api)`, `(data)`, `(monitoring)`, `(harness)`, `(claude)`, `(lint)`, `(ci)`, `(jooq)`.
+- **Scope for dependency bumps** (dependabot pattern): double scope `(area)(deps|deps-dev)`, e.g. `chore(app)(deps): bump react-hook-form from 7.73.1 to 7.75.0`, `chore(api)(deps): bump gradle-wrapper in /iron-spot-api`, `chore(ci)(deps): bump actions/setup-java from 4 to 5`.
+- **Subject**: no trailing period, imperative mood, ≤72 chars when possible.
+- **Body**: include change rationale, plan deviations, code-review fixes applied (with severity emoji 🔴 / 🟡 / 🟢 if from a review), test coverage delta, and PR # at the end. Match the depth of Task 33–36 entries.
+- **Em dash (`—`) in commit subjects only** when separating a task number from its description. Do not use em dashes elsewhere (including responses to the user).
 
 ### User review checkpoints
 

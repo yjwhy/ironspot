@@ -25,6 +25,8 @@ export * from './listPendingPhotosParams';
 export * from './listReportsParams';
 export * from './machineTemplateSuggestion';
 export * from './naverPlaceResult';
+export * from './nlSearchRequest';
+export * from './nlSearchResponse';
 export * from './photoResponse';
 export * from './photoUploadResponse';
 export * from './searchParams';

@@ -7,6 +7,7 @@ package com.ironspot.jooq.udt;
 import com.ironspot.jooq.Public;
 import com.ironspot.jooq.udt.records.ValidDetailRecord;
 
+import org.jooq.Field;
 import org.jooq.Geometry;
 import org.jooq.Schema;
 import org.jooq.UDTField;
@@ -28,6 +29,36 @@ public class ValidDetail extends UDTImpl<ValidDetailRecord> {
      * The reference instance of <code>public.valid_detail</code>
      */
     public static final ValidDetail VALID_DETAIL = new ValidDetail();
+
+    /**
+     * Create a constructor expression for <code>public.valid_detail</code>
+     */
+    public static Field<ValidDetailRecord> VALID_DETAIL(
+        Boolean valid,
+        String reason,
+        Geometry location
+    ) {
+        return VALID_DETAIL.construct(
+            DSL.val(valid),
+            DSL.val(reason),
+            DSL.val(location)
+        );
+    }
+
+    /**
+     * Create a constructor expression for <code>public.valid_detail</code>
+     */
+    public static Field<ValidDetailRecord> VALID_DETAIL(
+        Field<Boolean> valid,
+        Field<String> reason,
+        Field<Geometry> location
+    ) {
+        return VALID_DETAIL.construct(
+            valid,
+            reason,
+            location
+        );
+    }
 
     /**
      * The class holding records for this type
@@ -56,7 +87,7 @@ public class ValidDetail extends UDTImpl<ValidDetailRecord> {
      * No further instances allowed
      */
     private ValidDetail() {
-        super(DSL.name("valid_detail"), null, null, false);
+        super(DSL.name("valid_detail"), null, null, DSL.comment(""), false);
     }
 
     @Override
