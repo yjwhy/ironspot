@@ -4,8 +4,8 @@ buildscript {
     }
     dependencies {
         classpath("org.jooq:jooq-codegen:3.21.4")
-        classpath("org.testcontainers:testcontainers:1.21.4")
-        classpath("org.testcontainers:postgresql:1.21.4")
+        classpath("org.testcontainers:testcontainers:2.0.5")
+        classpath("org.testcontainers:postgresql:2.0.5")
         classpath("org.postgresql:postgresql:42.7.4")
         classpath("org.slf4j:slf4j-nop:2.0.18")
     }
