@@ -121,6 +121,17 @@ tasks.named("compileJava") {
     dependsOn("generateJooq")
 }
 
+tasks.register<JavaExec>("recordEvalSnapshots") {
+    group = "verification"
+    description = "One-time: calls real Groq for every line in queries.txt and writes JSON snapshots. " +
+        "Re-run after any prompt change. Throttled to 30 RPM (free-tier safe)."
+    mainClass.set("com.ironspot.search.llm.SnapshotRecorder")
+    classpath = sourceSets["test"].runtimeClasspath
+    workingDir = projectDir
+    val apiKey = System.getenv("GROQ_API_KEY") ?: dotEnv["GROQ_API_KEY"]
+    if (!apiKey.isNullOrBlank()) environment("GROQ_API_KEY", apiKey)
+}
+
 tasks.register("generateJooq") {
     group = "jooq"
     description = "Generate JOOQ classes from schema via Testcontainers — re-run when schema changes"
