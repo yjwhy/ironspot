@@ -14,7 +14,10 @@ spring:
     password: ${DATABASE_PASSWORD:}
 
 security:
-  supabase-jwt-secret: ${SUPABASE_JWT_SECRET}
+  # Supabase JWKS endpoint — JwtValidator fetches the public keys from here and
+  # caches them in-process. The legacy SUPABASE_JWT_SECRET (HS256 shared secret)
+  # is no longer used because Supabase auto-migrated all projects to ECC P-256.
+  supabase-jwks-url: ${SUPABASE_JWKS_URL}
 
 supabase:
   url: ${SUPABASE_URL}

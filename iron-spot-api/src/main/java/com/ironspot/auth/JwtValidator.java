@@ -1,47 +1,42 @@
 package com.ironspot.auth;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Validates Supabase Auth JWTs and lifts them into the application's UserPrincipal.
+ *
+ * <p>Crypto verification (signature + expiry) is delegated to the injected
+ * {@link JwtDecoder}, which {@link AuthConfig} wires as a JWKS-backed
+ * NimbusJwtDecoder pointing at the Supabase project's
+ * {@code /auth/v1/.well-known/jwks.json} endpoint. Supabase rotated all projects
+ * from legacy HS256 shared secrets to ECC P-256 signing keys, so HMAC verification
+ * no longer matches new tokens.
+ *
+ * <p>Constructor accepts the {@link JwtDecoder} interface (not the concrete Nimbus
+ * implementation) so tests can mock the decoder and drive the validation branches
+ * directly without standing up a JWKS HTTP fixture.
+ */
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class JwtValidator {
 
-    private final SecretKey signingKey;
+    private final JwtDecoder decoder;
     private final UserRepository userRepository;
-
-    public JwtValidator(
-        @Value("${security.supabase-jwt-secret}") String jwtSecret,
-        UserRepository userRepository
-    ) {
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            throw new IllegalStateException(
-                "SUPABASE_JWT_SECRET must be at least 32 bytes (256 bits) for HS256");
-        }
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
-        this.userRepository = userRepository;
-    }
 
     public Optional<UserPrincipal> validate(String token) {
         try {
-            Claims claims = Jwts.parser()
-                .verifyWith(signingKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+            Jwt jwt = decoder.decode(token);
 
-            String sub = claims.getSubject();
+            String sub = jwt.getSubject();
             try {
                 UUID.fromString(sub);
             } catch (IllegalArgumentException e) {
@@ -49,7 +44,7 @@ public class JwtValidator {
                 return Optional.empty();
             }
 
-            String email = claims.get("email", String.class);
+            String email = jwt.getClaimAsString("email");
             if (email == null || email.isBlank()) {
                 log.debug("JWT missing email claim for sub={}", sub);
                 return Optional.empty();
