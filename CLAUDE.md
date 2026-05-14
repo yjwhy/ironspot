@@ -102,6 +102,18 @@ Max 5 review iterations per subtask — stop and report if exceeded.
 5. Update `PROGRESS.md`.
 6. Stop and notify user.
 
+### Commit message convention
+
+`<type>(<scope>): <description>` — Conventional Commits with scope.
+
+- **Types**: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `ci`.
+- **Scope for Phase tasks**: `(phase-N)`. Subject pattern: `<task-N>[<slice-letter>] — <description>` with em dash. Examples: `feat(phase-3): 36a — DTOs + resolved-state records`, `chore(phase-3): 33 — regenerate JOOQ + OpenAPI + Orval client`, `docs(phase-3): mark Task 36 complete + PR #76 in PROGRESS`.
+- **Scope for feature/module work**: domain or area, e.g. `(gym)`, `(map)`, `(photo)`, `(upload)`, `(auth)`, `(api)`, `(data)`, `(monitoring)`, `(harness)`, `(claude)`, `(lint)`, `(ci)`, `(jooq)`.
+- **Scope for dependency bumps** (dependabot pattern): double scope `(area)(deps|deps-dev)`, e.g. `chore(app)(deps): bump react-hook-form from 7.73.1 to 7.75.0`, `chore(api)(deps): bump gradle-wrapper in /iron-spot-api`, `chore(ci)(deps): bump actions/setup-java from 4 to 5`.
+- **Subject**: no trailing period, imperative mood, ≤72 chars when possible.
+- **Body**: include change rationale, plan deviations, code-review fixes applied (with severity emoji 🔴 / 🟡 / 🟢 if from a review), test coverage delta, and PR # at the end. Match the depth of Task 33–36 entries.
+- **Em dash (`—`) in commit subjects only** when separating a task number from its description. Do not use em dashes elsewhere (including responses to the user).
+
 ### User review checkpoints
 
 | Checkpoint | After      | Reviews                        |
