@@ -3,12 +3,10 @@ package com.ironspot.search.llm;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ironspot.search.dsl.SearchDsl;
+import io.netty.handler.timeout.ReadTimeoutException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Component;
-import io.netty.handler.timeout.ReadTimeoutException;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
@@ -20,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 @Slf4j
-@Component
 public class GroqLlamaClient implements LlmClient {
 
     static final String API_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -34,11 +31,7 @@ public class GroqLlamaClient implements LlmClient {
     private final Resource promptResource;
     private String systemPrompt;
 
-    public GroqLlamaClient(
-        WebClient webClient,
-        @Value("${groq.api-key:}") String apiKey,
-        @Value("classpath:prompts/search-dsl.md") Resource promptResource
-    ) {
+    public GroqLlamaClient(WebClient webClient, String apiKey, Resource promptResource) {
         this.webClient = webClient;
         this.apiKey = apiKey;
         this.promptResource = promptResource;

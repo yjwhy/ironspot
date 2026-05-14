@@ -772,7 +772,9 @@ Map 429 → `LlmException(RATE_LIMIT)`. Map timeout → `LlmException(TIMEOUT)`.
 
 ### Step 4: `GeminiFlashClient`
 
-WebClient call to `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`. Different request shape but same `SearchDsl` parse target. `responseMimeType: application/json` + `responseSchema: <SearchDsl JSON schema>` for strict validation.
+WebClient call to `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`. Different request shape but same `SearchDsl` parse target. `responseMimeType: application/json` only — `responseSchema` deferred because the static `MAPPER.readValue(SearchDsl.class)` + the record's compact-constructor invariants already catch malformed responses, and a JSON schema would double the maintenance cost as the DSL evolves.
+
+**Model selection note (2026-05-14):** The original spec named `gemini-2.0-flash`, but the free tier on that model returned `429 RESOURCE_EXHAUSTED` with `limit: 0` on the unmonetized Phase 3 project (confirmed by empirical probe). Switched to `gemini-flash-lite-latest`, which currently aliases `gemini-3.1-flash-lite` and works on the free tier. Using the `-latest` alias avoids re-coding the model name as Google retires older lite variants.
 
 ### Step 5: `FallbackLlmClient` composite
 
