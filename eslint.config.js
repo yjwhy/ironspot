@@ -5,6 +5,15 @@ const reactNative = require('eslint-plugin-react-native');
 const reactCompiler = require('eslint-plugin-react-compiler');
 const prettierConfig = require('eslint-config-prettier');
 
+// eslint-config-expo (v55+) already registers the `@typescript-eslint` plugin.
+// Re-registering it via `tseslint.configs.strictTypeChecked` triggers
+// "Cannot redefine plugin '@typescript-eslint'". Extract the rules instead and
+// let expo's config own the plugin registration.
+const collectRules = (configs) =>
+  configs.reduce((acc, c) => (c.rules ? { ...acc, ...c.rules } : acc), {});
+const strictTypeCheckedRules = collectRules(tseslint.configs.strictTypeChecked);
+const stylisticTypeCheckedRules = collectRules(tseslint.configs.stylisticTypeChecked);
+
 module.exports = defineConfig([
   {
     ignores: [
@@ -23,8 +32,6 @@ module.exports = defineConfig([
     ],
   },
   expoConfig,
-  ...tseslint.configs.strictTypeChecked,
-  ...tseslint.configs.stylisticTypeChecked,
   prettierConfig,
   {
     files: ['**/*.{ts,tsx}'],
@@ -45,6 +52,8 @@ module.exports = defineConfig([
       },
     },
     rules: {
+      ...strictTypeCheckedRules,
+      ...stylisticTypeCheckedRules,
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
       'react-compiler/react-compiler': 'error',
