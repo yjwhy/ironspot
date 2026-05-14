@@ -115,6 +115,11 @@ Max 5 review iterations per subtask — stop and report if exceeded.
 
 - Never ask user to review individual subtasks — dispatch code-reviewer instead
 - Never merge PRs — user merges after review
+  - **Exception**: Dependabot PRs may be merged by Claude when **all** of the following hold:
+    - CI is fully green (lint, typecheck, test, Socket Security, and any matrix jobs)
+    - The bump is a patch/minor version, **or** a GitHub Actions version bump (e.g. `actions/checkout@v4 → v6`)
+    - No source code changes are needed in the PR (i.e. it's a pure dep bump, not a manual fix)
+  - For **major** version bumps of runtime/library deps (e.g. `testcontainers 1.x → 2.x`, `eslint-config-expo 10 → 55`, `@hookform/resolvers 3 → 5`, Expo/RN SDK bumps), **still require user approval** after changelog review.
 - Never work on `main` — always feature branch (`task/<N>-<name>`)
 
 ## Critical Rules
