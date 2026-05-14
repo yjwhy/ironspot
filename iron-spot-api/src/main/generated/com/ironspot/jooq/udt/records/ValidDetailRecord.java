@@ -80,6 +80,6 @@ public class ValidDetailRecord extends UDTRecordImpl<ValidDetailRecord> {
         setValid(valid);
         setReason(reason);
         setLocation(location);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -7,6 +7,7 @@ package com.ironspot.jooq.udt;
 import com.ironspot.jooq.Public;
 import com.ironspot.jooq.udt.records.GeometryDumpRecord;
 
+import org.jooq.Field;
 import org.jooq.Geometry;
 import org.jooq.Schema;
 import org.jooq.UDTField;
@@ -30,6 +31,32 @@ public class GeometryDump extends UDTImpl<GeometryDumpRecord> {
     public static final GeometryDump GEOMETRY_DUMP = new GeometryDump();
 
     /**
+     * Create a constructor expression for <code>public.geometry_dump</code>
+     */
+    public static Field<GeometryDumpRecord> GEOMETRY_DUMP(
+        Integer[] path,
+        Geometry geom
+    ) {
+        return GEOMETRY_DUMP.construct(
+            DSL.val(path),
+            DSL.val(geom)
+        );
+    }
+
+    /**
+     * Create a constructor expression for <code>public.geometry_dump</code>
+     */
+    public static Field<GeometryDumpRecord> GEOMETRY_DUMP(
+        Field<Integer[]> path,
+        Field<Geometry> geom
+    ) {
+        return GEOMETRY_DUMP.construct(
+            path,
+            geom
+        );
+    }
+
+    /**
      * The class holding records for this type
      */
     @Override
@@ -51,7 +78,7 @@ public class GeometryDump extends UDTImpl<GeometryDumpRecord> {
      * No further instances allowed
      */
     private GeometryDump() {
-        super(DSL.name("geometry_dump"), null, null, false);
+        super(DSL.name("geometry_dump"), null, null, DSL.comment(""), false);
     }
 
     @Override

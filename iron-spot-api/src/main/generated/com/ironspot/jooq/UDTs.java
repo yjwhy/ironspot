@@ -6,6 +6,11 @@ package com.ironspot.jooq;
 
 import com.ironspot.jooq.udt.GeometryDump;
 import com.ironspot.jooq.udt.ValidDetail;
+import com.ironspot.jooq.udt.records.GeometryDumpRecord;
+import com.ironspot.jooq.udt.records.ValidDetailRecord;
+
+import org.jooq.Field;
+import org.jooq.Geometry;
 
 
 /**
@@ -20,7 +25,63 @@ public class UDTs {
     public static final GeometryDump GEOMETRY_DUMP = com.ironspot.jooq.udt.GeometryDump.GEOMETRY_DUMP;
 
     /**
+     * Create a constructor expression for <code>public.geometry_dump</code>
+     */
+    public static Field<GeometryDumpRecord> GEOMETRY_DUMP(
+        Integer[] path,
+        Geometry geom
+    ) {
+        return com.ironspot.jooq.udt.GeometryDump.GEOMETRY_DUMP.GEOMETRY_DUMP(
+            path,
+            geom
+        );
+    }
+
+    /**
+     * Create a constructor expression for <code>public.geometry_dump</code>
+     */
+    public static Field<GeometryDumpRecord> GEOMETRY_DUMP(
+        Field<Integer[]> path,
+        Field<Geometry> geom
+    ) {
+        return com.ironspot.jooq.udt.GeometryDump.GEOMETRY_DUMP.GEOMETRY_DUMP(
+            path,
+            geom
+        );
+    }
+
+    /**
      * The type <code>public.valid_detail</code>
      */
     public static final ValidDetail VALID_DETAIL = com.ironspot.jooq.udt.ValidDetail.VALID_DETAIL;
+
+    /**
+     * Create a constructor expression for <code>public.valid_detail</code>
+     */
+    public static Field<ValidDetailRecord> VALID_DETAIL(
+        Boolean valid,
+        String reason,
+        Geometry location
+    ) {
+        return com.ironspot.jooq.udt.ValidDetail.VALID_DETAIL.VALID_DETAIL(
+            valid,
+            reason,
+            location
+        );
+    }
+
+    /**
+     * Create a constructor expression for <code>public.valid_detail</code>
+     */
+    public static Field<ValidDetailRecord> VALID_DETAIL(
+        Field<Boolean> valid,
+        Field<String> reason,
+        Field<Geometry> location
+    ) {
+        return com.ironspot.jooq.udt.ValidDetail.VALID_DETAIL.VALID_DETAIL(
+            valid,
+            reason,
+            location
+        );
+    }
 }

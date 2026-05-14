@@ -16,6 +16,7 @@ import com.ironspot.jooq.tables.StFromflatgeobuf;
 import com.ironspot.jooq.tables.StHexagongrid;
 import com.ironspot.jooq.tables.StSquaregrid;
 import com.ironspot.jooq.tables.StSubdivide;
+import com.ironspot.jooq.udt.records.GeometryDumpRecord;
 
 import org.jooq.Configuration;
 import org.jooq.Field;
@@ -165,7 +166,7 @@ public class Routines {
     /**
      * Call <code>public.st_dump</code>.
      */
-    public static Result<Record> stDump(
+    public static Result<GeometryDumpRecord> stDump(
           Configuration configuration
         , Geometry __1
     ) {
@@ -199,7 +200,7 @@ public class Routines {
     /**
      * Call <code>public.st_dumppoints</code>.
      */
-    public static Result<Record> stDumppoints(
+    public static Result<GeometryDumpRecord> stDumppoints(
           Configuration configuration
         , Geometry __1
     ) {
@@ -233,7 +234,7 @@ public class Routines {
     /**
      * Call <code>public.st_dumprings</code>.
      */
-    public static Result<Record> stDumprings(
+    public static Result<GeometryDumpRecord> stDumprings(
           Configuration configuration
         , Geometry __1
     ) {
@@ -267,7 +268,7 @@ public class Routines {
     /**
      * Call <code>public.st_dumpsegments</code>.
      */
-    public static Result<Record> stDumpsegments(
+    public static Result<GeometryDumpRecord> stDumpsegments(
           Configuration configuration
         , Geometry __1
     ) {

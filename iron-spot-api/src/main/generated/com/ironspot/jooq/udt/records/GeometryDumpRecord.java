@@ -65,6 +65,6 @@ public class GeometryDumpRecord extends UDTRecordImpl<GeometryDumpRecord> {
 
         setPath(path);
         setGeom(geom);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }
