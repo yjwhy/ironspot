@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "start": "expo start",
+    "dev:local": "expo start --dev-client --clear",
+    "dev:prod": "EXPO_PUBLIC_API_URL=https://ironspot.onrender.com expo start --dev-client --clear",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "test": "jest --passWithNoTests",
