@@ -41,7 +41,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("강남역 1km 이내 Panatta High Row 머신 3개씩 보유한 헬스장");
+            .isEqualTo("강남역 1km 이내에 Panatta High Row 머신 최소 3개씩 보유한 헬스장");
     }
 
     @Test
@@ -56,7 +56,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("강남역 1km 이내 Panatta High Row 머신 3개씩, Prime 머신 3개씩 보유한 헬스장");
+            .isEqualTo("강남역 1km 이내에 Panatta High Row 머신 최소 3개씩, Prime 머신 최소 3개씩 보유한 헬스장");
     }
 
     @Test
@@ -71,7 +71,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("내 위치 1km 이내 Panatta 머신 5개 합쳐서 또는 Technogym 머신 5개 합쳐서 보유한 헬스장");
+            .isEqualTo("내 위치 1km 이내에 Panatta 또는 Technogym 머신 총 5개 이상 보유한 헬스장");
     }
 
     @Test
@@ -83,7 +83,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("내 위치 1km 이내 Back 머신 3개씩 보유한 헬스장");
+            .isEqualTo("내 위치 1km 이내에 Back 머신 최소 3개씩 보유한 헬스장");
     }
 
     @Test
