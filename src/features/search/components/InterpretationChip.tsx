@@ -13,29 +13,41 @@ interface InterpretationChipProps {
 }
 
 export function InterpretationChip({ text, tone = 'success', onClose }: InterpretationChipProps) {
+  // Inline-prefix layout: the "AI 해석" label lives INSIDE the chip on the
+  // left, separated from the interpretation body by a vertical divider, with
+  // the close button on the right. This replaces an earlier "floating label
+  // above the chip" design that had no background of its own — the floating
+  // label ran into a contrast problem against the variable map base (white
+  // streets, beige blocks, grey roads).
+  //
+  // Body wraps to two lines via `flex-shrink` + `numberOfLines={2}` when the
+  // interpretation is too long for one line; the prefix stays vertically
+  // centered relative to the wrapped body and the divider stretches.
   const containerClass =
     tone === 'zero'
-      ? 'bg-bg-muted border border-border rounded-full px-3 py-1.5 flex-row items-center gap-2 self-start'
-      : 'bg-accent-50 border border-accent-light rounded-full px-3 py-1.5 flex-row items-center gap-2 self-start';
-  const iconColor = tone === 'zero' ? colors.text.tertiary : colors.accent.dark;
+      ? 'bg-bg-muted border border-border rounded-2xl py-1.5 pl-3 pr-2 flex-row items-center gap-2 self-start max-w-full'
+      : 'bg-accent-50 border border-accent-light rounded-2xl py-1.5 pl-3 pr-2 flex-row items-center gap-2 self-start max-w-full';
+  const sparkleColor = tone === 'zero' ? colors.text.tertiary : colors.accent.dark;
+  const dividerColor = tone === 'zero' ? colors.border.DEFAULT : colors.accent.light;
   return (
-    <View className="gap-1 self-start">
-      <AppText className="text-body-sm text-text-tertiary px-1">이렇게 해석했어요</AppText>
-      <View className={containerClass}>
-        <MaterialIcons name="auto-awesome" size={14} color={iconColor} />
-        <AppText className="text-body-sm text-text-primary" numberOfLines={1}>
-          {text}
-        </AppText>
-        <Pressable
-          onPress={onClose}
-          style={pressedOpacity}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="검색 종료"
-        >
-          <MaterialIcons name="close" size={16} color={colors.text.secondary} />
-        </Pressable>
+    <View className={containerClass}>
+      <View className="flex-row items-center gap-1">
+        <MaterialIcons name="auto-awesome" size={14} color={sparkleColor} />
+        <AppText className="text-body-sm font-medium text-text-primary">AI 해석</AppText>
       </View>
+      <View className="w-px self-stretch" style={{ backgroundColor: dividerColor }} />
+      <AppText className="text-body-sm text-text-primary flex-1 flex-shrink" numberOfLines={2}>
+        {text}
+      </AppText>
+      <Pressable
+        onPress={onClose}
+        style={pressedOpacity}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="검색 종료"
+      >
+        <MaterialIcons name="close" size={16} color={colors.text.secondary} />
+      </Pressable>
     </View>
   );
 }

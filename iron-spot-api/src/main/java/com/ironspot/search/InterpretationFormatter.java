@@ -14,15 +14,15 @@ public class InterpretationFormatter {
     public String format(SearchDsl dsl) {
         String location = formatLocation(dsl.location());
         if (dsl.machineFilters().isEmpty()) {
-            return location;
+            return location + " 헬스장";
         }
         String separator = dsl.machineFilters().get(0).scope() == SearchScope.COMBINED
             ? " 또는 "
-            : " + ";
+            : ", ";
         String filters = dsl.machineFilters().stream()
             .map(this::formatFilter)
             .collect(Collectors.joining(separator));
-        return location + " · " + filters;
+        return location + " " + filters + " 보유한 헬스장";
     }
 
     private String formatLocation(Location location) {
