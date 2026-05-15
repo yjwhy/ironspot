@@ -223,7 +223,18 @@ export function MapScreen() {
             }}
           />
         </View>
-        {source.kind === 'nl' ? (
+        {nlSearch.validationError !== undefined ? (
+          // 400 validation errors (e.g. "헬스장 검색만 가능해요…") surface
+          // inline so the recovery example stays readable. Replaces the
+          // earlier transient toast which truncated the example clause.
+          // Takes precedence over the success chip so the user sees the
+          // error before any stale prior result.
+          <InterpretationChip
+            text={nlSearch.validationError}
+            tone="error"
+            onClose={nlSearch.clearValidationError}
+          />
+        ) : source.kind === 'nl' ? (
           <InterpretationChip
             text={source.response.interpretation}
             tone={isNlZeroResult ? 'zero' : 'success'}

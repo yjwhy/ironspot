@@ -7,10 +7,47 @@ import { colors } from '@/shared/theme/tokens';
 
 interface InterpretationChipProps {
   text: string;
-  /** Tone — `zero` switches to a muted warning palette for 0-result NL searches. */
-  tone?: 'success' | 'zero';
+  /**
+   * Tone — drives palette, icon, prefix label, and accessibility role.
+   * - `success`: amber chip; the AI parsed the query and returned results
+   * - `zero`: muted chip; the AI parsed the query but 0 gyms matched
+   * - `error`: red chip; the AI rejected the query (non-gym intent etc.) and
+   *   surfaces the backend example so the user can recover. Replaces the
+   *   prior 3-second toast which truncated the recovery hint.
+   */
+  tone?: 'success' | 'zero' | 'error';
   onClose: () => void;
 }
+
+const TONE_CONFIG = {
+  success: {
+    label: 'AI 해석',
+    icon: 'auto-awesome',
+    container: 'bg-accent-50 border-accent-light',
+    iconColor: '#D97706', // accent.dark
+    dividerColor: '#FCD34D', // accent.light
+    accessibilityCloseLabel: '검색 종료',
+  },
+  zero: {
+    label: 'AI 해석',
+    icon: 'auto-awesome',
+    container: 'bg-bg-muted border-border',
+    iconColor: '#94A3B8', // text.tertiary
+    dividerColor: '#E2E8F0', // border.DEFAULT
+    accessibilityCloseLabel: '검색 종료',
+  },
+  error: {
+    // Distinct label ("안내" not "해석") signals the AI couldn't interpret
+    // the query — it isn't reporting WHAT it parsed, it's telling the user
+    // why the search was rejected.
+    label: 'AI 안내',
+    icon: 'info',
+    container: 'bg-red-50 border-red-200',
+    iconColor: '#DC2626', // red-600
+    dividerColor: '#FECACA', // red-200
+    accessibilityCloseLabel: '안내 닫기',
+  },
+} as const;
 
 export function InterpretationChip({ text, tone = 'success', onClose }: InterpretationChipProps) {
   // Inline-prefix layout: the "AI 해석" label lives INSIDE the chip on the
@@ -28,20 +65,16 @@ export function InterpretationChip({ text, tone = 'success', onClose }: Interpre
   // The pill shape signals "tag/annotation"; the elevation pulls the chip
   // off the same plane as the search bar so the two read as distinct roles.
   // Matches the existing on-map floating pattern (FilterButton, SearchAreaButton).
-  const containerClass =
-    tone === 'zero'
-      ? 'bg-bg-muted border border-border rounded-full py-1.5 pl-3 pr-2 flex-row items-center gap-2 self-start max-w-full shadow-sm'
-      : 'bg-accent-50 border border-accent-light rounded-full py-1.5 pl-3 pr-2 flex-row items-center gap-2 self-start max-w-full shadow-sm';
-  const sparkleColor = tone === 'zero' ? colors.text.tertiary : colors.accent.dark;
-  const dividerColor = tone === 'zero' ? colors.border.DEFAULT : colors.accent.light;
+  const config = TONE_CONFIG[tone];
+  const containerClass = `${config.container} border rounded-full py-1.5 pl-3 pr-2 flex-row items-center gap-2 self-start max-w-full shadow-sm`;
   return (
-    <View className={containerClass}>
+    <View className={containerClass} accessibilityRole={tone === 'error' ? 'alert' : undefined}>
       <View className="flex-row items-center gap-1">
-        <MaterialIcons name="auto-awesome" size={14} color={sparkleColor} />
-        <AppText className="text-body-sm font-medium text-text-primary">AI 해석</AppText>
+        <MaterialIcons name={config.icon} size={14} color={config.iconColor} />
+        <AppText className="text-body-sm font-medium text-text-primary">{config.label}</AppText>
       </View>
-      <View className="w-px self-stretch" style={{ backgroundColor: dividerColor }} />
-      <AppText className="text-body-sm text-text-primary flex-1 flex-shrink" numberOfLines={2}>
+      <View className="w-px self-stretch" style={{ backgroundColor: config.dividerColor }} />
+      <AppText className="text-body-sm text-text-primary flex-1 flex-shrink" numberOfLines={3}>
         {text}
       </AppText>
       <Pressable
@@ -49,7 +82,7 @@ export function InterpretationChip({ text, tone = 'success', onClose }: Interpre
         style={pressedOpacity}
         hitSlop={12}
         accessibilityRole="button"
-        accessibilityLabel="검색 종료"
+        accessibilityLabel={config.accessibilityCloseLabel}
       >
         <MaterialIcons name="close" size={16} color={colors.text.secondary} />
       </Pressable>
