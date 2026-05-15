@@ -11,6 +11,11 @@ interface UseBottomSheetModeParams {
   userLocation: Coordinate;
   clearFilters: () => void;
   onPressMachine: (gymId: string, machineId: string) => void;
+  /** Optional NL Search empty-state action wired through to the bottom sheet. */
+  nlEmpty?: {
+    subtitle: string;
+    onRelaxFilters: () => void;
+  };
 }
 
 interface UseBottomSheetModeResult {
@@ -25,6 +30,7 @@ export function useBottomSheetMode({
   userLocation,
   clearFilters,
   onPressMachine,
+  nlEmpty,
 }: UseBottomSheetModeParams): UseBottomSheetModeResult {
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
 
@@ -62,6 +68,7 @@ export function useBottomSheetMode({
           isLoading: isPending,
           onSelectGym: setSelectedGymId,
           onClearFilters: clearFilters,
+          nlEmpty,
         };
 
   return { mode, selectedGymId, setSelectedGymId };

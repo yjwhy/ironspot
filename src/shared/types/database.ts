@@ -90,7 +90,7 @@ export interface MapBounds {
 }
 
 export interface SearchFilters {
-  brandId: string | null;
-  categoryId: string | null;
+  brandIds: readonly string[];
+  categoryIds: readonly string[];
   loadingType: LoadingType | null;
 }

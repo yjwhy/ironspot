@@ -67,6 +67,11 @@ dependencies {
 
     // HTTP client — for Google Vision API + Naver Places proxy
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+    // macOS-native DNS resolver — without this Netty falls back to JDK resolver
+    // and external HTTPS calls (LLM APIs, Naver) can hang on local dev. Pull
+    // both arm64 + x86_64 classifiers so Apple Silicon and Intel both work.
+    runtimeOnly("io.netty:netty-resolver-dns-native-macos:4.2.12.Final:osx-aarch_64")
+    runtimeOnly("io.netty:netty-resolver-dns-native-macos:4.2.12.Final:osx-x86_64")
 
     // Monitoring (Task 31)
     // Sentry core SDK only — sentry-spring-boot-starter-jakarta 8.41.0 (latest) still references

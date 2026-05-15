@@ -7,6 +7,7 @@
  */
 import type { GymWithMachineCountResponse } from './gymWithMachineCountResponse';
 import type { ParsedFilters } from './parsedFilters';
+import type { ResolvedLocation } from './resolvedLocation';
 
 export interface NlSearchResponse {
   gyms: GymWithMachineCountResponse[];
@@ -15,4 +16,6 @@ export interface NlSearchResponse {
   totalCount: number;
   /** Flattened resolved DSL filters — used by the 0-result fallback to pre-apply brand/category in FilterPanel. */
   parsedFilters: ParsedFilters;
+  /** Resolved search center + radius — used by the map to animate the camera to the NL query's location after a successful search. */
+  resolvedLocation: ResolvedLocation;
 }

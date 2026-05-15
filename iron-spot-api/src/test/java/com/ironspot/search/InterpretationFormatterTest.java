@@ -18,7 +18,7 @@ class InterpretationFormatterTest {
     void currentLocationNoFilters() {
         SearchDsl dsl = new SearchDsl(new Location.Current(1.0), List.of(), null);
 
-        assertThat(formatter.format(dsl)).isEqualTo("내 위치 1km 안");
+        assertThat(formatter.format(dsl)).isEqualTo("내 위치 1km 이내 헬스장");
     }
 
     @Test
@@ -29,7 +29,7 @@ class InterpretationFormatterTest {
             null
         );
 
-        assertThat(formatter.format(dsl)).isEqualTo("강남역 1km 안");
+        assertThat(formatter.format(dsl)).isEqualTo("강남역 1km 이내 헬스장");
     }
 
     @Test
@@ -41,11 +41,11 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("강남역 1km 안 / Panatta High Row 3개 each");
+            .isEqualTo("강남역 1km 이내에 Panatta High Row 머신 최소 3개씩 보유한 헬스장");
     }
 
     @Test
-    void multipleEachFiltersJoinedByPlus() {
+    void multipleEachFiltersJoinedByComma() {
         SearchDsl dsl = new SearchDsl(
             new Location.NamedPlace("강남역", null, 1.0),
             List.of(
@@ -56,7 +56,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("강남역 1km 안 / Panatta High Row 3개 each + Prime 3개 each");
+            .isEqualTo("강남역 1km 이내에 Panatta High Row 머신 최소 3개씩, Prime 머신 최소 3개씩 보유한 헬스장");
     }
 
     @Test
@@ -71,7 +71,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("내 위치 1km 안 / Panatta 5개 합쳐서 또는 Technogym 5개 합쳐서");
+            .isEqualTo("내 위치 1km 이내에 Panatta 또는 Technogym 머신 총 5개 이상 보유한 헬스장");
     }
 
     @Test
@@ -83,13 +83,13 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("내 위치 1km 안 / Back 3개 each");
+            .isEqualTo("내 위치 1km 이내에 Back 머신 최소 3개씩 보유한 헬스장");
     }
 
     @Test
     void fractionalRadiusFormatsWithDecimal() {
         SearchDsl dsl = new SearchDsl(new Location.Current(2.5), List.of(), null);
 
-        assertThat(formatter.format(dsl)).isEqualTo("내 위치 2.5km 안");
+        assertThat(formatter.format(dsl)).isEqualTo("내 위치 2.5km 이내 헬스장");
     }
 }

@@ -3,29 +3,43 @@ import { useState } from 'react';
 import type { LoadingType, SearchFilters } from '@/shared/types/database';
 
 export const INITIAL_FILTERS: SearchFilters = {
-  brandId: null,
-  categoryId: null,
+  brandIds: [],
+  categoryIds: [],
   loadingType: null,
 };
 
 export function useFilters() {
   const [filters, setFilters] = useState<SearchFilters>(INITIAL_FILTERS);
 
-  function setBrand(brandId: string | null) {
-    setFilters((prev) => ({ ...prev, brandId }));
+  function toggleBrand(brandId: string) {
+    setFilters((prev) => ({
+      ...prev,
+      brandIds: prev.brandIds.includes(brandId)
+        ? prev.brandIds.filter((id) => id !== brandId)
+        : [...prev.brandIds, brandId],
+    }));
   }
 
-  function setCategory(categoryId: string | null) {
-    setFilters((prev) => ({ ...prev, categoryId }));
+  function toggleCategory(categoryId: string) {
+    setFilters((prev) => ({
+      ...prev,
+      categoryIds: prev.categoryIds.includes(categoryId)
+        ? prev.categoryIds.filter((id) => id !== categoryId)
+        : [...prev.categoryIds, categoryId],
+    }));
   }
 
   function setLoadingType(loadingType: LoadingType | null) {
     setFilters((prev) => ({ ...prev, loadingType }));
   }
 
+  function setAll(next: SearchFilters) {
+    setFilters(next);
+  }
+
   function clear() {
     setFilters(INITIAL_FILTERS);
   }
 
-  return { filters, setBrand, setCategory, setLoadingType, clear };
+  return { filters, toggleBrand, toggleCategory, setLoadingType, setAll, clear };
 }

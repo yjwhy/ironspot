@@ -22,8 +22,8 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof FilterPanel>
       categories={categories}
       brandsError={false}
       categoriesError={false}
-      selectedBrandId={null}
-      selectedCategoryId={null}
+      selectedBrandIds={[]}
+      selectedCategoryIds={[]}
       onBrandToggle={() => undefined}
       onCategoryToggle={() => undefined}
       onClose={() => undefined}
@@ -52,11 +52,20 @@ describe('FilterPanel', () => {
     expect(onBrandToggle).toHaveBeenCalledWith('b-1');
   });
 
-  it('calls onBrandToggle with null when selected brand is pressed again', () => {
+  it('calls onBrandToggle with the same id when selected brand is pressed again', () => {
+    // Multi-select: caller resolves toggle semantics (add vs remove) using selectedBrandIds.
+    // FilterPanel always emits the chip's id — never null.
     const onBrandToggle = jest.fn();
-    const { getByText } = renderPanel({ selectedBrandId: 'b-1', onBrandToggle });
+    const { getByText } = renderPanel({ selectedBrandIds: ['b-1'], onBrandToggle });
     fireEvent.press(getByText('Hammer Strength'));
-    expect(onBrandToggle).toHaveBeenCalledWith(null);
+    expect(onBrandToggle).toHaveBeenCalledWith('b-1');
+  });
+
+  it('shows multiple selected brand chips when selectedBrandIds has many', () => {
+    const { getByText } = renderPanel({ selectedBrandIds: ['b-1', 'b-2'] });
+    // Visual selection is owned by the Chip component; this test guards the prop plumbing.
+    expect(getByText('Hammer Strength')).toBeTruthy();
+    expect(getByText('Panatta')).toBeTruthy();
   });
 
   it('calls onCategoryToggle with category id when category chip pressed', () => {

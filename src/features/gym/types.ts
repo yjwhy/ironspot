@@ -15,4 +15,13 @@ export type GymBottomSheetMode =
       isLoading: boolean;
       onSelectGym: (gymId: string) => void;
       onClearFilters: () => void;
+      /**
+       * NL Search 0-result fallback. When present and `gyms` is empty, the bottom
+       * sheet renders an NL-specific empty state instead of the default
+       * "필터를 조정해보세요". The map (MapScreen) is the caller that wires this.
+       */
+      nlEmpty?: {
+        subtitle: string;
+        onRelaxFilters: () => void;
+      };
     };

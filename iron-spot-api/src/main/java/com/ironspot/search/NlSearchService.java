@@ -54,7 +54,7 @@ public class NlSearchService {
             String interpretation = interpretationFormatter.format(dsl);
             totalCount = gyms.size();
             ParsedFilters parsedFilters = toParsedFilters(validated.filters());
-            return new NlSearchResponse(gyms, interpretation, totalCount, parsedFilters);
+            return new NlSearchResponse(gyms, interpretation, totalCount, parsedFilters, location);
         } catch (BusinessException e) {
             if ("success".equals(outcome)) outcome = "business_error:" + e.getStatus().value();
             throw e;
@@ -81,7 +81,7 @@ public class NlSearchService {
 
     private String translateDslError(String code) {
         return switch (code) {
-            case "gym search only" -> "헬스장 검색만 가능해요. 예: 강남역 근처 헬스장";
+            case "gym search only" -> "헬스장 검색만 가능해요. 예, 강남역 근처 파나타 머신 3개 보유한 헬스장.";
             case "invalid input" -> "유효하지 않은 입력이에요.";
             default -> "검색을 처리할 수 없어요. 다시 시도해주세요.";
         };

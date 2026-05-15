@@ -25,7 +25,6 @@
         "expo-camera",
         {
           "cameraPermission": "기구 사진 촬영을 위해 카메라 접근이 필요합니다",
-          "microphonePermission": "자연어 검색에서 음성 입력을 받기 위해 마이크 접근이 필요합니다. 녹음은 저장되지 않습니다.",
           "recordAudioAndroid": false
         }
       ],
@@ -42,7 +41,15 @@
           "client_id": "ty0sd0ldl9"
         }
       ],
-      "@sentry/react-native/expo"
+      "@sentry/react-native/expo",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "자연어 검색에서 음성 입력을 받기 위해 마이크 접근이 필요합니다. 녹음은 저장되지 않습니다.",
+          "speechRecognitionPermission": "말씀하신 검색어를 텍스트로 변환하기 위해 음성 인식이 필요합니다.",
+          "androidSpeechServicePackages": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -50,18 +57,14 @@
     },
     "ios": {
       "bundleIdentifier": "com.ironspot.app",
-      "supportsTablet": false,
-      "infoPlist": {
-        "NSSpeechRecognitionUsageDescription": "말씀하신 검색어를 텍스트로 변환하기 위해 음성 인식이 필요합니다."
-      }
+      "supportsTablet": false
     },
     "android": {
       "package": "com.ironspot.app",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ]
     },
     "extra": {

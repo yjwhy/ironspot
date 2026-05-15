@@ -69,12 +69,12 @@ class NlSearchServiceTest {
         when(dslValidator.validate(dsl)).thenReturn(validated);
         when(locationResolver.resolve(dsl.location(), 37.5, 127.0)).thenReturn(resolved);
         when(sqlBuilder.execute(resolved, List.of())).thenReturn(List.of(gym));
-        when(interpretationFormatter.format(dsl)).thenReturn("강남역 1km 안");
+        when(interpretationFormatter.format(dsl)).thenReturn("강남역 1km 이내");
 
         NlSearchResponse response = service.search(req, principal);
 
         assertThat(response.gyms()).containsExactly(gym);
-        assertThat(response.interpretation()).isEqualTo("강남역 1km 안");
+        assertThat(response.interpretation()).isEqualTo("강남역 1km 이내");
         assertThat(response.totalCount()).isEqualTo(1);
     }
 

@@ -29,6 +29,13 @@ export function GymMarker({
       width={width}
       height={height}
       anchor={{ x: 0.5, y: 1 }}
+      // Hide Naver Map's built-in POI symbols (subway exit numbers,
+      // landmark labels) when they would overlap our gym pin. Without
+      // this, dense areas like Gangnam Station's 12 subway exits cover
+      // our marker.
+      isHideCollidedSymbols
+      isForceShowIcon
+      globalZIndex={400000}
       onTap={onPress}
     >
       <GymMarkerView
