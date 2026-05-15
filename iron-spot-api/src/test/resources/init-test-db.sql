@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   banned_at TIMESTAMPTZ,
   deleted_at TIMESTAMPTZ,
+  nl_search_count_month INT NOT NULL DEFAULT 0,
+  nl_search_count_reset_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

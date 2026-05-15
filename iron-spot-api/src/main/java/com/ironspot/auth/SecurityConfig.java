@@ -47,6 +47,12 @@ public class SecurityConfig {
                 // accidentally widen the surface that exposes any /api/_admin smoke
                 // endpoint (Slack smoke, Sentry smoke, and any future ops verifiers).
                 .requestMatchers("/api/_admin/**").authenticated()
+                // Defensive: NL Search is already covered by anyRequest.authenticated
+                // (asserted by NlSearchControllerIT.anonymousRequestReturns401 since
+                // Task 36), but listing it explicitly prevents a future permitAll
+                // widening from accidentally exposing the LLM endpoint to unauthed
+                // callers and bypassing the per-user quota gate (Task 37b/c).
+                .requestMatchers("/api/search/natural").authenticated()
                 // /api/admin/** falls through to anyRequest().authenticated() — role gate
                 // is enforced at the controller via @PreAuthorize("hasRole('ADMIN')").
                 // Filter-chain hasRole() was tried but routes denials through
