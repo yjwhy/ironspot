@@ -17,14 +17,20 @@ const bounds: MapBounds = {
 };
 
 const filtersWithBrand: SearchFilters = {
-  brandId: 'b1',
-  categoryId: null,
+  brandIds: ['b1'],
+  categoryIds: [],
   loadingType: 'plate',
 };
 
+const filtersWithMultipleBrands: SearchFilters = {
+  brandIds: ['b1', 'b2'],
+  categoryIds: ['c1'],
+  loadingType: null,
+};
+
 const emptyFilters: SearchFilters = {
-  brandId: null,
-  categoryId: null,
+  brandIds: [],
+  categoryIds: [],
   loadingType: null,
 };
 
@@ -62,7 +68,7 @@ describe('searchGymsInBounds', () => {
     });
   });
 
-  it('passes undefined for null filters', async () => {
+  it('passes undefined for empty filter arrays and null loadingType', async () => {
     mockSearch.mockResolvedValue([]);
 
     await searchGymsInBounds(bounds, emptyFilters);
@@ -74,6 +80,22 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: undefined,
       categoryIds: undefined,
+      loadingType: undefined,
+    });
+  });
+
+  it('forwards multi-select brand and category ids verbatim', async () => {
+    mockSearch.mockResolvedValue([]);
+
+    await searchGymsInBounds(bounds, filtersWithMultipleBrands);
+
+    expect(mockSearch).toHaveBeenCalledWith({
+      minLat: 37.48,
+      maxLat: 37.5,
+      minLng: 127.02,
+      maxLng: 127.04,
+      brandIds: ['b1', 'b2'],
+      categoryIds: ['c1'],
       loadingType: undefined,
     });
   });

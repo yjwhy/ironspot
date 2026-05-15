@@ -23,7 +23,7 @@ const INITIAL_ZOOM = 14;
 export function MapScreen() {
   const router = useRouter();
   const locationState = useCurrentLocation();
-  const { filters, setBrand, setCategory, clear: clearFilters } = useFilters();
+  const { filters, toggleBrand, toggleCategory, clear: clearFilters } = useFilters();
   const { data: brands = [], isError: brandsError } = useBrands();
   const { data: categories = [], isError: categoriesError } = useCategories();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -48,7 +48,7 @@ export function MapScreen() {
     },
   });
 
-  const activeFilterCount = [filters.brandId, filters.categoryId].filter(Boolean).length;
+  const activeFilterCount = filters.brandIds.length + filters.categoryIds.length;
 
   function handleCameraIdleWithPanelClose({ region }: { region: Region }) {
     setFilterPanelOpen(false);
@@ -105,10 +105,10 @@ export function MapScreen() {
           categories={categories}
           brandsError={brandsError}
           categoriesError={categoriesError}
-          selectedBrandId={filters.brandId}
-          selectedCategoryId={filters.categoryId}
-          onBrandToggle={setBrand}
-          onCategoryToggle={setCategory}
+          selectedBrandIds={filters.brandIds}
+          selectedCategoryIds={filters.categoryIds}
+          onBrandToggle={toggleBrand}
+          onCategoryToggle={toggleCategory}
           onClose={() => {
             setFilterPanelOpen(false);
           }}

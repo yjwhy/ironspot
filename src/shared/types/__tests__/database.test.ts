@@ -156,8 +156,8 @@ describe('Database types', () => {
     expect(bounds.maxLat).toBeGreaterThan(bounds.minLat);
   });
 
-  it('SearchFilters accepts null for every filter', () => {
-    const filters: SearchFilters = { brandId: null, categoryId: null, loadingType: null };
-    expect(filters.brandId).toBeNull();
+  it('SearchFilters accepts empty arrays + null loadingType', () => {
+    const filters: SearchFilters = { brandIds: [], categoryIds: [], loadingType: null };
+    expect(filters.brandIds).toEqual([]);
   });
 });

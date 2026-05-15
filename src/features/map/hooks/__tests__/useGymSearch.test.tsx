@@ -18,8 +18,8 @@ const bounds: MapBounds = {
 };
 
 const filters: SearchFilters = {
-  brandId: 'b1',
-  categoryId: null,
+  brandIds: ['b1'],
+  categoryIds: [],
   loadingType: 'plate',
 };
 

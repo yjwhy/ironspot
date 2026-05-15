@@ -31,8 +31,8 @@ export async function searchGymsInBounds(
       maxLat: bounds.maxLat,
       minLng: bounds.minLng,
       maxLng: bounds.maxLng,
-      brandIds: filters.brandId !== null ? [filters.brandId] : undefined,
-      categoryIds: filters.categoryId !== null ? [filters.categoryId] : undefined,
+      brandIds: filters.brandIds.length > 0 ? [...filters.brandIds] : undefined,
+      categoryIds: filters.categoryIds.length > 0 ? [...filters.categoryIds] : undefined,
       loadingType: filters.loadingType ?? undefined,
     }),
   );
