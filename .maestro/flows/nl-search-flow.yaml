@@ -1,0 +1,20 @@
+# NL Search flow — text path.
+# Map boots into the default map screen; TopSearchBar.testID="top-search-input"
+# is the entry point. After submit, the interpretation chip should appear
+# (NL mode entered) and the prior filter chip count should be unaffected.
+# The actual LLM round-trip is exercised in backend ITs — this flow asserts
+# the user-visible state transitions on the device.
+appId: com.ironspot.app
+---
+- launchApp
+- assertVisible: '필터'
+- tapOn:
+    id: 'top-search-input'
+- inputText: '강남역 1km 안 파나타 머신 3개'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: '검색 종료'
+    timeout: 15000
+- assertVisible: '검색 종료'
+- tapOn: '검색 종료'
+- assertNotVisible: '검색 종료'

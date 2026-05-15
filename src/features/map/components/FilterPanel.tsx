@@ -22,18 +22,18 @@ interface FilterSectionItem {
 interface FilterSectionProps {
   label: string;
   items: readonly FilterSectionItem[];
-  selectedId: string | null;
+  selectedIds: readonly string[];
   isError: boolean;
-  onToggle: (id: string | null) => void;
+  onToggle: (id: string) => void;
 }
 
-function FilterSection({ label, items, selectedId, isError, onToggle }: FilterSectionProps) {
+function FilterSection({ label, items, selectedIds, isError, onToggle }: FilterSectionProps) {
   return (
     <View className="gap-2">
       <AppText className="font-semibold text-body-sm text-text-secondary">{label}</AppText>
       <FilterSectionBody
         items={items}
-        selectedId={selectedId}
+        selectedIds={selectedIds}
         isError={isError}
         onToggle={onToggle}
       />
@@ -43,7 +43,7 @@ function FilterSection({ label, items, selectedId, isError, onToggle }: FilterSe
 
 function FilterSectionBody({
   items,
-  selectedId,
+  selectedIds,
   isError,
   onToggle,
 }: Omit<FilterSectionProps, 'label'>) {
@@ -61,9 +61,9 @@ function FilterSectionBody({
         <Chip
           key={item.id}
           label={item.name}
-          selected={selectedId === item.id}
+          selected={selectedIds.includes(item.id)}
           onPress={() => {
-            onToggle(selectedId === item.id ? null : item.id);
+            onToggle(item.id);
           }}
         />
       ))}
@@ -77,10 +77,10 @@ interface FilterPanelProps {
   categories: readonly Category[];
   brandsError: boolean;
   categoriesError: boolean;
-  selectedBrandId: string | null;
-  selectedCategoryId: string | null;
-  onBrandToggle: (brandId: string | null) => void;
-  onCategoryToggle: (categoryId: string | null) => void;
+  selectedBrandIds: readonly string[];
+  selectedCategoryIds: readonly string[];
+  onBrandToggle: (brandId: string) => void;
+  onCategoryToggle: (categoryId: string) => void;
   onClose: () => void;
 }
 
@@ -90,8 +90,8 @@ export function FilterPanel({
   categories,
   brandsError,
   categoriesError,
-  selectedBrandId,
-  selectedCategoryId,
+  selectedBrandIds,
+  selectedCategoryIds,
   onBrandToggle,
   onCategoryToggle,
   onClose,
@@ -134,14 +134,14 @@ export function FilterPanel({
         <FilterSection
           label="브랜드"
           items={brands}
-          selectedId={selectedBrandId}
+          selectedIds={selectedBrandIds}
           isError={brandsError}
           onToggle={onBrandToggle}
         />
         <FilterSection
           label="머신 종류"
           items={categories}
-          selectedId={selectedCategoryId}
+          selectedIds={selectedCategoryIds}
           isError={categoriesError}
           onToggle={onCategoryToggle}
         />

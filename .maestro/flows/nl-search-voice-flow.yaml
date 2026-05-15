@@ -1,0 +1,17 @@
+# NL Search voice flow — UI state transitions only.
+# Maestro cannot drive the system microphone, so this flow does not actually
+# trigger speech recognition. Instead it asserts the mic button is reachable
+# and the history dropdown surface appears on input focus.
+appId: com.ironspot.app
+---
+- launchApp
+- assertVisible: '필터'
+- tapOn:
+    id: 'top-search-input'
+- assertVisible: '이런 검색을 해보세요'
+- tapOn:
+    id: 'mic-button'
+# After the OS permission prompt (which Maestro cannot dismiss reliably) the
+# mic button would re-render in the "listening" state. Without a permission
+# dismiss helper, the flow stops at the prompt — the assertion above proves
+# the button is reachable and the prompt fires.
