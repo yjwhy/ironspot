@@ -114,12 +114,29 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
       contentContainerStyle={LIST_CONTENT_STYLE}
       ItemSeparatorComponent={ListSeparator}
       ListEmptyComponent={
-        <EmptyState
-          icon="search-off"
-          title="조건에 맞는 헬스장이 없어요"
-          description="필터를 조정해보세요"
-          action={<Button label="필터 초기화" variant="secondary" onPress={mode.onClearFilters} />}
-        />
+        mode.nlEmpty !== undefined ? (
+          <EmptyState
+            icon="search-off"
+            title="이 조건의 헬스장이 없어요"
+            description={mode.nlEmpty.subtitle}
+            action={
+              <Button
+                label="조건 바꿔서 검색"
+                variant="primary"
+                onPress={mode.nlEmpty.onRelaxFilters}
+              />
+            }
+          />
+        ) : (
+          <EmptyState
+            icon="search-off"
+            title="조건에 맞는 헬스장이 없어요"
+            description="필터를 조정해보세요"
+            action={
+              <Button label="필터 초기화" variant="secondary" onPress={mode.onClearFilters} />
+            }
+          />
+        )
       }
       renderItem={({ item, index }) => (
         <GymCard

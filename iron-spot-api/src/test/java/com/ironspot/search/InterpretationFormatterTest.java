@@ -41,7 +41,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("강남역 1km 이내 / Panatta High Row 3개 each");
+            .isEqualTo("강남역 1km 이내 · Panatta High Row 3개씩");
     }
 
     @Test
@@ -56,7 +56,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("강남역 1km 이내 / Panatta High Row 3개 each + Prime 3개 each");
+            .isEqualTo("강남역 1km 이내 · Panatta High Row 3개씩 + Prime 3개씩");
     }
 
     @Test
@@ -71,7 +71,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("내 위치 1km 이내 / Panatta 5개 합쳐서 또는 Technogym 5개 합쳐서");
+            .isEqualTo("내 위치 1km 이내 · Panatta 5개 합쳐서 또는 Technogym 5개 합쳐서");
     }
 
     @Test
@@ -83,7 +83,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("내 위치 1km 이내 / Back 3개 each");
+            .isEqualTo("내 위치 1km 이내 · Back 3개씩");
     }
 
     @Test

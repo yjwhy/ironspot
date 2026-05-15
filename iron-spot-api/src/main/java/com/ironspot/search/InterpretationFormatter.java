@@ -22,7 +22,7 @@ public class InterpretationFormatter {
         String filters = dsl.machineFilters().stream()
             .map(this::formatFilter)
             .collect(Collectors.joining(separator));
-        return location + " / " + filters;
+        return location + " · " + filters;
     }
 
     private String formatLocation(Location location) {
@@ -38,7 +38,7 @@ public class InterpretationFormatter {
         if (f.category() != null) sb.append(f.category()).append(' ');
         if (f.machineName() != null) sb.append(f.machineName()).append(' ');
         sb.append(f.minCount()).append('개');
-        sb.append(f.scope() == SearchScope.COMBINED ? " 합쳐서" : " each");
+        sb.append(f.scope() == SearchScope.COMBINED ? " 합쳐서" : "씩");
         return sb.toString().trim();
     }
 

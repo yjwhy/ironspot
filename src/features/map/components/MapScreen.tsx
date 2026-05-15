@@ -8,7 +8,6 @@ import { View } from 'react-native';
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
 import { InterpretationChip } from '@/features/search/components/InterpretationChip';
 import { PermissionDeniedBadge } from '@/features/search/components/PermissionDeniedBadge';
-import { RelaxFiltersCTA } from '@/features/search/components/RelaxFiltersCTA';
 import { TopSearchBar } from '@/features/search/components/TopSearchBar';
 import { useNlSearch } from '@/features/search/hooks/useNlSearch';
 import type { NlSearchResponse, ParsedFilters } from '@/shared/generated/model';
@@ -107,6 +106,13 @@ export function MapScreen() {
     onPressMachine: (gymId, machineId) => {
       router.push(`/gym/${gymId}/machine/${machineId}`);
     },
+    nlEmpty:
+      source.kind === 'nl' && source.response.totalCount === 0
+        ? {
+            subtitle: `${source.response.interpretation}에 해당하는 곳이 없어요`,
+            onRelaxFilters: handleRelaxFilters,
+          }
+        : undefined,
   });
 
   const activeFilterCount = filters.brandIds.length + filters.categoryIds.length;
@@ -207,7 +213,11 @@ export function MapScreen() {
           />
         </View>
         {source.kind === 'nl' ? (
-          <InterpretationChip text={source.response.interpretation} onClose={handleNlChipClose} />
+          <InterpretationChip
+            text={source.response.interpretation}
+            tone={isNlZeroResult ? 'zero' : 'success'}
+            onClose={handleNlChipClose}
+          />
         ) : null}
       </View>
 
@@ -234,7 +244,6 @@ export function MapScreen() {
         pointerEvents="box-none"
       >
         <SearchAreaButton visible={showSearchButton} onPress={filterSearch.handleSearch} />
-        {isNlZeroResult ? <RelaxFiltersCTA onPress={handleRelaxFilters} /> : null}
       </View>
 
       <View className="absolute bottom-0 left-0 right-0">
