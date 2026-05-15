@@ -5,6 +5,7 @@ import com.ironspot.common.IntegrationTestBase;
 import com.ironspot.common.exception.BusinessException;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,17 +23,20 @@ class NlSearchQuotaServiceIT extends IntegrationTestBase {
     @Autowired private NlSearchQuotaService quotaService;
     @Autowired private DSLContext dsl;
 
-    // Separate UUIDs distinguish the seeded-row tests from the lazy-create test, since they
-    // exercise different DB preconditions. @AfterEach cleans up by email suffix so any test
-    // in this class that creates a new principalOf-style user is auto-collected.
-    private static final String SEEDED_USER_ID = "d0000099-0000-0000-0000-000000000099";
-    private static final String FIRST_TOUCH_USER_ID = "d0000098-0000-0000-0000-000000000098";
+    // UUIDs in the 4x range avoid collision with AdminControllerIT's d0000077/88/99
+    // and SlackSmokeControllerIT's d0000099 under the JVM-singleton Testcontainer.
+    // @BeforeEach + @AfterEach both clean up by email suffix so any state carried
+    // from a previous test class with the same UUID is also cleared.
+    private static final String SEEDED_USER_ID = "d0000041-0000-0000-0000-000000000041";
+    private static final String FIRST_TOUCH_USER_ID = "d0000042-0000-0000-0000-000000000042";
     private static final String EMAIL_SUFFIX = "@quota-it.local";
 
+    @BeforeEach
     @AfterEach
     void cleanup() {
         dsl.deleteFrom(USERS)
             .where(USERS.EMAIL.like("%" + EMAIL_SUFFIX))
+            .or(USERS.ID.in(UUID.fromString(SEEDED_USER_ID), UUID.fromString(FIRST_TOUCH_USER_ID)))
             .execute();
     }
 

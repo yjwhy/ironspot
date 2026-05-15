@@ -1,5 +1,6 @@
 package com.ironspot.search;
 
+import com.ironspot.auth.UserPrincipal;
 import com.ironspot.common.exception.BusinessException;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
 import com.ironspot.search.dsl.SearchDsl;
@@ -25,14 +26,20 @@ public class NlSearchService {
     private final LocationResolver locationResolver;
     private final SqlBuilder sqlBuilder;
     private final InterpretationFormatter interpretationFormatter;
+    private final NlSearchQuotaService quotaService;
 
     @Transactional(readOnly = true)
-    public NlSearchResponse search(NlSearchRequest req) {
+    public NlSearchResponse search(NlSearchRequest req, UserPrincipal principal) {
         long startNanos = System.nanoTime();
         SearchDsl dsl = null;
         Integer totalCount = null;
         String outcome = "success";
         try {
+            // REQUIRES_NEW commits the count immediately, so a downstream LLM/SQL
+            // failure does not refund the call. Quota-rejection (429) propagates as
+            // BusinessException and emits a breadcrumb via the existing catch — gives
+            // ops a per-user "hammering at limit" signal in Sentry.
+            quotaService.checkAndIncrement(principal);
             dsl = llmClient.parse(req.query());
             if (dsl.error() != null) {
                 outcome = "dsl_error";

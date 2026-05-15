@@ -1,5 +1,6 @@
 package com.ironspot.search;
 
+import com.ironspot.auth.UserPrincipal;
 import com.ironspot.common.exception.BusinessException;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
 import com.ironspot.search.dsl.Coordinates;
@@ -22,6 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,9 +41,17 @@ class NlSearchServiceTest {
     private SqlBuilder sqlBuilder;
     @Mock
     private InterpretationFormatter interpretationFormatter;
+    @Mock
+    private NlSearchQuotaService quotaService;
 
     @InjectMocks
     private NlSearchService service;
+
+    private final UserPrincipal principal = UserPrincipal.builder()
+        .userId("d0000041-0000-0000-0000-000000000041")
+        .email("svc-test@local")
+        .role("user")
+        .build();
 
     @Test
     void happyPathReturnsComposedResponse() {
@@ -61,7 +71,7 @@ class NlSearchServiceTest {
         when(sqlBuilder.execute(resolved, List.of())).thenReturn(List.of(gym));
         when(interpretationFormatter.format(dsl)).thenReturn("강남역 1km 안");
 
-        NlSearchResponse response = service.search(req);
+        NlSearchResponse response = service.search(req, principal);
 
         assertThat(response.gyms()).containsExactly(gym);
         assertThat(response.interpretation()).isEqualTo("강남역 1km 안");
@@ -75,7 +85,7 @@ class NlSearchServiceTest {
 
         when(llmClient.parse("강남역 커피숍")).thenReturn(dsl);
 
-        assertThatThrownBy(() -> service.search(req))
+        assertThatThrownBy(() -> service.search(req, principal))
             .isInstanceOfSatisfying(BusinessException.class, e ->
                 assertThat(e.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST))
             .hasMessageContaining("헬스장 검색만 가능해요");
@@ -96,10 +106,29 @@ class NlSearchServiceTest {
         when(dslValidator.validate(dsl))
             .thenThrow(new BusinessException("'X' 브랜드는 등록되지 않았어요.", HttpStatus.BAD_REQUEST));
 
-        assertThatThrownBy(() -> service.search(req))
+        assertThatThrownBy(() -> service.search(req, principal))
             .isInstanceOf(BusinessException.class)
             .hasMessageContaining("X");
 
+        verify(sqlBuilder, never()).execute(any(), any());
+    }
+
+    @Test
+    void quotaExceededShortCircuitsBeforeLlmCall() {
+        NlSearchRequest req = new NlSearchRequest("아무 검색", 37.5, 127.0);
+        doThrow(new BusinessException(
+            "이번 달 자연어 검색 한도를 모두 사용했어요. 다음 달 1일에 초기화됩니다.",
+            HttpStatus.TOO_MANY_REQUESTS))
+            .when(quotaService).checkAndIncrement(principal);
+
+        assertThatThrownBy(() -> service.search(req, principal))
+            .isInstanceOfSatisfying(BusinessException.class, e ->
+                assertThat(e.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS))
+            .hasMessageContaining("한도");
+
+        // Whole downstream pipeline must remain untouched when quota gates the request.
+        verify(llmClient, never()).parse(any());
+        verify(dslValidator, never()).validate(any());
         verify(sqlBuilder, never()).execute(any(), any());
     }
 
