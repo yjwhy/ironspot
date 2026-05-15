@@ -37,7 +37,10 @@ public class InterpretationFormatter {
         if (f.brand() != null) sb.append(f.brand()).append(' ');
         if (f.category() != null) sb.append(f.category()).append(' ');
         if (f.machineName() != null) sb.append(f.machineName()).append(' ');
-        sb.append(f.minCount()).append('개');
+        // "머신" makes the count unit unambiguous — "Panatta 3개" reads as
+        // "3 of something Panatta-related" while "Panatta 머신 3개" anchors
+        // the count to gym equipment specifically.
+        sb.append("머신 ").append(f.minCount()).append('개');
         sb.append(f.scope() == SearchScope.COMBINED ? " 합쳐서" : "씩");
         return sb.toString().trim();
     }
