@@ -18,7 +18,7 @@ class InterpretationFormatterTest {
     void currentLocationNoFilters() {
         SearchDsl dsl = new SearchDsl(new Location.Current(1.0), List.of(), null);
 
-        assertThat(formatter.format(dsl)).isEqualTo("내 위치 1km 안");
+        assertThat(formatter.format(dsl)).isEqualTo("내 위치 1km 이내");
     }
 
     @Test
@@ -29,7 +29,7 @@ class InterpretationFormatterTest {
             null
         );
 
-        assertThat(formatter.format(dsl)).isEqualTo("강남역 1km 안");
+        assertThat(formatter.format(dsl)).isEqualTo("강남역 1km 이내");
     }
 
     @Test
@@ -41,7 +41,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("강남역 1km 안 / Panatta High Row 3개 each");
+            .isEqualTo("강남역 1km 이내 / Panatta High Row 3개 each");
     }
 
     @Test
@@ -56,7 +56,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("강남역 1km 안 / Panatta High Row 3개 each + Prime 3개 each");
+            .isEqualTo("강남역 1km 이내 / Panatta High Row 3개 each + Prime 3개 each");
     }
 
     @Test
@@ -71,7 +71,7 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("내 위치 1km 안 / Panatta 5개 합쳐서 또는 Technogym 5개 합쳐서");
+            .isEqualTo("내 위치 1km 이내 / Panatta 5개 합쳐서 또는 Technogym 5개 합쳐서");
     }
 
     @Test
@@ -83,13 +83,13 @@ class InterpretationFormatterTest {
         );
 
         assertThat(formatter.format(dsl))
-            .isEqualTo("내 위치 1km 안 / Back 3개 each");
+            .isEqualTo("내 위치 1km 이내 / Back 3개 each");
     }
 
     @Test
     void fractionalRadiusFormatsWithDecimal() {
         SearchDsl dsl = new SearchDsl(new Location.Current(2.5), List.of(), null);
 
-        assertThat(formatter.format(dsl)).isEqualTo("내 위치 2.5km 안");
+        assertThat(formatter.format(dsl)).isEqualTo("내 위치 2.5km 이내");
     }
 }

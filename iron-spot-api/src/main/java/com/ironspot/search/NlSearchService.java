@@ -54,7 +54,7 @@ public class NlSearchService {
             String interpretation = interpretationFormatter.format(dsl);
             totalCount = gyms.size();
             ParsedFilters parsedFilters = toParsedFilters(validated.filters());
-            return new NlSearchResponse(gyms, interpretation, totalCount, parsedFilters);
+            return new NlSearchResponse(gyms, interpretation, totalCount, parsedFilters, location);
         } catch (BusinessException e) {
             if ("success".equals(outcome)) outcome = "business_error:" + e.getStatus().value();
             throw e;

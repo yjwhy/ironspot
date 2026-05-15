@@ -27,8 +27,8 @@ public class InterpretationFormatter {
 
     private String formatLocation(Location location) {
         return switch (location) {
-            case Location.Current c -> "내 위치 " + formatRadius(c.radiusKm()) + "km 안";
-            case Location.NamedPlace np -> np.name() + " " + formatRadius(np.radiusKm()) + "km 안";
+            case Location.Current c -> "내 위치 " + formatRadius(c.radiusKm()) + "km 이내";
+            case Location.NamedPlace np -> np.name() + " " + formatRadius(np.radiusKm()) + "km 이내";
         };
     }
 

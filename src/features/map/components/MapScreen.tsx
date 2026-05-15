@@ -1,8 +1,8 @@
 import { NaverMapView } from '@mj-studio/react-native-naver-map';
-import type { Region } from '@mj-studio/react-native-naver-map';
+import type { NaverMapViewRef, Region } from '@mj-studio/react-native-naver-map';
 import * as burnt from 'burnt';
 import { useRouter } from 'expo-router';
-import { useReducer, useState } from 'react';
+import { useReducer, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
@@ -27,6 +27,17 @@ import { useMarkerReveal } from '../hooks/useMarkerReveal';
 import { toGymWithMachineCount } from '../services/gym-search';
 
 const INITIAL_ZOOM = 14;
+const CAMERA_ANIMATE_MS = 500;
+
+// Map radius (km) to a zoom level that frames the search circle reasonably.
+// Empirical Naver Maps values: 0.5km≈16, 1km≈15, 2km≈14, 5km≈13.
+function zoomForRadius(radiusKm: number): number {
+  if (radiusKm <= 0.5) return 16;
+  if (radiusKm <= 1) return 15;
+  if (radiusKm <= 2) return 14;
+  if (radiusKm <= 5) return 13;
+  return 12;
+}
 
 type GymsSource =
   | { readonly kind: 'filter' }
@@ -61,6 +72,7 @@ export function MapScreen() {
   const { data: categories = [], isError: categoriesError } = useCategories();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [source, dispatch] = useReducer(gymsSourceReducer, INITIAL_SOURCE);
+  const mapRef = useRef<NaverMapViewRef>(null);
 
   const initialLocation = locationState.status !== 'loading' ? locationState.location : null;
   const userLocation = initialLocation ?? GANGNAM_STATION;
@@ -109,6 +121,19 @@ export function MapScreen() {
       onSuccess: (response) => {
         dispatch({ type: 'nl_result', query, response });
         setFilterPanelOpen(false);
+        const { coordinates, radiusKm } = response.resolvedLocation;
+        if (
+          coordinates?.lat !== undefined &&
+          coordinates.lng !== undefined &&
+          radiusKm !== undefined
+        ) {
+          mapRef.current?.animateCameraTo({
+            latitude: coordinates.lat,
+            longitude: coordinates.lng,
+            zoom: zoomForRadius(radiusKm),
+            duration: CAMERA_ANIMATE_MS,
+          });
+        }
       },
     });
   }
@@ -136,6 +161,7 @@ export function MapScreen() {
   return (
     <View className="flex-1">
       <NaverMapView
+        ref={mapRef}
         style={{ flex: 1 }}
         initialCamera={
           initialLocation !== null
@@ -169,7 +195,7 @@ export function MapScreen() {
 
       <View className="absolute top-safe-or-2 left-0 right-0 z-20 px-4 gap-2">
         {isPermissionDenied ? <PermissionDeniedBadge /> : null}
-        <View className="flex-row items-start gap-2">
+        <View className="flex-row items-center gap-2">
           <View className="flex-1">
             <TopSearchBar onSubmit={handleNlSubmit} isPending={nlSearch.isPending} />
           </View>

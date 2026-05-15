@@ -33,8 +33,8 @@ export function TopSearchBar({ onSubmit, isPending = false }: TopSearchBarProps)
   }
 
   return (
-    <View>
-      <View className="flex-row items-center gap-2 bg-bg-muted rounded-md px-3">
+    <View className="relative">
+      <View className="flex-row items-center gap-2 bg-bg-muted rounded-md px-3 h-10">
         <MaterialIcons name="search" size={20} color={colors.text.tertiary} />
         <TextInput
           testID="top-search-input"
@@ -54,7 +54,8 @@ export function TopSearchBar({ onSubmit, isPending = false }: TopSearchBarProps)
           returnKeyType="search"
           editable={!isPending}
           accessibilityLabel="자연어 검색"
-          className="flex-1 py-3 text-body text-text-primary"
+          style={{ paddingVertical: 0, lineHeight: 20 }}
+          className="flex-1 text-body text-text-primary"
         />
         {query !== '' ? (
           <Pressable
@@ -71,15 +72,17 @@ export function TopSearchBar({ onSubmit, isPending = false }: TopSearchBarProps)
         <MicButton onTranscript={setQuery} />
       </View>
       {focused ? (
-        <SearchHistoryDropdown
-          entries={recent.entries}
-          onPick={(q) => {
-            submit(q);
-          }}
-          onFill={fillOnly}
-          onRemove={recent.remove}
-          onClearAll={recent.clear}
-        />
+        <View className="absolute top-full left-0 right-0 z-10">
+          <SearchHistoryDropdown
+            entries={recent.entries}
+            onPick={(q) => {
+              submit(q);
+            }}
+            onFill={fillOnly}
+            onRemove={recent.remove}
+            onClearAll={recent.clear}
+          />
+        </View>
       ) : null}
     </View>
   );

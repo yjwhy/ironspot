@@ -1,6 +1,7 @@
 package com.ironspot.search.dto;
 
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
+import com.ironspot.search.ResolvedLocation;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
@@ -14,5 +15,9 @@ public record NlSearchResponse(
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
             description = "Flattened resolved DSL filters — used by the 0-result fallback "
                 + "to pre-apply brand/category in FilterPanel.")
-    ParsedFilters parsedFilters
+    ParsedFilters parsedFilters,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+            description = "Resolved search center + radius — used by the map to animate "
+                + "the camera to the NL query's location after a successful search.")
+    ResolvedLocation resolvedLocation
 ) {}
