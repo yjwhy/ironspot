@@ -10,5 +10,9 @@ public record NlSearchResponse(
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
             description = "Human-readable Korean chip text summarizing how the query was parsed")
     String interpretation,
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int totalCount
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int totalCount,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+            description = "Flattened resolved DSL filters — used by the 0-result fallback "
+                + "to pre-apply brand/category in FilterPanel.")
+    ParsedFilters parsedFilters
 ) {}

@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -32,9 +34,9 @@ public class GymSearchRequest {
     @DecimalMax("180")
     private Double maxLng;
 
-    private String brandId;
+    private List<String> brandIds;
 
-    private String categoryId;
+    private List<String> categoryIds;
 
     private String loadingType;
 }

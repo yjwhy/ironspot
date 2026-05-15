@@ -27,7 +27,7 @@ export type SearchParams = {
    * @maximum 180
    */
   maxLng: number;
-  brandId?: string;
-  categoryId?: string;
+  brandIds?: string[];
+  categoryIds?: string[];
   loadingType?: string;
 };

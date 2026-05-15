@@ -44,12 +44,12 @@ public class GymRepository {
             DSL.val(req.getMaxLng()), DSL.val(req.getMaxLat())
         );
 
-        Condition brandCond = req.getBrandId() != null
-            ? mt.BRAND_ID.eq(UUID.fromString(req.getBrandId()))
+        Condition brandCond = req.getBrandIds() != null && !req.getBrandIds().isEmpty()
+            ? mt.BRAND_ID.in(req.getBrandIds().stream().map(UUID::fromString).toList())
             : DSL.noCondition();
 
-        Condition categoryCond = req.getCategoryId() != null
-            ? mt.CATEGORY_ID.eq(UUID.fromString(req.getCategoryId()))
+        Condition categoryCond = req.getCategoryIds() != null && !req.getCategoryIds().isEmpty()
+            ? mt.CATEGORY_ID.in(req.getCategoryIds().stream().map(UUID::fromString).toList())
             : DSL.noCondition();
 
         Condition loadingCond = req.getLoadingType() != null

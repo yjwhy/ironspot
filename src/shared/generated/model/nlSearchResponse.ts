@@ -6,10 +6,13 @@
  * OpenAPI spec version: v1
  */
 import type { GymWithMachineCountResponse } from './gymWithMachineCountResponse';
+import type { ParsedFilters } from './parsedFilters';
 
 export interface NlSearchResponse {
   gyms: GymWithMachineCountResponse[];
   /** Human-readable Korean chip text summarizing how the query was parsed */
   interpretation: string;
   totalCount: number;
+  /** Flattened resolved DSL filters — used by the 0-result fallback to pre-apply brand/category in FilterPanel. */
+  parsedFilters: ParsedFilters;
 }
