@@ -6,6 +6,7 @@ import com.ironspot.gym.dto.GymWithMachineCountResponse;
 import com.ironspot.search.dsl.SearchDsl;
 import com.ironspot.search.dto.NlSearchRequest;
 import com.ironspot.search.dto.NlSearchResponse;
+import com.ironspot.search.dto.ParsedFilters;
 import com.ironspot.search.llm.LlmClient;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -51,7 +53,8 @@ public class NlSearchService {
             List<GymWithMachineCountResponse> gyms = sqlBuilder.execute(location, validated.filters());
             String interpretation = interpretationFormatter.format(dsl);
             totalCount = gyms.size();
-            return new NlSearchResponse(gyms, interpretation, totalCount);
+            ParsedFilters parsedFilters = toParsedFilters(validated.filters());
+            return new NlSearchResponse(gyms, interpretation, totalCount, parsedFilters);
         } catch (BusinessException e) {
             if ("success".equals(outcome)) outcome = "business_error:" + e.getStatus().value();
             throw e;
@@ -62,6 +65,18 @@ public class NlSearchService {
             long durationMs = (System.nanoTime() - startNanos) / 1_000_000L;
             recordBreadcrumb(req.query(), dsl, totalCount, durationMs, outcome);
         }
+    }
+
+    private ParsedFilters toParsedFilters(List<ResolvedFilter> filters) {
+        // scope is consistent across filters (DslValidator.validateScopeConsistency enforces it).
+        // minCount: max across filters — a single representative number for the toast hint
+        // shown when the user falls back to FilterPanel. EACH/COMBINED both keep this safe.
+        List<UUID> brandIds = filters.stream().map(ResolvedFilter::brandId).filter(java.util.Objects::nonNull).distinct().toList();
+        List<UUID> categoryIds = filters.stream().map(ResolvedFilter::categoryId).filter(java.util.Objects::nonNull).distinct().toList();
+        List<UUID> templateIds = filters.stream().flatMap(f -> f.templateIds().stream()).distinct().toList();
+        Integer minCount = filters.stream().mapToInt(ResolvedFilter::minCount).max().stream().boxed().findFirst().orElse(null);
+        String scope = filters.isEmpty() ? null : filters.get(0).scope().name().toLowerCase();
+        return new ParsedFilters(brandIds, categoryIds, templateIds, minCount, scope);
     }
 
     private String translateDslError(String code) {
