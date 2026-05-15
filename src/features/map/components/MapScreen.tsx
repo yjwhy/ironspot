@@ -169,19 +169,20 @@ export function MapScreen() {
 
       <View className="absolute top-safe-or-2 left-0 right-0 z-20 px-4 gap-2">
         {isPermissionDenied ? <PermissionDeniedBadge /> : null}
-        <TopSearchBar onSubmit={handleNlSubmit} isPending={nlSearch.isPending} />
+        <View className="flex-row items-start gap-2">
+          <View className="flex-1">
+            <TopSearchBar onSubmit={handleNlSubmit} isPending={nlSearch.isPending} />
+          </View>
+          <FilterButton
+            activeCount={activeFilterCount}
+            onPress={() => {
+              setFilterPanelOpen((prev) => !prev);
+            }}
+          />
+        </View>
         {source.kind === 'nl' ? (
           <InterpretationChip text={source.response.interpretation} onClose={handleNlChipClose} />
         ) : null}
-      </View>
-
-      <View className="absolute top-safe-or-2 right-4 z-30">
-        <FilterButton
-          activeCount={activeFilterCount}
-          onPress={() => {
-            setFilterPanelOpen((prev) => !prev);
-          }}
-        />
       </View>
 
       <View className="absolute top-safe-or-32 left-0 right-0 z-40">

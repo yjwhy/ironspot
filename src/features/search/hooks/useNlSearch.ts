@@ -3,6 +3,7 @@ import * as burnt from 'burnt';
 
 import type { NlSearchResponse } from '@/shared/generated/model';
 import { searchNatural } from '@/shared/generated/search-controller/search-controller';
+import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 
 import { searchKeys } from '../query-keys';
 import { useRecentSearches } from './useRecentSearches';
@@ -36,10 +37,8 @@ export function useNlSearch({ userLat, userLng }: UseNlSearchParams) {
   const recent = useRecentSearches();
 
   return useMutation<NlSearchResponse, unknown, string>({
-    mutationFn: async (query) => {
-      const { data } = await searchNatural({ query, userLat, userLng });
-      return data;
-    },
+    mutationFn: async (query) =>
+      unwrapOrvalResponse(await searchNatural({ query, userLat, userLng })),
     onSuccess: (data, query) => {
       queryClient.setQueryData(searchKeys.results(query), data);
       recent.add(query);
