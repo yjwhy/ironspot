@@ -23,10 +23,15 @@ export function InterpretationChip({ text, tone = 'success', onClose }: Interpre
   // Body wraps to two lines via `flex-shrink` + `numberOfLines={2}` when the
   // interpretation is too long for one line; the prefix stays vertically
   // centered relative to the wrapped body and the divider stretches.
+  // `rounded-full` + `shadow-sm` differentiate this informational chip from
+  // the input control above (TopSearchBar uses `rounded-md` and no shadow).
+  // The pill shape signals "tag/annotation"; the elevation pulls the chip
+  // off the same plane as the search bar so the two read as distinct roles.
+  // Matches the existing on-map floating pattern (FilterButton, SearchAreaButton).
   const containerClass =
     tone === 'zero'
-      ? 'bg-bg-muted border border-border rounded-2xl py-1.5 pl-3 pr-2 flex-row items-center gap-2 self-start max-w-full'
-      : 'bg-accent-50 border border-accent-light rounded-2xl py-1.5 pl-3 pr-2 flex-row items-center gap-2 self-start max-w-full';
+      ? 'bg-bg-muted border border-border rounded-full py-1.5 pl-3 pr-2 flex-row items-center gap-2 self-start max-w-full shadow-sm'
+      : 'bg-accent-50 border border-accent-light rounded-full py-1.5 pl-3 pr-2 flex-row items-center gap-2 self-start max-w-full shadow-sm';
   const sparkleColor = tone === 'zero' ? colors.text.tertiary : colors.accent.dark;
   const dividerColor = tone === 'zero' ? colors.border.DEFAULT : colors.accent.light;
   return (
