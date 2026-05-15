@@ -94,6 +94,16 @@ public class Users extends TableImpl<Record> {
     public final TableField<Record, OffsetDateTime> DELETED_AT = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
 
     /**
+     * The column <code>public.users.nl_search_count_month</code>.
+     */
+    public final TableField<Record, Integer> NL_SEARCH_COUNT_MONTH = createField(DSL.name("nl_search_count_month"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INTEGER)), this, "");
+
+    /**
+     * The column <code>public.users.nl_search_count_reset_at</code>.
+     */
+    public final TableField<Record, OffsetDateTime> NL_SEARCH_COUNT_RESET_AT = createField(DSL.name("nl_search_count_reset_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
+
+    /**
      * The column <code>public.users.created_at</code>.
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
