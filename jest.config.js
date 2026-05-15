@@ -8,6 +8,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@mj-studio/react-native-naver-map$': '<rootDir>/src/test/mocks/naver-map.ts',
+    '^react-native-mmkv$': '<rootDir>/src/test/mocks/react-native-mmkv.ts',
   },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
