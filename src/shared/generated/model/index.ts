@@ -27,6 +27,8 @@ export * from './machineTemplateSuggestion';
 export * from './naverPlaceResult';
 export * from './nlSearchRequest';
 export * from './nlSearchResponse';
+export * from './parsedFilters';
+export * from './parsedFiltersScope';
 export * from './photoResponse';
 export * from './photoUploadResponse';
 export * from './searchParams';
