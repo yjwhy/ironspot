@@ -12,6 +12,7 @@ import { TopSearchBar } from '@/features/search/components/TopSearchBar';
 import { useNlSearch } from '@/features/search/hooks/useNlSearch';
 import type { NlSearchResponse, ParsedFilters } from '@/shared/generated/model';
 import { GANGNAM_STATION, useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
+import type { GymWithMachineCount } from '@/shared/types/database';
 
 import { FilterButton } from './FilterButton';
 import { FilterPanel } from './FilterPanel';
@@ -27,20 +28,22 @@ import { toGymWithMachineCount } from '../services/gym-search';
 
 const INITIAL_ZOOM = 14;
 const CAMERA_ANIMATE_MS = 500;
-
-// Map radius (km) to a zoom level that frames the search circle reasonably.
-// Empirical Naver Maps values: 0.5km≈16, 1km≈15, 2km≈14, 5km≈13.
-function zoomForRadius(radiusKm: number): number {
-  if (radiusKm <= 0.5) return 16;
-  if (radiusKm <= 1) return 15;
-  if (radiusKm <= 2) return 14;
-  if (radiusKm <= 5) return 13;
-  return 12;
-}
+// Empirically, calling animateCameraTo right inside the mutation onSuccess
+// races marker insertion on iOS; a one-frame defer is enough to let React
+// commit the new overlays first.
+const CAMERA_DEFER_MS = 50;
 
 type GymsSource =
   | { readonly kind: 'filter' }
-  | { readonly kind: 'nl'; readonly query: string; readonly response: NlSearchResponse };
+  | {
+      readonly kind: 'nl';
+      readonly query: string;
+      readonly response: NlSearchResponse;
+      // Mapped once at dispatch time so the marker pipeline gets a stable
+      // reference. Re-mapping inside render churns `useMarkerReveal`'s effect
+      // (deps `[gyms]`) and the stagger never finishes — markers stay hidden.
+      readonly gyms: readonly GymWithMachineCount[];
+    };
 
 type GymsAction =
   | { readonly type: 'enter_filter_mode' }
@@ -51,7 +54,12 @@ function gymsSourceReducer(_state: GymsSource, action: GymsAction): GymsSource {
     case 'enter_filter_mode':
       return { kind: 'filter' };
     case 'nl_result':
-      return { kind: 'nl', query: action.query, response: action.response };
+      return {
+        kind: 'nl',
+        query: action.query,
+        response: action.response,
+        gyms: action.response.gyms.map(toGymWithMachineCount),
+      };
   }
 }
 
@@ -84,11 +92,7 @@ export function MapScreen() {
   });
   const filterSearch = useMapSearch(filters);
 
-  // NL response uses the camelCase Orval shape; the rest of the map pipeline
-  // (markers, bottom sheet) expects the snake_case mapped shape, so apply the
-  // same adapter the filter path goes through.
-  const displayedGyms =
-    source.kind === 'nl' ? source.response.gyms.map(toGymWithMachineCount) : filterSearch.gyms;
+  const displayedGyms = source.kind === 'nl' ? source.gyms : filterSearch.gyms;
   const isPending = source.kind === 'nl' ? nlSearch.isPending : filterSearch.isPending;
   const showSearchButton = source.kind === 'filter' && filterSearch.showSearchButton;
   const isNlZeroResult = source.kind === 'nl' && source.response.totalCount === 0;
@@ -127,19 +131,26 @@ export function MapScreen() {
       onSuccess: (response) => {
         dispatch({ type: 'nl_result', query, response });
         setFilterPanelOpen(false);
-        const { coordinates, radiusKm } = response.resolvedLocation;
-        if (
-          coordinates?.lat !== undefined &&
-          coordinates.lng !== undefined &&
-          radiusKm !== undefined
-        ) {
+        const { coordinates } = response.resolvedLocation;
+        const lat = coordinates?.lat;
+        const lng = coordinates?.lng;
+        if (lat === undefined || lng === undefined) return;
+        // Pan-only animation. Calling animateCameraTo right inside
+        // onSuccess races marker insertion in @mj-studio/react-native-naver-map
+        // on iOS — the new overlays end up never rendered. A one-frame
+        // setTimeout is enough to let React commit them first.
+        //
+        // Zoom is intentionally NOT changed: zoom-changing camera
+        // animations clear newly added marker overlays in the same
+        // library (the marker mount races with the zoom-level transition).
+        // The chip ("1km 이내") communicates the radius instead.
+        setTimeout(() => {
           mapRef.current?.animateCameraTo({
-            latitude: coordinates.lat,
-            longitude: coordinates.lng,
-            zoom: zoomForRadius(radiusKm),
+            latitude: lat,
+            longitude: lng,
             duration: CAMERA_ANIMATE_MS,
           });
-        }
+        }, CAMERA_DEFER_MS);
       },
     });
   }
