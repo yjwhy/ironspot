@@ -56,8 +56,8 @@ describe('searchGymsInBounds', () => {
       maxLat: 37.5,
       minLng: 127.02,
       maxLng: 127.04,
-      brandId: 'b1',
-      categoryId: undefined,
+      brandIds: ['b1'],
+      categoryIds: undefined,
       loadingType: 'plate',
     });
   });
@@ -72,8 +72,8 @@ describe('searchGymsInBounds', () => {
       maxLat: 37.5,
       minLng: 127.02,
       maxLng: 127.04,
-      brandId: undefined,
-      categoryId: undefined,
+      brandIds: undefined,
+      categoryIds: undefined,
       loadingType: undefined,
     });
   });
