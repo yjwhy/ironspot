@@ -1,10 +1,17 @@
 import { NaverMapView } from '@mj-studio/react-native-naver-map';
 import type { Region } from '@mj-studio/react-native-naver-map';
+import * as burnt from 'burnt';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useReducer, useState } from 'react';
 import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
+import { InterpretationChip } from '@/features/search/components/InterpretationChip';
+import { PermissionDeniedBadge } from '@/features/search/components/PermissionDeniedBadge';
+import { RelaxFiltersCTA } from '@/features/search/components/RelaxFiltersCTA';
+import { TopSearchBar } from '@/features/search/components/TopSearchBar';
+import { useNlSearch } from '@/features/search/hooks/useNlSearch';
+import type { NlSearchResponse, ParsedFilters } from '@/shared/generated/model';
 import { GANGNAM_STATION, useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
 
 import { FilterButton } from './FilterButton';
@@ -17,29 +24,71 @@ import { useCategories } from '../hooks/useCategories';
 import { useFilters } from '../hooks/useFilters';
 import { useMapSearch } from '../hooks/useMapSearch';
 import { useMarkerReveal } from '../hooks/useMarkerReveal';
+import { toGymWithMachineCount } from '../services/gym-search';
 
 const INITIAL_ZOOM = 14;
+
+type GymsSource =
+  | { readonly kind: 'filter' }
+  | { readonly kind: 'nl'; readonly query: string; readonly response: NlSearchResponse };
+
+type GymsAction =
+  | { readonly type: 'enter_filter_mode' }
+  | { readonly type: 'nl_result'; readonly query: string; readonly response: NlSearchResponse };
+
+function gymsSourceReducer(_state: GymsSource, action: GymsAction): GymsSource {
+  switch (action.type) {
+    case 'enter_filter_mode':
+      return { kind: 'filter' };
+    case 'nl_result':
+      return { kind: 'nl', query: action.query, response: action.response };
+  }
+}
+
+const INITIAL_SOURCE: GymsSource = { kind: 'filter' };
 
 export function MapScreen() {
   const router = useRouter();
   const locationState = useCurrentLocation();
-  const { filters, toggleBrand, toggleCategory, clear: clearFilters } = useFilters();
+  const {
+    filters,
+    toggleBrand,
+    toggleCategory,
+    setAll: setAllFilters,
+    clear: clearFilters,
+  } = useFilters();
   const { data: brands = [], isError: brandsError } = useBrands();
   const { data: categories = [], isError: categoriesError } = useCategories();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [source, dispatch] = useReducer(gymsSourceReducer, INITIAL_SOURCE);
 
   const initialLocation = locationState.status !== 'loading' ? locationState.location : null;
   const userLocation = initialLocation ?? GANGNAM_STATION;
+  const isPermissionDenied =
+    locationState.status === 'fallback' && locationState.reason === 'permission_denied';
 
-  const { gyms, isPending, showSearchButton, handleCameraIdle, handleSearch } =
-    useMapSearch(filters);
-  const { visibleMarkerIds } = useMarkerReveal(gyms);
+  const nlSearch = useNlSearch({
+    userLat: userLocation.latitude,
+    userLng: userLocation.longitude,
+  });
+  const filterSearch = useMapSearch(filters);
+
+  // NL response uses the camelCase Orval shape; the rest of the map pipeline
+  // (markers, bottom sheet) expects the snake_case mapped shape, so apply the
+  // same adapter the filter path goes through.
+  const displayedGyms =
+    source.kind === 'nl' ? source.response.gyms.map(toGymWithMachineCount) : filterSearch.gyms;
+  const isPending = source.kind === 'nl' ? nlSearch.isPending : filterSearch.isPending;
+  const showSearchButton = source.kind === 'filter' && filterSearch.showSearchButton;
+  const isNlZeroResult = source.kind === 'nl' && source.response.totalCount === 0;
+
+  const { visibleMarkerIds } = useMarkerReveal(displayedGyms);
   const {
     mode: bottomSheetMode,
     selectedGymId,
     setSelectedGymId,
   } = useBottomSheetMode({
-    gyms,
+    gyms: displayedGyms,
     isPending,
     userLocation,
     clearFilters,
@@ -52,7 +101,36 @@ export function MapScreen() {
 
   function handleCameraIdleWithPanelClose({ region }: { region: Region }) {
     setFilterPanelOpen(false);
-    handleCameraIdle({ region });
+    filterSearch.handleCameraIdle({ region });
+  }
+
+  function handleNlSubmit(query: string) {
+    nlSearch.mutate(query, {
+      onSuccess: (response) => {
+        dispatch({ type: 'nl_result', query, response });
+        setFilterPanelOpen(false);
+      },
+    });
+  }
+
+  function handleNlChipClose() {
+    dispatch({ type: 'enter_filter_mode' });
+  }
+
+  function handleRelaxFilters() {
+    if (source.kind !== 'nl') return;
+    applyParsedFiltersAndExitNl(source.response.parsedFilters);
+  }
+
+  function applyParsedFiltersAndExitNl(parsed: ParsedFilters) {
+    setAllFilters({
+      brandIds: parsed.brandIds,
+      categoryIds: parsed.categoryIds,
+      loadingType: null,
+    });
+    dispatch({ type: 'enter_filter_mode' });
+    setFilterPanelOpen(true);
+    surfaceDroppedConditions(parsed);
   }
 
   return (
@@ -71,7 +149,7 @@ export function MapScreen() {
         onCameraIdle={handleCameraIdleWithPanelClose}
       >
         {visibleMarkerIds.map((gymId) => {
-          const gym = gyms.find((g) => g.id === gymId);
+          const gym = displayedGyms.find((g) => g.id === gymId);
           if (!gym) return null;
           return (
             <GymMarker
@@ -89,7 +167,15 @@ export function MapScreen() {
         })}
       </NaverMapView>
 
-      <View className="absolute top-safe-or-4 right-4 z-10">
+      <View className="absolute top-safe-or-2 left-0 right-0 z-20 px-4 gap-2">
+        {isPermissionDenied ? <PermissionDeniedBadge /> : null}
+        <TopSearchBar onSubmit={handleNlSubmit} isPending={nlSearch.isPending} />
+        {source.kind === 'nl' ? (
+          <InterpretationChip text={source.response.interpretation} onClose={handleNlChipClose} />
+        ) : null}
+      </View>
+
+      <View className="absolute top-safe-or-2 right-4 z-30">
         <FilterButton
           activeCount={activeFilterCount}
           onPress={() => {
@@ -98,7 +184,7 @@ export function MapScreen() {
         />
       </View>
 
-      <View className="absolute top-safe-or-16 left-0 right-0 z-20">
+      <View className="absolute top-safe-or-32 left-0 right-0 z-40">
         <FilterPanel
           visible={filterPanelOpen}
           brands={brands}
@@ -115,8 +201,13 @@ export function MapScreen() {
         />
       </View>
 
-      <View className="absolute top-safe-or-16 left-0 right-0 z-10 items-center">
-        <SearchAreaButton visible={showSearchButton} onPress={handleSearch} />
+      <View
+        className="absolute left-0 right-0 z-10 items-center"
+        style={{ top: '35%' }}
+        pointerEvents="box-none"
+      >
+        <SearchAreaButton visible={showSearchButton} onPress={filterSearch.handleSearch} />
+        {isNlZeroResult ? <RelaxFiltersCTA onPress={handleRelaxFilters} /> : null}
       </View>
 
       <View className="absolute bottom-0 left-0 right-0">
@@ -124,4 +215,22 @@ export function MapScreen() {
       </View>
     </View>
   );
+}
+
+function surfaceDroppedConditions(parsed: ParsedFilters) {
+  const dropped: string[] = [];
+  if (parsed.templateIds.length > 0) dropped.push('머신 이름');
+  if (parsed.minCount !== undefined && parsed.minCount > 1) {
+    dropped.push('최소 수량');
+  }
+  if (parsed.scope === 'combined') {
+    dropped.push('동시 보유 조건');
+  }
+  if (dropped.length > 0) {
+    burnt.toast({
+      title: `${dropped.join(', ')} 조건은 적용되지 않아요`,
+      preset: 'none',
+      duration: 4,
+    });
+  }
 }

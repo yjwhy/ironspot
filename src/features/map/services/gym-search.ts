@@ -3,7 +3,7 @@ import type { GymWithMachineCountResponse } from '@/shared/generated/model';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import type { GymWithMachineCount, MapBounds, SearchFilters } from '@/shared/types/database';
 
-function toGymWithMachineCount(r: GymWithMachineCountResponse): GymWithMachineCount {
+export function toGymWithMachineCount(r: GymWithMachineCountResponse): GymWithMachineCount {
   return {
     id: r.id,
     name: r.name,
