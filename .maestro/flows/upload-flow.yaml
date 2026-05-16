@@ -3,16 +3,15 @@
 # NOTE: Social login (Google) cannot be automated in Maestro.
 #   The login assertions below verify the login screen renders correctly,
 #   then the flow continues assuming the test account is already logged in.
-# FAB has no testID — tap by accessibilityLabel '사진 올리기' (same label
-#   asserted as visible in photo-gallery.yaml).
+# FAB has no testID — tap by visible label '사진 올리기'. Maestro's text
+#   matcher falls back to accessibilityLabel when no visible text is found.
 appId: com.ironspot.app
 ---
 - launchApp
 # Verify login screen renders correctly (social login cannot be automated)
 - tapOn:
     id: tab-bar-my
-- tapOn:
-    accessibilityLabel: '로그인하기'
+- tapOn: '로그인하기'
 - assertVisible: 'Google로 계속하기'
 # Assume logged in from here (run with an authenticated test account)
 - tapOn:
@@ -25,6 +24,5 @@ appId: com.ironspot.app
     id: 'gym-card-피트니스-팩토리'
 - tapOn:
     id: 'machine-row-low-row'
-- tapOn:
-    accessibilityLabel: '사진 올리기'
+- tapOn: '사진 올리기'
 - assertVisible: '어느 헬스장인가요?'
