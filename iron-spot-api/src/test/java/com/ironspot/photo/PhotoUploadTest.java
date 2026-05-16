@@ -99,7 +99,7 @@ class PhotoUploadTest extends IntegrationTestBase {
     void uploadSucceedsWithOcrSuggestions() throws Exception {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
-            java.util.List.of("PANATTA", "HIGH", "ROW"), SafeSearchVerdict.ALLOW));
+            java.util.List.of("PANATTA", "HIGH", "ROW"), SafeSearchVerdict.ALLOW, false));
         given(storageService.upload(any(), any(), anyString()))
             .willReturn("https://example.com/photo.webp");
 
@@ -150,7 +150,7 @@ class PhotoUploadTest extends IntegrationTestBase {
     void uploadRejectedBySafeSearch() {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
-            java.util.List.of(), SafeSearchVerdict.REJECT));
+            java.util.List.of(), SafeSearchVerdict.REJECT, false));
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("image", minimalJpegResource());
@@ -164,13 +164,34 @@ class PhotoUploadTest extends IntegrationTestBase {
             .upload(any(), any(), anyString());
     }
 
+    // --- 4b'. PII face detection blocks upload (400, no storage call) ---
+
+    @Test
+    void uploadRejectedByPiiFace() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of(), SafeSearchVerdict.ALLOW, true));
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+        body.add("gymMachineId", GYM_MACHINE_ID.toString());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("얼굴");
+        org.mockito.Mockito.verify(storageService, org.mockito.Mockito.never())
+            .upload(any(), any(), anyString());
+    }
+
     // --- 4c. SafeSearch QUEUE_FOR_ADMIN inserts with is_blinded=TRUE + Slack notify ---
 
     @Test
     void uploadQueuedForAdminInsertsBlinded() {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
-            java.util.List.of("LATERAL"), SafeSearchVerdict.QUEUE_FOR_ADMIN));
+            java.util.List.of("LATERAL"), SafeSearchVerdict.QUEUE_FOR_ADMIN, false));
         given(storageService.upload(any(), any(), anyString()))
             .willReturn("https://example.com/queued.webp");
 

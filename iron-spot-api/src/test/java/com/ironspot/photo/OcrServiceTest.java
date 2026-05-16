@@ -101,4 +101,38 @@ class OcrServiceTest {
             ocrService.analyzeImage("img".getBytes());
         assertThat(result.verdict()).isEqualTo(SafeSearchVerdict.ALLOW);
     }
+
+    @Test
+    void noFaceAnnotationsResultsInNoPii() {
+        Map<String, Object> firstResponse = Map.of("textAnnotations", List.of());
+        Map<String, Object> apiResponse = Map.of("responses", List.of(firstResponse));
+        when(monoResponse.block(any())).thenReturn(apiResponse);
+
+        com.ironspot.photo.dto.VisionAnalysisResult result =
+            ocrService.analyzeImage("img".getBytes());
+        assertThat(result.hasPii()).isFalse();
+    }
+
+    @Test
+    void faceWithUndecodableImageBytesFailsOpenAndAllowsUpload() {
+        // Image bytes that ImageIO cannot parse → totalPixels=0 → PiiDetection fails open.
+        // This guards against rejecting legitimate uploads when the image format isn't
+        // one ImageIO recognises (rare for the JPEG/PNG/HEIC paths the camera ships).
+        Map<String, Object> face = Map.of(
+            "detectionConfidence", 0.9f,
+            "fdBoundingPoly", Map.of("vertices", List.of(
+                Map.of("x", 0, "y", 0),
+                Map.of("x", 500, "y", 0),
+                Map.of("x", 500, "y", 500),
+                Map.of("x", 0, "y", 500)
+            ))
+        );
+        Map<String, Object> firstResponse = Map.of("faceAnnotations", List.of(face));
+        Map<String, Object> apiResponse = Map.of("responses", List.of(firstResponse));
+        when(monoResponse.block(any())).thenReturn(apiResponse);
+
+        com.ironspot.photo.dto.VisionAnalysisResult result =
+            ocrService.analyzeImage("img".getBytes());
+        assertThat(result.hasPii()).isFalse();
+    }
 }
