@@ -117,8 +117,42 @@ Extend the existing `OcrService.analyzeImage` Vision API call with a third featu
 2. `./gradlew test` — backend 282 (Phase 3) + 13 new = 295 tests. EvalSuiteTest still skipped (no `EVAL_RUN`).
 3. PR auto-trigger: `llm-eval.yml` does NOT fire (Task 42 diff doesn't match path filter — only touches `photo/`, `dto/`, tests, docs, maestro).
 
-## Future Tasks (placeholders, designed at kickoff)
+## Future Tasks (planned order, locked via Task 42 grill follow-up)
 
-The remainder of Phase 4 is sketched in `phase-4/README.md` Scope section. Task numbering will be assigned in order of grilling, not in the README ordering.
+The remainder of Phase 4 has a recommended order derived from dependency + cost analysis (not the README ordering, which is unsorted scope). Each Task still gets its own `grill-me` + plan entry before implementation; this list is the queue not the design.
 
-Each follow-up Task gets its own `grill-me` + plan entry before implementation.
+### Tier 1 — Immediate value, no dependencies
+
+- **Task 43**: Slack 전체 로그 연동 — operator visibility, builds on Phase 2 `AdminNotificationService`. Task 42 PII just shipped to prod; if rejection rate spikes, we need to see immediately without checking Sentry/Render dashboards. User-added candidate during Task 42 grill.
+- **Task 44**: Multi-select FilterPanel UI (ADR 0020) — completes Task 38a backend debt. Backend already accepts array `brandIds`/`categoryIds`; UI is single-select. Small frontend Task, user-visible value.
+- **Task 45**: gym_machine report target — extend the report system from photo-only to also cover wrong-machine-mapping. Enables crowd-correcting `gym_machines` rows. Modest backend + admin UI extension. Feeds Tier 2 (owner workflow input) and Tier 4 (reporter trust scoring input) with more data shapes.
+
+### Tier 2 — Substantive moderation + launch gating
+
+- **Task 46**: Gym owner workflow — give gym owners scoped permissions to verify/approve photos and edit machine inventory for their gym. `users.role = 'owner'` already in prod CHECK constraint (Phase 3 prep, no migration). Distributes moderation load from admin queue, adds trust signal (owner-verified > anonymous). Largest Task in this tier (4-6 slices, comparable to Task 33-34). 6 design branches to grill at Task entry (owner verification path, permission scope, gym-to-owner cardinality, moderation flow re-design, UI, trust signal propagation).
+- **Task 47**: Apple Sign In external wiring — App Store submission requires Apple Sign In option on iOS. Apple Developer Program enrollment ($99/year) is a user prerequisite. Supabase Apple provider + `ios.usesAppleSignIn` + real-device test. Unlocks the Maestro-driveable in-app sheet that Task 48 depends on.
+- **Task 48**: admin-flow Maestro flow — depends on Task 47. Phase 3 verification carry-over (Task 40 deferred); closes the admin testing gap by using Apple Sign In as the Maestro-driveable login path. Small Task (1-2 slices).
+
+### Operational (parallel, not numbered Tasks)
+
+- **UptimeRobot keep-warm** — 5-min cron ping on `/actuator/health` to defeat Render free 15-min idle sleep. ~10 min total work (account + URL). Pre-launch operational.
+- **Privacy Policy + Terms of Service** — Korean copy + hosted URLs + App Store Connect link. Content-bottleneck rather than code. Pre-launch legal.
+- **EAS preview-simulator build** — depends on Task 47's Apple Developer enrollment side-effect. Once available, becomes the canonical preview-build path for live verification flows.
+
+### Tier 3 — Post-launch data-driven (deferred until users)
+
+After launch, these become decidable with real data:
+
+- Reporter trust scoring + auto-ban tuning — needs real abuse patterns; current `actioned >= 3` / `dismissed >= 5` thresholds are guesses. Task 46 (owner workflow) reduces the urgency by replacing parts of the value proposition.
+- Appeal flow — needs auto-ban events to know if thresholds are too aggressive.
+- Voice live verification — accept manual smoke on each release tag until either (a) test fixture is built, or (b) EAS preview-simulator path lands.
+- Push notifications — needs a user base to notify; admin disposition + ban events as first triggers.
+- NL query caching — needs query volume; quota 100/month/user already gates spend so this is premature.
+- Standalone admin web UI (Next.js) — needs moderation queue volume to justify duplicating mobile admin work. Task 46 (owner workflow) reduces urgency by distributing load.
+- PostHog analytics — needs users; funnel/retention questions become askable.
+- Dark mode — polish; tokens already abstracted, needs theme switch + dark variants.
+
+### Phase 5+ (out of Phase 4 scope)
+
+- Multi-platform push routing
+- ML reranking on NL search

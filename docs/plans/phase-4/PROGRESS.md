@@ -10,7 +10,14 @@ Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b1
 
 - [x] Task 41: Trim eval suite to 6 product-value cases (eval workflow repair)
 - [x] Task 42: Photo PII detection — face rejection on upload
-- [ ] Task 43+: TBD via grill-me at Task 42 close
+- [ ] Task 43: Slack 전체 로그 연동 (operator visibility)
+- [ ] Task 44: Multi-select FilterPanel UI (ADR 0020 completion)
+- [ ] Task 45: gym_machine report target (moderation surface extension)
+- [ ] Task 46: Gym owner workflow (distributed moderation + trust signal)
+- [ ] Task 47: Apple Sign In external wiring (App Store gating)
+- [ ] Task 48: admin-flow Maestro flow (Phase 3 verification carry-over, depends on Task 47)
+- [ ] Operational (parallel): UptimeRobot keep-warm, Privacy Policy + ToS, EAS preview-simulator
+- [ ] Tier 3 (post-launch, data-driven): see `implementation.md` Future Tasks section
 
 ## Completed Tasks Log
 
