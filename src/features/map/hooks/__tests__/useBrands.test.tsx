@@ -34,6 +34,34 @@ describe('useBrands', () => {
     expect(result.current.data).toEqual(brands);
   });
 
+  it('sorts brands by name using locale-aware compare', async () => {
+    const unsorted: Brand[] = [
+      { id: 'b1', name: 'Technogym' },
+      { id: 'b2', name: 'Panatta' },
+      { id: 'b3', name: '하이로우' },
+      { id: 'b4', name: 'Atlantis' },
+      { id: 'b5', name: '가가짐' },
+    ];
+    const mockFetch = fetchBrands as jest.MockedFunction<typeof fetchBrands>;
+    mockFetch.mockResolvedValue(unsorted);
+    const { Wrapper } = createQueryWrapper();
+
+    const { result } = renderHook(() => useBrands(), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    // Korean locale orders Hangul before Latin characters.
+    expect(result.current.data?.map((brand) => brand.name)).toEqual([
+      '가가짐',
+      '하이로우',
+      'Atlantis',
+      'Panatta',
+      'Technogym',
+    ]);
+  });
+
   it('exposes an error state when the service throws', async () => {
     const mockFetch = fetchBrands as jest.MockedFunction<typeof fetchBrands>;
     mockFetch.mockRejectedValue(new Error('boom'));
