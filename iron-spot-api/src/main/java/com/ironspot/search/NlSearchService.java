@@ -29,6 +29,7 @@ public class NlSearchService {
     private final SqlBuilder sqlBuilder;
     private final InterpretationFormatter interpretationFormatter;
     private final NlSearchQuotaService quotaService;
+    private final NlSearchEmptyResultReporter emptyResultReporter;
 
     @Transactional(readOnly = true)
     public NlSearchResponse search(NlSearchRequest req, UserPrincipal principal) {
@@ -64,6 +65,7 @@ public class NlSearchService {
         } finally {
             long durationMs = (System.nanoTime() - startNanos) / 1_000_000L;
             recordBreadcrumb(req.query(), dsl, totalCount, durationMs, outcome);
+            emptyResultReporter.reportIfEmpty(req.query(), totalCount);
         }
     }
 

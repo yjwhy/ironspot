@@ -23,6 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +44,8 @@ class NlSearchServiceTest {
     private InterpretationFormatter interpretationFormatter;
     @Mock
     private NlSearchQuotaService quotaService;
+    @Mock
+    private NlSearchEmptyResultReporter emptyResultReporter;
 
     @InjectMocks
     private NlSearchService service;
@@ -130,6 +133,45 @@ class NlSearchServiceTest {
         verify(llmClient, never()).parse(any());
         verify(dslValidator, never()).validate(any());
         verify(sqlBuilder, never()).execute(any(), any());
+    }
+
+    @Test
+    void emptyResultTriggersReporter() {
+        NlSearchRequest req = new NlSearchRequest("강남역 라이프피트니스", 37.5, 127.0);
+        SearchDsl dsl = new SearchDsl(
+            new Location.NamedPlace("강남역", null, 1.0),
+            List.of(),
+            null
+        );
+        ValidatedSearch validated = new ValidatedSearch(dsl.location(), List.of());
+        ResolvedLocation resolved = new ResolvedLocation(new Coordinates(37.498, 127.027), 1.0);
+
+        when(llmClient.parse("강남역 라이프피트니스")).thenReturn(dsl);
+        when(dslValidator.validate(dsl)).thenReturn(validated);
+        when(locationResolver.resolve(dsl.location(), 37.5, 127.0)).thenReturn(resolved);
+        when(sqlBuilder.execute(resolved, List.of())).thenReturn(List.of());
+        when(interpretationFormatter.format(dsl)).thenReturn("강남역 1km 이내");
+
+        NlSearchResponse response = service.search(req, principal);
+
+        assertThat(response.totalCount()).isZero();
+        verify(emptyResultReporter).reportIfEmpty("강남역 라이프피트니스", 0);
+    }
+
+    @Test
+    void quotaFailureForwardsNullCountToReporter() {
+        // Failing-before-SQL keeps totalCount null; reporter must still be invoked so the
+        // finally-block contract is uniform across paths. Reporter itself ignores null.
+        NlSearchRequest req = new NlSearchRequest("아무 검색", 37.5, 127.0);
+        doThrow(new BusinessException(
+            "이번 달 자연어 검색 한도를 모두 사용했어요. 다음 달 1일에 초기화됩니다.",
+            HttpStatus.TOO_MANY_REQUESTS))
+            .when(quotaService).checkAndIncrement(principal);
+
+        assertThatThrownBy(() -> service.search(req, principal))
+            .isInstanceOf(BusinessException.class);
+
+        verify(emptyResultReporter).reportIfEmpty(eq("아무 검색"), eq(null));
     }
 
     private GymWithMachineCountResponse sampleGym() {
