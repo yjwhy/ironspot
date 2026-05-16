@@ -41,16 +41,21 @@ import static org.assertj.core.api.Assertions.assertThat;
  * In CI: triggered by {@code .github/workflows/llm-eval.yml} on PRs that touch
  * prompts, the LLM client, the DSL package, {@code SqlBuilder}, or {@code DslValidator}.
  *
- * <p>Throttle/retry mirrors {@code SnapshotRecorder}: 5s between calls + 60s back-off
- * with a single retry on Groq RATE_LIMIT.
+ * <p>Throttle/retry: 15s between calls + 60s back-off with a single retry on Groq
+ * RATE_LIMIT.
+ *
+ * <p>Run budget: 6 product-value cases × ~2.5K tokens ≈ 15K tokens, well within
+ * Groq free-tier TPD (100K/day) and TPM (12K/min). Task 41 trimmed from the
+ * original 30-case suite (75K = 75% of TPD) after Task 40's main retry exposed
+ * the structural cost issue.
  */
 @EnabledIfEnvironmentVariable(named = "EVAL_RUN", matches = "true")
 class EvalSuiteTest {
 
-    // 15s, not 5s, because the system prompt is ~2000 tokens; at 5s = 12 calls/min we
-    // burst ~27K tokens/min and trip Groq's TPM=12000 limit. 15s = 4 calls/min ≈ 9K
-    // tokens/min, comfortably under TPM. Local M4 absorbed the burst via slower RTT
-    // and looked fine — CI's faster runner-to-Groq path exposed the latent burst.
+    // 15s throttle bounds the per-minute burst: 4 calls/min × ~2.5K tokens ≈ 10K
+    // tokens/min, under Groq TPM 12K. With 6 cases the entire run finishes in
+    // ~90s wallclock, and cumulative spend (15K) stays well under TPD 100K so
+    // multiple PR force-pushes on the same day do not exhaust the daily bucket.
     private static final Duration THROTTLE = Duration.ofSeconds(15);
     private static final Duration RATE_LIMIT_BACKOFF = Duration.ofSeconds(60);
     private static final Path FAILURES_PATH = Paths.get("build/reports/eval/failures.json");

@@ -157,6 +157,20 @@ If a path fails to deliver: check the Render env (`SLACK_ADMIN_WEBHOOK_URL` pres
 
 Fill in `TBD` once the team / on-call schedule is decided.
 
+## LLM eval workflow (Groq free-tier budgeting)
+
+`.github/workflows/llm-eval.yml` runs `EvalSuiteTest` against the real Groq API on PRs that touch the LLM stack (`prompts/`, `search/llm/**`, `search/dsl/**`, `SqlBuilder.java`, `DslValidator.java`, `search/eval/**`, `resources/eval/**`) and on manual `workflow_dispatch`.
+
+- **Suite size:** 6 product-value cases (Task 41 trim from 30). Each case ≈ 2.5K tokens, run total ≈ 15K tokens.
+- **Free-tier limits (Llama 3.3 70B):** RPM 30, TPM 12K, RPD 1000, TPD 100K. The 15K/run footprint stays at 15% of daily TPD, allowing up to 6 runs/day before hitting the daily bucket.
+- **Hidden ceiling:** TPD is not exposed in success-response headers (only in 429 bodies). Inspect with one trivial completion + `grep x-ratelimit /tmp/headers.txt` — `remaining-requests` and `remaining-tokens` (TPM) are visible; daily token bucket is implicit.
+
+To restore the original 30-case suite for a one-time deep audit:
+
+1. `git show 8fb57cc:iron-spot-api/src/test/resources/eval/queries.yaml > iron-spot-api/src/test/resources/eval/queries.yaml` on a throwaway branch.
+2. Trigger before any other Groq activity that day (snapshot recording, parallel PRs). A full run consumes 75% of daily TPD.
+3. Discard the branch after the audit; do not merge.
+
 ## Known caveats
 
 - Jest emits `A worker process has failed to exit gracefully` after the suite when `@sentry/react-native` was loaded (Sentry's internal timer/native bridge). Exit code is still 0; this is benign and can be ignored unless CI starts failing.

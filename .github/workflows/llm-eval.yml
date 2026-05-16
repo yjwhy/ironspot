@@ -92,7 +92,7 @@ jobs:
                   return `<details><summary><code>${f.input}</code> — mismatch on \`${f.mismatchField}\`</summary>\n\n` +
                     `\`\`\`json\n// expected\n${expectedJson}\n// actual\n${actualJson}\n\`\`\`\n</details>`;
                 }).join('\n\n');
-                body = `${marker}\n## 🚨 LLM Eval Failures (${failures.length} / 30)\n\n${top}\n\nFull report: download the \`llm-eval-failures\` artifact from this run.`;
+                body = `${marker}\n## 🚨 LLM Eval Failures (${failures.length} / 6)\n\n${top}\n\nFull report: download the \`llm-eval-failures\` artifact from this run.`;
               }
             } catch (err) {
               body = `${marker}\n## 🚨 LLM Eval failed\n\nCould not read failures.json (${err.message}). Inspect the workflow logs.`;
