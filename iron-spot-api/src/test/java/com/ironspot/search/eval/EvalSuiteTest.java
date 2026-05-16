@@ -47,7 +47,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "EVAL_RUN", matches = "true")
 class EvalSuiteTest {
 
-    private static final Duration THROTTLE = Duration.ofSeconds(5);
+    // 15s, not 5s, because the system prompt is ~2000 tokens; at 5s = 12 calls/min we
+    // burst ~27K tokens/min and trip Groq's TPM=12000 limit. 15s = 4 calls/min ≈ 9K
+    // tokens/min, comfortably under TPM. Local M4 absorbed the burst via slower RTT
+    // and looked fine — CI's faster runner-to-Groq path exposed the latent burst.
+    private static final Duration THROTTLE = Duration.ofSeconds(15);
     private static final Duration RATE_LIMIT_BACKOFF = Duration.ofSeconds(60);
     private static final Path FAILURES_PATH = Paths.get("build/reports/eval/failures.json");
 
