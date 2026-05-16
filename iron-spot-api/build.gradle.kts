@@ -93,6 +93,8 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-postgresql")
+    // YAML parser for EvalSuiteTest reading src/test/resources/eval/queries.yaml.
+    testImplementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -112,10 +114,21 @@ tasks.withType<Test> {
     // Pipe Naver Search keys from .env (or CI env) to JUnit @EnabledIfEnvironmentVariable so the
     // real-API integration test runs locally and in CI without manual setup. Other secrets stay
     // out unless added explicitly — minimises blast radius if a test prints env.
-    listOf("NAVER_SEARCH_CLIENT_ID", "NAVER_SEARCH_CLIENT_SECRET").forEach { key ->
+    // Naver keys gate NaverSearchServiceIT (@EnabledIfEnvironmentVariable).
+    // Groq/Gemini keys gate EvalSuiteTest. EVAL_RUN itself is intentionally NOT piped from
+    // .env — only the GH workflow (and explicit local `EVAL_RUN=true ./gradlew test`) should
+    // turn the eval on; otherwise plain `./gradlew test` would burn Groq quota.
+    listOf(
+        "NAVER_SEARCH_CLIENT_ID",
+        "NAVER_SEARCH_CLIENT_SECRET",
+        "GROQ_API_KEY",
+        "GEMINI_API_KEY",
+    ).forEach { key ->
         val value = System.getenv(key) ?: dotEnv[key]
         if (!value.isNullOrBlank()) environment(key, value)
     }
+    // EVAL_RUN must come from process env only.
+    System.getenv("EVAL_RUN")?.let { environment("EVAL_RUN", it) }
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
