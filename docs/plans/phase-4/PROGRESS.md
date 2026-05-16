@@ -4,14 +4,14 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b106). Task 42 (photo PII detection) merged via PR #84 (39021cf). Task 43 (Slack routing) PR open and awaiting review. Subsequent Tasks per `phase-4/README.md` Scope, ordered by `grill-me` at each Task boundary.
+Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b106). Task 42 (photo PII detection) merged via PR #84 (39021cf). Task 43 (Slack routing) PR open and awaiting review. Task 44 (FilterPanel scalability + `loadingType` surface, ADR 0021) in progress on `task/44-filter-sheet`. Subsequent Tasks per `phase-4/README.md` Scope, ordered by `grill-me` at each Task boundary.
 
 ## Task Checklist
 
 - [x] Task 41: Trim eval suite to 6 product-value cases (eval workflow repair)
 - [x] Task 42: Photo PII detection — face rejection on upload
 - [x] Task 43: Slack routing (Sentry → #ironspot-errors, Render → #ironspot-deploy)
-- [ ] Task 44: Multi-select FilterPanel UI (ADR 0020 completion)
+- [ ] Task 44: FilterPanel scalability + `loadingType` surface (ADR 0021 supersedes 0020)
 - [ ] Task 45: gym_machine report target (moderation surface extension)
 - [ ] Task 46: Gym owner workflow (distributed moderation + trust signal)
 - [ ] Task 47: Apple Sign In external wiring (App Store gating)

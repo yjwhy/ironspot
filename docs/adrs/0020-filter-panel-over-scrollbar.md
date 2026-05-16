@@ -1,9 +1,13 @@
 ---
-Status: Accepted
+Status: Superseded by 0021
 Date: 2026-05-05
+Superseded-by: 0021-filter-sheet-supersedes-panel.md
+Superseded-date: 2026-05-17
 ---
 
 # 0020 — 필터 UI: 가로 스크롤 바 → 필터 버튼 + 슬라이드다운 패널
+
+> **Superseded by ADR 0021** (2026-05-17). brand/category multi-select 는 Task 38b 에서 이미 완료되었고, 본 ADR 의 슬라이드다운 패널은 brand/category 수가 늘어남에 따른 세로 무한 증식 + 탐색 도구 부재 + `loadingType` 미노출 한계가 드러나 `BottomSheetModal` 로 교체되었다. 본 ADR 의 Phase 1 rationale (특히 bottom sheet 중첩 제스처 충돌 회피 결정) 은 보존 가치가 있어 본문을 유지한다.
 
 ## Context
 

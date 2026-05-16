@@ -171,13 +171,80 @@ Single PR, single feature commit + docs commit (Task is below 200 LOC across <10
 2. `./gradlew test` — backend untouched, must stay green (295/295).
 3. Manual smoke: trigger `Deploy notify` workflow via `workflow_dispatch` after merge to confirm webhook URL + payload format work end-to-end. (Cannot run on PR branch since `SLACK_DEPLOY_WEBHOOK_URL` is a repository secret not exposed to PRs from forks; this is also the safer default.)
 
+## Task 44 — FilterPanel scalability + `loadingType` surface (ADR 0021)
+
+### Why now
+
+Phase 4 README scope #7 ("Multi-select FilterPanel filters") 는 Task 38b 가 이미 brand/category multi-select 를 처리했기 때문에 stale 상태였다. grill 결과 Task 44 의 진짜 작업 범위는 다음 세 가지 성숙도 갭으로 재정의됨:
+
+1. **Scalability** — brand 가 50+ 까지 늘어났을 때 슬라이드다운 패널의 `flex-wrap` chip 펼침이 세로 무한 증식하여 지도 절반을 가린다. 탐색 도구 (검색창) 를 둘 공간도 없다.
+2. **`loadingType` surface** — `SearchFilters.loadingType` (`'pin' | 'plate'`) 슬롯이 idle. 백엔드 (`GymSearchRequest.loadingType`) + jOOQ enum (`LoadingType`) + 프론트 service (`gym-search.ts:36`) 까지 plumbing 완료 상태로 UI 진입점만 부재.
+3. **활성 필터 가시성 + reset** — `FilterButton` 단일 카운트 뱃지만으로는 무엇이 켜져있는지 알 수 없음. `useFilters.setAll(INITIAL_FILTERS)` 는 코드상 존재하지만 UI 진입점 부재.
+
+타이밍: Tier 1 (README 의 "Immediate value, no dependencies") 위치 그대로. App Store 게이팅이나 외부 의존성 없는 순수 frontend Task. Task 45 (gym_machine report target) 보다 먼저 처리하는 이유 = Task 45 는 backend + admin UI 두 영역에 걸친 modest scope 이고 Task 44 는 사용자 가시 가치가 즉시 들어옴.
+
+### Grilled decisions (locked before code entry)
+
+1. **Scope = ADR 0020 의 슬라이드다운 패널 supersession.** brand/category multi-select 자체는 Task 38b 에서 완료. Task 44 의 작업 범위는 (a) BottomSheetModal 패턴으로 UI 컨테이너 교체, (b) `loadingType` UI 노출, (c) 활성 필터 strip + 전체 해제 footer 등 성숙도 갭. ADR 0020 의 "bottom sheet 중첩 제스처 충돌 회피" 결정은 `useBottomSheetMode` 훅 (Task 38b 도입) 으로 해결 가능하므로 ADR 0021 로 supersession.
+2. **Snap points = `['65%', '90%']` 듀얼 + pan-down-to-close.** 65% 는 시트 + 지도 부분 가시성 유지 → 결과 미리보기. 90% 는 긴 brand 리스트 스캔 편리. 단일 snap (`['90%']`) 대비 사용자 의도에 따라 자유 조절 가능. `@gorhom/bottom-sheet` 1차 시민 기능.
+3. **SegmentedControl 위치 = 시트 내부.** floating (FilterButton 옆 항상 노출) 은 한 번의 탭을 절약하지만 필터 UI 의 single-source-of-truth 가 깨진다. 사용자 mental model 일관성을 위해 시트 내부.
+4. **검색 임계치 = ≥ 8 (prop 으로 override).** 항상 노출은 2-3 항목 섹션에서 시각 노이즈. 임계치 기반 + `searchThreshold` prop 으로 섹션별 명시 override 가능. brand 는 50+ 예상 → searchable, category 는 15-25 예상 → 8 이하면 미노출 / 이상이면 노출.
+5. **Draft/Applied 분리 안 함.** 일반적으로 더 솔리드한 패턴이지만 지도 필터에서는 live-preview 가 즉각 피드백을 제공하는 UX 가치가 더 큼. "전체 해제" 가 over-filter escape hatch 역할.
+6. **brand/category 정렬 = 데이터 계층에서 `localeCompare('ko')`.** 컴포넌트에서 정렬하지 않음. `useBrands` / `useCategories` 의 `select` 옵션에서 처리 → 모든 consumer (FilterSheet, NL Search interpretation chip, AdminPhotoScreen 등) 가 동일 순서 보장.
+7. **View-model 분리.** `toActiveFilters(filters, brands, categories): ActiveFilter[]` 순수 함수로 활성 필터 strip 의 view-model 을 분리. `ActiveFilterStrip` 은 view-model 만 받음 → brand/category 모델에 결합하지 않음. FF coupling 감소.
+
+### Approach
+
+**브랜치**: `task/44-filter-sheet` (이미 main 에서 fork 됨, no rebase coordination).
+
+새 컴포넌트 + 기존 패널 교체:
+
+1. `src/shared/components/SegmentedControl.tsx` — 재사용 가능 segmented control primitive (3+ 세그먼트, single-select, reanimated 슬라이딩 하이라이트, `accessibilityRole="tablist"`, reduced-motion 즉시 점프).
+2. `src/features/map/lib/active-filters.ts` — `toActiveFilters` 순수 함수 + `ActiveFilter` type.
+3. `src/features/map/components/ActiveFilterStrip.tsx` — view-model 입력으로 가로 스크롤 가능 칩 strip, 각 칩 우측 × 으로 제거.
+4. `src/features/map/components/FilterSheetSection.tsx` — 헤더 + 옵션 검색 input (`searchThreshold` 기준) + chip wrap.
+5. `src/features/map/components/FilterSheet.tsx` — `BottomSheetModal` 메인 시트, snap `['65%', '90%']`, footer (전체 해제 + 확인).
+6. `src/features/map/hooks/useFilters.ts` — `setLoadingType: (loadingType: LoadingType | null) => void` 추가.
+7. `src/features/map/hooks/useBrands.ts` / `useCategories.ts` — `select` 옵션에 `localeCompare('ko')` 정렬.
+8. `src/features/map/components/MapScreen.tsx` — `FilterPanel` 사용처를 `FilterSheet` ref-based 호출로 교체, `GymBottomSheet` 와 좌표화.
+9. 삭제: `src/features/map/components/FilterPanel.tsx` + `__tests__/FilterPanel.test.tsx`.
+
+### Slice breakdown
+
+review-gated subagent-driven development 패턴. 7 슬라이스 + 옵션 chore. 단일 PR (~600 LOC across ~18 files, Task 36 PR #76 동급).
+
+| Slice   | 커밋 메시지                                                            | 내용                                                                                                                    |
+| ------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 44a     | `docs(phase-4): 44a — Task 44 entry + ADR 0021 + 0020 superseded`      | 이 entry, ADR 0021 신규, ADR 0020 status, PROGRESS.md, README scope #7 정정                                             |
+| 44b     | `feat(phase-4): 44b — SegmentedControl shared primitive`               | `SegmentedControl.tsx` + tests. Reanimated 슬라이딩 하이라이트, reduced-motion fallback, `accessibilityRole="tablist"`. |
+| 44c     | `feat(phase-4): 44c — useFilters setLoadingType + alphabetical sort`   | `useFilters.setLoadingType` 추가, `useBrands` / `useCategories` `select` 정렬, tests.                                   |
+| 44d     | `feat(phase-4): 44d — toActiveFilters view-model + ActiveFilterStrip`  | view-model 순수 함수 + 컴포넌트 + tests.                                                                                |
+| 44e     | `feat(phase-4): 44e — FilterSheetSection (searchable, threshold)`      | 헤더 + 옵션 검색 + chip wrap + tests.                                                                                   |
+| 44f     | `feat(phase-4): 44f — FilterSheet shell (BottomSheetModal, dual-snap)` | 메인 시트 조립, footer with safe-area, tests.                                                                           |
+| 44g     | `feat(phase-4): 44g — wire FilterSheet, remove FilterPanel`            | MapScreen 통합, `GymBottomSheet` 좌표화, `FilterPanel` 삭제, Maestro flow 추가.                                         |
+| (chore) | `chore(phase-4): 44 — coverage exclusions cleanup`                     | jest.config.js coverage exclusions 정리 (필요 시만).                                                                    |
+
+### Token / cost spend for Task 44
+
+- Vision API: 0.
+- Groq: 0.
+- 신규 runtime 비용: 없음 (RPC payload 동일, `loadingType` 컬럼은 이미 인덱스됨).
+
+### Verification
+
+1. `pnpm lint && pnpm exec tsc --noEmit && pnpm jest` — 484/484 + 신규 테스트 (예상 +25 ~ +35).
+2. `/verify` 슬래시 커맨드 (FF review 4개 reviewer 포함) — Task 가 `src/` + `app/` 다수 변경하므로 필수.
+3. `pnpm e2e:flow .maestro/flows/filter-sheet-flow` — 신규 E2E flow 1회 수동 실행.
+4. 시뮬레이터 수동 스모크: 필터 버튼 탭 → 시트 65% snap → drag-up 90% → 로딩 방식 segmented control 토글 → 활성 strip 갱신 → 브랜드 검색 input 동작 → 칩 다중 선택 → 활성 strip × 으로 제거 → 전체 해제 → pan-down 닫힘.
+5. 백엔드 무변경 → `./gradlew test` 실행 불필요.
+
 ## Future Tasks (planned order, locked via Task 42 grill follow-up)
 
 The remainder of Phase 4 has a recommended order derived from dependency + cost analysis (not the README ordering, which is unsorted scope). Each Task still gets its own `grill-me` + plan entry before implementation; this list is the queue not the design.
 
 ### Tier 1 — Immediate value, no dependencies
 
-- **Task 44**: Multi-select FilterPanel UI (ADR 0020) — completes Task 38a backend debt. Backend already accepts array `brandIds`/`categoryIds`; UI is single-select. Small frontend Task, user-visible value.
+- **Task 44**: FilterPanel scalability + `loadingType` surface (ADR 0021) — see full section below. brand/category multi-select 는 Task 38b 에서 이미 완료. 본 Task 는 (a) brand/category 가 50+ 까지 늘어났을 때의 overflow 대응 + (b) `loadingType` UI 노출 + (c) 활성 필터 가시성/리셋 부재 등 Phase 1 패널의 성숙도 갭을 닫는다.
 - **Task 45**: gym_machine report target — extend the report system from photo-only to also cover wrong-machine-mapping. Enables crowd-correcting `gym_machines` rows. Modest backend + admin UI extension. Feeds Tier 2 (owner workflow input) and Tier 4 (reporter trust scoring input) with more data shapes.
 
 ### Tier 2 — Substantive moderation + launch gating

@@ -16,7 +16,7 @@ Tracked but not designed yet. Order is rough priority, not commitment.
 4. **`gym_machine` target_type for reports** — Phase 3 reports target photos only. Letting users report wrong-machine-mapping enables crowd-correcting `gym_machines` rows.
 5. **Standalone admin web UI (Next.js)** — Phase 3 admin UI lives in the mobile app (`app/admin/`). A web console scales better for the moderation backlog and works on a laptop.
 6. **NL query caching** — LLM bypass for repeat queries. Currently every `/api/search/natural` call burns ~2.5K Groq tokens; cache hot queries by normalised text.
-7. **Multi-select FilterPanel filters** — ADR 0020 deferred from Phase 3. Backend already accepts array brand/category filters (Task 38a); just the UI is single-select.
+7. **FilterPanel scalability + `loadingType` surface** (ADR 0021 supersedes 0020) — brand/category multi-select 자체는 Task 38b 에서 완료. 본 항목은 (a) brand 가 50+ 까지 늘어났을 때의 슬라이드다운 패널 overflow 대응 (BottomSheetModal 전환 + 검색창 + 활성 필터 strip), (b) `loadingType` UI 노출 (segmented control), (c) 전체 해제 footer 제공.
 8. **Push notifications** — admin dispositions and ban events. Needs `expo-server-sdk-java` integration with Spring scheduler.
 9. **Dark mode** — design tokens already abstracted; needs a theme switch + per-token dark variant.
 10. **Analytics (PostHog)** — funnel + retention. Held to post-launch since Phase 3 already has Sentry for error/performance.
