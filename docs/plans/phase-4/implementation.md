@@ -117,13 +117,66 @@ Extend the existing `OcrService.analyzeImage` Vision API call with a third featu
 2. `./gradlew test` — backend 282 (Phase 3) + 13 new = 295 tests. EvalSuiteTest still skipped (no `EVAL_RUN`).
 3. PR auto-trigger: `llm-eval.yml` does NOT fire (Task 42 diff doesn't match path filter — only touches `photo/`, `dto/`, tests, docs, maestro).
 
+## Task 43 — Slack 라우팅 (Sentry → #ironspot-errors, Render → #ironspot-deploy)
+
+### Why now
+
+Operator monitoring currently relies on Sentry email + a single `#ironspot-moderation` Slack channel that mixes admin moderation events with no error/deploy signal. Email is high-latency and asynchronous; the operator wants Sentry 5xx and Render deploy outcomes to land in Slack alongside the existing moderation events, on separate channels so audiences don't blur. Task 42 PII just shipped to prod, and Render Hobby has no deploy notification surface — these reinforce the need now but neither blocks future work.
+
+### Grilled decisions (locked before code entry)
+
+1. **Scope = operator visibility, not "every log line".** Three signal categories:
+   - 5xx exceptions (already in Sentry) → route to Slack instead of email.
+   - Render deploy events → separate Slack channel.
+   - "Confirmation unnecessary" 4xx (PII rejection, validation failures, quota) → explicitly **excluded** from alerts (current `GlobalExceptionHandler` policy already enforces this by capturing only 5xx).
+     Option (a) Logback Slack appender and option (b) "everything via Sentry" were rejected because (a) drowns the channel in Spring/Hibernate WARNs and (b) Sentry's 4xx exclusion is structural, not configurable.
+2. **Channel layout = 3 separated channels.** `#ironspot-moderation` (existing, admin events), `#ironspot-errors` (new, Sentry 5xx), `#ironspot-deploy` (new, deploy notify). Two channels (merging errors + deploy) was rejected because deploy notifications and Sentry errors have different cadences and different action expectations.
+3. **Sentry alert rule = `environment=production` + new issue OR regression.** Both axes required:
+   - "Every 5xx event" floods on persistent bugs.
+   - "High frequency only" hides single-event regressions.
+     Filtering by `production` blocks dev/local noise (also unlikely because dev DSN is empty per `SentryConfig` fail-open path, but defence-in-depth).
+4. **Render notification = GitHub Actions push-notify workflow.** Render Hobby plan does not expose Slack notifications. Three options grilled:
+   - Push-notify only (chosen): `on: push: branches: [main]` → Slack post on commit. ~30 LOC. Render dashboard handles success/failure confirmation.
+   - Push-notify + post-deploy `/actuator/health` probe (rejected): race condition on cold-start cycles can falsely report success while old container still 200s during build.
+   - Render Deploy Hook + REST API polling (rejected): requires structural change (disable Render auto-deploy) for a marginal accuracy gain.
+5. **Slack webhook self-failure → no Sentry escalation** for now. Existing `AdminNotificationService.post` logs `log.warn` on Slack delivery failure; option to escalate to `Sentry.captureMessage` was deferred to keep this Task config-only (no Java diff).
+
+### Approach
+
+**No backend code change.** Three out-of-repo configuration steps plus one workflow file:
+
+1. **Slack workspace** — create `#ironspot-errors` + `#ironspot-deploy` channels. Install Incoming Webhook app on `#ironspot-deploy`; capture URL.
+2. **GitHub Actions secret** — `SLACK_DEPLOY_WEBHOOK_URL` set to the captured URL.
+3. **Sentry integration** — install Sentry's native Slack OAuth integration on the iron-spot workspace; create alert rule per decision #3 above, targeting `#ironspot-errors`. Same rule duplicated for `ironspot-app` project (RN crashes) and `ironspot-api` project (backend 5xx).
+4. **`.github/workflows/deploy-notify.yml`** — push-trigger workflow posting deploy-triggered message to `#ironspot-deploy`. Uses `jq` for payload JSON-escape so commit messages with quotes/backslashes/newlines don't corrupt the webhook body. `curl --fail-with-body` so action surfaces real Slack errors.
+
+### Slice breakdown
+
+Single PR, single feature commit + docs commit (Task is below 200 LOC across <10 files threshold for slice splitting).
+
+| Slice | Files                                                                                                  | Content                                                                                                                                                                                                                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 43a   | `.github/workflows/deploy-notify.yml`                                                                  | Push-notify workflow. `on: push: branches: [main]` + `workflow_dispatch`. Single job, single step running jq + curl against `SLACK_DEPLOY_WEBHOOK_URL`. `concurrency: deploy-notify-${{ github.ref }}` with `cancel-in-progress: false` so rapid pushes don't drop notifications.            |
+| 43b   | `docs/harness/operations.md`, `docs/plans/phase-4/implementation.md`, `docs/plans/phase-4/PROGRESS.md` | operations.md "Slack channels" section rewritten from single-channel into 3-channel table with per-channel setup instructions (Slack workspace + Sentry OAuth + Render-free workaround explanation). implementation.md Task 43 entry (this section). PROGRESS.md Task 43 checkbox + log row. |
+
+### Token / cost spend for Task 43
+
+- Vision API: 0.
+- Groq: 0.
+- New runtime cost: GitHub Actions runner ~30s per push to `main` (well within free-tier budget).
+
+### Verification
+
+1. `pnpm lint && pnpm exec tsc --noEmit && pnpm jest` — frontend untouched, must stay green (484/484).
+2. `./gradlew test` — backend untouched, must stay green (295/295).
+3. Manual smoke: trigger `Deploy notify` workflow via `workflow_dispatch` after merge to confirm webhook URL + payload format work end-to-end. (Cannot run on PR branch since `SLACK_DEPLOY_WEBHOOK_URL` is a repository secret not exposed to PRs from forks; this is also the safer default.)
+
 ## Future Tasks (planned order, locked via Task 42 grill follow-up)
 
 The remainder of Phase 4 has a recommended order derived from dependency + cost analysis (not the README ordering, which is unsorted scope). Each Task still gets its own `grill-me` + plan entry before implementation; this list is the queue not the design.
 
 ### Tier 1 — Immediate value, no dependencies
 
-- **Task 43**: Slack 전체 로그 연동 — operator visibility, builds on Phase 2 `AdminNotificationService`. Task 42 PII just shipped to prod; if rejection rate spikes, we need to see immediately without checking Sentry/Render dashboards. User-added candidate during Task 42 grill.
 - **Task 44**: Multi-select FilterPanel UI (ADR 0020) — completes Task 38a backend debt. Backend already accepts array `brandIds`/`categoryIds`; UI is single-select. Small frontend Task, user-visible value.
 - **Task 45**: gym_machine report target — extend the report system from photo-only to also cover wrong-machine-mapping. Enables crowd-correcting `gym_machines` rows. Modest backend + admin UI extension. Feeds Tier 2 (owner workflow input) and Tier 4 (reporter trust scoring input) with more data shapes.
 
