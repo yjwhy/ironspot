@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Pressable } from 'react-native';
+import { useEffect } from 'react';
+import { Pressable } from 'react-native';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 
@@ -95,20 +96,4 @@ export function MicButton({ onTranscript, onEnd }: MicButtonProps) {
       </Animated.View>
     </Pressable>
   );
-}
-
-function useReduceMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(function subscribeReduceMotion() {
-    let mounted = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      if (mounted) setReduced(enabled);
-    });
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
-    return () => {
-      mounted = false;
-      sub.remove();
-    };
-  }, []);
-  return reduced;
 }
