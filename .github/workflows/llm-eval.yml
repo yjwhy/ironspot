@@ -28,7 +28,11 @@ permissions:
 jobs:
   eval:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Local M-series wallclock is ~3m 30s; ubuntu-latest is ~2.5x slower for the same
+    # work (cold daemon, shared-tenant CPU, runner-to-Groq RTT). First PR run hit
+    # exactly 10m and was killed mid-suite. 20m gives comfortable headroom while
+    # still capping a runaway (e.g., Groq RATE_LIMIT cascading 60s back-offs).
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
 
