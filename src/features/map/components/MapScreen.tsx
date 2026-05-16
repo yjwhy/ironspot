@@ -2,7 +2,7 @@ import { NaverMapView } from '@mj-studio/react-native-naver-map';
 import type { NaverMapViewRef, Region } from '@mj-studio/react-native-naver-map';
 import * as burnt from 'burnt';
 import { useRouter } from 'expo-router';
-import { useReducer, useRef, useState } from 'react';
+import { useReducer, useRef } from 'react';
 import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
@@ -15,7 +15,7 @@ import { GANGNAM_STATION, useCurrentLocation } from '@/shared/hooks/useCurrentLo
 import type { GymWithMachineCount } from '@/shared/types/database';
 
 import { FilterButton } from './FilterButton';
-import { FilterPanel } from './FilterPanel';
+import { FilterSheet, type FilterSheetRef } from './FilterSheet';
 import { GymMarker } from './GymMarker';
 import { SearchAreaButton } from './SearchAreaButton';
 import { useBottomSheetMode } from '../hooks/useBottomSheetMode';
@@ -72,12 +72,13 @@ export function MapScreen() {
     filters,
     toggleBrand,
     toggleCategory,
+    setLoadingType,
     setAll: setAllFilters,
     clear: clearFilters,
   } = useFilters();
   const { data: brands = [], isError: brandsError } = useBrands();
   const { data: categories = [], isError: categoriesError } = useCategories();
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const filterSheetRef = useRef<FilterSheetRef>(null);
   const [source, dispatch] = useReducer(gymsSourceReducer, INITIAL_SOURCE);
   const mapRef = useRef<NaverMapViewRef>(null);
 
@@ -119,10 +120,10 @@ export function MapScreen() {
         : undefined,
   });
 
-  const activeFilterCount = filters.brandIds.length + filters.categoryIds.length;
+  const activeFilterCount =
+    filters.brandIds.length + filters.categoryIds.length + (filters.loadingType !== null ? 1 : 0);
 
   function handleCameraIdleWithPanelClose({ region }: { region: Region }) {
-    setFilterPanelOpen(false);
     filterSearch.handleCameraIdle({ region });
   }
 
@@ -130,7 +131,7 @@ export function MapScreen() {
     nlSearch.mutate(query, {
       onSuccess: (response) => {
         dispatch({ type: 'nl_result', query, response });
-        setFilterPanelOpen(false);
+        filterSheetRef.current?.dismiss();
         const { coordinates } = response.resolvedLocation;
         const lat = coordinates?.lat;
         const lng = coordinates?.lng;
@@ -171,7 +172,7 @@ export function MapScreen() {
       loadingType: null,
     });
     dispatch({ type: 'enter_filter_mode' });
-    setFilterPanelOpen(true);
+    filterSheetRef.current?.present();
     surfaceDroppedConditions(parsed);
   }
 
@@ -219,7 +220,7 @@ export function MapScreen() {
           <FilterButton
             activeCount={activeFilterCount}
             onPress={() => {
-              setFilterPanelOpen((prev) => !prev);
+              filterSheetRef.current?.present();
             }}
           />
         </View>
@@ -243,22 +244,18 @@ export function MapScreen() {
         ) : null}
       </View>
 
-      <View className="absolute top-safe-or-32 left-0 right-0 z-40">
-        <FilterPanel
-          visible={filterPanelOpen}
-          brands={brands}
-          categories={categories}
-          brandsError={brandsError}
-          categoriesError={categoriesError}
-          selectedBrandIds={filters.brandIds}
-          selectedCategoryIds={filters.categoryIds}
-          onBrandToggle={toggleBrand}
-          onCategoryToggle={toggleCategory}
-          onClose={() => {
-            setFilterPanelOpen(false);
-          }}
-        />
-      </View>
+      <FilterSheet
+        ref={filterSheetRef}
+        brands={brands}
+        categories={categories}
+        brandsError={brandsError}
+        categoriesError={categoriesError}
+        filters={filters}
+        onToggleBrand={toggleBrand}
+        onToggleCategory={toggleCategory}
+        onSetLoadingType={setLoadingType}
+        onResetAll={clearFilters}
+      />
 
       <View
         className="absolute left-0 right-0 z-10 items-center"
