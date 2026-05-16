@@ -16,12 +16,37 @@ Per Task 31 decision #5 app and API are tracked separately so dashboards stay re
 
 DSN-empty contract: both `src/shared/lib/sentry.ts` (`initSentry`) and `iron-spot-api/src/main/java/com/ironspot/common/monitoring/SentryConfig.java` skip init entirely when DSN is blank, so unset values fail open (no traffic) rather than crashing.
 
-### Slack admin moderation channel
+### Slack channels (3 routes, separate audiences)
 
-1. Slack workspace → create or reuse `#ironspot-moderation` channel.
-2. Apps → search "Incoming Webhooks" → Add to Slack → choose `#ironspot-moderation` → copy webhook URL.
-3. Set `SLACK_ADMIN_WEBHOOK_URL` on the Render service environment. Empty value = `AdminNotificationService` log-only no-op (intentional fail-open).
-4. Owner: assign one engineer + a backup as listed below under "Rotation".
+Slack acts as the operator's inbox for three different signal types. Each channel has a distinct trigger surface so noise stays separated.
+
+| Channel                | Source                                                | What lands here                                                                            |
+| ---------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `#ironspot-moderation` | Backend (`AdminNotificationService`) Incoming Webhook | Urgent reports, auto-blind, SafeSearch queue, auto-ban uploader/reporter (Phase 2 wiring). |
+| `#ironspot-errors`     | Sentry Slack integration (OAuth, alert rule)          | Sentry 5xx new issue + regression, `environment=production` only (Task 43 decision).       |
+| `#ironspot-deploy`     | GitHub Actions `deploy-notify.yml` Incoming Webhook   | "Deploy triggered" event on push to `main`. Render Hobby has no Slack notify support.      |
+
+#### One-time setup
+
+1. **`#ironspot-moderation`** (Phase 2 — already wired)
+   1. Channel exists in `iron-spot` workspace.
+   2. Incoming Webhook installed; URL set as `SLACK_ADMIN_WEBHOOK_URL` on Render. Empty value = `AdminNotificationService` log-only no-op (fail-open).
+2. **`#ironspot-errors`** (Task 43)
+   1. Create channel in `iron-spot` workspace.
+   2. Sentry → Settings → Integrations → Slack → Add Workspace → Authorize (workspace = `iron-spot`) → Allow.
+   3. Sentry → project `ironspot-api` → Alerts → Create Alert Rule → "Issue Alert".
+      - When: `A new issue is created` OR `An issue changes state from resolved to unresolved`.
+      - If: `event.environment` `equals` `production`.
+      - Then: Send a notification to Slack workspace `iron-spot`, channel `#ironspot-errors`.
+   4. Repeat for project `ironspot-app` with the same channel target.
+3. **`#ironspot-deploy`** (Task 43)
+   1. Create channel in `iron-spot` workspace.
+   2. Install Incoming Webhooks app (`https://iron-spot.slack.com/services/new/incoming-webhook`) → pick channel → copy URL.
+   3. GitHub → repo Settings → Secrets and variables → Actions → New secret `SLACK_DEPLOY_WEBHOOK_URL` with the URL above. `.github/workflows/deploy-notify.yml` reads this on every push to `main` and posts `Deploy triggered — <repo> <sha> by <actor>` plus the commit message + link.
+
+#### Why no success/failure confirmation
+
+Render Hobby auto-deploys on push but doesn't surface deploy outcome events to GitHub or any external hook. A health probe after the push would race with cold-start cycles (old container still 200s while new container builds). Operators confirm success on the Render dashboard. If you later upgrade to a paid Render plan, the dashboard notification setting forwards `deploy started / succeeded / failed` natively — drop `deploy-notify.yml` at that point.
 
 ## Render service configuration (Spring Boot)
 

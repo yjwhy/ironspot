@@ -1,0 +1,43 @@
+name: Deploy notify
+
+# Render Hobby auto-deploys on every push to main but doesn't surface deploy
+# events to Slack on its plan. This workflow announces "deploy triggered" to
+# #ironspot-deploy so the operator sees production deploys without watching
+# the Render dashboard. Success/failure confirmation stays on Render — health
+# probes would race with cold-start cycles on the free tier.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-notify-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    name: Post deploy-triggered to Slack
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      # jq builds the JSON so commit messages with quotes, backslashes, or
+      # newlines don't break the payload.
+      - name: Post to Slack
+        env:
+          WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
+          COMMIT_MSG: ${{ github.event.head_commit.message || 'Manual dispatch' }}
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          REPO: ${{ github.repository }}
+        run: |
+          payload=$(jq -nc \
+            --arg msg "$COMMIT_MSG" \
+            --arg sha "$COMMIT_SHA" \
+            --arg actor "$ACTOR" \
+            --arg repo "$REPO" \
+            '{text: (":rocket: Deploy triggered — `" + $repo + "` `" + $sha[:7] + "` by `" + $actor + "`\n>" + $msg + "\n<https://github.com/" + $repo + "/commit/" + $sha + "|View commit>")}')
+          curl --fail-with-body -sS -X POST \
+            -H "Content-Type: application/json" \
+            --data "$payload" \
+            "$WEBHOOK_URL"
