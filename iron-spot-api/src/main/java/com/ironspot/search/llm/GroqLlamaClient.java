@@ -38,7 +38,7 @@ public class GroqLlamaClient implements LlmClient {
     }
 
     @PostConstruct
-    void init() throws IOException {
+    public void init() throws IOException {
         this.systemPrompt = promptResource.getContentAsString(StandardCharsets.UTF_8);
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("GROQ_API_KEY not configured — GroqLlamaClient will fail at runtime");
