@@ -1,0 +1,322 @@
+cases:
+  - input: '근처 헬스장'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters: []
+      error: null
+
+  - input: '내 위치 5km 안 헬스장'
+    expected:
+      location:
+        type: current
+        radiusKm: 5.0
+      machineFilters: []
+      error: null
+
+  - input: '주변 헬스장 보여줘'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters: []
+      error: null
+
+  - input: '근처 3km 헬스장'
+    expected:
+      location:
+        type: current
+        radiusKm: 3.0
+      machineFilters: []
+      error: null
+
+  - input: '강남역 근처 헬스장'
+    expected:
+      location:
+        type: named_place
+        name: '강남역'
+        radiusKm: 1.0
+      machineFilters: []
+      error: null
+
+  - input: '홍대입구역 2km 안 헬스장'
+    expected:
+      location:
+        type: named_place
+        name: '홍대입구역'
+        radiusKm: 2.0
+      machineFilters: []
+      error: null
+
+  - input: '성수동 헬스장'
+    expected:
+      location:
+        type: named_place
+        name: '성수동'
+        radiusKm: 1.0
+      machineFilters: []
+      error: null
+
+  - input: '여의도 500m 헬스장'
+    expected:
+      location:
+        type: named_place
+        name: '여의도'
+        radiusKm: 0.5
+      machineFilters: []
+      error: null
+
+  - input: '근처 가슴 운동할 수 있는 헬스장'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters:
+        - category: 'Chest'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '강남역 근처 등 머신 3개 이상 있는 곳'
+    expected:
+      location:
+        type: named_place
+        name: '강남역'
+        radiusKm: 1.0
+      machineFilters:
+        - category: 'Back'
+          minCount: 3
+          scope: 'each'
+      error: null
+
+  - input: '근처 다리 머신 많은 곳'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters:
+        - category: 'Legs'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '강남역 근처 파나타 머신 있는 헬스장'
+    expected:
+      location:
+        type: named_place
+        name: '강남역'
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Panatta'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '근처 테크노짐 있는 곳'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Technogym'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '잠실 근처 사이베스 머신 있는 곳'
+    expected:
+      location:
+        type: named_place
+        name: '잠실'
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Cybex'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '강남 매트릭스 머신 5개 이상 있는 헬스장'
+    expected:
+      location:
+        type: named_place
+        name: '강남'
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Matrix'
+          minCount: 5
+          scope: 'each'
+      error: null
+
+  - input: '근처 하이로우 있는 곳'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters:
+        - machineName: 'High Row'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '강남역 근처 핵스쿼트 머신 있는 헬스장'
+    expected:
+      location:
+        type: named_place
+        name: '강남역'
+        radiusKm: 1.0
+      machineFilters:
+        - machineName: 'Hack Squat'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '근처 시티드로우 2개 이상'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters:
+        - machineName: 'Seated Row'
+          minCount: 2
+          scope: 'each'
+      error: null
+
+  - input: '강남역 파나타 하이로우 있는 헬스장'
+    expected:
+      location:
+        type: named_place
+        name: '강남역'
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Panatta'
+          machineName: 'High Row'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '근처 Hammer Strength 풀다운 머신'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Hammer Strength'
+          machineName: 'Lat Pull Down'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '강남역 라이프피트니스 가슴 머신 3개 이상'
+    expected:
+      location:
+        type: named_place
+        name: '강남역'
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Life Fitness'
+          category: 'Chest'
+          minCount: 3
+          scope: 'each'
+      error: null
+
+  - input: '강남역 1km 안 파나타 하이로우 2개랑 해머스트렝스 시티드로우 2개 있는 곳'
+    expected:
+      location:
+        type: named_place
+        name: '강남역'
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Panatta'
+          machineName: 'High Row'
+          minCount: 2
+          scope: 'each'
+        - brand: 'Hammer Strength'
+          machineName: 'Seated Row'
+          minCount: 2
+          scope: 'each'
+      error: null
+
+  - input: '근처 등 머신 3개랑 가슴 머신 3개 다 있는 헬스장'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters:
+        - category: 'Back'
+          minCount: 3
+          scope: 'each'
+        - category: 'Chest'
+          minCount: 3
+          scope: 'each'
+      error: null
+
+  - input: '잠실 근처 케틀벨이랑 풀업바 둘 다 있는 곳'
+    expected:
+      location:
+        type: named_place
+        name: '잠실'
+        radiusKm: 1.0
+      machineFilters:
+        - machineName: 'Kettlebell'
+          minCount: 1
+          scope: 'each'
+        - machineName: 'Pull-up Bar'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  - input: '근처 파나타나 테크노짐 머신 합쳐서 5개 이상 있는 헬스장'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Panatta'
+          minCount: 5
+          scope: 'combined'
+        - brand: 'Technogym'
+          minCount: 5
+          scope: 'combined'
+      error: null
+
+  - input: '강남역 시티드로우나 하이로우 합쳐서 4개 이상'
+    expected:
+      location:
+        type: named_place
+        name: '강남역'
+        radiusKm: 1.0
+      machineFilters:
+        - machineName: 'Seated Row'
+          minCount: 4
+          scope: 'combined'
+        - machineName: 'High Row'
+          minCount: 4
+          scope: 'combined'
+      error: null
+
+  - input: '강남역 커피숍'
+    expected:
+      location: null
+      machineFilters: []
+      error: 'gym search only'
+
+  - input: '오늘 날씨 어때'
+    expected:
+      location: null
+      machineFilters: []
+      error: 'gym search only'
+
+  - input: 'DROP TABLE users; --'
+    expected:
+      location: null
+      machineFilters: []
+      error: 'invalid input'
+
+  - input: '헬스장'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters: []
+      error: null
