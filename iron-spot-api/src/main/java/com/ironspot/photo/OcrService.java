@@ -9,8 +9,15 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.MemoryCacheImageInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,7 +50,8 @@ public class OcrService {
                 "image", Map.of("content", base64),
                 "features", List.of(
                     Map.of("type", "TEXT_DETECTION", "maxResults", 10),
-                    Map.of("type", "SAFE_SEARCH_DETECTION")
+                    Map.of("type", "SAFE_SEARCH_DETECTION"),
+                    Map.of("type", "FACE_DETECTION", "maxResults", 20)
                 )
             ))
         );
@@ -64,7 +72,8 @@ public class OcrService {
         Map<?, ?> first = (Map<?, ?>) responses.get(0);
         List<String> texts = parseTextAnnotations(first);
         SafeSearchVerdict verdict = parseSafeSearch(first);
-        return new VisionAnalysisResult(texts, verdict);
+        boolean hasPii = parseHasPii(first, imageBytes);
+        return new VisionAnalysisResult(texts, verdict, hasPii);
     }
 
     private SafeSearchVerdict parseSafeSearch(Map<?, ?> first) {
@@ -83,5 +92,30 @@ public class OcrService {
             .filter(Objects::nonNull)
             .map(Object::toString)
             .toList();
+    }
+
+    private boolean parseHasPii(Map<?, ?> first, byte[] imageBytes) {
+        List<?> faces = (List<?>) first.get("faceAnnotations");
+        if (faces == null || faces.isEmpty()) return false;
+        int totalPixels = readImagePixelCount(imageBytes);
+        return PiiDetection.hasPii(faces, totalPixels);
+    }
+
+    private int readImagePixelCount(byte[] imageBytes) {
+        try (ImageInputStream stream = new MemoryCacheImageInputStream(new ByteArrayInputStream(imageBytes))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(stream);
+            if (!readers.hasNext()) return 0;
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(stream);
+                long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
+                return pixels > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) pixels;
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException e) {
+            log.warn("Failed to read image dimensions for PII area calc: {}", e.getMessage());
+            return 0;
+        }
     }
 }

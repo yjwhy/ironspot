@@ -81,11 +81,44 @@ Two-axis change to `iron-spot-api/src/test/resources/eval/queries.yaml`:
 - Verification workflow run (~15K tokens)
 - **Total: ~15K**, vs the 75K that a single "just rerun the original" attempt would have cost without the repair.
 
+## Task 42 — Photo PII detection (face rejection on upload)
+
+### Why now
+
+Task 41 closed the eval workflow gap. Task 42 takes the first App Store + Korean privacy law gating item from the README scope. Implementation cost is small (one Vision API feature added to the existing call, one threshold check in `PhotoService`); the alternative scope items either depend on real user data (reporter trust scoring, push notifications, PostHog) or are polish work (dark mode, multi-select FilterPanel UI).
+
+### Approach
+
+Extend the existing `OcrService.analyzeImage` Vision API call with a third feature (`FACE_DETECTION`) alongside the current `TEXT_DETECTION` + `SAFE_SEARCH_DETECTION`. No new network round-trip; Vision returns all three feature annotations in a single response. `PhotoService.upload` checks the new `VisionAnalysisResult.hasPii` flag and rejects with 400 + Korean error message before storage upload (same short-circuit pattern as the existing SafeSearch REJECT path).
+
+### Grilled decisions (locked before code)
+
+1. **Action policy = Reject** (option B from grill). Auto-mosaic (option A) was the recommended path; user chose "일단" Reject to ship the minimum viable PII compliance first, observe rejection rate in production, then upgrade to auto-mosaic in a follow-up Task if rejection rate is too high. Reject avoids needing a server-side image processing library + WebP-capable mosaic algorithm.
+2. **Threshold = B3** (confidence 0.7 + 1% area). `detectionConfidence >= 0.7` filters Vision's own low-confidence detections; `face area / image area >= 0.01` lets small background figures through. Both axes required — either alone is too loose or too strict. Korean privacy law's "특정 개인을 식별할 수 있는" standard maps cleanly to the 1% area floor; 5px background faces are not identifiable.
+3. **Backfill policy = O4** (delete existing 5 photos before launch). Production has 5 visible photos (`SELECT COUNT(*) FROM machine_photos`), all test data. User will manually delete them before App Store submission. Task 42 ships with no backfill code.
+4. **Slack admin notify = no** (for PII rejection). SafeSearch REJECT also doesn't notify admin (the user is the one being told to retake). PII rejection mirrors that to keep admin signal-to-noise aligned.
+
+### Slices
+
+| Slice | Files                                                                                                                                                                                                                           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 42a   | `iron-spot-api/src/main/java/com/ironspot/photo/PiiDetection.java` (new), `OcrService.java`, `dto/VisionAnalysisResult.java`, `PhotoService.java`, `PiiDetectionTest.java` (new), `OcrServiceTest.java`, `PhotoUploadTest.java` | `PiiDetection.hasPii(faceAnnotations, totalPixels)` pure utility implementing the B3 threshold. `OcrService.analyzeImage` adds `FACE_DETECTION` feature + parses `faceAnnotations` + reads image dimensions via `ImageIO` (header-only, no full decode) + delegates to `PiiDetection.hasPii`. `VisionAnalysisResult` gains a `boolean hasPii` field. `PhotoService.upload` throws `BusinessException(400)` on `hasPii=true` with Korean error message. Tests: PiiDetectionTest +10 (pure unit, threshold + bbox edge cases), OcrServiceTest +2 (no-face response, face + undecodable bytes fail-open), PhotoUploadTest +1 (PII reject integration). |
+| 42b   | `docs/plans/phase-4/implementation.md`, `docs/plans/phase-4/PROGRESS.md`, `docs/plans/phase-4/README.md`, `docs/harness/operations.md`                                                                                          | Task 42 entry (this slice). PROGRESS Task 42 checkbox + log row. README scope list +1 (Slack 전체 로그 연동, user-requested candidate). operations.md: Vision API free-tier note (1000 features/month, 50% increase with FACE_DETECTION still under) + Task 41 follow-up note ("pull_request: paths" filter evaluates against the PR overall diff so every push to an eval-touching PR re-triggers the eval workflow).                                                                                                                                                                                                                              |
+| chore | `.maestro/flows/upload-flow.yaml`                                                                                                                                                                                               | `accessibilityLabel:` selector property → plain-text `tapOn: 'X'` form. Maestro 2.5.1 reports "Unknown Property: accessibilityLabel"; plain text matches accessibility label as fallback (login-flow.yaml convention).                                                                                                                                                                                                                                                                                                                                                                                                                              |
+
+### Token / cost spend for Task 42
+
+- Vision API: 3 features × test uploads. Tests mock `OcrService` so 0 real API calls during verification. Production impact: existing 2 features/photo → 3 features/photo (50% increase), still under Vision free tier 1000/month assuming <333 uploads/month.
+- Groq: 0 (PII is Vision API, no LLM).
+
+### Verification
+
+1. `pnpm lint && pnpm exec tsc --noEmit && pnpm jest` — frontend untouched, must stay green (484/484).
+2. `./gradlew test` — backend 282 (Phase 3) + 13 new = 295 tests. EvalSuiteTest still skipped (no `EVAL_RUN`).
+3. PR auto-trigger: `llm-eval.yml` does NOT fire (Task 42 diff doesn't match path filter — only touches `photo/`, `dto/`, tests, docs, maestro).
+
 ## Future Tasks (placeholders, designed at kickoff)
 
-The remainder of Phase 4 is sketched in `phase-4/README.md` Scope section. Task numbering will be assigned in order of grilling, not in the README ordering. Likely Task 42 candidates after Task 41 lands:
-
-- Photo PII detection (Vision API FACE_DETECTION + mosaic). Heavy Task (4-6 slices). App Store gating per Korean privacy guidelines.
-- Maestro 2.5.1 `accessibilityLabel` regression on `upload-flow.yaml` + `login-flow.yaml` (one-line per flow, candidate for a fix branch instead of a numbered Task).
+The remainder of Phase 4 is sketched in `phase-4/README.md` Scope section. Task numbering will be assigned in order of grilling, not in the README ordering.
 
 Each follow-up Task gets its own `grill-me` + plan entry before implementation.

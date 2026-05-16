@@ -164,12 +164,21 @@ Fill in `TBD` once the team / on-call schedule is decided.
 - **Suite size:** 6 product-value cases (Task 41 trim from 30). Each case ≈ 2.5K tokens, run total ≈ 15K tokens.
 - **Free-tier limits (Llama 3.3 70B):** RPM 30, TPM 12K, RPD 1000, TPD 100K. The 15K/run footprint stays at 15% of daily TPD, allowing up to 6 runs/day before hitting the daily bucket.
 - **Hidden ceiling:** TPD is not exposed in success-response headers (only in 429 bodies). Inspect with one trivial completion + `grep x-ratelimit /tmp/headers.txt` — `remaining-requests` and `remaining-tokens` (TPM) are visible; daily token bucket is implicit.
+- **Per-push trigger gotcha:** GitHub Actions' `pull_request: paths` filter evaluates against the PR's overall diff vs base, not just the latest push. So every push to a PR that already touches eval paths re-fires the workflow, including docs-only follow-up commits. To save tokens on a docs-only push, `gh run cancel <run-id>` within the first ~75 seconds (before the Gradle daemon hits the LLM calls) saves the run cost.
 
 To restore the original 30-case suite for a one-time deep audit:
 
 1. `git show 8fb57cc:iron-spot-api/src/test/resources/eval/queries.yaml > iron-spot-api/src/test/resources/eval/queries.yaml` on a throwaway branch.
 2. Trigger before any other Groq activity that day (snapshot recording, parallel PRs). A full run consumes 75% of daily TPD.
 3. Discard the branch after the audit; do not merge.
+
+## Google Cloud Vision API budgeting (after Task 42)
+
+`OcrService.analyzeImage` calls the Vision API with 3 features per request: `TEXT_DETECTION` (OCR), `SAFE_SEARCH_DETECTION`, and `FACE_DETECTION` (Task 42 PII gate). Each feature counts as one billable unit.
+
+- **Free tier:** 1000 feature requests/month. 3 features/photo means ~333 uploads/month free.
+- **Beyond free tier:** Vision pricing $1.50 per 1000 features. 1000 uploads/month = 3000 features = $3/month.
+- **No billing configured:** if free tier exhausts and billing is not set up, Vision API returns errors; `OcrService` already fails open (returns `VisionAnalysisResult.EMPTY` with `verdict=ALLOW`, `hasPii=false`) so uploads continue without PII / OCR / SafeSearch coverage. The fail-open is intentional — better to ship a possibly-uncovered upload than to block all uploads on API quota.
 
 ## Known caveats
 

@@ -67,6 +67,12 @@ public class PhotoService {
             throw new BusinessException("부적절한 콘텐츠로 감지되었습니다", HttpStatus.BAD_REQUEST);
         }
 
+        if (vision.hasPii()) {
+            throw new BusinessException(
+                "얼굴이 인식된 사진은 업로드할 수 없습니다. 얼굴이 가려지도록 다시 촬영해주세요.",
+                HttpStatus.BAD_REQUEST);
+        }
+
         String photoUrl;
         try {
             photoUrl = storageService.upload(imageBytes, gymMachineId, filename);

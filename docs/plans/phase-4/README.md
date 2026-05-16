@@ -20,6 +20,7 @@ Tracked but not designed yet. Order is rough priority, not commitment.
 8. **Push notifications** — admin dispositions and ban events. Needs `expo-server-sdk-java` integration with Spring scheduler.
 9. **Dark mode** — design tokens already abstracted; needs a theme switch + per-token dark variant.
 10. **Analytics (PostHog)** — funnel + retention. Held to post-launch since Phase 3 already has Sentry for error/performance.
+11. **Slack 전체 로그 연동** — forward all important application logs/events to a single Slack channel for centralised monitoring. Builds on existing `AdminNotificationService` (Phase 2) which already routes auto-blind, urgent reports, and SafeSearch-suspect events. Open design questions: which log level (ERROR-only vs WARN+ vs structured business events), which transport (Logback Slack appender vs Sentry Slack integration vs custom), and whether to gate by namespace.
 
 ## Carry-over from Phase 3 verification (Task 40 deferred)
 
