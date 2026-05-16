@@ -32,7 +32,7 @@ Per Task 32 decision #7, Spring Boot runs on Render's free Web Service tier. One
 1. https://render.com → sign in (GitHub SSO recommended for repo wiring).
 2. **New + → Web Service** → select the `ironspot` GitHub repo. Approve Render's GitHub App access if prompted.
 3. Service settings:
-   - **Name**: `ironspot-api` (becomes the URL host: `https://ironspot-api.onrender.com`).
+   - **Name**: `ironspot` (becomes the URL host: `https://ironspot.onrender.com`).
    - **Region**: Singapore for the closest Asia presence (Korea has no Render region).
    - **Branch**: `main` after PR merge; `task/32b-live-verify` during verify.
    - **Root Directory**: `iron-spot-api`.
@@ -50,12 +50,14 @@ Set in the Render dashboard, **Environment** tab. Missing required values fail s
 | `DATABASE_URL`                  | Yes       | Supabase Postgres (pooler URL, e.g. `jdbc:postgresql://aws-<N>-<region>.pooler.supabase.com:6543/postgres?prepareThreshold=0&sslmode=require`). The cluster prefix `<N>` (0, 1, ...) is project-specific — copy the exact hostname from Supabase Dashboard → Connect → Direct → Transaction pooler. `sslmode=require` is mandatory (pgbouncer rejects plaintext with a misleading "ENOTFOUND tenant/user" error). |
 | `DATABASE_USERNAME`             | Yes       | Supabase project Postgres credentials (`postgres.<ref>`)                                                                                                                                                                                                                                                                                                                                                          |
 | `DATABASE_PASSWORD`             | Yes       | Supabase project Postgres credentials                                                                                                                                                                                                                                                                                                                                                                             |
-| `SUPABASE_JWT_SECRET`           | Yes       | Supabase dashboard, Auth, JWT Settings                                                                                                                                                                                                                                                                                                                                                                            |
+| `SUPABASE_JWKS_URL`             | Yes       | `https://<project>.supabase.co/auth/v1/.well-known/jwks.json` — Supabase migrated from HS256 shared secret to ECC P-256 (ES256) signed by per-project keys. `NimbusJwtDecoder` fetches and caches the JWKS in-process.                                                                                                                                                                                            |
 | `SUPABASE_URL`                  | Yes       | Supabase project URL                                                                                                                                                                                                                                                                                                                                                                                              |
 | `SUPABASE_SERVICE_ROLE_KEY`     | Yes       | Supabase service role (keep server-only)                                                                                                                                                                                                                                                                                                                                                                          |
 | `GOOGLE_VISION_API_KEY`         | Yes       | GCP project, Vision API key                                                                                                                                                                                                                                                                                                                                                                                       |
 | `NAVER_SEARCH_CLIENT_ID`        | Yes       | developers.naver.com 지역검색 앱                                                                                                                                                                                                                                                                                                                                                                                  |
 | `NAVER_SEARCH_CLIENT_SECRET`    | Yes       | developers.naver.com 지역검색 앱                                                                                                                                                                                                                                                                                                                                                                                  |
+| `GROQ_API_KEY`                  | Yes       | console.groq.com API key (`gsk_...`). Phase 3 NL Search primary LLM. Empty value short-circuits `GroqLlamaClient` to `LlmException(TRANSPORT)` so `FallbackLlmClient` can hand off to Gemini.                                                                                                                                                                                                                     |
+| `GEMINI_API_KEY`                | Yes       | aistudio.google.com API key (`AIza...`). Phase 3 NL Search fallback LLM via `gemini-flash-lite-latest`.                                                                                                                                                                                                                                                                                                           |
 | `SENTRY_DSN`                    | No        | Sentry, ironspot-api project, Client Keys                                                                                                                                                                                                                                                                                                                                                                         |
 | `SLACK_ADMIN_WEBHOOK_URL`       | No        | Slack incoming webhook for #ironspot-moderation                                                                                                                                                                                                                                                                                                                                                                   |
 | `IRONSPOT_SLACK_SMOKE_ENABLED`  | No        | `false` permanently. Toggle to `true` only during smoke.                                                                                                                                                                                                                                                                                                                                                          |
@@ -71,7 +73,7 @@ Render free Web Service spins down after 15 minutes of inactivity. Cold start fo
 Recommended: **UptimeRobot free monitor** (no card, no time limit).
 
 1. https://uptimerobot.com sign up (email only).
-2. Add New Monitor → **Monitor Type: HTTP(S)** → URL: `https://ironspot-api.onrender.com/actuator/health` → Interval: **5 minutes** → Save.
+2. Add New Monitor → **Monitor Type: HTTP(S)** → URL: `https://ironspot.onrender.com/actuator/health` → Interval: **5 minutes** → Save.
 3. Bonus: configure email alerts on the monitor for downtime visibility.
 
 Fallback if UptimeRobot ever degrades: a GitHub Actions cron workflow runs `curl --max-time 30 <render-url>/actuator/health` every 10 minutes. GitHub Actions cron can be skipped under high platform load, so it's a backup rather than the primary mechanism.
@@ -85,7 +87,7 @@ Set on the EAS project via `pnpm dlx eas-cli secret:create --scope project --nam
 | `EXPO_PUBLIC_SUPABASE_URL`        | Yes       | Supabase project URL                                                           |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY`   | Yes       | Supabase anon key (publishable in client bundles)                              |
 | `EXPO_PUBLIC_NAVER_MAP_CLIENT_ID` | Yes       | ncloud Naver Maps client ID (Phase 1 setup)                                    |
-| `EXPO_PUBLIC_API_URL`             | Yes       | Render service URL (e.g. `https://ironspot-api.onrender.com`)                  |
+| `EXPO_PUBLIC_API_URL`             | Yes       | Render service URL (e.g. `https://ironspot.onrender.com`)                      |
 | `EXPO_PUBLIC_SENTRY_DSN`          | No        | Sentry `ironspot-app` project DSN. Empty value skips Sentry init (fail-open).  |
 | `SENTRY_AUTH_TOKEN`               | Yes\*     | Sentry auth token (`project:releases` scope). \*Required for sourcemap upload. |
 
@@ -114,7 +116,7 @@ Per Task 32 decision #3, server-side verification uses a permanent gated smoke e
 3. Run one curl:
 
    ```bash
-   API=https://ironspot-api.onrender.com
+   API=https://ironspot.onrender.com
    AUTH="Authorization: Bearer $JWT"
    curl -X POST -H "$AUTH" "$API/api/_admin/sentry-smoke"
    ```
@@ -131,7 +133,7 @@ If the event does not arrive: check the Render env (`SENTRY_DSN` present), then 
 3. Run three curls:
 
    ```bash
-   API=https://ironspot-api.onrender.com
+   API=https://ironspot.onrender.com
    AUTH="Authorization: Bearer $JWT"
    curl -X POST -H "$AUTH" "$API/api/_admin/slack-smoke/urgent"
    curl -X POST -H "$AUTH" "$API/api/_admin/slack-smoke/autoblind"
