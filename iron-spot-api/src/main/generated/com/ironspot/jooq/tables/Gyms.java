@@ -8,6 +8,8 @@ import com.ironspot.jooq.Indexes;
 import com.ironspot.jooq.Keys;
 import com.ironspot.jooq.Public;
 import com.ironspot.jooq.tables.GymMachines.GymMachinesPath;
+import com.ironspot.jooq.tables.GymOwners.GymOwnersPath;
+import com.ironspot.jooq.tables.Users.UsersPath;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -215,6 +217,27 @@ public class Gyms extends TableImpl<Record> {
             _gymMachines = new GymMachinesPath(this, null, Keys.GYM_MACHINES__GYM_MACHINES_GYM_ID_FKEY.getInverseKey());
 
         return _gymMachines;
+    }
+
+    private transient GymOwnersPath _gymOwners;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.gym_owners</code>
+     * table
+     */
+    public GymOwnersPath gymOwners() {
+        if (_gymOwners == null)
+            _gymOwners = new GymOwnersPath(this, null, Keys.GYM_OWNERS__GYM_OWNERS_GYM_ID_FKEY.getInverseKey());
+
+        return _gymOwners;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the <code>public.users</code>
+     * table
+     */
+    public UsersPath users() {
+        return gymOwners().users();
     }
 
     @Override

@@ -65,6 +65,15 @@ dependencies {
     // PostgreSQL / PostGIS
     runtimeOnly("org.postgresql:postgresql")
 
+    // Flyway — DB schema migrations (Task 47 / ADR 0023)
+    // Community edition (Apache 2.0, free). flyway-database-postgresql plugin is required
+    // for PostgreSQL 14+ since Flyway 9.22+ (it's a separate jar from core).
+    // Spring Boot 4 auto-configures FlywayMigrationStrategy on startup when on classpath;
+    // disabled in tests via src/test/resources/application.yml so Testcontainers init.sql
+    // pattern stays authoritative for JOOQ codegen + IT setup.
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-database-postgresql")
+
     // HTTP client — for Google Vision API + Naver Places proxy
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     // macOS-native DNS resolver — without this Netty falls back to JDK resolver

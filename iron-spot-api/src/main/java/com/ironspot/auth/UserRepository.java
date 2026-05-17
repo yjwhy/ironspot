@@ -111,4 +111,19 @@ public class UserRepository {
             .and(USERS.DELETED_AT.isNull())
             .execute();
     }
+
+    /**
+     * Promote a 'user' to 'owner'. Admins are left untouched (they keep
+     * elevated privileges; owner is not a higher tier than admin). Idempotent:
+     * already-owner rows match the WHERE filter on role='user' and return 0.
+     */
+    public int promoteToOwner(UUID userId) {
+        return dsl.update(USERS)
+            .set(USERS.ROLE, "owner")
+            .set(USERS.UPDATED_AT, OffsetDateTime.now())
+            .where(USERS.ID.eq(userId))
+            .and(USERS.ROLE.eq("user"))
+            .and(USERS.DELETED_AT.isNull())
+            .execute();
+    }
 }

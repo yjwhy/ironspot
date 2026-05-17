@@ -43,6 +43,20 @@ public class AdminNotificationService {
             + "` (" + dismissedCount + " dismissed reports — possible false-report abuse)");
     }
 
+    public void notifyOwnerVerified(UUID gymId, UUID userId) {
+        post(":white_check_mark: Owner verified — user `" + userId + "` → gym `" + gymId + "`");
+    }
+
+    public void notifyOwnerDisputed(UUID gymId, UUID userId, String reason) {
+        post(":warning: Owner claim disputed — user `" + userId + "` → gym `" + gymId
+            + "` (" + reason + ") — admin review queued");
+    }
+
+    public void notifyOwnerAction(UUID userId, String action, String targetType, UUID targetId) {
+        post(":mag: Owner action — user `" + userId + "` did `" + action
+            + "` on " + targetType + " `" + targetId + "`");
+    }
+
     private void post(String text) {
         if (webhookUrl == null || webhookUrl.isBlank()) {
             log.debug("Slack webhook not configured, skipping notification: {}", text);

@@ -377,6 +377,101 @@ reports 테이블은 이미 polymorphic schema (`target_type TEXT NOT NULL`, `ta
 4. 시뮬레이터 수동 스모크: gym detail → 머신 row "..." → 신고 → admin 큐에 진입 → admin gym_machine screen → 3 액션 검증
 5. Maestro flow `.maestro/flows/gym-machine-report-flow.yaml` 신규 또는 기존 flow 확장
 
+## Task 47 — Gym owner workflow (사업자등록증 OCR 인증 + 모더레이션 분산 + trust signal)
+
+### Why now
+
+Task 46 까지의 모더레이션 흐름은 admin 한 명 (현재 사용자 본인) 에게 집중됨. Pre-launch 시점에 owner 모집단 작아 분산 효과 즉시 측정은 어렵지만, 인프라를 미리 깔지 않으면 출시 후 모더레이션 backlog 가 첫 병목이 됨. 또한 Phase 2 Task 30 (PR #45) 이 `users.role = 'owner'` enum value 를 프로덕션 CHECK constraint 에 사전 추가했지만 워크플로우는 미설계 상태 (Phase 2 carry-over gap #4). `init-test-db.sql` 의 schema drift (`('user', 'admin')` 만 허용) closeout 도 본 Task 의 일부.
+
+Phase 4 README scope item 13 의 두 가치 — (a) moderation 분산, (b) trust signal — 을 본 Task 가 정식 구현. ADR 0023 에서 6 design branch (Q1-Q6) 잠금.
+
+### Grilled decisions (locked before code entry, ADR 0023)
+
+1. **Q1 인증 = U (사업자등록증 OCR + 국세청 진위확인 자동 검증)**. 사업자등록증 사진 → Vision API OCR → 국세청 진위확인 → 매칭 시 즉시 grant. 사진 인메모리 처리 (Task 42 OcrService 패턴 재사용) → 디스크 X. 사업자번호 SHA-256 hash 저장. 비용 거의 0원/년.
+2. **Q2 스키마 = B (`gym_owners` 조인 테이블, 공동 owner 자동 허용, soft delete)**. 1:1 / N:1 (체인) / 1:N (공동) 모두 지원. 같은 사업자번호 hash → 공동 owner 자동. 다른 hash → admin 분쟁. `revoked_at TIMESTAMPTZ` soft delete.
+3. **Q3 권한 = P3 (사진 verify + 머신 인벤토리 CRUD + 자기 gym 신고 first-look)**. 자기 gym 한정. self-interest risk 는 Q4 audit + Q5 W1 의 audit Slack 으로 사후 detect.
+4. **Q4 큐 = A2+B3+C2+C3+D2+E3**. 별도 endpoint `/api/owner/queue`, sequential 24h + SafeSearch 긴급 fast-track, DB audit_log + Slack 실시간, reporter 수동 이의제기 (`MyReportsScreen`), 머신 즉시 반영 + soft delete.
+5. **Q5 trust = T1+T2+T3+W1+경고+가시화**. Photo verified 뱃지 (manual + auto-by-owner-upload), Gym 카드 owner-claimed 뱃지, 자기 gym 신고 auto-action, ReportReasonSheet amber banner, GymCard 뱃지.
+6. **Q6 UI = U1+E1+E3+E4+E5+R3**. 별도 `app/owner/` 트리. 진입점: Profile 메뉴 + Gym detail + **Profile 위젯 (E4) + Tab dot badge (E5)** (Push 미구현 fallback). 등록: Gym detail (primary) + Profile 메뉴.
+
+추가 UX 결정 (Q6 sub):
+
+- 사업자등록증 업로드 = 카메라 + 갤러리 둘 다.
+- PIPA 동의 체크박스 = 사진 업로드 _전_.
+- Loading state = Skeleton + "검증 중... 10초 정도 걸려요" + 30초 타임아웃.
+- 머신 삭제 confirmation = Action Sheet + soft delete 메시지.
+
+### Approach
+
+**데이터 모델**:
+
+- `users.role` CHECK 정렬 `('user', 'admin', 'owner')` (test schema 만, prod 는 Phase 2 Task 30 에서 이미 적용)
+- 신규 테이블: `gym_owners`, `moderation_audit_log`
+- 신규 컬럼: `reports.owner_timeout_at`, `machine_photos.verified_by_owner_at`, `gym_machines.deleted_at`
+
+**Backend**:
+
+- 신규 패키지 `com.ironspot.owner`: `OwnerController`, `OwnerService`, `GymOwnerRepository`, `BusinessRegistrationVerifier`, `OwnerClaimController`.
+- 신규 endpoint: `POST /api/owner/claim` (사진 multipart), `GET /api/owner/queue`, `POST /api/owner/reports/{id}/disposition`, `POST /api/owner/photos/{id}/verify`, owner 권한 `POST/PUT/DELETE /api/gym-machines`, `POST /api/reports/{id}/escalate`.
+- `OcrService.analyzeBusinessRegistration(byte[])` 메서드 신규 (TEXT_DETECTION + DOCUMENT_TEXT_DETECTION).
+- 국세청 진위확인 API client `BusinessRegistryClient` (WebClient, env `NTS_BUSINESS_API_KEY`).
+- `ReportService` 분기: reporter 가 target gym 의 active owner → 즉시 actioned (Q5 W1).
+- `AdminNotificationService.notifyOwnerAction` 신규 (Q4 C3 Slack).
+- Cron job `OwnerTimeoutEscalationJob` (`@Scheduled(fixedDelayString = "PT5M")`) — owner_timeout_at < NOW() + status='pending' → admin queue 노출.
+- 권한 검증: `@PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")` + service-layer `gym_owners` 매칭.
+
+**Frontend**:
+
+- 신규 디렉토리 `src/features/owner/components/*` + `src/features/owner/hooks/*`.
+- 신규 라우트 `app/owner/_layout.tsx` (OwnerGuard) + `app/owner/index.tsx` + `app/owner/claim.tsx` + `app/owner/queue.tsx` + `app/owner/machines/[gym].tsx` + `app/owner/machines/[gym]/[id].tsx` + `app/owner/machines/[gym]/new.tsx` + `app/owner/photos/[gym].tsx`.
+- 신규 화면 `app/my-reports.tsx` (Q4 D2).
+- 확장: `ProfileScreen` (E4 위젯 + E1/R1 메뉴), `(tabs)/_layout.tsx` (E5 dot badge), `GymDetailScreen` (E3 + R2 버튼), `GymCard` (owner 뱃지), `ReportReasonSheet` (amber banner).
+- Codegen: openapi.json regen + Orval regen.
+
+### Slice breakdown
+
+12 review-gated slices + 1 chore. Task 33-34 동급. ~1200-1500 LOC across ~40-50 files. **Plan deviation from initial draft**: original 47b ("schema") split into 47b (Flyway scaffolding) + 47c (Task 47 schema + JOOQ regen) for review-gate atomicity — separating Flyway infra introduction from feature schema makes the prod-first-deploy risk surface auditable in isolation. Downstream slices shift by one letter (47c-47l → 47d-47m).
+
+| Slice | 커밋 메시지                                                                    | 내용                                                                                                                                                                                                                                                                                       |
+| ----- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 47a   | `docs(phase-4): 47a — Task 47 entry + ADR 0023 + PROGRESS Task 46 closeout`    | 이 entry, ADR 0023, PROGRESS Status 라인 정리 + Task 46 SHA/체크박스, ADRs README 0021/0022/0023 추가                                                                                                                                                                                      |
+| 47b   | `feat(phase-4): 47b — Flyway setup + V1 baseline snapshot`                     | `org.flywaydb:flyway-core` + `flyway-database-postgresql` deps, `application.yml` `baseline-on-migrate=true` + `baseline-version=1`, test 프로파일은 `flyway.enabled=false` (Testcontainers + init-test-db.sql 유지), `V1__baseline.sql` (현 prod schema 스냅샷, idempotent IF NOT EXISTS) |
+| 47c   | `feat(phase-4): 47c — V2 Task 47 schema + JOOQ regen`                          | `V2__task47_gym_owner.sql` (users.role CHECK + gym_owners + moderation_audit_log + reports.owner_timeout_at + machine_photos.verified_by_owner_at + gym_machines.deleted_at), `init-test-db.sql` 동기, JOOQ regen. 모든 ALTER 는 IF NOT EXISTS idempotent.                                 |
+| 47d   | `feat(phase-4): 47d — BusinessRegistrationVerifier + 국세청 API client`        | `BusinessRegistryClient` WebClient, `BusinessRegistrationVerifier` (OCR + 진위확인 + 매칭 로직), env `NTS_BUSINESS_API_KEY` 추가, IT (mock WireMock + Vision mock)                                                                                                                         |
+| 47e   | `feat(phase-4): 47e — OwnerController + claim endpoint`                        | `POST /api/owner/claim` (multipart, 동의 검증, 인메모리 OCR, `gym_owners` insert, role grant, audit_log + Slack), 공동 owner 자동 허용 / 다른 hash 분쟁 큐, IT +5                                                                                                                          |
+| 47f   | `feat(phase-4): 47f — Owner queue + first-look + auto-action`                  | `GET /api/owner/queue`, `POST /api/owner/reports/{id}/disposition`, ReportService 의 자기 gym auto-action 분기 (Q5 W1), `OwnerTimeoutEscalationJob` cron, IT +5                                                                                                                            |
+| 47g   | `feat(phase-4): 47g — Owner machine CRUD + photo verify + reporter escalation` | owner 권한 `POST/PUT/DELETE /api/gym-machines` (`gym_owners` 매칭), `POST /api/owner/photos/{id}/verify`, `POST /api/reports/{id}/escalate` (reporter), soft delete 적용, IT +6                                                                                                            |
+| 47h   | `chore(phase-4): 47h — regenerate openapi.json + Orval client`                 | 신규 endpoint + DTO 일괄 코드젠, minimal compile-fix                                                                                                                                                                                                                                       |
+| 47i   | `feat(phase-4): 47i — OwnerClaimScreen (사업자등록증 OCR flow)`                | `app/owner/claim.tsx` + 카메라/갤러리 picker + PIPA 동의 체크박스 + Skeleton + 결과 화면, expo-image-picker 활용, Jest +8                                                                                                                                                                  |
+| 47j   | `feat(phase-4): 47j — OwnerGuard + owner queue/machines/photos screens`        | `OwnerGuard`, `app/owner/_layout.tsx`/`index.tsx`/`queue.tsx`/`machines/*.tsx`/`photos/*.tsx`, FlatList + swipe + FAB, Action Sheet 삭제 확인, Jest +15                                                                                                                                    |
+| 47k   | `feat(phase-4): 47k — trust signal UI (GymCard 뱃지 + ReportReasonSheet 경고)` | GymCard 의 owner-claimed 뱃지, `verified_by_owner_at` 뱃지 (PhotoCard), ReportReasonSheet 의 amber banner, `useOwnerStatus` 훅, Jest +5                                                                                                                                                    |
+| 47l   | `feat(phase-4): 47l — Profile 위젯 + Tab dot badge + Gym detail 진입점`        | `ProfileScreen` 의 owner 활동 위젯 (E4) + 메뉴 항목 (E1/R1), `(tabs)/_layout.tsx` 의 dot badge (E5), `GymDetailScreen` 의 "owner 도구" + "내 매장이에요" 버튼 (E3/R2), Jest +7                                                                                                             |
+| 47m   | `feat(phase-4): 47m — MyReportsScreen + Maestro flows + e2e-strategy`          | `app/my-reports.tsx`, `useMyReports` hook, `.maestro/flows/owner-claim-flow.yaml` + `owner-moderation-flow.yaml`, `docs/harness/e2e-strategy.md` Task 47 행, Jest +4                                                                                                                       |
+
+### Token / cost spend for Task 47
+
+- Groq: 0 (no NL calls)
+- Vision API: 추정 +100 units/월 (owner 인증 50건 × 2 features), Task 42 free tier 1000 units/월 공유, 초과분 ~200원/월 max
+- 국세청 진위확인 API: 0원 (공공데이터포털 무료)
+- SMS/storage: 0원 (Q1 F 거부, 인메모리 처리)
+- 예상 PIPA 컴플라이언스 추가 작업: Pre-Launch Backlog 의 Privacy Policy + ToS 에 1줄 추가
+
+### Verification
+
+1. `pnpm lint && pnpm exec tsc --noEmit && pnpm jest` — 신규 테스트 +35~45 예상
+2. `./gradlew test` — 신규 IT +16~20 예상 (OwnerClaim / OwnerQueue / Verifier / cron job / 권한 매트릭스)
+3. `/verify` 슬래시 커맨드 (FF review 4 reviewer 필수, src/ + app/ 다수 변경)
+4. 시뮬레이터 수동 스모크: 사업자등록증 fixture 사진 → claim flow → owner queue 진입 → 머신 CRUD → trust signal 가시화 확인
+5. `pnpm e2e:flow .maestro/flows/owner-claim-flow` + `owner-moderation-flow`
+6. Slack `#ironspot-moderation` 채널에 owner action 알림 도착 확인 (수동 1회)
+
+### 의존성 + risk
+
+- 의존성: Task 48 (Apple Sign In) 와 Task 49 (admin-flow Maestro) 와 독립
+- Risk 1: 국세청 진위확인 API 응답 형식 불안정 가능성 (공공 API 일반적 risk) → IT 에 WireMock 으로 응답 변형 케이스 5개 이상 커버
+- Risk 2: PIPA 동의 문구 법적 검토 (Pre-Launch Backlog Privacy Policy 작업과 함께 진행)
+- Risk 3: Vision API free tier 초과 시 비용 (월 1000 units 공유) → Task 42 + Task 47 합쳐 1100+ units 시점에 monitoring 필요
+
 ## Future Tasks (planned order, locked via Task 42 grill follow-up)
 
 The remainder of Phase 4 has a recommended order derived from dependency + cost analysis (not the README ordering, which is unsorted scope). Each Task still gets its own `grill-me` + plan entry before implementation; this list is the queue not the design.

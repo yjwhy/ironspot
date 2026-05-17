@@ -110,6 +110,11 @@ public class Reports extends TableImpl<Record> {
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
+    /**
+     * The column <code>public.reports.owner_timeout_at</code>.
+     */
+    public final TableField<Record, OffsetDateTime> OWNER_TIMEOUT_AT = createField(DSL.name("owner_timeout_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
+
     private Reports(Name alias, Table<Record> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
