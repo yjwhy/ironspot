@@ -33,9 +33,15 @@ export async function searchGymsInBounds(
       maxLng: bounds.maxLng,
       brandIds: filters.brandIds.length > 0 ? [...filters.brandIds] : undefined,
       categoryIds: filters.categoryIds.length > 0 ? [...filters.categoryIds] : undefined,
-      // ADR 0022 / Slice 45f: templateIds + scope 전송은 Slice 45f 에서 추가
-      // (SearchFilters 타입 확장 + useFilters 토글 후). 본 슬라이스 (45e) 는
-      // codegen 결과 (loadingType 제거) 만 반영.
+      // ADR 0022 / Slice 45h: templateIds + scope 전송. scope 는 templateIds
+      // 가 비어있을 때 의미 없으므로 함께 undefined.
+      templateIds: filters.templateIds.length > 0 ? [...filters.templateIds] : undefined,
+      scope:
+        filters.templateIds.length > 0
+          ? filters.machineFilterMode === 'and'
+            ? 'combined'
+            : 'each'
+          : undefined,
     }),
   );
   return result.map(toGymWithMachineCount);

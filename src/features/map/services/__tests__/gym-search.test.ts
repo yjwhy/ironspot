@@ -68,10 +68,12 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: ['b1'],
       categoryIds: undefined,
+      templateIds: undefined,
+      scope: undefined,
     });
   });
 
-  it('passes undefined for empty filter arrays and null loadingType', async () => {
+  it('passes undefined for empty filter arrays and OR mode', async () => {
     mockSearch.mockResolvedValue([]);
 
     await searchGymsInBounds(bounds, emptyFilters);
@@ -83,6 +85,8 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: undefined,
       categoryIds: undefined,
+      templateIds: undefined,
+      scope: undefined,
     });
   });
 
@@ -98,6 +102,52 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: ['b1', 'b2'],
       categoryIds: ['c1'],
+      templateIds: undefined,
+      scope: undefined,
+    });
+  });
+
+  it('forwards templateIds + scope=each when machine filter mode is or', async () => {
+    mockSearch.mockResolvedValue([]);
+
+    await searchGymsInBounds(bounds, {
+      brandIds: [],
+      categoryIds: [],
+      templateIds: ['t1', 't2'],
+      machineFilterMode: 'or',
+    });
+
+    expect(mockSearch).toHaveBeenCalledWith({
+      minLat: 37.48,
+      maxLat: 37.5,
+      minLng: 127.02,
+      maxLng: 127.04,
+      brandIds: undefined,
+      categoryIds: undefined,
+      templateIds: ['t1', 't2'],
+      scope: 'each',
+    });
+  });
+
+  it('forwards templateIds + scope=combined when machine filter mode is and', async () => {
+    mockSearch.mockResolvedValue([]);
+
+    await searchGymsInBounds(bounds, {
+      brandIds: [],
+      categoryIds: [],
+      templateIds: ['t1', 't2'],
+      machineFilterMode: 'and',
+    });
+
+    expect(mockSearch).toHaveBeenCalledWith({
+      minLat: 37.48,
+      maxLat: 37.5,
+      minLng: 127.02,
+      maxLng: 127.04,
+      brandIds: undefined,
+      categoryIds: undefined,
+      templateIds: ['t1', 't2'],
+      scope: 'combined',
     });
   });
 

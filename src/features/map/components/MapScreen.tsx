@@ -165,13 +165,13 @@ export function MapScreen() {
   }
 
   function applyParsedFiltersAndExitNl(parsed: ParsedFilters) {
-    // ADR 0022 / Slice 45h: templateIds + scope→AND 매핑은 다음 슬라이스에서 추가.
-    // 본 슬라이스 (45f) 는 SearchFilters 타입 변경에 따른 컴파일 fix 만 적용.
+    // ADR 0022 / Slice 45h: NL → structured filter 완전 매핑. templateIds 와
+    // scope 가 이제 structured filter 의 1차 시민이므로 lossless 변환 가능.
     setAllFilters({
       brandIds: parsed.brandIds,
       categoryIds: parsed.categoryIds,
-      templateIds: [],
-      machineFilterMode: 'or',
+      templateIds: parsed.templateIds,
+      machineFilterMode: parsed.scope === 'combined' ? 'and' : 'or',
     });
     dispatch({ type: 'enter_filter_mode' });
     filterSheetRef.current?.present();
@@ -278,13 +278,12 @@ export function MapScreen() {
 }
 
 function surfaceDroppedConditions(parsed: ParsedFilters) {
+  // ADR 0022 / Slice 45h: templateIds + scope (combined → AND 토글) 이 이제
+  // structured filter 에서 lossless 매핑 → toast 항목 제거. minCount > 1 만
+  // 여전히 매핑 안 됨 (structured filter 가 minCount 차원 미지원).
   const dropped: string[] = [];
-  if (parsed.templateIds.length > 0) dropped.push('머신 이름');
   if (parsed.minCount !== undefined && parsed.minCount > 1) {
     dropped.push('최소 수량');
-  }
-  if (parsed.scope === 'combined') {
-    dropped.push('동시 보유 조건');
   }
   if (dropped.length > 0) {
     burnt.toast({
