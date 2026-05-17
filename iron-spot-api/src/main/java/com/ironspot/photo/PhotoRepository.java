@@ -26,20 +26,22 @@ public class PhotoRepository {
 
     private PhotoResponse toPhotoResponse(Record r) {
         OffsetDateTime createdAt = r.get(MACHINE_PHOTOS.CREATED_AT);
+        OffsetDateTime verifiedByOwnerAt = r.get(MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT);
         return new PhotoResponse(
             r.get(MACHINE_PHOTOS.ID),
             r.get(MACHINE_PHOTOS.GYM_MACHINE_ID),
             r.get(MACHINE_PHOTOS.USER_ID),
             r.get(MACHINE_PHOTOS.PHOTO_URL),
             Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.UPVOTE_COUNT), 0),
-            createdAt != null ? createdAt.toInstant() : null
+            createdAt != null ? createdAt.toInstant() : null,
+            verifiedByOwnerAt != null ? verifiedByOwnerAt.toInstant() : null
         );
     }
 
     public List<PhotoResponse> findByGymMachineId(UUID gymMachineId) {
         return dsl.select(
                 MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
-                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT)
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT, MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT)
             .from(MACHINE_PHOTOS)
             .where(MACHINE_PHOTOS.GYM_MACHINE_ID.eq(gymMachineId))
             .and(MACHINE_PHOTOS.IS_BLINDED.isFalse())
@@ -50,7 +52,7 @@ public class PhotoRepository {
     public List<PhotoResponse> findByUserId(UUID userId) {
         return dsl.select(
                 MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
-                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT)
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT, MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT)
             .from(MACHINE_PHOTOS)
             .where(MACHINE_PHOTOS.USER_ID.eq(userId))
             .and(MACHINE_PHOTOS.IS_BLINDED.isFalse())
@@ -62,7 +64,7 @@ public class PhotoRepository {
         if (gymMachineIds.isEmpty()) return Map.of();
         return dsl.select(
                 MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
-                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT)
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT, MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT)
             .from(MACHINE_PHOTOS)
             .where(MACHINE_PHOTOS.GYM_MACHINE_ID.in(gymMachineIds))
             .and(MACHINE_PHOTOS.IS_BLINDED.isFalse())
@@ -85,7 +87,7 @@ public class PhotoRepository {
     public Optional<PhotoResponse> findById(UUID photoId) {
         return dsl.select(
                 MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
-                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT)
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT, MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT)
             .from(MACHINE_PHOTOS)
             .where(MACHINE_PHOTOS.ID.eq(photoId))
             .fetchOptional(this::toPhotoResponse);

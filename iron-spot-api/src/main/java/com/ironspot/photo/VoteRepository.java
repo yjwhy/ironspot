@@ -55,7 +55,8 @@ public class VoteRepository {
     public List<PhotoResponse> findUpvotedByUser(UUID userId) {
         return dsl.select(
                 MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
-                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT)
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT,
+                MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT)
             .from(PHOTO_VOTES)
             .join(MACHINE_PHOTOS).on(MACHINE_PHOTOS.ID.eq(PHOTO_VOTES.PHOTO_ID))
             .where(PHOTO_VOTES.USER_ID.eq(userId))
@@ -63,13 +64,15 @@ public class VoteRepository {
             .orderBy(PHOTO_VOTES.CREATED_AT.desc())
             .fetch(r -> {
                 OffsetDateTime createdAt = r.get(MACHINE_PHOTOS.CREATED_AT);
+                OffsetDateTime verifiedByOwnerAt = r.get(MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT);
                 return new PhotoResponse(
                     r.get(MACHINE_PHOTOS.ID),
                     r.get(MACHINE_PHOTOS.GYM_MACHINE_ID),
                     r.get(MACHINE_PHOTOS.USER_ID),
                     r.get(MACHINE_PHOTOS.PHOTO_URL),
                     Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.UPVOTE_COUNT), 0),
-                    createdAt != null ? createdAt.toInstant() : null
+                    createdAt != null ? createdAt.toInstant() : null,
+                    verifiedByOwnerAt != null ? verifiedByOwnerAt.toInstant() : null
                 );
             });
     }
