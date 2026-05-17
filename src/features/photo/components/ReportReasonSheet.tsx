@@ -16,16 +16,27 @@ import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 
 import { useReport } from '../hooks/useReport';
+import { useReportGymMachine } from '../hooks/useReportGymMachine';
 import {
-  GENERAL_REASONS,
+  GYM_MACHINE_REASONS,
+  PHOTO_GENERAL_REASONS,
+  PHOTO_URGENT_REASONS,
   isOtherReason,
   type ReportReasonId,
   type ReportReasonOption,
-  URGENT_REASONS,
 } from '../lib/reportReasons';
 
+/**
+ * ADR 0022 follow-up (Task 46): generalized to both photo and gym_machine
+ * surfaces. Pass `target` as a discriminated union; the sheet picks the right
+ * reason subset + mutation hook internally.
+ */
+export type ReportTarget =
+  | { type: 'photo'; photoId: string }
+  | { type: 'gymMachine'; gymMachineId: string };
+
 interface ReportReasonSheetProps {
-  photoId: string;
+  target: ReportTarget;
   onClose: () => void;
 }
 
@@ -38,23 +49,35 @@ const PRESENT_DELAY_MS = 50;
 // the spec changes; orval-generated types do not enforce maxLength at runtime.
 const DETAIL_MAX_LENGTH = 500;
 
-export function ReportReasonSheet({ photoId, onClose }: ReportReasonSheetProps) {
+export function ReportReasonSheet({ target, onClose }: ReportReasonSheetProps) {
   return (
     <BottomSheetModalProvider>
-      <ReportReasonSheetInner photoId={photoId} onClose={onClose} />
+      <ReportReasonSheetInner target={target} onClose={onClose} />
     </BottomSheetModalProvider>
   );
 }
 
-function ReportReasonSheetInner({ photoId, onClose }: ReportReasonSheetProps) {
+function ReportReasonSheetInner({ target, onClose }: ReportReasonSheetProps) {
   const ref = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
   const [selected, setSelected] = useState<ReportReasonId | null>(null);
   const [detail, setDetail] = useState('');
   const showDetailInput = isOtherReason(selected);
 
-  const { handleReport, isPending } = useReport(photoId, {
+  // React Hooks rules require unconditional calls — invoke both mutation hooks
+  // and pick the active one. The "off" hook gets an empty id and is never
+  // triggered (mutation.mutate is only called on the picked variant below).
+  const photoMutation = useReport(target.type === 'photo' ? target.photoId : '', {
     onSuccess: () => ref.current?.dismiss(),
   });
+  const gymMachineMutation = useReportGymMachine(
+    target.type === 'gymMachine' ? target.gymMachineId : '',
+    { onSuccess: () => ref.current?.dismiss() },
+  );
+  const { handleReport, isPending } = target.type === 'photo' ? photoMutation : gymMachineMutation;
+
+  const generalReasons = target.type === 'photo' ? PHOTO_GENERAL_REASONS : GYM_MACHINE_REASONS;
+  // gym_machine surface has no urgent reasons (LEGAL_PERSONAL is photo-specific).
+  const urgentReasons = target.type === 'photo' ? PHOTO_URGENT_REASONS : null;
 
   useEffect(function presentOnMount() {
     // bottom-sheet v5.2.10: present() can race with the modal's internal
@@ -93,22 +116,25 @@ function ReportReasonSheetInner({ photoId, onClose }: ReportReasonSheetProps) {
         <AppText className="text-heading-md mb-4">신고하기</AppText>
 
         <ReasonSection
-          title="일반 사유"
-          options={GENERAL_REASONS}
+          title={urgentReasons === null ? '신고 사유' : '일반 사유'}
+          options={generalReasons}
           selected={selected}
           onSelect={setSelected}
         />
 
         {showDetailInput ? <DetailInput value={detail} onChangeText={setDetail} /> : null}
 
-        <View className="my-4 h-px bg-border-subtle" />
-
-        <ReasonSection
-          title="긴급 (즉시 검토)"
-          options={URGENT_REASONS}
-          selected={selected}
-          onSelect={setSelected}
-        />
+        {urgentReasons !== null ? (
+          <>
+            <View className="my-4 h-px bg-border-subtle" />
+            <ReasonSection
+              title="긴급 (즉시 검토)"
+              options={urgentReasons}
+              selected={selected}
+              onSelect={setSelected}
+            />
+          </>
+        ) : null}
 
         <View className="mt-6">
           <Button
@@ -153,26 +179,23 @@ interface RadioRowProps {
 }
 
 function RadioRow({ option, checked, onSelect }: RadioRowProps) {
-  function handlePress() {
-    onSelect(option.id);
-  }
   return (
     <Pressable
-      onPress={handlePress}
       accessibilityRole="radio"
-      accessibilityState={{ checked }}
       accessibilityLabel={option.label}
+      accessibilityState={{ checked }}
+      onPress={() => {
+        onSelect(option.id);
+      }}
       style={pressedOpacity}
-      className="flex-row items-center gap-3 py-3"
+      className="flex-row items-center py-3"
     >
       <MaterialIcons
         name={checked ? 'radio-button-checked' : 'radio-button-unchecked'}
         size={20}
         color={checked ? colors.accent.DEFAULT : colors.text.tertiary}
-        importantForAccessibility="no"
-        accessibilityElementsHidden
       />
-      <AppText className="text-body flex-1">{option.label}</AppText>
+      <AppText className="ml-3 text-body-md">{option.label}</AppText>
     </Pressable>
   );
 }
@@ -184,19 +207,24 @@ interface DetailInputProps {
 
 function DetailInput({ value, onChangeText }: DetailInputProps) {
   return (
-    // BottomSheetTextInput plumbs the keyboard-avoidance integration that
-    // bare `TextInput` lacks inside a gorhom sheet (iOS keyboard otherwise
-    // covers the field; Android focus can dismiss the sheet).
-    <BottomSheetTextInput
-      value={value}
-      onChangeText={onChangeText}
-      placeholder="신고 사유를 입력해주세요"
-      placeholderTextColor={colors.text.tertiary}
-      multiline
-      maxLength={DETAIL_MAX_LENGTH}
-      accessibilityLabel="신고 사유 자유 입력"
-      className="border-border-DEFAULT mt-2 min-h-[80px] rounded-md border px-3 py-2 text-body"
-      style={{ textAlignVertical: 'top' }}
-    />
+    <View className="mt-3">
+      <AppText
+        className="text-body-sm text-text-tertiary mb-1"
+        accessibilityLabel="신고 사유 자유 입력 안내"
+      >
+        상세 사유 (선택)
+      </AppText>
+      <BottomSheetTextInput
+        value={value}
+        onChangeText={onChangeText}
+        accessibilityLabel="신고 사유 자유 입력"
+        maxLength={DETAIL_MAX_LENGTH}
+        multiline
+        numberOfLines={3}
+        className="rounded-lg bg-bg-muted px-3 py-2 text-body-md text-text-primary"
+        placeholder="자세히 알려주세요 (선택)"
+        placeholderTextColor={colors.text.tertiary}
+      />
+    </View>
   );
 }

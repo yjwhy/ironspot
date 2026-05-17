@@ -89,7 +89,10 @@ export function PhotoDetailScreen({ photoId, machineId }: PhotoDetailScreenProps
       ) : null}
 
       {reportSheetVisible && currentPhoto ? (
-        <ReportReasonSheet photoId={currentPhoto.id} onClose={handleReportSheetClose} />
+        <ReportReasonSheet
+          target={{ type: 'photo', photoId: currentPhoto.id }}
+          onClose={handleReportSheetClose}
+        />
       ) : null}
     </View>
   );
