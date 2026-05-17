@@ -11,6 +11,7 @@ export function toMachinePhoto(r: PhotoResponse): MachinePhoto {
     photo_url: r.photoUrl,
     upvote_count: r.upvoteCount,
     created_at: r.createdAt,
+    verified_by_owner_at: r.verifiedByOwnerAt ?? null,
   };
 }
 

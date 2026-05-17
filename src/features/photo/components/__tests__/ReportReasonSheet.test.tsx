@@ -51,6 +51,18 @@ function setup({ isPending = false }: SetupOpts = {}) {
   return { ...utils, handleReport };
 }
 
+function setupVerified() {
+  const handleReport = jest.fn();
+  mockUseReport.mockReturnValue({ handleReport, isPending: false });
+  const utils = render(
+    <ReportReasonSheet
+      target={{ type: 'photo', photoId: PHOTO_ID, verifiedByOwnerAt: '2026-05-18T10:00:00Z' }}
+      onClose={ON_CLOSE}
+    />,
+  );
+  return { ...utils, handleReport };
+}
+
 describe('ReportReasonSheet', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -117,5 +129,15 @@ describe('ReportReasonSheet', () => {
     const { getByLabelText, getByRole } = setup({ isPending: true });
     fireEvent.press(getByLabelText('중복 사진'));
     expect(getByRole('button', { busy: true, disabled: true })).toBeTruthy();
+  });
+
+  it('renders the owner-verified amber banner when verifiedByOwnerAt is present', () => {
+    const { getByTestId } = setupVerified();
+    expect(getByTestId('owner-verified-warning-banner')).toBeTruthy();
+  });
+
+  it('does not render the owner-verified banner when verifiedByOwnerAt is absent', () => {
+    const { queryByTestId } = setup();
+    expect(queryByTestId('owner-verified-warning-banner')).toBeNull();
   });
 });

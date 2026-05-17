@@ -37,6 +37,7 @@ describe('getMachinePhotos', () => {
       photo_url: 'https://example.com/photo.jpg',
       upvote_count: 7,
       created_at: '2026-01-01T00:00:00Z',
+      verified_by_owner_at: null, // Task 47: omitted from API response → null on the local type
     };
     expect(result).toEqual([expected]);
   });
