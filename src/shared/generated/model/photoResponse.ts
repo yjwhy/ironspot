@@ -13,4 +13,6 @@ export interface PhotoResponse {
   photoUrl: string;
   upvoteCount: number;
   createdAt: string;
+  /** Set when an active owner of this photo's gym has marked it as verified (Task 47 / ADR 0023 Q5 T1+T2). Null otherwise. */
+  verifiedByOwnerAt?: string;
 }
