@@ -23,10 +23,12 @@ import type {
 
 import type {
   AdminPhotoDetailResponse,
+  AdminQueueItem,
   AdminQueuePhotoSummary,
   AdminReportResponse,
   DispositionRequest,
   ListPendingPhotosParams,
+  ListPendingQueueParams,
   ListReportsParams,
 } from '../model';
 
@@ -445,6 +447,143 @@ export function useListReports<TData = Awaited<ReturnType<typeof listReports>>, 
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getListReportsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export type listPendingQueueResponse200 = {
+  data: AdminQueueItem[];
+  status: 200;
+};
+
+export type listPendingQueueResponseSuccess = listPendingQueueResponse200 & {
+  headers: Headers;
+};
+export type listPendingQueueResponse = listPendingQueueResponseSuccess;
+
+export const getListPendingQueueUrl = (params?: ListPendingQueueParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/queue?${stringifiedParams}`
+    : `/api/admin/queue`;
+};
+
+export const listPendingQueue = async (
+  params?: ListPendingQueueParams,
+  options?: RequestInit,
+): Promise<listPendingQueueResponse> => {
+  return apiClient<listPendingQueueResponse>(getListPendingQueueUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListPendingQueueQueryKey = (params?: ListPendingQueueParams) => {
+  return [`/api/admin/queue`, ...(params ? [params] : [])] as const;
+};
+
+export const getListPendingQueueQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPendingQueue>>,
+  TError = unknown,
+>(
+  params?: ListPendingQueueParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingQueue>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPendingQueueQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPendingQueue>>> = ({ signal }) =>
+    listPendingQueue(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingQueue>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListPendingQueueQueryResult = NonNullable<Awaited<ReturnType<typeof listPendingQueue>>>;
+export type ListPendingQueueQueryError = unknown;
+
+export function useListPendingQueue<
+  TData = Awaited<ReturnType<typeof listPendingQueue>>,
+  TError = unknown,
+>(
+  params: undefined | ListPendingQueueParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingQueue>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPendingQueue>>,
+          TError,
+          Awaited<ReturnType<typeof listPendingQueue>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListPendingQueue<
+  TData = Awaited<ReturnType<typeof listPendingQueue>>,
+  TError = unknown,
+>(
+  params?: ListPendingQueueParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingQueue>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPendingQueue>>,
+          TError,
+          Awaited<ReturnType<typeof listPendingQueue>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListPendingQueue<
+  TData = Awaited<ReturnType<typeof listPendingQueue>>,
+  TError = unknown,
+>(
+  params?: ListPendingQueueParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingQueue>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useListPendingQueue<
+  TData = Awaited<ReturnType<typeof listPendingQueue>>,
+  TError = unknown,
+>(
+  params?: ListPendingQueueParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingQueue>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListPendingQueueQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

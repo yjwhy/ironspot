@@ -108,3 +108,94 @@ export const useReportPhoto = <TError = unknown, TContext = unknown>(
 > => {
   return useMutation(getReportPhotoMutationOptions(options), queryClient);
 };
+export type reportGymMachineResponse201 = {
+  data: void;
+  status: 201;
+};
+
+export type reportGymMachineResponseSuccess = reportGymMachineResponse201 & {
+  headers: Headers;
+};
+export type reportGymMachineResponse = reportGymMachineResponseSuccess;
+
+export const getReportGymMachineUrl = (gymMachineId: string) => {
+  return `/api/gym-machines/${gymMachineId}/reports`;
+};
+
+/**
+ * @summary Report a gym_machine mapping
+ */
+export const reportGymMachine = async (
+  gymMachineId: string,
+  createReportRequest: CreateReportRequest,
+  options?: RequestInit,
+): Promise<reportGymMachineResponse> => {
+  return apiClient<reportGymMachineResponse>(getReportGymMachineUrl(gymMachineId), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createReportRequest),
+  });
+};
+
+export const getReportGymMachineMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportGymMachine>>,
+    TError,
+    { gymMachineId: string; data: CreateReportRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reportGymMachine>>,
+  TError,
+  { gymMachineId: string; data: CreateReportRequest },
+  TContext
+> => {
+  const mutationKey = ['reportGymMachine'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reportGymMachine>>,
+    { gymMachineId: string; data: CreateReportRequest }
+  > = (props) => {
+    const { gymMachineId, data } = props ?? {};
+
+    return reportGymMachine(gymMachineId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReportGymMachineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reportGymMachine>>
+>;
+export type ReportGymMachineMutationBody = CreateReportRequest;
+export type ReportGymMachineMutationError = unknown;
+
+/**
+ * @summary Report a gym_machine mapping
+ */
+export const useReportGymMachine = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reportGymMachine>>,
+      TError,
+      { gymMachineId: string; data: CreateReportRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reportGymMachine>>,
+  TError,
+  { gymMachineId: string; data: CreateReportRequest },
+  TContext
+> => {
+  return useMutation(getReportGymMachineMutationOptions(options), queryClient);
+};

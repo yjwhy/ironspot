@@ -8,6 +8,8 @@
 
 export * from './adminPhotoDetailResponse';
 export * from './adminPhotoSummary';
+export * from './adminQueueItem';
+export * from './adminQueueItemType';
 export * from './adminQueuePhotoSummary';
 export * from './adminReportResponse';
 export * from './adminUserSummary';
@@ -18,11 +20,13 @@ export * from './createGymRequest';
 export * from './createReportRequest';
 export * from './createReportRequestReason';
 export * from './dispositionRequest';
+export * from './dispositionRequestDisposition';
 export * from './errorResponse';
 export * from './gymDetailResponse';
 export * from './gymMachineResponse';
 export * from './gymWithMachineCountResponse';
 export * from './listPendingPhotosParams';
+export * from './listPendingQueueParams';
 export * from './listReportsParams';
 export * from './machineTemplateResponse';
 export * from './machineTemplateSuggestion';

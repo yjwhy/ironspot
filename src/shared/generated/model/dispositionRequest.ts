@@ -5,11 +5,19 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
+import type { DispositionRequestDisposition } from './dispositionRequestDisposition';
 
 export interface DispositionRequest {
   /**
    * @minLength 1
    * @pattern actioned|dismissed
    */
-  disposition: string;
+  disposition: DispositionRequestDisposition;
+  /**
+   * Required when target_type=gym_machine && disposition=actioned. 'reTemplate' updates template_id, 'delete' removes the gym_machines row.
+   * @pattern reTemplate|delete
+   */
+  gymMachineAction?: string;
+  /** Required when gymMachineAction='reTemplate'. The new machine_templates.id to assign. */
+  newTemplateId?: string;
 }
