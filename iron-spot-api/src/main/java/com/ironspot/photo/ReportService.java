@@ -35,7 +35,8 @@ public class ReportService {
         }
 
         InsertResult result = reportRepository.insertOrEscalate(
-            userUuid, photoId, request.reason(), request.detail());
+            userUuid, ReportRepository.TARGET_TYPE_PHOTO, photoId,
+            request.reason(), request.detail());
         if (result == InsertResult.DUPLICATE) {
             return; // already reported with same-or-higher severity — idempotent, no cap consumed
         }

@@ -21,7 +21,8 @@ import static com.ironspot.jooq.Tables.REPORTS;
 @RequiredArgsConstructor
 public class ReportRepository {
 
-    static final String TARGET_TYPE_PHOTO = "photo";
+    public static final String TARGET_TYPE_PHOTO = "photo";
+    public static final String TARGET_TYPE_GYM_MACHINE = "gym_machine";
     static final String STATUS_PENDING = "pending";
 
     public enum InsertResult { INSERTED, ESCALATED, DUPLICATE }
@@ -31,14 +32,20 @@ public class ReportRepository {
     /**
      * Insert a new report, or escalate an existing one if the new reason is urgent
      * and the existing reason is not. UNIQUE on (user_id, target_id) means a single
-     * user can have at most one row per photo; escalation overwrites reason/detail
+     * user can have at most one row per target; escalation overwrites reason/detail
      * in place rather than inserting a second row.
+     * <p>
+     * ADR 0022 follow-up (Task 46): {@code targetType} is now an explicit parameter
+     * — photo callers pass {@link #TARGET_TYPE_PHOTO}, gym_machine callers pass
+     * {@link #TARGET_TYPE_GYM_MACHINE}. Escalation (LEGAL_PERSONAL upgrade) only
+     * applies on the photo surface — gym_machine reasons never escalate.
      */
-    public InsertResult insertOrEscalate(UUID userId, UUID photoId, ReportReason reason, String detail) {
+    public InsertResult insertOrEscalate(
+            UUID userId, String targetType, UUID targetId, ReportReason reason, String detail) {
         int inserted = dsl.insertInto(REPORTS)
             .set(REPORTS.USER_ID, userId)
-            .set(REPORTS.TARGET_TYPE, TARGET_TYPE_PHOTO)
-            .set(REPORTS.TARGET_ID, photoId)
+            .set(REPORTS.TARGET_TYPE, targetType)
+            .set(REPORTS.TARGET_ID, targetId)
             .set(REPORTS.REASON, reason.name())
             .set(REPORTS.DETAIL, detail)
             .onConflict(REPORTS.USER_ID, REPORTS.TARGET_ID)
@@ -46,12 +53,12 @@ public class ReportRepository {
             .execute();
         if (inserted > 0) return InsertResult.INSERTED;
 
-        if (reason == ReportReason.LEGAL_PERSONAL) {
+        if (TARGET_TYPE_PHOTO.equals(targetType) && reason == ReportReason.LEGAL_PERSONAL) {
             int escalated = dsl.update(REPORTS)
                 .set(REPORTS.REASON, reason.name())
                 .set(REPORTS.DETAIL, detail)
                 .where(REPORTS.USER_ID.eq(userId))
-                .and(REPORTS.TARGET_ID.eq(photoId))
+                .and(REPORTS.TARGET_ID.eq(targetId))
                 .and(REPORTS.REASON.notEqual(ReportReason.LEGAL_PERSONAL.name()))
                 .execute();
             if (escalated > 0) return InsertResult.ESCALATED;
