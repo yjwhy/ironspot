@@ -28,8 +28,8 @@ export const GYM_CARD_THUMBNAIL_SIZE = 80;
 // into "외 +N". Card height stays bounded regardless of match count.
 const MATCHED_MACHINES_INLINE_LIMIT = 3;
 
-function formatMatchedMachines(names: readonly string[]): string | null {
-  if (names.length === 0) return null;
+function formatMatchedMachines(names: readonly string[] | null | undefined): string | null {
+  if (!names || names.length === 0) return null;
   if (names.length <= MATCHED_MACHINES_INLINE_LIMIT) return names.join(', ');
   const head = names.slice(0, MATCHED_MACHINES_INLINE_LIMIT).join(', ');
   const remainder = names.length - MATCHED_MACHINES_INLINE_LIMIT;

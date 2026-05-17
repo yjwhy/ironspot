@@ -106,6 +106,27 @@ describe('GymCard', () => {
     expect(queryByTestId('gym-card-matched-machines')).toBeNull();
   });
 
+  it('handles undefined matched_machine_names without crashing', () => {
+    // BE 응답 drift 시뮬레이션: 타입은 readonly string[] 이지만 런타임에 undefined 도착하는 경우
+    // (필터 미적용 search 응답 / 옛 endpoint / jOOQ projection 누락 등). formatMatchedMachines 가
+    // defensive guard 로 처리해야 함.
+    const gymWithoutMatched = {
+      ...baseGym,
+      matched_machine_names: undefined,
+    } as unknown as GymWithMachineCount;
+    const { queryByTestId } = renderCard({ gym: gymWithoutMatched });
+    expect(queryByTestId('gym-card-matched-machines')).toBeNull();
+  });
+
+  it('handles null matched_machine_names without crashing', () => {
+    const gymWithNullMatched = {
+      ...baseGym,
+      matched_machine_names: null,
+    } as unknown as GymWithMachineCount;
+    const { queryByTestId } = renderCard({ gym: gymWithNullMatched });
+    expect(queryByTestId('gym-card-matched-machines')).toBeNull();
+  });
+
   it('renders matched machine names inline when 3 or fewer matched', () => {
     const { getByTestId, getByText } = renderCard({
       gym: {
