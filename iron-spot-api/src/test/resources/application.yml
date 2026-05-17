@@ -4,6 +4,15 @@ spring:
   # future IT specifically validates migration behaviour.
   flyway:
     enabled: false
+  datasource:
+    hikari:
+      # Each cached Spring context spins up its own HikariCP pool. Default 10 conns × N
+      # cached contexts can blow past Postgres default max_connections=100 once new ITs
+      # with distinct @MockitoBean configurations land (Task 47 OwnerClaimIT added
+      # OcrService + BusinessRegistryClient mocks → new cache key → extra context).
+      # 3 connections per context is enough for serial IT execution.
+      maximum-pool-size: 3
+      minimum-idle: 1
 
 supabase:
   url: http://localhost:54321
