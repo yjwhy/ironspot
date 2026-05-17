@@ -72,7 +72,7 @@ jobs:
 
       - name: Post PR comment on failure
         if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           FAILURES_PATH: iron-spot-api/build/reports/eval/failures.json
         with:
