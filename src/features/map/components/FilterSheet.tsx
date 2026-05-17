@@ -6,31 +6,29 @@ import {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
-import { SegmentedControl } from '@/shared/components/SegmentedControl';
+import type { MachineTemplateResponse } from '@/shared/generated/model';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
-import type { Brand, Category, LoadingType, SearchFilters } from '@/shared/types/database';
+import type { Brand, Category, SearchFilters } from '@/shared/types/database';
 
 import { ActiveFilterStrip } from './ActiveFilterStrip';
 import { FilterSheetSection } from './FilterSheetSection';
-import { type ActiveFilter, LOADING_TYPE_LABEL, toActiveFilters } from '../lib/active-filters';
+import {
+  type ActiveFilter,
+  formatMachineTemplateLabel,
+  toActiveFilters,
+} from '../lib/active-filters';
 
 const SNAP_POINTS = ['65%', '90%'];
 const BACKGROUND_STYLE = { backgroundColor: colors.bg.elevated };
 const SEARCH_THRESHOLD = 8;
+const MACHINE_SECTION_SEARCH_THRESHOLD = 0; // ADR 0022: always show search
 const MIN_FOOTER_BOTTOM_PADDING = 16;
-
-// Labels sourced from active-filters.ts so ActiveFilterStrip chips and
-// SegmentedControl segments stay in sync if a Korean copy changes.
-const LOADING_SEGMENTS = [
-  { label: '전체', value: null },
-  { label: LOADING_TYPE_LABEL.pin, value: 'pin' },
-  { label: LOADING_TYPE_LABEL.plate, value: 'plate' },
-] as const satisfies readonly { label: string; value: LoadingType | null }[];
+const AND_TOGGLE_MIN_SELECTION = 2;
 
 export interface FilterSheetRef {
   present: () => void;
@@ -40,12 +38,15 @@ export interface FilterSheetRef {
 interface FilterSheetProps {
   brands: readonly Brand[];
   categories: readonly Category[];
+  machineTemplates: readonly MachineTemplateResponse[];
   brandsError?: boolean;
   categoriesError?: boolean;
+  machineTemplatesError?: boolean;
   filters: SearchFilters;
   onToggleBrand: (brandId: string) => void;
   onToggleCategory: (categoryId: string) => void;
-  onSetLoadingType: (loadingType: LoadingType | null) => void;
+  onToggleTemplate: (templateId: string) => void;
+  onSetMachineFilterMode: (mode: SearchFilters['machineFilterMode']) => void;
   onResetAll: () => void;
   onDismiss?: () => void;
   testID?: string;
@@ -55,12 +56,15 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
   {
     brands,
     categories,
+    machineTemplates,
     brandsError = false,
     categoriesError = false,
+    machineTemplatesError = false,
     filters,
     onToggleBrand,
     onToggleCategory,
-    onSetLoadingType,
+    onToggleTemplate,
+    onSetMachineFilterMode,
     onResetAll,
     onDismiss,
     testID,
@@ -79,9 +83,21 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     [],
   );
 
+  // ADR 0022: machine chip labels include brand prefix + loading suffix.
+  // Project the template list into the {id, name} shape that FilterSheetSection
+  // expects, with the rich label as the name.
+  const machineSectionItems = useMemo(
+    () =>
+      machineTemplates.map((template) => ({
+        id: template.id,
+        name: formatMachineTemplateLabel(template),
+      })),
+    [machineTemplates],
+  );
+
   const activeFilters = useMemo(
-    () => toActiveFilters({ filters, brands, categories }),
-    [filters, brands, categories],
+    () => toActiveFilters({ filters, brands, categories, machineTemplates }),
+    [filters, brands, categories, machineTemplates],
   );
 
   const renderBackdrop = useCallback(
@@ -91,7 +107,7 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     [],
   );
 
-  function handleRemoveActive(filter: ActiveFilter): void {
+  function handleRemoveActive(filter: ActiveFilter) {
     switch (filter.kind) {
       case 'brand':
         onToggleBrand(filter.id);
@@ -99,8 +115,8 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
       case 'category':
         onToggleCategory(filter.id);
         return;
-      case 'loadingType':
-        onSetLoadingType(null);
+      case 'machineTemplate':
+        onToggleTemplate(filter.id);
         return;
       default: {
         // Exhaustive check — adding a new ActiveFilterKind triggers TS error here.
@@ -114,8 +130,14 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     sheetRef.current?.dismiss();
   }
 
+  function handleAndModeToggle(value: boolean) {
+    onSetMachineFilterMode(value ? 'and' : 'or');
+  }
+
   const footerBottomPadding = Math.max(insets.bottom, MIN_FOOTER_BOTTOM_PADDING);
   const hasActiveFilters = activeFilters.length > 0;
+  const showAndToggle = filters.templateIds.length >= AND_TOGGLE_MIN_SELECTION;
+  const andModeOn = filters.machineFilterMode === 'and';
 
   return (
     <BottomSheetModal
@@ -143,19 +165,19 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
         <BottomSheetScrollView
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 16 }}
         >
-          <View className="gap-2">
-            <AppText className="text-body-md font-semibold text-text-primary">로딩 방식</AppText>
-            <SegmentedControl
-              segments={LOADING_SEGMENTS}
-              value={filters.loadingType}
-              onChange={onSetLoadingType}
-              accessibilityLabel="로딩 방식"
-            />
-          </View>
-
           {hasActiveFilters ? (
             <ActiveFilterStrip filters={activeFilters} onRemove={handleRemoveActive} />
           ) : null}
+
+          <FilterSheetSection
+            label="운동 부위"
+            items={categories}
+            selectedIds={filters.categoryIds}
+            isError={categoriesError}
+            searchThreshold={SEARCH_THRESHOLD}
+            searchPlaceholder="운동 부위 검색"
+            onToggle={onToggleCategory}
+          />
 
           <FilterSheetSection
             label="브랜드"
@@ -168,14 +190,29 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
           />
 
           <FilterSheetSection
-            label="머신 종류"
-            items={categories}
-            selectedIds={filters.categoryIds}
-            isError={categoriesError}
-            searchThreshold={SEARCH_THRESHOLD}
-            searchPlaceholder="머신 종류 검색"
-            onToggle={onToggleCategory}
+            label="머신"
+            items={machineSectionItems}
+            selectedIds={filters.templateIds}
+            isError={machineTemplatesError}
+            searchThreshold={MACHINE_SECTION_SEARCH_THRESHOLD}
+            searchPlaceholder="머신 검색"
+            onToggle={onToggleTemplate}
           />
+
+          {showAndToggle ? (
+            <View className="flex-row items-center justify-between rounded-lg bg-bg-muted px-3 py-3">
+              <AppText className="flex-1 text-body-sm text-text-primary">
+                선택한 머신 모두 보유한 헬스장만
+              </AppText>
+              <Switch
+                accessibilityLabel="선택한 머신 모두 보유한 헬스장만"
+                value={andModeOn}
+                onValueChange={handleAndModeToggle}
+                trackColor={{ false: colors.bg.subtle, true: colors.accent.DEFAULT }}
+                thumbColor={colors.bg.elevated}
+              />
+            </View>
+          ) : null}
         </BottomSheetScrollView>
 
         {hasActiveFilters ? (

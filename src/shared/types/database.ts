@@ -92,5 +92,10 @@ export interface MapBounds {
 export interface SearchFilters {
   brandIds: readonly string[];
   categoryIds: readonly string[];
-  loadingType: LoadingType | null;
+  templateIds: readonly string[];
+  // ADR 0022 / Task 45: 'or' = gym has at least one matching template (default,
+  // matches brand/category semantics). 'and' = gym must have ALL selected
+  // templates (the user's "wishlist" compound search). Toggled in UI when 2+
+  // templates are selected.
+  machineFilterMode: 'or' | 'and';
 }

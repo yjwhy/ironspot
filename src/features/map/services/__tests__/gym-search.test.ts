@@ -19,19 +19,22 @@ const bounds: MapBounds = {
 const filtersWithBrand: SearchFilters = {
   brandIds: ['b1'],
   categoryIds: [],
-  loadingType: 'plate',
+  templateIds: [],
+  machineFilterMode: 'or',
 };
 
 const filtersWithMultipleBrands: SearchFilters = {
   brandIds: ['b1', 'b2'],
   categoryIds: ['c1'],
-  loadingType: null,
+  templateIds: [],
+  machineFilterMode: 'or',
 };
 
 const emptyFilters: SearchFilters = {
   brandIds: [],
   categoryIds: [],
-  loadingType: null,
+  templateIds: [],
+  machineFilterMode: 'or',
 };
 
 const apiGym: GymWithMachineCountResponse = {

@@ -20,7 +20,8 @@ const bounds: MapBounds = {
 const filters: SearchFilters = {
   brandIds: ['b1'],
   categoryIds: [],
-  loadingType: 'plate',
+  templateIds: [],
+  machineFilterMode: 'or',
 };
 
 describe('useGymSearch', () => {

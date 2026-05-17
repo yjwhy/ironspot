@@ -156,8 +156,14 @@ describe('Database types', () => {
     expect(bounds.maxLat).toBeGreaterThan(bounds.minLat);
   });
 
-  it('SearchFilters accepts empty arrays + null loadingType', () => {
-    const filters: SearchFilters = { brandIds: [], categoryIds: [], loadingType: null };
+  it('SearchFilters accepts empty arrays + or-mode default', () => {
+    const filters: SearchFilters = {
+      brandIds: [],
+      categoryIds: [],
+      templateIds: [],
+      machineFilterMode: 'or',
+    };
     expect(filters.brandIds).toEqual([]);
+    expect(filters.machineFilterMode).toBe('or');
   });
 });

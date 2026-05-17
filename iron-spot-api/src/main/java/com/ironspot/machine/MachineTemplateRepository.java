@@ -1,5 +1,6 @@
 package com.ironspot.machine;
 
+import com.ironspot.machine.dto.MachineTemplateResponse;
 import lombok.RequiredArgsConstructor;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
@@ -27,6 +28,33 @@ public class MachineTemplateRepository {
                 r.get(MACHINE_TEMPLATES.ID),
                 r.get(BRANDS.NAME),
                 r.get(MACHINE_TEMPLATES.NAME)
+            ));
+    }
+
+    /**
+     * Filter-UI catalog. Includes brandId/categoryId/loadingType so the client
+     * can render the chip label as "{brandName} {name} · {loadingType}" and
+     * cross-reference brand/운동 부위 filters. ADR 0022 / Task 45.
+     */
+    public List<MachineTemplateResponse> findAllApprovedDetailed() {
+        return dsl.select(
+                MACHINE_TEMPLATES.ID,
+                MACHINE_TEMPLATES.BRAND_ID,
+                BRANDS.NAME,
+                MACHINE_TEMPLATES.CATEGORY_ID,
+                MACHINE_TEMPLATES.NAME,
+                MACHINE_TEMPLATES.LOADING_TYPE)
+            .from(MACHINE_TEMPLATES)
+            .join(BRANDS).on(MACHINE_TEMPLATES.BRAND_ID.eq(BRANDS.ID))
+            .where(MACHINE_TEMPLATES.IS_APPROVED.isTrue())
+            .orderBy(BRANDS.NAME, MACHINE_TEMPLATES.NAME)
+            .fetch(r -> new MachineTemplateResponse(
+                r.get(MACHINE_TEMPLATES.ID),
+                r.get(MACHINE_TEMPLATES.BRAND_ID),
+                r.get(BRANDS.NAME),
+                r.get(MACHINE_TEMPLATES.CATEGORY_ID),
+                r.get(MACHINE_TEMPLATES.NAME),
+                r.get(MACHINE_TEMPLATES.LOADING_TYPE).getLiteral()
             ));
     }
 

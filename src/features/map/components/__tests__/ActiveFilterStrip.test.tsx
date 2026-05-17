@@ -6,7 +6,7 @@ import { ActiveFilterStrip } from '../ActiveFilterStrip';
 const filters: ActiveFilter[] = [
   { kind: 'brand', id: 'b1', label: 'Panatta' },
   { kind: 'category', id: 'c1', label: '등' },
-  { kind: 'loadingType', id: 'pin', label: '핀로딩' },
+  { kind: 'machineTemplate', id: 't1', label: 'Panatta High Row · 핀' },
 ];
 
 describe('ActiveFilterStrip', () => {
@@ -21,7 +21,7 @@ describe('ActiveFilterStrip', () => {
     );
     expect(getByText('Panatta')).toBeTruthy();
     expect(getByText('등')).toBeTruthy();
-    expect(getByText('핀로딩')).toBeTruthy();
+    expect(getByText('Panatta High Row · 핀')).toBeTruthy();
   });
 
   it('calls onRemove with the matching filter when chip is pressed', () => {
@@ -36,8 +36,8 @@ describe('ActiveFilterStrip', () => {
       <ActiveFilterStrip filters={filters} onRemove={() => undefined} />,
     );
     expect(getByLabelText('브랜드 Panatta 필터 제거')).toBeTruthy();
-    expect(getByLabelText('머신 종류 등 필터 제거')).toBeTruthy();
-    expect(getByLabelText('로딩 방식 핀로딩 필터 제거')).toBeTruthy();
+    expect(getByLabelText('운동 부위 등 필터 제거')).toBeTruthy();
+    expect(getByLabelText('머신 Panatta High Row · 핀 필터 제거')).toBeTruthy();
   });
 
   it('forwards testID to the scroll container', () => {

@@ -24,6 +24,7 @@ export * from './gymMachineResponse';
 export * from './gymWithMachineCountResponse';
 export * from './listPendingPhotosParams';
 export * from './listReportsParams';
+export * from './machineTemplateResponse';
 export * from './machineTemplateSuggestion';
 export * from './naverPlaceResult';
 export * from './nlSearchRequest';

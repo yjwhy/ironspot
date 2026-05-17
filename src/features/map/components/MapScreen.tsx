@@ -22,6 +22,7 @@ import { useBottomSheetMode } from '../hooks/useBottomSheetMode';
 import { useBrands } from '../hooks/useBrands';
 import { useCategories } from '../hooks/useCategories';
 import { useFilters } from '../hooks/useFilters';
+import { useMachineTemplates } from '../hooks/useMachineTemplates';
 import { useMapSearch } from '../hooks/useMapSearch';
 import { useMarkerReveal } from '../hooks/useMarkerReveal';
 import { toGymWithMachineCount } from '../services/gym-search';
@@ -72,12 +73,14 @@ export function MapScreen() {
     filters,
     toggleBrand,
     toggleCategory,
-    setLoadingType,
+    toggleTemplate,
+    setMachineFilterMode,
     setAll: setAllFilters,
     clear: clearFilters,
   } = useFilters();
   const { data: brands = [], isError: brandsError } = useBrands();
   const { data: categories = [], isError: categoriesError } = useCategories();
+  const { data: machineTemplates = [], isError: machineTemplatesError } = useMachineTemplates();
   const filterSheetRef = useRef<FilterSheetRef>(null);
   const [source, dispatch] = useReducer(gymsSourceReducer, INITIAL_SOURCE);
   const mapRef = useRef<NaverMapViewRef>(null);
@@ -121,7 +124,7 @@ export function MapScreen() {
   });
 
   const activeFilterCount =
-    filters.brandIds.length + filters.categoryIds.length + (filters.loadingType !== null ? 1 : 0);
+    filters.brandIds.length + filters.categoryIds.length + filters.templateIds.length;
 
   function handleNlSubmit(query: string) {
     nlSearch.mutate(query, {
@@ -162,10 +165,13 @@ export function MapScreen() {
   }
 
   function applyParsedFiltersAndExitNl(parsed: ParsedFilters) {
+    // ADR 0022 / Slice 45h: templateIds + scope→AND 매핑은 다음 슬라이스에서 추가.
+    // 본 슬라이스 (45f) 는 SearchFilters 타입 변경에 따른 컴파일 fix 만 적용.
     setAllFilters({
       brandIds: parsed.brandIds,
       categoryIds: parsed.categoryIds,
-      loadingType: null,
+      templateIds: [],
+      machineFilterMode: 'or',
     });
     dispatch({ type: 'enter_filter_mode' });
     filterSheetRef.current?.present();
@@ -244,12 +250,15 @@ export function MapScreen() {
         ref={filterSheetRef}
         brands={brands}
         categories={categories}
+        machineTemplates={machineTemplates}
         brandsError={brandsError}
         categoriesError={categoriesError}
+        machineTemplatesError={machineTemplatesError}
         filters={filters}
         onToggleBrand={toggleBrand}
         onToggleCategory={toggleCategory}
-        onSetLoadingType={setLoadingType}
+        onToggleTemplate={toggleTemplate}
+        onSetMachineFilterMode={setMachineFilterMode}
         onResetAll={clearFilters}
       />
 
