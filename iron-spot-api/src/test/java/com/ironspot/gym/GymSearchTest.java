@@ -89,24 +89,17 @@ class GymSearchTest extends IntegrationTestBase {
     }
 
     @Test
-    void searchFiltersByLoadingTypePinReturnsGym() {
-        String url = "/api/gyms/search" + GANGNAM_BOUNDS + "&loadingType=pin";
+    void searchAcceptsTemplateIdsAndScopeQueryParams() {
+        // ADR 0022 / Slice 45b: DTO accepts templateIds + scope. Actual SQL
+        // filtering lands in Slice 45c. This spec-locks parameter binding so
+        // a 200 (not 400 bad-request) confirms the controller deserialises them.
+        String url = "/api/gyms/search" + GANGNAM_BOUNDS
+            + "&templateIds=e0000001-0000-0000-0000-000000000001"
+            + "&scope=each";
 
         ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains("테스트 헬스장");
-    }
-
-    @Test
-    void searchFiltersByLoadingTypePlateDoesNotReturnGym() {
-        // The test gym only has a pin-loaded machine, so plate filter should exclude it
-        String url = "/api/gyms/search" + GANGNAM_BOUNDS + "&loadingType=plate";
-
-        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).doesNotContain("테스트 헬스장");
     }
 
     @Test

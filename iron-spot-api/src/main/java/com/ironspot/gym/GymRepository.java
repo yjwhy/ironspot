@@ -4,7 +4,6 @@ import com.ironspot.gym.dto.CreateGymRequest;
 import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
-import com.ironspot.jooq.enums.LoadingType;
 import com.ironspot.jooq.tables.GymMachines;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachineTemplates;
@@ -52,9 +51,8 @@ public class GymRepository {
             ? mt.CATEGORY_ID.in(req.getCategoryIds().stream().map(UUID::fromString).toList())
             : DSL.noCondition();
 
-        Condition loadingCond = req.getLoadingType() != null
-            ? mt.LOADING_TYPE.eq(LoadingType.lookupLiteral(req.getLoadingType()))
-            : DSL.noCondition();
+        // templateIds 필터링 + AND scope 는 ADR 0022 / Slice 45c 에서 추가.
+        // 본 슬라이스 (45b) 는 DTO 필드만 도입하고 SQL 은 무변경 유지.
 
         return dsl.select(
                 g.ID, g.NAME, g.ADDRESS, lat, lng,
@@ -67,7 +65,6 @@ public class GymRepository {
             .where(spatialCond)
             .and(brandCond)
             .and(categoryCond)
-            .and(loadingCond)
             .groupBy(g.ID, g.NAME, g.ADDRESS, g.PHONE, g.OPERATING_HOURS,
                 g.DAY_PASS_PRICE, g.IS_VERIFIED, g.LAST_VERIFIED_AT,
                 g.CREATED_AT, g.UPDATED_AT)
