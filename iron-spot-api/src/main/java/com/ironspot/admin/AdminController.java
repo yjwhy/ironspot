@@ -45,7 +45,7 @@ public class AdminController {
         @Valid @RequestBody DispositionRequest body,
         @AuthenticationPrincipal UserPrincipal admin
     ) {
-        return adminService.disposeReport(id, body.disposition(), admin.getUserId());
+        return adminService.disposeReport(id, body, admin.getUserId());
     }
 
     @GetMapping("/photos")

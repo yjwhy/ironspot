@@ -713,4 +713,124 @@ class AdminControllerIT extends IntegrationTestBase {
                 + "VALUES (?, 'photo', ?, 'INAPPROPRIATE', 'dismissed', ?, NOW())",
             reporterId, UUID.randomUUID(), UUID.fromString(ADMIN_ID));
     }
+
+    // ──────────────────── gym_machine disposition cascade (Task 46) ──────────────────────
+
+    private static final UUID GYM_MACHINE_REPORT_ID = UUID.fromString("c1000099-0000-0000-0000-000000000099");
+    private static final UUID GYM_MACHINE_ID = UUID.fromString("f0000001-0000-0000-0000-000000000001");
+    private static final UUID GYM_MACHINE_2_ID = UUID.fromString("f0000002-0000-0000-0000-000000000002");
+    private static final UUID TEMPLATE_2_ID = UUID.fromString("e0000002-0000-0000-0000-000000000002");
+
+    private void seedGymMachineReport(UUID gymMachineId, String reason) {
+        jdbcTemplate.update("DELETE FROM reports WHERE id = ?", GYM_MACHINE_REPORT_ID);
+        jdbcTemplate.update(
+            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status) "
+                + "VALUES (?, ?, 'gym_machine', ?, ?, 'pending')",
+            GYM_MACHINE_REPORT_ID, UUID.fromString(REGULAR_ID), gymMachineId, reason);
+    }
+
+    @Test
+    void disposeGymMachineReportReTemplateUpdatesTemplateId() {
+        seedGymMachineReport(GYM_MACHINE_ID, "WRONG_TEMPLATE");
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/reports/" + GYM_MACHINE_REPORT_ID,
+            HttpMethod.PATCH,
+            jsonRequest("{\"disposition\":\"actioned\",\"gymMachineAction\":\"reTemplate\",\"newTemplateId\":\""
+                + TEMPLATE_2_ID + "\"}", "token"),
+            String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        UUID newTemplateId = jdbcTemplate.queryForObject(
+            "SELECT template_id FROM gym_machines WHERE id = ?", UUID.class, GYM_MACHINE_ID);
+        assertThat(newTemplateId).isEqualTo(TEMPLATE_2_ID);
+
+        // restore for downstream tests
+        jdbcTemplate.update("UPDATE gym_machines SET template_id = ? WHERE id = ?",
+            UUID.fromString("e0000001-0000-0000-0000-000000000001"), GYM_MACHINE_ID);
+    }
+
+    @Test
+    void disposeGymMachineReportDeleteRemovesRow() {
+        seedGymMachineReport(GYM_MACHINE_2_ID, "NOT_PRESENT");
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/reports/" + GYM_MACHINE_REPORT_ID,
+            HttpMethod.PATCH,
+            jsonRequest("{\"disposition\":\"actioned\",\"gymMachineAction\":\"delete\"}", "token"),
+            String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM gym_machines WHERE id = ?", Integer.class, GYM_MACHINE_2_ID);
+        assertThat(count).isZero();
+
+        // restore for downstream tests
+        jdbcTemplate.update(
+            "INSERT INTO gym_machines(id, gym_id, template_id, quantity) VALUES (?, ?, ?, 1) ON CONFLICT DO NOTHING",
+            GYM_MACHINE_2_ID, UUID.fromString("a0000001-0000-0000-0000-000000000001"), TEMPLATE_2_ID);
+    }
+
+    @Test
+    void disposeGymMachineReportActionedWithoutActionReturns400() {
+        seedGymMachineReport(GYM_MACHINE_ID, "WRONG_TEMPLATE");
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/reports/" + GYM_MACHINE_REPORT_ID,
+            HttpMethod.PATCH, jsonRequest("{\"disposition\":\"actioned\"}", "token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        // Report row stays pending (validation happens before updateDisposition).
+        assertThat(reportStatus(GYM_MACHINE_REPORT_ID)).isEqualTo("pending");
+    }
+
+    @Test
+    void disposeGymMachineReportReTemplateWithoutNewTemplateIdReturns400() {
+        seedGymMachineReport(GYM_MACHINE_ID, "WRONG_TEMPLATE");
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/reports/" + GYM_MACHINE_REPORT_ID,
+            HttpMethod.PATCH,
+            jsonRequest("{\"disposition\":\"actioned\",\"gymMachineAction\":\"reTemplate\"}", "token"),
+            String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(reportStatus(GYM_MACHINE_REPORT_ID)).isEqualTo("pending");
+    }
+
+    @Test
+    void disposeGymMachineReportReTemplateWithInvalidTemplateReturns400() {
+        seedGymMachineReport(GYM_MACHINE_ID, "WRONG_TEMPLATE");
+        mockPrincipal(ADMIN_ID, "admin");
+
+        UUID nonExistentTemplate = UUID.fromString("e0000099-0000-0000-0000-000000000099");
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/reports/" + GYM_MACHINE_REPORT_ID,
+            HttpMethod.PATCH,
+            jsonRequest("{\"disposition\":\"actioned\",\"gymMachineAction\":\"reTemplate\",\"newTemplateId\":\""
+                + nonExistentTemplate + "\"}", "token"),
+            String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void disposeGymMachineReportDismissedLeavesRowIntact() {
+        seedGymMachineReport(GYM_MACHINE_ID, "WRONG_TEMPLATE");
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/reports/" + GYM_MACHINE_REPORT_ID,
+            HttpMethod.PATCH, jsonRequest("{\"disposition\":\"dismissed\"}", "token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(reportStatus(GYM_MACHINE_REPORT_ID)).isEqualTo("dismissed");
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM gym_machines WHERE id = ?", Integer.class, GYM_MACHINE_ID);
+        assertThat(count).isEqualTo(1);
+    }
 }

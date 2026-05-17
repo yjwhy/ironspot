@@ -67,4 +67,40 @@ public class MachineRepository {
                 );
             });
     }
+
+    /**
+     * Update a gym_machine row's template_id. ADR 0022 follow-up (Task 46):
+     * admin disposition for WRONG_TEMPLATE reports re-maps the gym_machine to
+     * a different (brand, model) tuple. Returns rows affected for race-safe checks.
+     */
+    public int updateTemplateId(UUID gymMachineId, UUID newTemplateId) {
+        return dsl.update(GYM_MACHINES)
+            .set(GYM_MACHINES.TEMPLATE_ID, newTemplateId)
+            .where(GYM_MACHINES.ID.eq(gymMachineId))
+            .execute();
+    }
+
+    /**
+     * Delete a gym_machine row. Photos referencing this row cascade via the FK
+     * (machine_photos.gym_machine_id REFERENCES gym_machines(id)). ADR 0022
+     * follow-up (Task 46): admin disposition for NOT_PRESENT reports.
+     */
+    public int deleteById(UUID gymMachineId) {
+        return dsl.deleteFrom(GYM_MACHINES)
+            .where(GYM_MACHINES.ID.eq(gymMachineId))
+            .execute();
+    }
+
+    /**
+     * Check that a template exists and is approved — used before re-template
+     * disposition so admin cannot point a gym_machine at a non-existent template.
+     */
+    public boolean templateExistsAndApproved(UUID templateId) {
+        Integer count = dsl.selectCount()
+            .from(MACHINE_TEMPLATES)
+            .where(MACHINE_TEMPLATES.ID.eq(templateId))
+            .and(MACHINE_TEMPLATES.IS_APPROVED.isTrue())
+            .fetchOneInto(Integer.class);
+        return Objects.requireNonNullElse(count, 0) > 0;
+    }
 }
