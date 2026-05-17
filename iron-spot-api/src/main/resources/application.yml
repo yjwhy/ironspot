@@ -40,6 +40,18 @@ google:
   vision:
     api-key: ${GOOGLE_VISION_API_KEY:}
 
+# 국세청 사업자등록정보 진위확인 및 상태조회 서비스 (Task 47 / ADR 0023 Q1 U).
+# Public data portal API (공공데이터포털): https://www.data.go.kr/data/15081808/openapi.do
+# Free tier — no per-call billing. Service key issued via portal signup + service
+# request (1-2 day approval). Empty key → BusinessRegistryClient.validate falls
+# through to "no verification available" and the verifier returns Disputed →
+# admin manual review. This degrades gracefully so dev / pre-key environments
+# don't crash on owner claim flow.
+nts:
+  business:
+    base-url: https://api.odcloud.kr
+    api-key: ${NTS_BUSINESS_API_KEY:}
+
 naver:
   search:
     client-id: ${NAVER_SEARCH_CLIENT_ID}

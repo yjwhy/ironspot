@@ -13,6 +13,11 @@ google:
   vision:
     api-key: test-google-vision-api-key
 
+nts:
+  business:
+    base-url: http://localhost:0
+    api-key: test-nts-api-key
+
 naver:
   search:
     client-id: test-naver-client-id
