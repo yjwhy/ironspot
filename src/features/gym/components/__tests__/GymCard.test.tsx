@@ -19,6 +19,7 @@ const baseGym: GymWithMachineCount = {
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   machine_count: 12,
+  matched_machine_names: [],
 };
 
 function renderCard(overrides: Partial<React.ComponentProps<typeof GymCard>> = {}) {
@@ -98,5 +99,37 @@ describe('GymCard', () => {
     const { getByTestId } = renderCard({ onPress });
     fireEvent.press(getByTestId('gym-card'));
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render the matched-machines line when none matched', () => {
+    const { queryByTestId } = renderCard();
+    expect(queryByTestId('gym-card-matched-machines')).toBeNull();
+  });
+
+  it('renders matched machine names inline when 3 or fewer matched', () => {
+    const { getByTestId, getByText } = renderCard({
+      gym: {
+        ...baseGym,
+        matched_machine_names: ['Panatta High Row', 'Hammer Strength Chest Press'],
+      },
+    });
+    expect(getByTestId('gym-card-matched-machines')).toBeTruthy();
+    expect(getByText('✓ Panatta High Row, Hammer Strength Chest Press')).toBeTruthy();
+  });
+
+  it('collapses tail into "외 +N" when more than 3 matched', () => {
+    const { getByText } = renderCard({
+      gym: {
+        ...baseGym,
+        matched_machine_names: [
+          'Panatta High Row',
+          'Panatta Low Row',
+          'Panatta Hex Squat',
+          'Hammer Chest Press',
+          'Cybex Squat',
+        ],
+      },
+    });
+    expect(getByText('✓ Panatta High Row, Panatta Low Row, Panatta Hex Squat 외 +2')).toBeTruthy();
   });
 });

@@ -18,6 +18,7 @@ export function toGymWithMachineCount(r: GymWithMachineCountResponse): GymWithMa
     created_at: r.createdAt,
     updated_at: r.updatedAt,
     machine_count: r.machineCount,
+    matched_machine_names: r.matchedMachineNames,
   };
 }
 

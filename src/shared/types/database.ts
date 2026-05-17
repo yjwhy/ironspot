@@ -75,6 +75,10 @@ export interface MachinePhoto {
 
 export interface GymWithMachineCount extends Gym {
   machine_count: number;
+  // ADR 0022 / Task 45: top 5 matching machines as "Brand TemplateName" strings,
+  // sorted alphabetically. Reflects WHERE-filtered set (brand/category/template
+  // filters applied). When no filters set, returns the gym's first 5 machines.
+  matched_machine_names: readonly string[];
 }
 
 export interface GymMachineWithDetails extends GymMachine {

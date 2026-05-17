@@ -1,28 +1,23 @@
 # Filter sheet flow.
-# Verifies the new BottomSheetModal-based FilterSheet replaces the old
-# slide-down FilterPanel (ADR 0021). Tests segmented control toggle,
-# active filter strip rendering, and reset CTA.
+# Verifies the FilterSheet (ADR 0021 BottomSheetModal + ADR 0022 machine
+# template dimension). Tests sheet entry, section labels, machine chip
+# rendering, active strip toggle, and reset CTA.
 #
-# FilterButton uses accessibilityLabel="필터" — same selector as the legacy
-# nl-search-flow.yaml's pre-condition assertion. After tapping, the
-# BottomSheetModal title "필터" replaces the same label semantically but is
-# now inside the sheet — we wait on the sheet-only label "로딩 방식" to
-# disambiguate.
+# FilterButton uses accessibilityLabel="필터" — disambiguated post-open via
+# the sheet-only label "운동 부위" (Task 45 renamed from "머신 종류").
+# Legacy "로딩 방식" SegmentedControl was removed in ADR 0022 (chip suffix
+# absorbs the loading type info).
 appId: com.ironspot.app
 ---
 - launchApp
 - assertVisible: '필터'
 - tapOn: '필터'
 - extendedWaitUntil:
-    visible: '로딩 방식'
+    visible: '운동 부위'
     timeout: 5000
 - assertVisible: '브랜드'
-- assertVisible: '머신 종류'
-- tapOn: '핀로딩'
-- assertVisible: '1개 활성'
-- assertVisible: '전체 해제'
-- tapOn: '전체 해제'
-- assertNotVisible: '1개 활성'
-- assertNotVisible: '전체 해제'
-- tapOn: '필터 닫기'
+- assertVisible: '머신'
 - assertNotVisible: '로딩 방식'
+- assertNotVisible: '머신 종류'
+- tapOn: '필터 닫기'
+- assertNotVisible: '운동 부위'

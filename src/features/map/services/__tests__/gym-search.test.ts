@@ -177,6 +177,7 @@ describe('searchGymsInBounds', () => {
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
       machine_count: 5,
+      matched_machine_names: [],
     };
     expect(result).toEqual([expected]);
   });
