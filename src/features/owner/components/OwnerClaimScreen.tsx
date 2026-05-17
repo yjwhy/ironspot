@@ -13,9 +13,13 @@ import { pressedOpacity } from '@/shared/lib/pressable';
 import { captureError } from '@/shared/lib/sentry';
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // mirrors backend OwnerController.MAX_UPLOAD_BYTES
-const VERIFY_TIMEOUT_MS = 30_000; // ADR 0023 Q6 sub: 30s ceiling, then offer retry
 
-type ClaimStatus = 'VERIFIED' | 'DISPUTED' | 'FAILED';
+const CLAIM_STATUSES = ['VERIFIED', 'DISPUTED', 'FAILED'] as const;
+type ClaimStatus = (typeof CLAIM_STATUSES)[number];
+
+function isClaimStatus(value: unknown): value is ClaimStatus {
+  return typeof value === 'string' && (CLAIM_STATUSES as readonly string[]).includes(value);
+}
 
 interface OwnerClaimScreenProps {
   gymId: string;
@@ -93,14 +97,14 @@ export function OwnerClaimScreen({ gymId, gymName }: OwnerClaimScreenProps) {
     }
   }
 
-  function handleResetForRetry() {
+  function handleStartOver() {
     setResult(null);
     setPickedImageUri(null);
   }
 
-  function handleGoToQueue() {
-    // typedRoutes does not know about /owner until app/owner/index.tsx lands in slice 47j.
-    // Until then, treat it as a relative path the router will resolve once present.
+  function handleGoToOwnerHome() {
+    // TODO(47j): remove `as never` once app/owner/index.tsx lands and typedRoutes
+    // includes the /owner path. Grep for `as never` in this file when starting 47j.
     router.replace('/owner' as never);
   }
 
@@ -113,8 +117,8 @@ export function OwnerClaimScreen({ gymId, gymName }: OwnerClaimScreenProps) {
       <ResultView
         result={result}
         gymName={gymName}
-        onRetry={handleResetForRetry}
-        onGoToOwnerHome={handleGoToQueue}
+        onRetry={handleStartOver}
+        onGoToOwnerHome={handleGoToOwnerHome}
         onGoBack={handleGoBack}
       />
     );
@@ -241,35 +245,47 @@ interface ResultViewProps {
   onGoBack: () => void;
 }
 
-function ResultView({ result, gymName, onRetry, onGoToOwnerHome, onGoBack }: ResultViewProps) {
-  const status: ClaimStatus = (result.status as ClaimStatus | undefined) ?? 'FAILED';
-  const isVerified = status === 'VERIFIED';
-  const isDisputed = status === 'DISPUTED';
+const RESULT_COPY: Record<ClaimStatus, { tone: string; headline: (gymName: string) => string }> = {
+  VERIFIED: { tone: 'text-accent', headline: (gymName) => `${gymName}의 owner 가 되었어요` },
+  DISPUTED: { tone: 'text-amber-600', headline: () => '검증이 보류되었어요' },
+  FAILED: { tone: 'text-red-600', headline: () => '검증에 실패했어요' },
+};
 
-  const headline = isVerified
-    ? `${gymName}의 owner 가 되었어요`
-    : isDisputed
-      ? '검증이 보류되었어요'
-      : '검증에 실패했어요';
-  const tone = isVerified ? 'text-accent' : isDisputed ? 'text-amber-600' : 'text-red-600';
+function ResultView({ result, gymName, onRetry, onGoToOwnerHome, onGoBack }: ResultViewProps) {
+  const status: ClaimStatus = isClaimStatus(result.status) ? result.status : 'FAILED';
+  const { tone, headline } = RESULT_COPY[status];
 
   return (
     <SafeAreaView className="flex-1 bg-bg-base items-center justify-center px-6 gap-4">
-      <AppText className={`text-headline font-bold ${tone}`}>{headline}</AppText>
+      <AppText className={`text-headline font-bold ${tone}`}>{headline(gymName)}</AppText>
       {typeof result.message === 'string' && result.message.length > 0 ? (
         <AppText className="text-body text-text-secondary text-center">{result.message}</AppText>
       ) : null}
-      {isVerified ? (
-        <Button label="owner 도구로 이동" variant="primary" onPress={onGoToOwnerHome} />
-      ) : (
-        <View className="gap-3 w-full">
-          <Button label="다시 시도하기" variant="primary" onPress={onRetry} />
-          <Button label="나중에 하기" variant="secondary" onPress={onGoBack} />
-        </View>
-      )}
+      <ResultActions
+        status={status}
+        onRetry={onRetry}
+        onGoToOwnerHome={onGoToOwnerHome}
+        onGoBack={onGoBack}
+      />
     </SafeAreaView>
   );
 }
 
-// Exported for testing the timeout constant without re-importing the file
-export const OWNER_CLAIM_VERIFY_TIMEOUT_MS = VERIFY_TIMEOUT_MS;
+interface ResultActionsProps {
+  status: ClaimStatus;
+  onRetry: () => void;
+  onGoToOwnerHome: () => void;
+  onGoBack: () => void;
+}
+
+function ResultActions({ status, onRetry, onGoToOwnerHome, onGoBack }: ResultActionsProps) {
+  if (status === 'VERIFIED') {
+    return <Button label="owner 도구로 이동" variant="primary" onPress={onGoToOwnerHome} />;
+  }
+  return (
+    <View className="gap-3 w-full">
+      <Button label="다시 시도하기" variant="primary" onPress={onRetry} />
+      <Button label="나중에 하기" variant="secondary" onPress={onGoBack} />
+    </View>
+  );
+}
