@@ -45,6 +45,16 @@ public class AdminService {
         return reportRepository.listPendingPhotoQueue(limit);
     }
 
+    /**
+     * ADR 0022 follow-up (Task 46): unified admin queue spanning photo and
+     * gym_machine pending reports. Replaces {@link #listPendingPhotos(int)} as
+     * the admin queue source — the photo-only endpoint stays for backwards
+     * compatibility until the frontend migrates fully (Slice 46h).
+     */
+    public List<com.ironspot.admin.dto.AdminQueueItem> listPendingQueue(int limit) {
+        return reportRepository.listPendingQueue(limit);
+    }
+
     @Transactional(readOnly = true)
     public AdminPhotoDetailResponse getPhotoDetail(UUID photoId) {
         AdminPhotoSummary photo = photoRepository.findForAdmin(photoId)

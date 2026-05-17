@@ -819,6 +819,24 @@ class AdminControllerIT extends IntegrationTestBase {
     }
 
     @Test
+    void unifiedQueueReturnsBothPhotoAndGymMachineGroups() {
+        // seedSetUp() inserts one photo report. Add a gym_machine report and
+        // verify both surfaces appear in the unified queue.
+        seedGymMachineReport(GYM_MACHINE_ID, "WRONG_TEMPLATE");
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/queue?limit=50",
+            HttpMethod.GET, jsonRequest(null, "token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String body = response.getBody();
+        assertThat(body).contains("\"type\":\"photo\"");
+        assertThat(body).contains("\"type\":\"gym_machine\"");
+        assertThat(body).contains(GYM_MACHINE_ID.toString());
+    }
+
+    @Test
     void disposeGymMachineReportDismissedLeavesRowIntact() {
         seedGymMachineReport(GYM_MACHINE_ID, "WRONG_TEMPLATE");
         mockPrincipal(ADMIN_ID, "admin");
