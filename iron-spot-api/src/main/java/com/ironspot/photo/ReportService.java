@@ -2,6 +2,9 @@ package com.ironspot.photo;
 
 import com.ironspot.common.exception.BusinessException;
 import com.ironspot.common.notification.AdminNotificationService;
+import com.ironspot.machine.MachineRepository;
+import com.ironspot.owner.GymOwnerRepository;
+import com.ironspot.owner.ModerationAuditLogRepository;
 import com.ironspot.photo.ReportRepository.InsertResult;
 import com.ironspot.photo.dto.CreateReportRequest;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -21,6 +25,10 @@ public class ReportService {
     static final int GENERAL_AUTO_BLIND_THRESHOLD = 3;
     static final int DAILY_REPORT_CAP = 10;
     static final int DAILY_WINDOW_HOURS = 24;
+    // Task 47 / ADR 0023 Q4 B3: sequential 24h owner first-look window before
+    // admin sees the report.
+    static final int OWNER_FIRST_LOOK_HOURS = 24;
+    static final String ACTION_OWNER_ACTIONED = "owner_actioned";
 
     // ADR 0022 follow-up (Task 46): per-surface reason allowlists. Mismatched
     // (target_type, reason) pairs are rejected at the service boundary so a
@@ -42,6 +50,9 @@ public class ReportService {
     private final ReportRepository reportRepository;
     private final PhotoRepository photoRepository;
     private final AdminNotificationService adminNotifier;
+    private final GymOwnerRepository gymOwnerRepository;
+    private final ModerationAuditLogRepository auditLog;
+    private final MachineRepository machineRepository;
 
     @Transactional
     public void createReport(String userId, UUID photoId, CreateReportRequest request) {
@@ -71,8 +82,35 @@ public class ReportService {
             throw new BusinessException("일일 신고 한도를 초과했습니다", HttpStatus.TOO_MANY_REQUESTS);
         }
 
+        // Task 47 / ADR 0023 Q5 W1: reporter is owner of the photo's gym
+        // → auto-action (status=actioned + blind) immediately.
+        if (gymOwnerRepository.isActiveOwnerOfPhotoGym(userUuid, photoId)) {
+            UUID reportId = reportRepository.findIdByReporterAndTarget(userUuid, photoId)
+                .orElseThrow(() -> new IllegalStateException(
+                    "report row missing after insert — userId=" + userUuid + " targetId=" + photoId));
+            reportRepository.updateDispositionByOwner(reportId, "actioned", userUuid);
+            photoRepository.setBlinded(photoId, true);
+            auditLog.log(userUuid, ACTION_OWNER_ACTIONED, ReportRepository.TARGET_TYPE_PHOTO, photoId, null);
+            adminNotifier.notifyOwnerAction(userUuid, ACTION_OWNER_ACTIONED,
+                ReportRepository.TARGET_TYPE_PHOTO, photoId);
+            return;
+        }
+
         if (request.reason().isUrgent()) {
             adminNotifier.notifyUrgentReport(photoId, userUuid, request.reason().name());
+            return;
+        }
+
+        // Task 47 / ADR 0023 Q4 B3: non-urgent report on a gym with an active
+        // owner → stamp 24h owner_timeout_at so the report enters the owner
+        // queue (and stays out of admin queue) until owner disposes or window
+        // expires.
+        if (gymOwnerRepository.findActiveOwnerGymForPhoto(photoId).isPresent()) {
+            UUID reportId = reportRepository.findIdByReporterAndTarget(userUuid, photoId)
+                .orElseThrow(() -> new IllegalStateException(
+                    "report row missing after insert — userId=" + userUuid + " targetId=" + photoId));
+            reportRepository.setOwnerTimeoutAt(reportId,
+                OffsetDateTime.now().plusHours(OWNER_FIRST_LOOK_HOURS));
             return;
         }
 
@@ -114,6 +152,35 @@ public class ReportService {
         int todayCount = reportRepository.countByReporterSince(userUuid, windowStart);
         if (todayCount > DAILY_REPORT_CAP) {
             throw new BusinessException("일일 신고 한도를 초과했습니다", HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        // Task 47 / ADR 0023 Q5 W1: reporter is owner of the gym_machine's gym
+        // AND reason is NOT_PRESENT → auto-action (status=actioned + soft delete).
+        // WRONG_TEMPLATE deliberately falls through to the owner queue so the
+        // owner can pick the new template via the dispose endpoint.
+        if (gymOwnerRepository.isActiveOwnerOfGymMachineGym(userUuid, gymMachineId)
+                && Objects.equals(request.reason(), ReportReason.NOT_PRESENT)) {
+            UUID reportId = reportRepository.findIdByReporterAndTarget(userUuid, gymMachineId)
+                .orElseThrow(() -> new IllegalStateException(
+                    "report row missing after insert — userId=" + userUuid + " targetId=" + gymMachineId));
+            reportRepository.updateDispositionByOwner(reportId, "actioned", userUuid);
+            machineRepository.softDeleteById(gymMachineId);
+            auditLog.log(userUuid, ACTION_OWNER_ACTIONED,
+                ReportRepository.TARGET_TYPE_GYM_MACHINE, gymMachineId, null);
+            adminNotifier.notifyOwnerAction(userUuid, ACTION_OWNER_ACTIONED,
+                ReportRepository.TARGET_TYPE_GYM_MACHINE, gymMachineId);
+            return;
+        }
+
+        // Task 47 / ADR 0023 Q4 B3: stamp 24h owner_timeout_at when the gym
+        // has an active owner (including the self-gym WRONG_TEMPLATE case so
+        // the owner is forced through the dispose flow with a chosen template).
+        if (gymOwnerRepository.findActiveOwnerGymForGymMachine(gymMachineId).isPresent()) {
+            UUID reportId = reportRepository.findIdByReporterAndTarget(userUuid, gymMachineId)
+                .orElseThrow(() -> new IllegalStateException(
+                    "report row missing after insert — userId=" + userUuid + " targetId=" + gymMachineId));
+            reportRepository.setOwnerTimeoutAt(reportId,
+                OffsetDateTime.now().plusHours(OWNER_FIRST_LOOK_HOURS));
         }
     }
 

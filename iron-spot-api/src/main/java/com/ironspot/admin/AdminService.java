@@ -219,7 +219,9 @@ public class AdminService {
                     "머신을 찾을 수 없습니다", HttpStatus.NOT_FOUND);
             }
         } else if ("delete".equals(body.gymMachineAction())) {
-            int rows = machineRepository.deleteById(gymMachineId);
+            // Task 47 / ADR 0023 Q4 E3: soft-delete via deleted_at so admin can
+            // restore later. Replaces the Task 46 hard delete.
+            int rows = machineRepository.softDeleteById(gymMachineId);
             if (rows == 0) {
                 throw new BusinessException(
                     "머신을 찾을 수 없습니다", HttpStatus.NOT_FOUND);

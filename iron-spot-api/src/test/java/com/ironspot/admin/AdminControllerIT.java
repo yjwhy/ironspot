@@ -752,7 +752,7 @@ class AdminControllerIT extends IntegrationTestBase {
     }
 
     @Test
-    void disposeGymMachineReportDeleteRemovesRow() {
+    void disposeGymMachineReportDeleteSoftDeletesRow() {
         seedGymMachineReport(GYM_MACHINE_2_ID, "NOT_PRESENT");
         mockPrincipal(ADMIN_ID, "admin");
 
@@ -762,15 +762,20 @@ class AdminControllerIT extends IntegrationTestBase {
             jsonRequest("{\"disposition\":\"actioned\",\"gymMachineAction\":\"delete\"}", "token"),
             String.class);
 
+        // Task 47 / ADR 0023 Q4 E3: admin "delete" is now a soft delete via
+        // deleted_at. Row stays in the table but deleted_at is non-null.
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Integer count = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM gym_machines WHERE id = ?", Integer.class, GYM_MACHINE_2_ID);
-        assertThat(count).isZero();
+        assertThat(count).isEqualTo(1);
+        java.sql.Timestamp deletedAt = jdbcTemplate.queryForObject(
+            "SELECT deleted_at FROM gym_machines WHERE id = ?",
+            java.sql.Timestamp.class, GYM_MACHINE_2_ID);
+        assertThat(deletedAt).isNotNull();
 
         // restore for downstream tests
         jdbcTemplate.update(
-            "INSERT INTO gym_machines(id, gym_id, template_id, quantity) VALUES (?, ?, ?, 1) ON CONFLICT DO NOTHING",
-            GYM_MACHINE_2_ID, UUID.fromString("a0000001-0000-0000-0000-000000000001"), TEMPLATE_2_ID);
+            "UPDATE gym_machines SET deleted_at = NULL WHERE id = ?", GYM_MACHINE_2_ID);
     }
 
     @Test

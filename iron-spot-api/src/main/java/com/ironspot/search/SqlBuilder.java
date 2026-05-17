@@ -58,7 +58,8 @@ public class SqlBuilder {
                 g.IS_VERIFIED, g.LAST_VERIFIED_AT, g.CREATED_AT, g.UPDATED_AT,
                 machineCount, distance.as("distance"))
             .from(g)
-            .leftJoin(gm).on(gm.GYM_ID.eq(g.ID))
+            // Task 47 / ADR 0023 Q4 E3: skip soft-deleted gym_machines in search.
+            .leftJoin(gm).on(gm.GYM_ID.eq(g.ID).and(gm.DELETED_AT.isNull()))
             .where(spatial)
             .and(filterCondition)
             .groupBy(g.ID, g.NAME, g.ADDRESS, g.PHONE, g.OPERATING_HOURS,
@@ -112,6 +113,7 @@ public class SqlBuilder {
                 .from(gmInner)
                 .join(mt).on(mt.ID.eq(gmInner.TEMPLATE_ID))
                 .where(gmInner.GYM_ID.eq(g.ID))
+                .and(gmInner.DELETED_AT.isNull())
                 .and(matchesFilter(filter, mt))
                 .groupBy(gmInner.GYM_ID)
                 .having(DSL.sum(gmInner.QUANTITY).ge(BigDecimal.valueOf(filter.minCount())))
@@ -131,6 +133,7 @@ public class SqlBuilder {
                 .from(gmInner)
                 .join(mt).on(mt.ID.eq(gmInner.TEMPLATE_ID))
                 .where(gmInner.GYM_ID.eq(g.ID))
+                .and(gmInner.DELETED_AT.isNull())
                 .and(match)
                 .groupBy(gmInner.GYM_ID)
                 .having(DSL.sum(gmInner.QUANTITY).ge(BigDecimal.valueOf(threshold)))

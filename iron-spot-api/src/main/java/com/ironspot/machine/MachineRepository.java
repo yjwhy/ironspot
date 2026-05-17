@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.ironspot.jooq.Tables.*;
@@ -46,6 +47,7 @@ public class MachineRepository {
             .join(b).on(b.ID.eq(mt.BRAND_ID))
             .join(c).on(c.ID.eq(mt.CATEGORY_ID))
             .where(gm.GYM_ID.eq(gymId))
+            .and(gm.DELETED_AT.isNull())
             .orderBy(b.NAME, c.NAME, mt.NAME)
             .fetch(r -> {
                 OffsetDateTime lastVerified = r.get(gm.LAST_VERIFIED_AT);
@@ -118,14 +120,59 @@ public class MachineRepository {
     }
 
     /**
-     * Delete a gym_machine row. Photos referencing this row cascade via the FK
-     * (machine_photos.gym_machine_id REFERENCES gym_machines(id)). ADR 0022
-     * follow-up (Task 46): admin disposition for NOT_PRESENT reports.
+     * Soft delete a gym_machine row via {@code deleted_at} (Task 47 /
+     * ADR 0023 Q4 E3). Replaces the hard delete from Task 46: owner-driven
+     * deletes must be admin-restorable, so the column-flip pattern is the
+     * primary semantics. Returns 0 if the row was already soft-deleted, so
+     * concurrent callers don't double-notify.
      */
-    public int deleteById(UUID gymMachineId) {
-        return dsl.deleteFrom(GYM_MACHINES)
+    public int softDeleteById(UUID gymMachineId) {
+        return dsl.update(GYM_MACHINES)
+            .set(GYM_MACHINES.DELETED_AT, OffsetDateTime.now())
             .where(GYM_MACHINES.ID.eq(gymMachineId))
+            .and(GYM_MACHINES.DELETED_AT.isNull())
             .execute();
+    }
+
+    /**
+     * Owner-initiated gym_machine insert (Task 47 / ADR 0023 Q5 P3). Caller
+     * (OwnerMachineService) enforces ownership before this is invoked. Returns
+     * the new gym_machine id so the controller can echo it back.
+     */
+    public UUID insertForOwner(UUID gymId, UUID templateId, int quantity) {
+        return dsl.insertInto(GYM_MACHINES)
+            .set(GYM_MACHINES.GYM_ID, gymId)
+            .set(GYM_MACHINES.TEMPLATE_ID, templateId)
+            .set(GYM_MACHINES.QUANTITY, quantity)
+            .returning(GYM_MACHINES.ID)
+            .fetchOne()
+            .get(GYM_MACHINES.ID);
+    }
+
+    /**
+     * Owner-initiated gym_machine update (Task 47 / ADR 0023 Q5 P3). Updates
+     * both template_id and quantity in one statement. Returns rows affected
+     * so 0 → 404 in the service.
+     */
+    public int updateForOwner(UUID gymMachineId, UUID templateId, int quantity) {
+        return dsl.update(GYM_MACHINES)
+            .set(GYM_MACHINES.TEMPLATE_ID, templateId)
+            .set(GYM_MACHINES.QUANTITY, quantity)
+            .where(GYM_MACHINES.ID.eq(gymMachineId))
+            .and(GYM_MACHINES.DELETED_AT.isNull())
+            .execute();
+    }
+
+    /**
+     * Lookup the gym_id for a gym_machine (Task 47 / ADR 0023 Q5 P3).
+     * Used by service-layer ownership checks before mutating the row.
+     */
+    public Optional<UUID> findGymIdByMachineId(UUID gymMachineId) {
+        return dsl.select(GYM_MACHINES.GYM_ID)
+            .from(GYM_MACHINES)
+            .where(GYM_MACHINES.ID.eq(gymMachineId))
+            .and(GYM_MACHINES.DELETED_AT.isNull())
+            .fetchOptional(r -> r.get(GYM_MACHINES.GYM_ID));
     }
 
     /**

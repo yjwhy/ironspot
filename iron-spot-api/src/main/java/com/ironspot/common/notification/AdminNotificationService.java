@@ -57,6 +57,16 @@ public class AdminNotificationService {
             + "` on " + targetType + " `" + targetId + "`");
     }
 
+    public void notifyOwnerTimeoutEscalated(int count) {
+        post(":hourglass: Owner timeout — " + count
+            + " report(s) escalated to admin queue (24h window expired)");
+    }
+
+    public void notifyReporterEscalated(UUID reportId, UUID reporterId) {
+        post(":arrows_counterclockwise: Reporter re-escalation — report `" + reportId
+            + "` re-opened by reporter `" + reporterId + "`");
+    }
+
     private void post(String text) {
         if (webhookUrl == null || webhookUrl.isBlank()) {
             log.debug("Slack webhook not configured, skipping notification: {}", text);
