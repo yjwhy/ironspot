@@ -103,9 +103,10 @@ export function OwnerClaimScreen({ gymId, gymName }: OwnerClaimScreenProps) {
   }
 
   function handleGoToOwnerHome() {
-    // TODO(47j): remove `as never` once app/owner/index.tsx lands and typedRoutes
-    // includes the /owner path. Grep for `as never` in this file when starting 47j.
-    router.replace('/owner' as never);
+    // app/owner/index.tsx lands in slice 47j; until then the route resolves to
+    // app/owner/_layout's default child once that ships. Keep the literal path
+    // — Expo typed-routes accepts /owner as soon as any app/owner/* route exists.
+    router.replace('/owner');
   }
 
   function handleGoBack() {
