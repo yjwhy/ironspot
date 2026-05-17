@@ -29,6 +29,7 @@
 | [0021](./0021-filter-sheet-supersedes-panel.md) | FilterPanel → BottomSheetModal + 검색 + 활성 strip + LoadingType segmented           | Accepted           |
 | [0022](./0022-machine-template-filter.md)       | 머신 템플릿 per-template chip 필터 + 카테고리 라벨 정정 ("운동 부위") + AND 토글     | Accepted           |
 | [0023](./0023-gym-owner-workflow.md)            | Gym owner workflow: 사업자등록증 OCR 인증 + P3 권한 + 모더레이션 분산 + trust signal | Accepted           |
+| [0024](./0024-apple-sign-in-native-hybrid.md)   | Apple Sign In: native sheet (iOS) 우선 + web OAuth fallback hybrid                   | Accepted           |
 
 ## 포맷
 
