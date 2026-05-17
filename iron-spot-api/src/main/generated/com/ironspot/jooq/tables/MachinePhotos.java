@@ -91,6 +91,11 @@ public class MachinePhotos extends TableImpl<Record> {
     public final TableField<Record, Boolean> IS_BLINDED = createField(DSL.name("is_blinded"), SQLDataType.BOOLEAN.defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "");
 
     /**
+     * The column <code>public.machine_photos.verified_by_owner_at</code>.
+     */
+    public final TableField<Record, OffsetDateTime> VERIFIED_BY_OWNER_AT = createField(DSL.name("verified_by_owner_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
+
+    /**
      * The column <code>public.machine_photos.created_at</code>.
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");

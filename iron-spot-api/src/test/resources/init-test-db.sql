@@ -49,14 +49,24 @@ CREATE TABLE IF NOT EXISTS gym_machines (
   is_custom BOOLEAN DEFAULT FALSE,
   custom_name TEXT,
   last_verified_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Task 47 / ADR 0023 Q4 E3: owner machine CRUD applies immediately but
+  -- DELETE is soft (admin restorable). Search hot path filters
+  -- WHERE deleted_at IS NULL.
+  deleted_at TIMESTAMPTZ
 );
+
+CREATE INDEX IF NOT EXISTS idx_gym_machines_active
+  ON gym_machines (gym_id) WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
   email TEXT NOT NULL,
   nickname TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  -- Phase 2 Task 30 (PR #45) added 'owner' on prod ahead of any workflow;
+  -- Phase 4 Task 47 (ADR 0023) closes Phase 2 carry-over gap #4 by aligning
+  -- the test schema and explicitly pinning the constraint in V2 migration.
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'owner')),
   banned_at TIMESTAMPTZ,
   deleted_at TIMESTAMPTZ,
   nl_search_count_month INT NOT NULL DEFAULT 0,
@@ -67,6 +77,40 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role) WHERE role = 'admin';
 
+-- Task 47 / ADR 0023: gym_owners join table. N:N cardinality (single-owner,
+-- chain, co-owner). business_number_hash = SHA-256 of 사업자등록번호; same hash
+-- on same gym → co-owner auto-allowed; different hash → admin escalation.
+CREATE TABLE IF NOT EXISTS gym_owners (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  business_number_hash TEXT NOT NULL,
+  verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT gym_owners_unique_gym_user UNIQUE (gym_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_gym_owners_user_active
+  ON gym_owners (user_id) WHERE revoked_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_gym_owners_gym_active
+  ON gym_owners (gym_id) WHERE revoked_at IS NULL;
+
+-- Task 47 / ADR 0023 Q4 decision C2: owner moderation actions audit trail.
+CREATE TABLE IF NOT EXISTS moderation_audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id),
+  action TEXT NOT NULL,
+  target_type TEXT,
+  target_id UUID,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_user_action
+  ON moderation_audit_log (user_id, action, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS machine_photos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_machine_id UUID REFERENCES gym_machines(id),
@@ -74,6 +118,10 @@ CREATE TABLE IF NOT EXISTS machine_photos (
   photo_url TEXT NOT NULL,
   upvote_count INTEGER DEFAULT 0,
   is_blinded BOOLEAN DEFAULT FALSE,
+  -- Task 47 / ADR 0023 Q5 T1/T2: owner-verified photo badge. NULL = not
+  -- verified; non-NULL = timestamp of verification (manual via UI or auto on
+  -- upload when uploader is an active owner of the photo's gym).
+  verified_by_owner_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -95,6 +143,11 @@ CREATE TABLE IF NOT EXISTS reports (
   disposed_by UUID REFERENCES users(id),
   disposed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Task 47 / ADR 0023 Q4 B3: sequential 24h owner queue + admin escalation.
+  -- Set to NOW() + 24h on report creation when target's gym has an active
+  -- owner AND reason is not in the urgent fast-track set (SafeSearch suspect,
+  -- auto-blind). OwnerTimeoutEscalationJob surfaces expired rows in admin queue.
+  owner_timeout_at TIMESTAMPTZ,
   CONSTRAINT reports_unique_reporter_target UNIQUE (user_id, target_id)
 );
 

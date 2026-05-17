@@ -7,9 +7,11 @@ package com.ironspot.jooq;
 import com.ironspot.jooq.tables.Brands;
 import com.ironspot.jooq.tables.Categories;
 import com.ironspot.jooq.tables.GymMachines;
+import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
 import com.ironspot.jooq.tables.MachineTemplates;
+import com.ironspot.jooq.tables.ModerationAuditLog;
 import com.ironspot.jooq.tables.PhotoVotes;
 import com.ironspot.jooq.tables.PostgisSrs;
 import com.ironspot.jooq.tables.PostgisSrsAll;
@@ -56,6 +58,11 @@ public class Tables {
     public static final GymMachines GYM_MACHINES = GymMachines.GYM_MACHINES;
 
     /**
+     * The table <code>public.gym_owners</code>.
+     */
+    public static final GymOwners GYM_OWNERS = GymOwners.GYM_OWNERS;
+
+    /**
      * The table <code>public.gyms</code>.
      */
     public static final Gyms GYMS = Gyms.GYMS;
@@ -69,6 +76,11 @@ public class Tables {
      * The table <code>public.machine_templates</code>.
      */
     public static final MachineTemplates MACHINE_TEMPLATES = MachineTemplates.MACHINE_TEMPLATES;
+
+    /**
+     * The table <code>public.moderation_audit_log</code>.
+     */
+    public static final ModerationAuditLog MODERATION_AUDIT_LOG = ModerationAuditLog.MODERATION_AUDIT_LOG;
 
     /**
      * The table <code>public.photo_votes</code>.

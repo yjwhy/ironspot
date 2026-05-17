@@ -12,6 +12,19 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${DATABASE_USERNAME:}
     password: ${DATABASE_PASSWORD:}
+  flyway:
+    # Task 47 / ADR 0023 — DB schema migrations via Flyway Community.
+    # Prod has been running with manual SQL migrations since Phase 1; baseline-on-migrate
+    # tells Flyway to record the current schema state as a baseline (V1) and only apply
+    # later versions on top. baseline-version=1 means "V1__baseline.sql is the baseline
+    # snapshot; never execute it on an already-populated DB". New migrations land as
+    # V2+. Tests run with init-test-db.sql via Testcontainers — Flyway is disabled in the
+    # test profile so the two schema-init paths don't fight.
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+    validate-on-migrate: true
 
 security:
   # Supabase JWKS endpoint — JwtValidator fetches the public keys from here and
@@ -26,6 +39,18 @@ supabase:
 google:
   vision:
     api-key: ${GOOGLE_VISION_API_KEY:}
+
+# 국세청 사업자등록정보 진위확인 및 상태조회 서비스 (Task 47 / ADR 0023 Q1 U).
+# Public data portal API (공공데이터포털): https://www.data.go.kr/data/15081808/openapi.do
+# Free tier — no per-call billing. Service key issued via portal signup + service
+# request (1-2 day approval). Empty key → BusinessRegistryClient.validate falls
+# through to "no verification available" and the verifier returns Disputed →
+# admin manual review. This degrades gracefully so dev / pre-key environments
+# don't crash on owner claim flow.
+nts:
+  business:
+    base-url: https://api.odcloud.kr
+    api-key: ${NTS_BUSINESS_API_KEY:}
 
 naver:
   search:

@@ -7,9 +7,11 @@ package com.ironspot.jooq;
 import com.ironspot.jooq.tables.Brands;
 import com.ironspot.jooq.tables.Categories;
 import com.ironspot.jooq.tables.GymMachines;
+import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
 import com.ironspot.jooq.tables.MachineTemplates;
+import com.ironspot.jooq.tables.ModerationAuditLog;
 import com.ironspot.jooq.tables.PhotoVotes;
 import com.ironspot.jooq.tables.Reports;
 import com.ironspot.jooq.tables.Users;
@@ -39,9 +41,12 @@ public class Keys {
     public static final UniqueKey<Record> CATEGORIES_NAME_KEY = Internal.createUniqueKey(Categories.CATEGORIES, DSL.name("categories_name_key"), new TableField[] { Categories.CATEGORIES.NAME }, true);
     public static final UniqueKey<Record> CATEGORIES_PKEY = Internal.createUniqueKey(Categories.CATEGORIES, DSL.name("categories_pkey"), new TableField[] { Categories.CATEGORIES.ID }, true);
     public static final UniqueKey<Record> GYM_MACHINES_PKEY = Internal.createUniqueKey(GymMachines.GYM_MACHINES, DSL.name("gym_machines_pkey"), new TableField[] { GymMachines.GYM_MACHINES.ID }, true);
+    public static final UniqueKey<Record> GYM_OWNERS_PKEY = Internal.createUniqueKey(GymOwners.GYM_OWNERS, DSL.name("gym_owners_pkey"), new TableField[] { GymOwners.GYM_OWNERS.ID }, true);
+    public static final UniqueKey<Record> GYM_OWNERS_UNIQUE_GYM_USER = Internal.createUniqueKey(GymOwners.GYM_OWNERS, DSL.name("gym_owners_unique_gym_user"), new TableField[] { GymOwners.GYM_OWNERS.GYM_ID, GymOwners.GYM_OWNERS.USER_ID }, true);
     public static final UniqueKey<Record> GYMS_PKEY = Internal.createUniqueKey(Gyms.GYMS, DSL.name("gyms_pkey"), new TableField[] { Gyms.GYMS.ID }, true);
     public static final UniqueKey<Record> MACHINE_PHOTOS_PKEY = Internal.createUniqueKey(MachinePhotos.MACHINE_PHOTOS, DSL.name("machine_photos_pkey"), new TableField[] { MachinePhotos.MACHINE_PHOTOS.ID }, true);
     public static final UniqueKey<Record> MACHINE_TEMPLATES_PKEY = Internal.createUniqueKey(MachineTemplates.MACHINE_TEMPLATES, DSL.name("machine_templates_pkey"), new TableField[] { MachineTemplates.MACHINE_TEMPLATES.ID }, true);
+    public static final UniqueKey<Record> MODERATION_AUDIT_LOG_PKEY = Internal.createUniqueKey(ModerationAuditLog.MODERATION_AUDIT_LOG, DSL.name("moderation_audit_log_pkey"), new TableField[] { ModerationAuditLog.MODERATION_AUDIT_LOG.ID }, true);
     public static final UniqueKey<Record> PHOTO_VOTES_PKEY = Internal.createUniqueKey(PhotoVotes.PHOTO_VOTES, DSL.name("photo_votes_pkey"), new TableField[] { PhotoVotes.PHOTO_VOTES.USER_ID, PhotoVotes.PHOTO_VOTES.PHOTO_ID }, true);
     public static final UniqueKey<Record> REPORTS_PKEY = Internal.createUniqueKey(Reports.REPORTS, DSL.name("reports_pkey"), new TableField[] { Reports.REPORTS.ID }, true);
     public static final UniqueKey<Record> REPORTS_UNIQUE_REPORTER_TARGET = Internal.createUniqueKey(Reports.REPORTS, DSL.name("reports_unique_reporter_target"), new TableField[] { Reports.REPORTS.USER_ID, Reports.REPORTS.TARGET_ID }, true);
@@ -53,10 +58,13 @@ public class Keys {
 
     public static final ForeignKey<Record, Record> GYM_MACHINES__GYM_MACHINES_GYM_ID_FKEY = Internal.createForeignKey(GymMachines.GYM_MACHINES, DSL.name("gym_machines_gym_id_fkey"), new TableField[] { GymMachines.GYM_MACHINES.GYM_ID }, Keys.GYMS_PKEY, new TableField[] { Gyms.GYMS.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<Record, Record> GYM_MACHINES__GYM_MACHINES_TEMPLATE_ID_FKEY = Internal.createForeignKey(GymMachines.GYM_MACHINES, DSL.name("gym_machines_template_id_fkey"), new TableField[] { GymMachines.GYM_MACHINES.TEMPLATE_ID }, Keys.MACHINE_TEMPLATES_PKEY, new TableField[] { MachineTemplates.MACHINE_TEMPLATES.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<Record, Record> GYM_OWNERS__GYM_OWNERS_GYM_ID_FKEY = Internal.createForeignKey(GymOwners.GYM_OWNERS, DSL.name("gym_owners_gym_id_fkey"), new TableField[] { GymOwners.GYM_OWNERS.GYM_ID }, Keys.GYMS_PKEY, new TableField[] { Gyms.GYMS.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<Record, Record> GYM_OWNERS__GYM_OWNERS_USER_ID_FKEY = Internal.createForeignKey(GymOwners.GYM_OWNERS, DSL.name("gym_owners_user_id_fkey"), new TableField[] { GymOwners.GYM_OWNERS.USER_ID }, Keys.USERS_PKEY, new TableField[] { Users.USERS.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<Record, Record> MACHINE_PHOTOS__MACHINE_PHOTOS_GYM_MACHINE_ID_FKEY = Internal.createForeignKey(MachinePhotos.MACHINE_PHOTOS, DSL.name("machine_photos_gym_machine_id_fkey"), new TableField[] { MachinePhotos.MACHINE_PHOTOS.GYM_MACHINE_ID }, Keys.GYM_MACHINES_PKEY, new TableField[] { GymMachines.GYM_MACHINES.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<Record, Record> MACHINE_PHOTOS__MACHINE_PHOTOS_USER_ID_FKEY = Internal.createForeignKey(MachinePhotos.MACHINE_PHOTOS, DSL.name("machine_photos_user_id_fkey"), new TableField[] { MachinePhotos.MACHINE_PHOTOS.USER_ID }, Keys.USERS_PKEY, new TableField[] { Users.USERS.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<Record, Record> MACHINE_TEMPLATES__MACHINE_TEMPLATES_BRAND_ID_FKEY = Internal.createForeignKey(MachineTemplates.MACHINE_TEMPLATES, DSL.name("machine_templates_brand_id_fkey"), new TableField[] { MachineTemplates.MACHINE_TEMPLATES.BRAND_ID }, Keys.BRANDS_PKEY, new TableField[] { Brands.BRANDS.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<Record, Record> MACHINE_TEMPLATES__MACHINE_TEMPLATES_CATEGORY_ID_FKEY = Internal.createForeignKey(MachineTemplates.MACHINE_TEMPLATES, DSL.name("machine_templates_category_id_fkey"), new TableField[] { MachineTemplates.MACHINE_TEMPLATES.CATEGORY_ID }, Keys.CATEGORIES_PKEY, new TableField[] { Categories.CATEGORIES.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<Record, Record> MODERATION_AUDIT_LOG__MODERATION_AUDIT_LOG_USER_ID_FKEY = Internal.createForeignKey(ModerationAuditLog.MODERATION_AUDIT_LOG, DSL.name("moderation_audit_log_user_id_fkey"), new TableField[] { ModerationAuditLog.MODERATION_AUDIT_LOG.USER_ID }, Keys.USERS_PKEY, new TableField[] { Users.USERS.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<Record, Record> PHOTO_VOTES__PHOTO_VOTES_PHOTO_ID_FKEY = Internal.createForeignKey(PhotoVotes.PHOTO_VOTES, DSL.name("photo_votes_photo_id_fkey"), new TableField[] { PhotoVotes.PHOTO_VOTES.PHOTO_ID }, Keys.MACHINE_PHOTOS_PKEY, new TableField[] { MachinePhotos.MACHINE_PHOTOS.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<Record, Record> PHOTO_VOTES__PHOTO_VOTES_USER_ID_FKEY = Internal.createForeignKey(PhotoVotes.PHOTO_VOTES, DSL.name("photo_votes_user_id_fkey"), new TableField[] { PhotoVotes.PHOTO_VOTES.USER_ID }, Keys.USERS_PKEY, new TableField[] { Users.USERS.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<Record, Record> REPORTS__REPORTS_DISPOSED_BY_FKEY = Internal.createForeignKey(Reports.REPORTS, DSL.name("reports_disposed_by_fkey"), new TableField[] { Reports.REPORTS.DISPOSED_BY }, Keys.USERS_PKEY, new TableField[] { Users.USERS.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);

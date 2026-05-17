@@ -7,9 +7,11 @@ package com.ironspot.jooq;
 import com.ironspot.jooq.tables.Brands;
 import com.ironspot.jooq.tables.Categories;
 import com.ironspot.jooq.tables.GymMachines;
+import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
 import com.ironspot.jooq.tables.MachineTemplates;
+import com.ironspot.jooq.tables.ModerationAuditLog;
 import com.ironspot.jooq.tables.PhotoVotes;
 import com.ironspot.jooq.tables.PostgisSrs;
 import com.ironspot.jooq.tables.PostgisSrsAll;
@@ -73,6 +75,11 @@ public class Public extends SchemaImpl {
     public final GymMachines GYM_MACHINES = GymMachines.GYM_MACHINES;
 
     /**
+     * The table <code>public.gym_owners</code>.
+     */
+    public final GymOwners GYM_OWNERS = GymOwners.GYM_OWNERS;
+
+    /**
      * The table <code>public.gyms</code>.
      */
     public final Gyms GYMS = Gyms.GYMS;
@@ -86,6 +93,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.machine_templates</code>.
      */
     public final MachineTemplates MACHINE_TEMPLATES = MachineTemplates.MACHINE_TEMPLATES;
+
+    /**
+     * The table <code>public.moderation_audit_log</code>.
+     */
+    public final ModerationAuditLog MODERATION_AUDIT_LOG = ModerationAuditLog.MODERATION_AUDIT_LOG;
 
     /**
      * The table <code>public.photo_votes</code>.
@@ -633,9 +645,11 @@ public class Public extends SchemaImpl {
             Brands.BRANDS,
             Categories.CATEGORIES,
             GymMachines.GYM_MACHINES,
+            GymOwners.GYM_OWNERS,
             Gyms.GYMS,
             MachinePhotos.MACHINE_PHOTOS,
             MachineTemplates.MACHINE_TEMPLATES,
+            ModerationAuditLog.MODERATION_AUDIT_LOG,
             PhotoVotes.PHOTO_VOTES,
             PostgisSrs.POSTGIS_SRS,
             PostgisSrsAll.POSTGIS_SRS_ALL,

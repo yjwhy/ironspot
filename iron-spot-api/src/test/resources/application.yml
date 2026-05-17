@@ -1,3 +1,19 @@
+spring:
+  # Flyway is disabled in tests so init-test-db.sql + Testcontainers stay authoritative
+  # for schema setup (and JOOQ codegen). Re-enable per-test via @TestPropertySource if a
+  # future IT specifically validates migration behaviour.
+  flyway:
+    enabled: false
+  datasource:
+    hikari:
+      # Each cached Spring context spins up its own HikariCP pool. Default 10 conns × N
+      # cached contexts can blow past Postgres default max_connections=100 once new ITs
+      # with distinct @MockitoBean configurations land (Task 47 OwnerClaimIT added
+      # OcrService + BusinessRegistryClient mocks → new cache key → extra context).
+      # 3 connections per context is enough for serial IT execution.
+      maximum-pool-size: 3
+      minimum-idle: 1
+
 supabase:
   url: http://localhost:54321
   service-role-key: test-service-role-key
@@ -5,6 +21,11 @@ supabase:
 google:
   vision:
     api-key: test-google-vision-api-key
+
+nts:
+  business:
+    base-url: http://localhost:0
+    api-key: test-nts-api-key
 
 naver:
   search:

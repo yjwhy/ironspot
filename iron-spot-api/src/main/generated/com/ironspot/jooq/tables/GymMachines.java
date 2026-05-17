@@ -4,6 +4,7 @@
 package com.ironspot.jooq.tables;
 
 
+import com.ironspot.jooq.Indexes;
 import com.ironspot.jooq.Keys;
 import com.ironspot.jooq.Public;
 import com.ironspot.jooq.tables.Gyms.GymsPath;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -100,6 +102,11 @@ public class GymMachines extends TableImpl<Record> {
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
+    /**
+     * The column <code>public.gym_machines.deleted_at</code>.
+     */
+    public final TableField<Record, OffsetDateTime> DELETED_AT = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
+
     private GymMachines(Name alias, Table<Record> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -165,6 +172,11 @@ public class GymMachines extends TableImpl<Record> {
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.IDX_GYM_MACHINES_ACTIVE);
     }
 
     @Override
