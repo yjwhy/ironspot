@@ -4,13 +4,7 @@ import { Pressable, ScrollView } from 'react-native';
 import { AppText } from '@/shared/components/AppText';
 import { colors } from '@/shared/theme/tokens';
 
-import type { ActiveFilter, ActiveFilterKind } from '../lib/active-filters';
-
-const KIND_LABEL: Record<ActiveFilterKind, string> = {
-  brand: '브랜드',
-  category: '머신 종류',
-  loadingType: '로딩 방식',
-};
+import { ACTIVE_FILTER_KIND_LABEL, type ActiveFilter } from '../lib/active-filters';
 
 interface ActiveFilterStripProps {
   filters: readonly ActiveFilter[];
@@ -32,7 +26,7 @@ export function ActiveFilterStrip({ filters, onRemove, testID }: ActiveFilterStr
         <Pressable
           key={`${filter.kind}:${filter.id}`}
           accessibilityRole="button"
-          accessibilityLabel={`${KIND_LABEL[filter.kind]} ${filter.label} 필터 제거`}
+          accessibilityLabel={`${ACTIVE_FILTER_KIND_LABEL[filter.kind]} ${filter.label} 필터 제거`}
           onPress={() => {
             onRemove(filter);
           }}

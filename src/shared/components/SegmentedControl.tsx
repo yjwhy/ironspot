@@ -55,6 +55,10 @@ export function SegmentedControl<T extends string | null>({
     width: segmentWidth,
   }));
 
+  // Indicator can only render once layout measurement has produced a width
+  // AND we have an active segment to point at (value matches a segment).
+  const isIndicatorReady = segmentWidth > 0 && activeIndex >= 0;
+
   return (
     <View
       testID={testID}
@@ -66,7 +70,7 @@ export function SegmentedControl<T extends string | null>({
       className="relative flex-row rounded-full bg-bg-muted"
       style={{ padding: INDICATOR_INSET }}
     >
-      {segmentWidth > 0 && activeIndex >= 0 && (
+      {isIndicatorReady ? (
         <Animated.View
           pointerEvents="none"
           style={[
@@ -81,7 +85,7 @@ export function SegmentedControl<T extends string | null>({
             indicatorStyle,
           ]}
         />
-      )}
+      ) : null}
       {segments.map((segment) => {
         const selected = segment.value === value;
         const textClass = selected ? 'text-text-primary' : 'text-text-secondary';

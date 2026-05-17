@@ -14,9 +14,18 @@ interface ToActiveFiltersInput {
   categories: readonly Category[];
 }
 
-const LOADING_TYPE_LABEL: Record<LoadingType, string> = {
+export const LOADING_TYPE_LABEL: Record<LoadingType, string> = {
   pin: '핀로딩',
   plate: '플레이트',
+};
+
+// Korean prefix used by ActiveFilterStrip accessibility labels
+// (e.g. "브랜드 Panatta 필터 제거"). Kept here so the view-model layer owns
+// every user-visible label that depends on `ActiveFilterKind`.
+export const ACTIVE_FILTER_KIND_LABEL: Record<ActiveFilterKind, string> = {
+  brand: '브랜드',
+  category: '머신 종류',
+  loadingType: '로딩 방식',
 };
 
 export function toActiveFilters({

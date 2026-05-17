@@ -17,17 +17,19 @@ import type { Brand, Category, LoadingType, SearchFilters } from '@/shared/types
 
 import { ActiveFilterStrip } from './ActiveFilterStrip';
 import { FilterSheetSection } from './FilterSheetSection';
-import { type ActiveFilter, toActiveFilters } from '../lib/active-filters';
+import { type ActiveFilter, LOADING_TYPE_LABEL, toActiveFilters } from '../lib/active-filters';
 
 const SNAP_POINTS = ['65%', '90%'];
 const BACKGROUND_STYLE = { backgroundColor: colors.bg.elevated };
 const SEARCH_THRESHOLD = 8;
 const MIN_FOOTER_BOTTOM_PADDING = 16;
 
+// Labels sourced from active-filters.ts so ActiveFilterStrip chips and
+// SegmentedControl segments stay in sync if a Korean copy changes.
 const LOADING_SEGMENTS = [
   { label: '전체', value: null },
-  { label: '핀로딩', value: 'pin' },
-  { label: '플레이트', value: 'plate' },
+  { label: LOADING_TYPE_LABEL.pin, value: 'pin' },
+  { label: LOADING_TYPE_LABEL.plate, value: 'plate' },
 ] as const satisfies readonly { label: string; value: LoadingType | null }[];
 
 export interface FilterSheetRef {
@@ -89,16 +91,23 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     [],
   );
 
-  function handleRemoveActive(filter: ActiveFilter) {
-    if (filter.kind === 'brand') {
-      onToggleBrand(filter.id);
-      return;
+  function handleRemoveActive(filter: ActiveFilter): void {
+    switch (filter.kind) {
+      case 'brand':
+        onToggleBrand(filter.id);
+        return;
+      case 'category':
+        onToggleCategory(filter.id);
+        return;
+      case 'loadingType':
+        onSetLoadingType(null);
+        return;
+      default: {
+        // Exhaustive check — adding a new ActiveFilterKind triggers TS error here.
+        const _exhaustive: never = filter.kind;
+        throw new Error(`Unhandled active filter kind: ${String(_exhaustive)}`);
+      }
     }
-    if (filter.kind === 'category') {
-      onToggleCategory(filter.id);
-      return;
-    }
-    onSetLoadingType(null);
   }
 
   function handleClose() {

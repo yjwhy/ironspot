@@ -1,5 +1,5 @@
 import { NaverMapView } from '@mj-studio/react-native-naver-map';
-import type { NaverMapViewRef, Region } from '@mj-studio/react-native-naver-map';
+import type { NaverMapViewRef } from '@mj-studio/react-native-naver-map';
 import * as burnt from 'burnt';
 import { useRouter } from 'expo-router';
 import { useReducer, useRef } from 'react';
@@ -123,10 +123,6 @@ export function MapScreen() {
   const activeFilterCount =
     filters.brandIds.length + filters.categoryIds.length + (filters.loadingType !== null ? 1 : 0);
 
-  function handleCameraIdleWithPanelClose({ region }: { region: Region }) {
-    filterSearch.handleCameraIdle({ region });
-  }
-
   function handleNlSubmit(query: string) {
     nlSearch.mutate(query, {
       onSuccess: (response) => {
@@ -190,7 +186,7 @@ export function MapScreen() {
               }
             : undefined
         }
-        onCameraIdle={handleCameraIdleWithPanelClose}
+        onCameraIdle={filterSearch.handleCameraIdle}
       >
         {visibleMarkerIds.map((gymId) => {
           const gym = displayedGyms.find((g) => g.id === gymId);
