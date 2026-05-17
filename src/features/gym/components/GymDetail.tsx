@@ -8,6 +8,7 @@ import { Skeleton } from '@/shared/components/Skeleton';
 import { formatVerifiedDate } from '@/shared/lib/format';
 import type { Gym, GymMachineWithDetails } from '@/shared/types/database';
 
+import { GymOwnerEntry } from './GymOwnerEntry';
 import { MachineList } from './MachineList';
 import { useGymMachines } from '../hooks/useGymMachines';
 
@@ -22,6 +23,7 @@ export function GymDetail({ gym, onPressMachine }: GymDetailProps) {
   return (
     <View className="flex-1 gap-4 bg-bg-base p-4">
       <GymHeader gym={gym} />
+      <GymOwnerEntry gymId={gym.id} gymName={gym.name} />
       <MachinesBody
         data={data}
         isPending={isPending}

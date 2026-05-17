@@ -16,6 +16,16 @@ jest.mock('../../hooks/useGymMachines', () => ({
   useGymMachines: jest.fn(),
 }));
 
+// Task 47 / Slice 47l: GymDetail now embeds GymOwnerEntry which transitively
+// consumes useCurrentUser + useQueue. Both are stubbed here because the
+// existing GymDetail behavioural assertions are unrelated to owner entry.
+jest.mock('@/features/auth/hooks/useCurrentUser', () => ({
+  useCurrentUser: () => ({ data: undefined }),
+}));
+jest.mock('@/shared/generated/owner/owner', () => ({
+  useQueue: () => ({ data: undefined }),
+}));
+
 const mockUseGymMachines = useGymMachines as jest.MockedFunction<typeof useGymMachines>;
 
 const baseGym: Gym = {
