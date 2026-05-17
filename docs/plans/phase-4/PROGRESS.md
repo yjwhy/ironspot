@@ -4,7 +4,7 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 ## Status
 
-Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b106). Task 42 (photo PII detection) merged via PR #84 (39021cf). Task 43 (Slack routing) merged via PR #86 (988885b). Task 44 (FilterPanel scalability + `loadingType` surface, ADR 0021) merged via PR #87 (bb74a58). Task 45 (머신 템플릿 필터 + 라벨 정정, ADR 0022) merged via PR #88 (17b8270) — closed ADR 0020 deferred Phase 2/3 wishlist scope. Task 46 (gym_machine report target — reports 시스템 확장 + admin 재매핑/삭제) merged via PR #89 (a6b0a5b). PR #90 (`fix/gym-card-matched-machines-undefined`, ba35e56) hotfix landed — formatMatchedMachines guards undefined/null. Task 47 (Gym owner workflow, ADR 0023) **split into two PRs by autonomous scope-cut**: **PR #91 (in review)** ships **slices 47a-47e + openapi chore** (Backend foundation: Flyway scaffolding + V1 baseline + V2 owner schema + JOOQ regen + BusinessRegistrationVerifier + 국세청 진위확인 client + OwnerController POST /api/owner/claim + 16 IT cases). **Follow-up PR (TBD)** picks up slices 47f-47m (Backend: owner queue + dispose + machine CRUD + photo verify + reporter escalation + auto-action + timeout cron; FE: OwnerClaimScreen + OwnerGuard + queue/machines/photos screens + trust signal UI + Profile widget + Tab dot badge + Maestro flows). Subsequent Tasks renumbered (구 Task 45~48 → 신 46~49).
+Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b106). Task 42 (photo PII detection) merged via PR #84 (39021cf). Task 43 (Slack routing) merged via PR #86 (988885b). Task 44 (FilterPanel scalability + `loadingType` surface, ADR 0021) merged via PR #87 (bb74a58). Task 45 (머신 템플릿 필터 + 라벨 정정, ADR 0022) merged via PR #88 (17b8270). Task 46 (gym_machine report target) merged via PR #89 (a6b0a5b). PR #90 hotfix (ba35e56). Task 47 (Gym owner workflow, ADR 0023) **backend complete in two merges**: PR #91 (slices 47a-47e) + **PR #93 (slices 47f-47h, 6f8c0c2)** — owner queue + dispose + machine CRUD + photo verify + reporter escalation + 24h-then-admin escalation cron, gradle test 360/360. **Task 47 FE follow-up (47i-47m: OwnerClaimScreen + OwnerGuard + queue/machines/photos screens + trust signal UI + Profile widget + Tab dot badge + Maestro flows) still TBD**. Task 48 (Apple Sign In, ADR 0024) **Draft PR #94** — code complete (expo-apple-authentication native + web fallback, jest 529/529), blocked on 5 external prerequisites (Apple Developer enrollment + App ID + Service ID + .p8 + Supabase Apple provider).
 
 ## Task Checklist
 
@@ -13,10 +13,10 @@ Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b1
 - [x] Task 43: Slack routing (Sentry → #ironspot-errors, Render → #ironspot-deploy)
 - [x] Task 44: FilterPanel scalability + `loadingType` surface (ADR 0021 supersedes 0020)
 - [x] Task 45: 머신 템플릿 필터 + 카테고리 라벨 정정 (ADR 0022 implements 0020 deferred wishlist)
-- [ ] Task 46: gym_machine report target (moderation surface extension) — was Task 45
-- [ ] Task 47: Gym owner workflow (distributed moderation + trust signal) — was Task 46
-- [ ] Task 48: Apple Sign In external wiring (App Store gating) — was Task 47
-- [ ] Task 49: admin-flow Maestro flow (Phase 3 verification carry-over, depends on Task 48) — was Task 48
+- [x] Task 46: gym_machine report target (moderation surface extension)
+- [~] Task 47: Gym owner workflow — Backend complete (PR #91 + PR #93). FE follow-up (47i-47m) outstanding.
+- [~] Task 48: Apple Sign In — Draft PR #94, blocked on 5 external prerequisites
+- [ ] Task 49: admin-flow Maestro flow (Phase 3 verification carry-over, depends on Task 48)
 - [ ] Operational (parallel): UptimeRobot keep-warm, Privacy Policy + ToS, EAS preview-simulator
 - [ ] Tier 3 (post-launch, data-driven): see `implementation.md` Future Tasks section
 
