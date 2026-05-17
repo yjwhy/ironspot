@@ -1,3 +1,10 @@
+spring:
+  # Flyway is disabled in tests so init-test-db.sql + Testcontainers stay authoritative
+  # for schema setup (and JOOQ codegen). Re-enable per-test via @TestPropertySource if a
+  # future IT specifically validates migration behaviour.
+  flyway:
+    enabled: false
+
 supabase:
   url: http://localhost:54321
   service-role-key: test-service-role-key

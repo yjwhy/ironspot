@@ -12,6 +12,19 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${DATABASE_USERNAME:}
     password: ${DATABASE_PASSWORD:}
+  flyway:
+    # Task 47 / ADR 0023 — DB schema migrations via Flyway Community.
+    # Prod has been running with manual SQL migrations since Phase 1; baseline-on-migrate
+    # tells Flyway to record the current schema state as a baseline (V1) and only apply
+    # later versions on top. baseline-version=1 means "V1__baseline.sql is the baseline
+    # snapshot; never execute it on an already-populated DB". New migrations land as
+    # V2+. Tests run with init-test-db.sql via Testcontainers — Flyway is disabled in the
+    # test profile so the two schema-init paths don't fight.
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+    validate-on-migrate: true
 
 security:
   # Supabase JWKS endpoint — JwtValidator fetches the public keys from here and
