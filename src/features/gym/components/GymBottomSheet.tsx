@@ -30,7 +30,12 @@ interface GymBottomSheetProps {
   mode: GymBottomSheetMode;
 }
 
-const SNAP_POINTS = ['10%', '50%', '90%'];
+// First snap was originally '10%' but on phone-class viewports (iPhone 14: ~852pt
+// minus tab bar ~83pt → 10% peek ≈ 77pt) that left only the handle visible and the
+// user perceived the sheet as "cut off / empty". Bumping the peek to '25%'
+// (≈ 192pt on the same device) reveals 1-2 gym card previews while keeping the map
+// dominant. Mid and full retained at 50% / 90%.
+const SNAP_POINTS = ['25%', '50%', '90%'];
 
 const LIST_PADDING = 16;
 const LIST_CONTENT_STYLE = { padding: LIST_PADDING };
