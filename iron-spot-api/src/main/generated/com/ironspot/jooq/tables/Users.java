@@ -7,7 +7,10 @@ package com.ironspot.jooq.tables;
 import com.ironspot.jooq.Indexes;
 import com.ironspot.jooq.Keys;
 import com.ironspot.jooq.Public;
+import com.ironspot.jooq.tables.GymOwners.GymOwnersPath;
+import com.ironspot.jooq.tables.Gyms.GymsPath;
 import com.ironspot.jooq.tables.MachinePhotos.MachinePhotosPath;
+import com.ironspot.jooq.tables.ModerationAuditLog.ModerationAuditLogPath;
 import com.ironspot.jooq.tables.PhotoVotes.PhotoVotesPath;
 import com.ironspot.jooq.tables.Reports.ReportsPath;
 
@@ -190,6 +193,19 @@ public class Users extends TableImpl<Record> {
         return Keys.USERS_PKEY;
     }
 
+    private transient GymOwnersPath _gymOwners;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.gym_owners</code>
+     * table
+     */
+    public GymOwnersPath gymOwners() {
+        if (_gymOwners == null)
+            _gymOwners = new GymOwnersPath(this, null, Keys.GYM_OWNERS__GYM_OWNERS_USER_ID_FKEY.getInverseKey());
+
+        return _gymOwners;
+    }
+
     private transient MachinePhotosPath _machinePhotos;
 
     /**
@@ -201,6 +217,19 @@ public class Users extends TableImpl<Record> {
             _machinePhotos = new MachinePhotosPath(this, null, Keys.MACHINE_PHOTOS__MACHINE_PHOTOS_USER_ID_FKEY.getInverseKey());
 
         return _machinePhotos;
+    }
+
+    private transient ModerationAuditLogPath _moderationAuditLog;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.moderation_audit_log</code> table
+     */
+    public ModerationAuditLogPath moderationAuditLog() {
+        if (_moderationAuditLog == null)
+            _moderationAuditLog = new ModerationAuditLogPath(this, null, Keys.MODERATION_AUDIT_LOG__MODERATION_AUDIT_LOG_USER_ID_FKEY.getInverseKey());
+
+        return _moderationAuditLog;
     }
 
     private transient PhotoVotesPath _photoVotes;
@@ -242,10 +271,18 @@ public class Users extends TableImpl<Record> {
         return _reportsUserIdFkey;
     }
 
+    /**
+     * Get the implicit many-to-many join path to the <code>public.gyms</code>
+     * table
+     */
+    public GymsPath gyms() {
+        return gymOwners().gyms();
+    }
+
     @Override
     public List<Check<Record>> getChecks() {
         return Arrays.asList(
-            Internal.createCheck(this, DSL.name("users_role_check"), "((role = ANY (ARRAY['user'::text, 'admin'::text])))", true)
+            Internal.createCheck(this, DSL.name("users_role_check"), "((role = ANY (ARRAY['user'::text, 'admin'::text, 'owner'::text])))", true)
         );
     }
 

@@ -4,7 +4,10 @@
 package com.ironspot.jooq;
 
 
+import com.ironspot.jooq.tables.GymMachines;
+import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
+import com.ironspot.jooq.tables.ModerationAuditLog;
 import com.ironspot.jooq.tables.Reports;
 import com.ironspot.jooq.tables.Users;
 
@@ -25,6 +28,10 @@ public class Indexes {
     // -------------------------------------------------------------------------
 
     public static final Index GYMS_NAVER_PLACE_ID_KEY = Internal.createIndex(DSL.name("gyms_naver_place_id_key"), Gyms.GYMS, new OrderField[] { Gyms.GYMS.NAVER_PLACE_ID }, true);
+    public static final Index IDX_AUDIT_USER_ACTION = Internal.createIndex(DSL.name("idx_audit_user_action"), ModerationAuditLog.MODERATION_AUDIT_LOG, new OrderField[] { ModerationAuditLog.MODERATION_AUDIT_LOG.USER_ID, ModerationAuditLog.MODERATION_AUDIT_LOG.ACTION, ModerationAuditLog.MODERATION_AUDIT_LOG.CREATED_AT.desc() }, false);
+    public static final Index IDX_GYM_MACHINES_ACTIVE = Internal.createIndex(DSL.name("idx_gym_machines_active"), GymMachines.GYM_MACHINES, new OrderField[] { GymMachines.GYM_MACHINES.GYM_ID }, false);
+    public static final Index IDX_GYM_OWNERS_GYM_ACTIVE = Internal.createIndex(DSL.name("idx_gym_owners_gym_active"), GymOwners.GYM_OWNERS, new OrderField[] { GymOwners.GYM_OWNERS.GYM_ID }, false);
+    public static final Index IDX_GYM_OWNERS_USER_ACTIVE = Internal.createIndex(DSL.name("idx_gym_owners_user_active"), GymOwners.GYM_OWNERS, new OrderField[] { GymOwners.GYM_OWNERS.USER_ID }, false);
     public static final Index IDX_USERS_ROLE = Internal.createIndex(DSL.name("idx_users_role"), Users.USERS, new OrderField[] { Users.USERS.ROLE }, false);
     public static final Index REPORTS_REPORTER_RECENT_IDX = Internal.createIndex(DSL.name("reports_reporter_recent_idx"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.USER_ID, Reports.REPORTS.CREATED_AT.desc() }, false);
     public static final Index REPORTS_TARGET_PENDING_IDX = Internal.createIndex(DSL.name("reports_target_pending_idx"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.TARGET_ID }, false);
