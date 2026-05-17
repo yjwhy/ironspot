@@ -5,15 +5,23 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
+  DataTag,
+  DefinedInitialDataOptions,
+  DefinedUseQueryResult,
   MutationFunction,
   QueryClient,
+  QueryFunction,
+  QueryKey,
+  UndefinedInitialDataOptions,
   UseMutationOptions,
   UseMutationResult,
+  UseQueryOptions,
+  UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { CreateReportRequest } from '../model';
+import type { CreateReportRequest, ListMineParams, MyReportResponse } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
@@ -271,3 +279,133 @@ export const useReportGymMachine = <TError = unknown, TContext = unknown>(
 > => {
   return useMutation(getReportGymMachineMutationOptions(options), queryClient);
 };
+export type listMineResponse200 = {
+  data: MyReportResponse[];
+  status: 200;
+};
+
+export type listMineResponseSuccess = listMineResponse200 & {
+  headers: Headers;
+};
+export type listMineResponse = listMineResponseSuccess;
+
+export const getListMineUrl = (params?: ListMineParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/mine?${stringifiedParams}`
+    : `/api/reports/mine`;
+};
+
+/**
+ * @summary List reports filed by the authenticated user (Task 47 / ADR 0023 Q5 R1)
+ */
+export const listMine = async (
+  params?: ListMineParams,
+  options?: RequestInit,
+): Promise<listMineResponse> => {
+  return apiClient<listMineResponse>(getListMineUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListMineQueryKey = (params?: ListMineParams) => {
+  return [`/api/reports/mine`, ...(params ? [params] : [])] as const;
+};
+
+export const getListMineQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMine>>,
+  TError = unknown,
+>(
+  params?: ListMineParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMine>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMineQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMine>>> = ({ signal }) =>
+    listMine(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMine>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListMineQueryResult = NonNullable<Awaited<ReturnType<typeof listMine>>>;
+export type ListMineQueryError = unknown;
+
+export function useListMine<TData = Awaited<ReturnType<typeof listMine>>, TError = unknown>(
+  params: undefined | ListMineParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMine>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMine>>,
+          TError,
+          Awaited<ReturnType<typeof listMine>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMine<TData = Awaited<ReturnType<typeof listMine>>, TError = unknown>(
+  params?: ListMineParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMine>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMine>>,
+          TError,
+          Awaited<ReturnType<typeof listMine>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMine<TData = Awaited<ReturnType<typeof listMine>>, TError = unknown>(
+  params?: ListMineParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMine>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List reports filed by the authenticated user (Task 47 / ADR 0023 Q5 R1)
+ */
+
+export function useListMine<TData = Awaited<ReturnType<typeof listMine>>, TError = unknown>(
+  params?: ListMineParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMine>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListMineQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
