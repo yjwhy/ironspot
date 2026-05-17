@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { ReportReasonSheet } from '@/features/photo/components/ReportReasonSheet';
 import { AppText } from '@/shared/components/AppText';
 import { toTestSlug } from '@/shared/lib/format';
 import { pressedOpacity } from '@/shared/lib/pressable';
@@ -18,6 +19,9 @@ interface MachineListProps {
 export function MachineList({ machines, onPressMachine }: MachineListProps) {
   const groups = groupMachinesByBrand(machines);
   const [collapsedBrandIds, setCollapsedBrandIds] = useState<ReadonlySet<string>>(new Set());
+  // ADR 0022 follow-up (Task 46): which gym_machine row is being reported.
+  // null = sheet hidden. The sheet's BottomSheetModalProvider is self-contained.
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
 
   function toggleBrand(brandId: string) {
     setCollapsedBrandIds((prev) => {
@@ -26,6 +30,10 @@ export function MachineList({ machines, onPressMachine }: MachineListProps) {
       else next.add(brandId);
       return next;
     });
+  }
+
+  function handleReportSheetClose() {
+    setReportTargetId(null);
   }
 
   return (
@@ -64,11 +72,20 @@ export function MachineList({ machines, onPressMachine }: MachineListProps) {
                     onPress={() => {
                       onPressMachine(machine.id);
                     }}
+                    onPressReport={() => {
+                      setReportTargetId(machine.id);
+                    }}
                   />
                 ))}
           </View>
         );
       })}
+      {reportTargetId !== null ? (
+        <ReportReasonSheet
+          target={{ type: 'gymMachine', gymMachineId: reportTargetId }}
+          onClose={handleReportSheetClose}
+        />
+      ) : null}
     </View>
   );
 }
@@ -76,46 +93,63 @@ export function MachineList({ machines, onPressMachine }: MachineListProps) {
 interface MachineRowProps {
   machine: GymMachineWithDetails;
   onPress: () => void;
+  onPressReport: () => void;
 }
 
-function MachineRow({ machine, onPress }: MachineRowProps) {
+function MachineRow({ machine, onPress, onPressReport }: MachineRowProps) {
   const name = machineDisplayName(machine);
   const photoCount = machine.photos.length;
   const showQuantity = machine.quantity >= 2;
   const accessibilityLabel = buildRowAccessibilityLabel(name, machine.quantity, photoCount);
 
   const testID = `machine-row-${toTestSlug(name)}`;
+  const reportTestID = `machine-row-${toTestSlug(name)}-report`;
 
+  // Sibling Pressables (not nested) so the overflow tap doesn't also fire the
+  // row's navigate handler. The body Pressable is `flex-1` to fill remaining width.
   return (
-    <Pressable
-      onPress={onPress}
-      testID={testID}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      className="flex-row items-center justify-between rounded-md bg-bg-subtle px-3 py-2"
-      style={pressedOpacity}
-    >
-      <View className="flex-row items-center gap-2">
-        <AppText className="text-body text-text-primary">{name}</AppText>
-        {showQuantity ? (
-          <View className="rounded-full bg-bg-muted px-2">
-            <AppText className="font-medium text-body-sm text-text-secondary">
-              x{String(machine.quantity)}
-            </AppText>
-          </View>
-        ) : null}
-      </View>
-      <View className="flex-row items-center gap-1">
-        <MaterialIcons
-          name="photo-camera"
-          size={14}
-          color={colors.text.tertiary}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        />
-        <AppText className="text-body-sm text-text-tertiary">사진 {String(photoCount)}</AppText>
-      </View>
-    </Pressable>
+    <View className="flex-row items-center gap-2 rounded-md bg-bg-subtle">
+      <Pressable
+        onPress={onPress}
+        testID={testID}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        className="flex-1 flex-row items-center justify-between px-3 py-2"
+        style={pressedOpacity}
+      >
+        <View className="flex-row items-center gap-2">
+          <AppText className="text-body text-text-primary">{name}</AppText>
+          {showQuantity ? (
+            <View className="rounded-full bg-bg-muted px-2">
+              <AppText className="font-medium text-body-sm text-text-secondary">
+                x{String(machine.quantity)}
+              </AppText>
+            </View>
+          ) : null}
+        </View>
+        <View className="flex-row items-center gap-1">
+          <MaterialIcons
+            name="photo-camera"
+            size={14}
+            color={colors.text.tertiary}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+          <AppText className="text-body-sm text-text-tertiary">사진 {String(photoCount)}</AppText>
+        </View>
+      </Pressable>
+      <Pressable
+        onPress={onPressReport}
+        testID={reportTestID}
+        accessibilityRole="button"
+        accessibilityLabel={`${name} 신고`}
+        className="py-2 pr-3 pl-1"
+        style={pressedOpacity}
+        hitSlop={8}
+      >
+        <MaterialIcons name="more-vert" size={20} color={colors.text.tertiary} />
+      </Pressable>
+    </View>
   );
 }
 
