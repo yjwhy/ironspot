@@ -6,6 +6,7 @@
  * OpenAPI spec version: v1
  */
 
+export * from './adminGymMachineDetailResponse';
 export * from './adminPhotoDetailResponse';
 export * from './adminPhotoSummary';
 export * from './adminQueueItem';

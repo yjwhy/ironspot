@@ -45,10 +45,13 @@ describe('useDisposeReport', () => {
   it('dispatches useDisposition.mutate with the supplied reportId and disposition', () => {
     const { mutate } = setupMutation();
     const { Wrapper } = makeWrapper();
-    const { result } = renderHook(() => useDisposeReport('r-1', 'p-1'), { wrapper: Wrapper });
+    const { result } = renderHook(
+      () => useDisposeReport('r-1', { type: 'photo', photoId: 'p-1' }),
+      { wrapper: Wrapper },
+    );
 
     act(() => {
-      result.current.handleDispose('actioned');
+      result.current.handleDispose({ disposition: 'actioned' });
     });
 
     expect(mutate).toHaveBeenCalledWith({ id: 'r-1', data: { disposition: 'actioned' } });
@@ -58,7 +61,9 @@ describe('useDisposeReport', () => {
     const { getOptions } = setupMutation();
     const { Wrapper, client } = makeWrapper();
     const invalidateSpy = jest.spyOn(client, 'invalidateQueries');
-    renderHook(() => useDisposeReport('r-1', 'p-1'), { wrapper: Wrapper });
+    renderHook(() => useDisposeReport('r-1', { type: 'photo', photoId: 'p-1' }), {
+      wrapper: Wrapper,
+    });
 
     act(() => {
       getOptions()?.mutation?.onSuccess?.(undefined, {

@@ -69,6 +69,43 @@ public class MachineRepository {
     }
 
     /**
+     * Admin-screen detail for a gym_machine row. ADR 0022 follow-up (Task 46)
+     * Slice 46h. Returns enough metadata for admin to decide between re-template
+     * / delete / dismiss without an additional round-trip. Pending reports are
+     * fetched separately at the service layer (they live in REPORTS, not here).
+     */
+    public java.util.Optional<com.ironspot.admin.dto.AdminGymMachineDetailResponse> findAdminDetail(UUID gymMachineId) {
+        return dsl.select(
+                GYM_MACHINES.ID,
+                GYM_MACHINES.GYM_ID,
+                com.ironspot.jooq.Tables.GYMS.NAME.as("gym_name"),
+                GYM_MACHINES.TEMPLATE_ID,
+                BRANDS.NAME.as("brand_name"),
+                MACHINE_TEMPLATES.NAME.as("template_name"),
+                MACHINE_TEMPLATES.LOADING_TYPE,
+                GYM_MACHINES.QUANTITY)
+            .from(GYM_MACHINES)
+            .join(com.ironspot.jooq.Tables.GYMS).on(com.ironspot.jooq.Tables.GYMS.ID.eq(GYM_MACHINES.GYM_ID))
+            .leftJoin(MACHINE_TEMPLATES).on(MACHINE_TEMPLATES.ID.eq(GYM_MACHINES.TEMPLATE_ID))
+            .leftJoin(BRANDS).on(BRANDS.ID.eq(MACHINE_TEMPLATES.BRAND_ID))
+            .where(GYM_MACHINES.ID.eq(gymMachineId))
+            .fetchOptional(r -> {
+                var loading = r.get(MACHINE_TEMPLATES.LOADING_TYPE);
+                return new com.ironspot.admin.dto.AdminGymMachineDetailResponse(
+                    r.get(GYM_MACHINES.ID),
+                    r.get(GYM_MACHINES.GYM_ID),
+                    r.get("gym_name", String.class),
+                    r.get(GYM_MACHINES.TEMPLATE_ID),
+                    r.get("brand_name", String.class),
+                    r.get("template_name", String.class),
+                    loading != null ? loading.getLiteral() : null,
+                    Objects.requireNonNullElse(r.get(GYM_MACHINES.QUANTITY), 1),
+                    List.of()
+                );
+            });
+    }
+
+    /**
      * Update a gym_machine row's template_id. ADR 0022 follow-up (Task 46):
      * admin disposition for WRONG_TEMPLATE reports re-maps the gym_machine to
      * a different (brand, model) tuple. Returns rows affected for race-safe checks.

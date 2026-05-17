@@ -55,6 +55,31 @@ public class AdminService {
         return reportRepository.listPendingQueue(limit);
     }
 
+    /**
+     * ADR 0022 follow-up (Task 46) Slice 46h: gym_machine admin detail. Merges
+     * row metadata (gym + current template) with pending reports so the admin
+     * screen can decide re-template / delete / dismiss in one round-trip.
+     */
+    @Transactional(readOnly = true)
+    public com.ironspot.admin.dto.AdminGymMachineDetailResponse getGymMachineDetail(UUID gymMachineId) {
+        com.ironspot.admin.dto.AdminGymMachineDetailResponse base = machineRepository
+            .findAdminDetail(gymMachineId)
+            .orElseThrow(() -> new BusinessException("머신을 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+        List<AdminReportResponse> pending = reportRepository.findByTargetTypeAndIdAndStatus(
+            ReportRepository.TARGET_TYPE_GYM_MACHINE, gymMachineId, "pending");
+        return new com.ironspot.admin.dto.AdminGymMachineDetailResponse(
+            base.gymMachineId(),
+            base.gymId(),
+            base.gymName(),
+            base.templateId(),
+            base.brandName(),
+            base.templateName(),
+            base.loadingType(),
+            base.quantity(),
+            pending
+        );
+    }
+
     @Transactional(readOnly = true)
     public AdminPhotoDetailResponse getPhotoDetail(UUID photoId) {
         AdminPhotoSummary photo = photoRepository.findForAdmin(photoId)

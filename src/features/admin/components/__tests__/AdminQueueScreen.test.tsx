@@ -35,22 +35,25 @@ beforeEach(() => {
 });
 
 describe('AdminQueueScreen', () => {
-  it('renders one row per pending photo from useAdminQueue', () => {
+  it('renders one row per pending item from useAdminQueue (unified shape)', () => {
     useAdminQueueMock.mockReturnValue({
       data: [
         {
-          photoId: 'p1',
-          photoUrl: 'https://x/1.jpg',
+          type: 'photo',
+          targetId: 'p1',
+          label: '사진',
+          imageUrl: 'https://x/1.jpg',
           pendingReportCount: 3,
           oldestReportAt: '2026-05-13T00:00:00Z',
           topReason: 'INAPPROPRIATE',
         },
         {
-          photoId: 'p2',
-          photoUrl: 'https://x/2.jpg',
+          type: 'gym_machine',
+          targetId: 'g1',
+          label: 'Panatta High Row',
           pendingReportCount: 1,
           oldestReportAt: '2026-05-13T01:00:00Z',
-          topReason: 'OFFENSIVE',
+          topReason: 'WRONG_TEMPLATE',
         },
       ],
       isLoading: false,
@@ -59,17 +62,20 @@ describe('AdminQueueScreen', () => {
 
     render(<AdminQueueScreen />, { wrapper: Wrapper });
 
-    expect(screen.getByTestId('admin-queue-row-p1')).toBeTruthy();
-    expect(screen.getByTestId('admin-queue-row-p2')).toBeTruthy();
-    expect(screen.getByText('신고 3건 · INAPPROPRIATE')).toBeTruthy();
+    expect(screen.getByTestId('admin-queue-row-photo-p1')).toBeTruthy();
+    expect(screen.getByTestId('admin-queue-row-gym_machine-g1')).toBeTruthy();
+    expect(screen.getByText('사진 · 신고 3건')).toBeTruthy();
+    expect(screen.getByText('Panatta High Row · 신고 1건')).toBeTruthy();
   });
 
-  it('routes to the photo detail screen when a queue row is tapped', () => {
+  it('routes to the photo detail screen when a photo row is tapped', () => {
     useAdminQueueMock.mockReturnValue({
       data: [
         {
-          photoId: 'p1',
-          photoUrl: 'https://x/1.jpg',
+          type: 'photo',
+          targetId: 'p1',
+          label: '사진',
+          imageUrl: 'https://x/1.jpg',
           pendingReportCount: 2,
           oldestReportAt: '2026-05-13T00:00:00Z',
           topReason: 'INAPPROPRIATE',
@@ -80,9 +86,31 @@ describe('AdminQueueScreen', () => {
     });
 
     render(<AdminQueueScreen />, { wrapper: Wrapper });
-    fireEvent.press(screen.getByTestId('admin-queue-row-p1'));
+    fireEvent.press(screen.getByTestId('admin-queue-row-photo-p1'));
 
     expect(routerPushMock).toHaveBeenCalledWith('/admin/photo/p1');
+  });
+
+  it('routes to the gym_machine detail screen when a gym_machine row is tapped', () => {
+    useAdminQueueMock.mockReturnValue({
+      data: [
+        {
+          type: 'gym_machine',
+          targetId: 'g1',
+          label: 'Panatta High Row',
+          pendingReportCount: 1,
+          oldestReportAt: '2026-05-13T01:00:00Z',
+          topReason: 'WRONG_TEMPLATE',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<AdminQueueScreen />, { wrapper: Wrapper });
+    fireEvent.press(screen.getByTestId('admin-queue-row-gym_machine-g1'));
+
+    expect(routerPushMock).toHaveBeenCalledWith('/admin/gym-machine/g1');
   });
 
   it('shows the empty state when the queue is empty', () => {

@@ -22,6 +22,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminGymMachineDetailResponse,
   AdminPhotoDetailResponse,
   AdminQueueItem,
   AdminQueuePhotoSummary,
@@ -833,6 +834,131 @@ export function useGetPhoto<TData = Awaited<ReturnType<typeof getPhoto>>, TError
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getGetPhotoQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export type getGymMachineResponse200 = {
+  data: AdminGymMachineDetailResponse;
+  status: 200;
+};
+
+export type getGymMachineResponseSuccess = getGymMachineResponse200 & {
+  headers: Headers;
+};
+export type getGymMachineResponse = getGymMachineResponseSuccess;
+
+export const getGetGymMachineUrl = (id: string) => {
+  return `/api/admin/gym-machines/${id}`;
+};
+
+export const getGymMachine = async (
+  id: string,
+  options?: RequestInit,
+): Promise<getGymMachineResponse> => {
+  return apiClient<getGymMachineResponse>(getGetGymMachineUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetGymMachineQueryKey = (id: string) => {
+  return [`/api/admin/gym-machines/${id}`] as const;
+};
+
+export const getGetGymMachineQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGymMachine>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getGymMachine>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetGymMachineQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGymMachine>>> = ({ signal }) =>
+    getGymMachine(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGymMachine>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetGymMachineQueryResult = NonNullable<Awaited<ReturnType<typeof getGymMachine>>>;
+export type GetGymMachineQueryError = unknown;
+
+export function useGetGymMachine<
+  TData = Awaited<ReturnType<typeof getGymMachine>>,
+  TError = unknown,
+>(
+  id: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getGymMachine>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGymMachine>>,
+          TError,
+          Awaited<ReturnType<typeof getGymMachine>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetGymMachine<
+  TData = Awaited<ReturnType<typeof getGymMachine>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getGymMachine>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGymMachine>>,
+          TError,
+          Awaited<ReturnType<typeof getGymMachine>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetGymMachine<
+  TData = Awaited<ReturnType<typeof getGymMachine>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getGymMachine>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetGymMachine<
+  TData = Awaited<ReturnType<typeof getGymMachine>>,
+  TError = unknown,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getGymMachine>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetGymMachineQueryOptions(id, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

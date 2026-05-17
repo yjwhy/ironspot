@@ -74,6 +74,15 @@ public class AdminController {
         return adminService.getPhotoDetail(id);
     }
 
+    /**
+     * ADR 0022 follow-up (Task 46) Slice 46h: gym_machine admin detail. Driven
+     * by {@code AdminGymMachineScreen} on the frontend.
+     */
+    @GetMapping("/gym-machines/{id}")
+    public com.ironspot.admin.dto.AdminGymMachineDetailResponse getGymMachine(@PathVariable UUID id) {
+        return adminService.getGymMachineDetail(id);
+    }
+
     @PatchMapping("/photos/{id}/restore")
     public ResponseEntity<Void> restorePhoto(@PathVariable UUID id) {
         adminService.restorePhoto(id);
