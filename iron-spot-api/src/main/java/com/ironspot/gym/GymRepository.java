@@ -4,6 +4,7 @@ import com.ironspot.gym.dto.CreateGymRequest;
 import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
+import com.ironspot.search.dsl.SearchScope;
 import com.ironspot.jooq.tables.GymMachines;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachineTemplates;
@@ -51,8 +52,26 @@ public class GymRepository {
             ? mt.CATEGORY_ID.in(req.getCategoryIds().stream().map(UUID::fromString).toList())
             : DSL.noCondition();
 
-        // templateIds 필터링 + AND scope 는 ADR 0022 / Slice 45c 에서 추가.
-        // 본 슬라이스 (45b) 는 DTO 필드만 도입하고 SQL 은 무변경 유지.
+        // ADR 0022 — templateIds OR/AND filtering.
+        // OR (EACH, default): mt.ID.in(uuids) restricts the join; gym returns
+        //   if at least one machine matches.
+        // AND (COMBINED): WHERE stays permissive on templates; HAVING enforces
+        //   the gym has all N requested templates via COUNT DISTINCT over a
+        //   CASE expression. Brand/category WHERE filters still apply to the
+        //   join (so matching templates must also satisfy brand/category if set).
+        List<UUID> templateUuids = req.getTemplateIds() != null && !req.getTemplateIds().isEmpty()
+            ? req.getTemplateIds().stream().map(UUID::fromString).toList()
+            : List.of();
+        boolean templateAnd = !templateUuids.isEmpty() && req.getScope() == SearchScope.COMBINED;
+
+        Condition templateWhereCond = !templateUuids.isEmpty() && !templateAnd
+            ? mt.ID.in(templateUuids)
+            : DSL.noCondition();
+
+        Condition templateHavingCond = templateAnd
+            ? DSL.countDistinct(DSL.when(mt.ID.in(templateUuids), mt.ID).otherwise((UUID) null))
+                .eq(templateUuids.size())
+            : DSL.noCondition();
 
         return dsl.select(
                 g.ID, g.NAME, g.ADDRESS, lat, lng,
@@ -65,9 +84,11 @@ public class GymRepository {
             .where(spatialCond)
             .and(brandCond)
             .and(categoryCond)
+            .and(templateWhereCond)
             .groupBy(g.ID, g.NAME, g.ADDRESS, g.PHONE, g.OPERATING_HOURS,
                 g.DAY_PASS_PRICE, g.IS_VERIFIED, g.LAST_VERIFIED_AT,
                 g.CREATED_AT, g.UPDATED_AT)
+            .having(templateHavingCond)
             .orderBy(machineCount.desc())
             .fetch(r -> {
                 OffsetDateTime lastVerified = r.get(g.LAST_VERIFIED_AT);
