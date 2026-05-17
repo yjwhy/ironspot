@@ -72,6 +72,7 @@ const fitnessFactory: GymWithMachineCount = {
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   machine_count: 12,
+  matched_machine_names: [],
 };
 
 const strengthGym: GymWithMachineCount = {
@@ -81,6 +82,7 @@ const strengthGym: GymWithMachineCount = {
   latitude: 37.5547,
   longitude: 126.9707,
   machine_count: 8,
+  matched_machine_names: [],
 };
 
 describe('GymBottomSheet (list mode)', () => {

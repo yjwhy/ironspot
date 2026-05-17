@@ -1,11 +1,12 @@
 import { useState } from 'react';
 
-import type { LoadingType, SearchFilters } from '@/shared/types/database';
+import type { SearchFilters } from '@/shared/types/database';
 
 export const INITIAL_FILTERS: SearchFilters = {
   brandIds: [],
   categoryIds: [],
-  loadingType: null,
+  templateIds: [],
+  machineFilterMode: 'or',
 };
 
 export function useFilters() {
@@ -29,8 +30,18 @@ export function useFilters() {
     }));
   }
 
-  function setLoadingType(loadingType: LoadingType | null) {
-    setFilters((prev) => ({ ...prev, loadingType }));
+  // ADR 0022: machine templates are multi-select with optional AND mode.
+  function toggleTemplate(templateId: string) {
+    setFilters((prev) => ({
+      ...prev,
+      templateIds: prev.templateIds.includes(templateId)
+        ? prev.templateIds.filter((id) => id !== templateId)
+        : [...prev.templateIds, templateId],
+    }));
+  }
+
+  function setMachineFilterMode(mode: SearchFilters['machineFilterMode']) {
+    setFilters((prev) => ({ ...prev, machineFilterMode: mode }));
   }
 
   function setAll(next: SearchFilters) {
@@ -41,5 +52,13 @@ export function useFilters() {
     setFilters(INITIAL_FILTERS);
   }
 
-  return { filters, toggleBrand, toggleCategory, setLoadingType, setAll, clear };
+  return {
+    filters,
+    toggleBrand,
+    toggleCategory,
+    toggleTemplate,
+    setMachineFilterMode,
+    setAll,
+    clear,
+  };
 }

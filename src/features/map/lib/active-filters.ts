@@ -1,6 +1,23 @@
+import type { MachineTemplateResponse, SearchScope } from '@/shared/generated/model';
 import type { Brand, Category, LoadingType, SearchFilters } from '@/shared/types/database';
 
-export type ActiveFilterKind = 'brand' | 'category' | 'loadingType';
+type MachineFilterMode = SearchFilters['machineFilterMode'];
+
+/**
+ * ADR 0022: structured filter UI uses `machineFilterMode: 'or' | 'and'` for
+ * UX clarity; backend API uses `scope: 'each' | 'combined'` (same semantics
+ * as NL Search's `SearchScope`). These two helpers keep the mapping in a
+ * single source of truth — adding an enum value to one side forces a fix here.
+ */
+export function machineFilterModeToScope(mode: MachineFilterMode): SearchScope {
+  return mode === 'and' ? 'combined' : 'each';
+}
+
+export function scopeToMachineFilterMode(scope: SearchScope | undefined): MachineFilterMode {
+  return scope === 'combined' ? 'and' : 'or';
+}
+
+export type ActiveFilterKind = 'brand' | 'category' | 'machineTemplate';
 
 export interface ActiveFilter {
   kind: ActiveFilterKind;
@@ -12,26 +29,49 @@ interface ToActiveFiltersInput {
   filters: SearchFilters;
   brands: readonly Brand[];
   categories: readonly Category[];
+  machineTemplates: readonly MachineTemplateResponse[];
 }
-
-export const LOADING_TYPE_LABEL: Record<LoadingType, string> = {
-  pin: '핀로딩',
-  plate: '플레이트',
-};
 
 // Korean prefix used by ActiveFilterStrip accessibility labels
 // (e.g. "브랜드 Panatta 필터 제거"). Kept here so the view-model layer owns
 // every user-visible label that depends on `ActiveFilterKind`.
 export const ACTIVE_FILTER_KIND_LABEL: Record<ActiveFilterKind, string> = {
   brand: '브랜드',
-  category: '머신 종류',
-  loadingType: '로딩 방식',
+  category: '운동 부위',
+  machineTemplate: '머신',
 };
+
+// Chip suffix mapping for machine template loading type. `Record<LoadingType, ...>`
+// enforces compile-time exhaustiveness — adding a new LoadingType triggers a TS
+// error here, preventing silent fallback through a ternary.
+const LOADING_TYPE_SUFFIX: Record<LoadingType, string> = {
+  pin: '핀',
+  plate: '플레이트',
+};
+
+function loadingTypeSuffix(loadingType: string): string {
+  // OpenAPI schema types loadingType as `string`, but the backend constrains it
+  // to the LoadingType enum at the source. Defensive lookup: known value → label,
+  // unknown value → raw passthrough (logged would be nice but out of scope).
+  return loadingType in LOADING_TYPE_SUFFIX
+    ? LOADING_TYPE_SUFFIX[loadingType as LoadingType]
+    : loadingType;
+}
+
+/**
+ * Renders a machine template chip label.
+ * ADR 0022: chip 라벨은 "BrandName TemplateName · LoadingType" 형식. 사용자가
+ * 정확히 어떤 (브랜드, 머신) 짝을 선택했는지 한눈에 파악 가능.
+ */
+export function formatMachineTemplateLabel(template: MachineTemplateResponse): string {
+  return `${template.brandName} ${template.name} · ${loadingTypeSuffix(template.loadingType)}`;
+}
 
 export function toActiveFilters({
   filters,
   brands,
   categories,
+  machineTemplates,
 }: ToActiveFiltersInput): ActiveFilter[] {
   const result: ActiveFilter[] = [];
 
@@ -49,12 +89,15 @@ export function toActiveFilters({
     }
   }
 
-  if (filters.loadingType !== null) {
-    result.push({
-      kind: 'loadingType',
-      id: filters.loadingType,
-      label: LOADING_TYPE_LABEL[filters.loadingType],
-    });
+  for (const templateId of filters.templateIds) {
+    const template = machineTemplates.find((candidate) => candidate.id === templateId);
+    if (template !== undefined) {
+      result.push({
+        kind: 'machineTemplate',
+        id: template.id,
+        label: formatMachineTemplateLabel(template),
+      });
+    }
   }
 
   return result;

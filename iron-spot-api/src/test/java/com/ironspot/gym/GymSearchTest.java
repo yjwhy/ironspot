@@ -89,8 +89,11 @@ class GymSearchTest extends IntegrationTestBase {
     }
 
     @Test
-    void searchFiltersByLoadingTypePinReturnsGym() {
-        String url = "/api/gyms/search" + GANGNAM_BOUNDS + "&loadingType=pin";
+    void searchFiltersByTemplateIdEachReturnsGym() {
+        // ADR 0022 / Slice 45c: EACH (OR) — gym has template e0000001, returns.
+        String url = "/api/gyms/search" + GANGNAM_BOUNDS
+            + "&templateIds=e0000001-0000-0000-0000-000000000001"
+            + "&scope=each";
 
         ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
@@ -99,14 +102,84 @@ class GymSearchTest extends IntegrationTestBase {
     }
 
     @Test
-    void searchFiltersByLoadingTypePlateDoesNotReturnGym() {
-        // The test gym only has a pin-loaded machine, so plate filter should exclude it
-        String url = "/api/gyms/search" + GANGNAM_BOUNDS + "&loadingType=plate";
+    void searchFiltersByMultipleTemplateIdsEachReturnsGymOnAnyMatch() {
+        // EACH (OR) — gym has e0000001 but not e0000099, still returns (OR semantics).
+        String url = "/api/gyms/search" + GANGNAM_BOUNDS
+            + "&templateIds=e0000099-0000-0000-0000-000000000099"
+            + "&templateIds=e0000001-0000-0000-0000-000000000001";
+
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("테스트 헬스장");
+    }
+
+    @Test
+    void searchExcludesGymWhenTemplateIdEachDoesNotMatch() {
+        // EACH (OR) — gym has no e0000099 template, excluded.
+        String url = "/api/gyms/search" + GANGNAM_BOUNDS
+            + "&templateIds=e0000099-0000-0000-0000-000000000099";
 
         ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).doesNotContain("테스트 헬스장");
+    }
+
+    @Test
+    void searchCombinedScopeReturnsGymWhenAllTemplatesPresent() {
+        // COMBINED (AND) — gym has both e0000001 + e0000002 (seed: Slice 45c
+        // 확장), returns. This is the user's compound search use case (ADR 0022).
+        String url = "/api/gyms/search" + GANGNAM_BOUNDS
+            + "&templateIds=e0000001-0000-0000-0000-000000000001"
+            + "&templateIds=e0000002-0000-0000-0000-000000000002"
+            + "&scope=combined";
+
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("테스트 헬스장");
+    }
+
+    @Test
+    void searchCombinedScopeExcludesGymWhenAnyTemplateMissing() {
+        // COMBINED (AND) — gym has e0000001 but not e0000099, excluded.
+        String url = "/api/gyms/search" + GANGNAM_BOUNDS
+            + "&templateIds=e0000001-0000-0000-0000-000000000001"
+            + "&templateIds=e0000099-0000-0000-0000-000000000099"
+            + "&scope=combined";
+
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).doesNotContain("테스트 헬스장");
+    }
+
+    @Test
+    void searchReturnsMatchedMachineNamesInResponse() {
+        // ADR 0022 / Slice 45d: response includes matchedMachineNames (top 5,
+        // sorted, "Brand TemplateName" format). gym a0000001 has Panatta High Row
+        // + Life Fitness Chest Press (seed). 둘 다 응답에 포함되어야 함.
+        ResponseEntity<String> response =
+            restTemplate.getForEntity("/api/gyms/search" + GANGNAM_BOUNDS, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("Panatta High Row");
+        assertThat(response.getBody()).contains("Life Fitness Chest Press");
+        assertThat(response.getBody()).contains("matchedMachineNames");
+    }
+
+    @Test
+    void searchMatchedMachineNamesRespectsBrandFilter() {
+        // Brand=Panatta 필터 시 matchedMachineNames 는 Panatta 머신만 포함.
+        String url = "/api/gyms/search" + GANGNAM_BOUNDS
+            + "&brandIds=b0000001-0000-0000-0000-000000000001";
+
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("Panatta High Row");
+        assertThat(response.getBody()).doesNotContain("Life Fitness Chest Press");
     }
 
     @Test

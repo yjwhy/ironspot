@@ -24,19 +24,34 @@ interface GymCardProps {
 // chip, verified-date) or their sizes, update GymCardSkeleton to match.
 export const GYM_CARD_THUMBNAIL_SIZE = 80;
 
+// ADR 0022 / Slice 45i: top 3 matched machines shown inline; rest collapsed
+// into "외 +N". Card height stays bounded regardless of match count.
+const MATCHED_MACHINES_INLINE_LIMIT = 3;
+
+function formatMatchedMachines(names: readonly string[]): string | null {
+  if (names.length === 0) return null;
+  if (names.length <= MATCHED_MACHINES_INLINE_LIMIT) return names.join(', ');
+  const head = names.slice(0, MATCHED_MACHINES_INLINE_LIMIT).join(', ');
+  const remainder = names.length - MATCHED_MACHINES_INLINE_LIMIT;
+  return `${head} 외 +${String(remainder)}`;
+}
+
 function buildAccessibilityLabel(
   name: string,
   distanceLabel: string,
   machineCount: number,
+  matchedPreview: string | null,
   verifiedLabel: string | null,
 ): string {
   const parts = [name, distanceLabel, `기구 ${String(machineCount)}대`];
+  if (matchedPreview) parts.push(`매칭 머신 ${matchedPreview}`);
   if (verifiedLabel) parts.push(verifiedLabel);
   return parts.join(', ');
 }
 
 export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID }: GymCardProps) {
   const distanceLabel = formatDistanceKm(distanceKm);
+  const matchedPreview = formatMatchedMachines(gym.matched_machine_names);
   const verifiedLabel = gym.last_verified_at
     ? `확인일 ${formatVerifiedDate(gym.last_verified_at)}`
     : null;
@@ -53,6 +68,7 @@ export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID 
           gym.name,
           distanceLabel,
           gym.machine_count,
+          matchedPreview,
           verifiedLabel,
         )}
       >
@@ -78,6 +94,15 @@ export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID 
                 <AppText className="text-body-sm text-text-secondary">{distanceLabel}</AppText>
               </View>
               <AccentChip>기구 {gym.machine_count}대</AccentChip>
+              {matchedPreview ? (
+                <AppText
+                  className="text-body-sm text-text-secondary"
+                  numberOfLines={1}
+                  testID="gym-card-matched-machines"
+                >
+                  ✓ {matchedPreview}
+                </AppText>
+              ) : null}
             </View>
             {verifiedLabel ? (
               <AppText className="self-end text-body-sm text-text-tertiary">

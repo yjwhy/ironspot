@@ -22,8 +22,10 @@ import { useBottomSheetMode } from '../hooks/useBottomSheetMode';
 import { useBrands } from '../hooks/useBrands';
 import { useCategories } from '../hooks/useCategories';
 import { useFilters } from '../hooks/useFilters';
+import { useMachineTemplates } from '../hooks/useMachineTemplates';
 import { useMapSearch } from '../hooks/useMapSearch';
 import { useMarkerReveal } from '../hooks/useMarkerReveal';
+import { scopeToMachineFilterMode } from '../lib/active-filters';
 import { toGymWithMachineCount } from '../services/gym-search';
 
 const INITIAL_ZOOM = 14;
@@ -72,12 +74,14 @@ export function MapScreen() {
     filters,
     toggleBrand,
     toggleCategory,
-    setLoadingType,
+    toggleTemplate,
+    setMachineFilterMode,
     setAll: setAllFilters,
     clear: clearFilters,
   } = useFilters();
   const { data: brands = [], isError: brandsError } = useBrands();
   const { data: categories = [], isError: categoriesError } = useCategories();
+  const { data: machineTemplates = [], isError: machineTemplatesError } = useMachineTemplates();
   const filterSheetRef = useRef<FilterSheetRef>(null);
   const [source, dispatch] = useReducer(gymsSourceReducer, INITIAL_SOURCE);
   const mapRef = useRef<NaverMapViewRef>(null);
@@ -121,7 +125,7 @@ export function MapScreen() {
   });
 
   const activeFilterCount =
-    filters.brandIds.length + filters.categoryIds.length + (filters.loadingType !== null ? 1 : 0);
+    filters.brandIds.length + filters.categoryIds.length + filters.templateIds.length;
 
   function handleNlSubmit(query: string) {
     nlSearch.mutate(query, {
@@ -162,10 +166,13 @@ export function MapScreen() {
   }
 
   function applyParsedFiltersAndExitNl(parsed: ParsedFilters) {
+    // ADR 0022 / Slice 45h: NL → structured filter 완전 매핑. templateIds 와
+    // scope 가 이제 structured filter 의 1차 시민이므로 lossless 변환 가능.
     setAllFilters({
       brandIds: parsed.brandIds,
       categoryIds: parsed.categoryIds,
-      loadingType: null,
+      templateIds: parsed.templateIds,
+      machineFilterMode: scopeToMachineFilterMode(parsed.scope),
     });
     dispatch({ type: 'enter_filter_mode' });
     filterSheetRef.current?.present();
@@ -244,12 +251,15 @@ export function MapScreen() {
         ref={filterSheetRef}
         brands={brands}
         categories={categories}
+        machineTemplates={machineTemplates}
         brandsError={brandsError}
         categoriesError={categoriesError}
+        machineTemplatesError={machineTemplatesError}
         filters={filters}
         onToggleBrand={toggleBrand}
         onToggleCategory={toggleCategory}
-        onSetLoadingType={setLoadingType}
+        onToggleTemplate={toggleTemplate}
+        onSetMachineFilterMode={setMachineFilterMode}
         onResetAll={clearFilters}
       />
 
@@ -269,13 +279,12 @@ export function MapScreen() {
 }
 
 function surfaceDroppedConditions(parsed: ParsedFilters) {
+  // ADR 0022 / Slice 45h: templateIds + scope (combined → AND 토글) 이 이제
+  // structured filter 에서 lossless 매핑 → toast 항목 제거. minCount > 1 만
+  // 여전히 매핑 안 됨 (structured filter 가 minCount 차원 미지원).
   const dropped: string[] = [];
-  if (parsed.templateIds.length > 0) dropped.push('머신 이름');
   if (parsed.minCount !== undefined && parsed.minCount > 1) {
     dropped.push('최소 수량');
-  }
-  if (parsed.scope === 'combined') {
-    dropped.push('동시 보유 조건');
   }
   if (dropped.length > 0) {
     burnt.toast({

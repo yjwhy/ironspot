@@ -120,6 +120,7 @@ describe('Database types', () => {
       created_at: '2026-03-15',
       updated_at: '2026-03-15',
       machine_count: 12,
+      matched_machine_names: [],
     };
     expect(gym.machine_count).toBe(12);
   });
@@ -156,8 +157,14 @@ describe('Database types', () => {
     expect(bounds.maxLat).toBeGreaterThan(bounds.minLat);
   });
 
-  it('SearchFilters accepts empty arrays + null loadingType', () => {
-    const filters: SearchFilters = { brandIds: [], categoryIds: [], loadingType: null };
+  it('SearchFilters accepts empty arrays + or-mode default', () => {
+    const filters: SearchFilters = {
+      brandIds: [],
+      categoryIds: [],
+      templateIds: [],
+      machineFilterMode: 'or',
+    };
     expect(filters.brandIds).toEqual([]);
+    expect(filters.machineFilterMode).toBe('or');
   });
 });

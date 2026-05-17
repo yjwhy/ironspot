@@ -238,20 +238,88 @@ review-gated subagent-driven development 패턴. 7 슬라이스 + 옵션 chore. 
 4. 시뮬레이터 수동 스모크: 필터 버튼 탭 → 시트 65% snap → drag-up 90% → 로딩 방식 segmented control 토글 → 활성 strip 갱신 → 브랜드 검색 input 동작 → 칩 다중 선택 → 활성 strip × 으로 제거 → 전체 해제 → pan-down 닫힘.
 5. 백엔드 무변경 → `./gradlew test` 실행 불필요.
 
+## Task 45 — 머신 템플릿 필터 + 카테고리 라벨 정정 (ADR 0022)
+
+### Why now
+
+Task 44 (ADR 0021) 가 FilterSheet 구조 업그레이드 후 머지 직후, 사용자 시뮬레이터 실기 테스트에서 두 문제 표면화:
+
+1. **카테고리 라벨 mislabel**: 시트의 "머신 종류" 섹션이 실제로는 `categories` 테이블 (`'등'`, `'가슴'`, Arms / Back / Chest / Legs / Shoulders) = **신체 운동 부위** 정보. 진짜 머신 종류 (Chest Press, Seated Row 등) 는 `machine_templates` 테이블에 별도 존재.
+2. **Compound brand × machine 쿼리 표현 불가**: 사용자가 "Panatta 의 High Row + Low Row + Hex Squat 와 Hammer 의 Chest Press 를 모두 보유한 헬스장" 같은 정확 쿼리를 표현하려 하면, (브랜드 multi-select OR + 머신이름 deduplicated OR) 모델에서 cross-product fan-out 발생 → 의도와 SQL 의미 불일치.
+
+두 증상은 ADR 0020 이 Phase 1 에서 명시적으로 deferred 했던 "머신 모델 멀티셀렉트 검색" 항목과 동일 뿌리. NL Search (Task 38b) 백엔드는 이미 `SearchDsl.machineFilters` + `templateIds` + `scope: EACH | COMBINED` 지원 → structured filter UI 만 노출되지 않은 상태.
+
+### Grilled decisions (locked before code entry)
+
+ADR 0022 본문 참조. 핵심 7결정:
+
+1. 카테고리 라벨 "머신 종류" → **"운동 부위"** (실제 데이터와 일치)
+2. 신규 **"머신"** 차원 추가, 시트 섹션 순서 = 운동 부위 → 브랜드 → 머신
+3. 머신 chip 단위 = **per-template** (브랜드 prefix 라벨 `"Panatta High Row · 핀"`). name-deduplicated 거부 (cross-product 의미 모호)
+4. 다중 머신 선택 **OR 디폴트 + 2+ 선택 시 AND 토글** `"선택한 머신 모두 보유한 헬스장만"`. backend `scope: EACH | COMBINED` 매핑
+5. 글로벌 **LoadingType SegmentedControl 제거**. chip 라벨에 텍스트 suffix `"· 핀"` / `"· 플레이트"` 흡수
+6. **브랜드 필터 섹션 유지** (직교). "이 브랜드의 머신 (아무거나) 보유" 광역 빠른 필터 use case
+7. NL Search `parsedFilters.templateIds + scope` → 머신 chip + AND 토글 **lossless 매핑**. Task 38b 의 dropped condition 토스트가 머신/scope 항목 제거
+
+추가 UX 결정:
+
+- 머신 섹션 검색 input = **임계치 0** (항상 노출, 200-400 templates 예상)
+- 정렬 = **브랜드 1차 + 이름 2차** (`useBrands` locale-aware 정렬 패턴과 일관)
+- ActiveFilterStrip: 머신 chip + AND 모드 시 끝에 `"🔗 모두 보유 ×"`
+- GymBottomSheet 카드: `"매칭된 머신: A, B 외 +N"` 미리보기 (top 5)
+
+### Approach
+
+**브랜치**: `task/45-machine-template-filter` (main `bb74a58` 에서 fork).
+
+**Backend** (Spring Boot + jOOQ): DTO 확장 + SQL OR/AND 분기 + matched machines 응답 + JOOQ regen.
+**Frontend** (React Native): types/hook 확장 + 라벨 정정 + 신규 머신 섹션 + LoadingType 제거 + AND 토글 + ActiveFilterStrip 확장 + NL 통합 + GymCard 매칭 머신 prefix.
+
+### Slice breakdown
+
+9 review-gated slices, ~800-1000 LOC across ~25 files, Task 36 PR #76 동급.
+
+| Slice | 커밋 메시지                                                                             | 내용                                                                                                                                                                            |
+| ----- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 45a   | `docs(phase-4): 45a — Task 45 entry + ADR 0022 + Task renumber`                         | ADR 0022 신규, ADR 0020 implementation note, implementation.md Task 45 entry + Future Tasks renumber (45→46 등), PROGRESS Status + Task 44 closeout + 재배치, README scope 갱신 |
+| 45b   | `feat(phase-4): 45b — GymSearchRequest templateIds + scope, drop loadingType`           | DTO 변경 (`templateIds: List<String>`, `scope: SearchScope`, `loadingType` 제거), 1-pass IT spec lock                                                                           |
+| 45c   | `feat(phase-4): 45c — GymRepository templateIds OR/AND SQL`                             | `searchInBounds` 에 templateIds 조건 추가. OR = `mt.ID.in(...)`. AND = `HAVING COUNT(DISTINCT CASE WHEN mt.ID IN (...) THEN mt.ID END) = N` 패턴. IT 케이스 추가                |
+| 45d   | `feat(phase-4): 45d — matchedMachineNames in GymWithMachineCountResponse`               | response DTO 에 `matchedMachineNames: List<String>` (top 5, "브랜드 + 머신명"). SQL `array_agg` (LIMIT 5). IT 검증                                                              |
+| 45e   | `chore(phase-4): 45e — regenerate jOOQ + OpenAPI + Orval client`                        | 자동 생성 산출물 분리 commit                                                                                                                                                    |
+| 45f   | `feat(phase-4): 45f — useFilters templateIds + machineFilterMode + useMachineTemplates` | `SearchFilters` 확장, `useMachineTemplates` 신규 hook, `useFilters` 토글/세터                                                                                                   |
+| 45g   | `feat(phase-4): 45g — UI relabel + machine section + AND toggle`                        | "머신 종류" → "운동 부위", 머신 섹션 신규, LoadingType SegmentedControl 제거, AND 토글, toActiveFilters + ActiveFilterStrip 확장                                                |
+| 45h   | `feat(phase-4): 45h — NL parsedFilters full mapping`                                    | `applyParsedFiltersAndExitNl` 에 templateIds + scope→AND 매핑, `surfaceDroppedConditions` 갱신                                                                                  |
+| 45i   | `feat(phase-4): 45i — GymCard matched machines prefix`                                  | GymBottomSheet card 에 매칭 머신 미리보기 줄 + Maestro flow 갱신                                                                                                                |
+
+### Token / cost spend for Task 45
+
+- Vision API: 0
+- Groq: 0
+- 신규 runtime 비용: 없음 (RPC payload 약간 증가, 인덱스 영향 없음)
+
+### Verification
+
+1. `pnpm lint && pnpm exec tsc --noEmit && pnpm jest` — 신규 테스트 +30~40 예상
+2. `./gradlew test` — 신규 IT 케이스 +5~10 예상
+3. `/verify` 슬래시 커맨드 (FF review 필수, src/ + app/ 다수 변경)
+4. 시뮬레이터 수동 스모크: 머신 chip 선택 + AND 토글 + matched machines 표시 시각 확인 (사용자 외출 후 처리)
+5. Maestro `filter-sheet-flow` 갱신 (LoadingType 검증 제거, 머신 차원 추가)
+
 ## Future Tasks (planned order, locked via Task 42 grill follow-up)
 
 The remainder of Phase 4 has a recommended order derived from dependency + cost analysis (not the README ordering, which is unsorted scope). Each Task still gets its own `grill-me` + plan entry before implementation; this list is the queue not the design.
 
 ### Tier 1 — Immediate value, no dependencies
 
-- **Task 44**: FilterPanel scalability + `loadingType` surface (ADR 0021) — see full section below. brand/category multi-select 는 Task 38b 에서 이미 완료. 본 Task 는 (a) brand/category 가 50+ 까지 늘어났을 때의 overflow 대응 + (b) `loadingType` UI 노출 + (c) 활성 필터 가시성/리셋 부재 등 Phase 1 패널의 성숙도 갭을 닫는다.
-- **Task 45**: gym_machine report target — extend the report system from photo-only to also cover wrong-machine-mapping. Enables crowd-correcting `gym_machines` rows. Modest backend + admin UI extension. Feeds Tier 2 (owner workflow input) and Tier 4 (reporter trust scoring input) with more data shapes.
+- **Task 44** (done, PR #87 merged): FilterPanel scalability + `loadingType` surface (ADR 0021) — brand/category multi-select 는 Task 38b 에서 이미 완료. 본 Task 는 (a) brand/category 가 50+ 까지 늘어났을 때의 overflow 대응 + (b) `loadingType` UI 노출 + (c) 활성 필터 가시성/리셋 부재 등 Phase 1 패널의 성숙도 갭을 닫음.
+- **Task 45**: 머신 템플릿 필터 + 카테고리 라벨 정정 (ADR 0022) — see full section below. Task 44 머지 직후 사용자 시뮬레이터 테스트에서 표면화된 두 문제 ((a) "머신 종류" 라벨이 실제로는 운동 부위 데이터, (b) brand × machine cross-product 표현 불가) 를 ADR 0022 로 closeout. ADR 0020 이 Phase 2/3 으로 deferred 했던 "머신 모델 멀티셀렉트 검색" 항목의 Phase 4 구현. Backend (DTO + jOOQ SQL + IT) + Frontend (hook + UI + NL 통합 + GymCard) 9 슬라이스.
+- **Task 46**: gym_machine report target — extend the report system from photo-only to also cover wrong-machine-mapping. Enables crowd-correcting `gym_machines` rows. Modest backend + admin UI extension. Feeds Tier 2 (owner workflow input) and Tier 4 (reporter trust scoring input) with more data shapes.
 
 ### Tier 2 — Substantive moderation + launch gating
 
-- **Task 46**: Gym owner workflow — give gym owners scoped permissions to verify/approve photos and edit machine inventory for their gym. `users.role = 'owner'` already in prod CHECK constraint (Phase 3 prep, no migration). Distributes moderation load from admin queue, adds trust signal (owner-verified > anonymous). Largest Task in this tier (4-6 slices, comparable to Task 33-34). 6 design branches to grill at Task entry (owner verification path, permission scope, gym-to-owner cardinality, moderation flow re-design, UI, trust signal propagation).
-- **Task 47**: Apple Sign In external wiring — App Store submission requires Apple Sign In option on iOS. Apple Developer Program enrollment ($99/year) is a user prerequisite. Supabase Apple provider + `ios.usesAppleSignIn` + real-device test. Unlocks the Maestro-driveable in-app sheet that Task 48 depends on.
-- **Task 48**: admin-flow Maestro flow — depends on Task 47. Phase 3 verification carry-over (Task 40 deferred); closes the admin testing gap by using Apple Sign In as the Maestro-driveable login path. Small Task (1-2 slices).
+- **Task 47**: Gym owner workflow — give gym owners scoped permissions to verify/approve photos and edit machine inventory for their gym. `users.role = 'owner'` already in prod CHECK constraint (Phase 3 prep, no migration). Distributes moderation load from admin queue, adds trust signal (owner-verified > anonymous). Largest Task in this tier (4-6 slices, comparable to Task 33-34). 6 design branches to grill at Task entry (owner verification path, permission scope, gym-to-owner cardinality, moderation flow re-design, UI, trust signal propagation).
+- **Task 48**: Apple Sign In external wiring — App Store submission requires Apple Sign In option on iOS. Apple Developer Program enrollment ($99/year) is a user prerequisite. Supabase Apple provider + `ios.usesAppleSignIn` + real-device test. Unlocks the Maestro-driveable in-app sheet that Task 49 depends on.
+- **Task 49**: admin-flow Maestro flow — depends on Task 48. Phase 3 verification carry-over (Task 40 deferred); closes the admin testing gap by using Apple Sign In as the Maestro-driveable login path. Small Task (1-2 slices).
 
 ### Operational (parallel, not numbered Tasks)
 

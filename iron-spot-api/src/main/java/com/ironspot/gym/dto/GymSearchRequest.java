@@ -1,5 +1,6 @@
 package com.ironspot.gym.dto;
 
+import com.ironspot.search.dsl.SearchScope;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -30,13 +31,25 @@ public class GymSearchRequest {
     private Double minLng;
 
     @NotNull
-    @DecimalMin("-180")
     @DecimalMax("180")
+    @DecimalMin("-180")
     private Double maxLng;
 
     private List<String> brandIds;
 
     private List<String> categoryIds;
 
-    private String loadingType;
+    /**
+     * Machine template IDs. When empty/null: no template filter. When non-empty:
+     * scope decides OR (any of these) vs AND (all of these).
+     * ADR 0022 / Task 45.
+     */
+    private List<String> templateIds;
+
+    /**
+     * EACH = OR semantics (gym has at least one matching template).
+     * COMBINED = AND semantics (gym has all of the requested templates).
+     * Defaults to EACH when templateIds is non-empty and scope is null.
+     */
+    private SearchScope scope;
 }

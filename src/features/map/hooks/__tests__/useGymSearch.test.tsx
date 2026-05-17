@@ -20,7 +20,8 @@ const bounds: MapBounds = {
 const filters: SearchFilters = {
   brandIds: ['b1'],
   categoryIds: [],
-  loadingType: 'plate',
+  templateIds: [],
+  machineFilterMode: 'or',
 };
 
 describe('useGymSearch', () => {
@@ -70,6 +71,7 @@ describe('useGymSearch', () => {
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
         machine_count: 3,
+        matched_machine_names: [],
       },
     ];
     const mockSearch = searchGymsInBounds as jest.MockedFunction<typeof searchGymsInBounds>;

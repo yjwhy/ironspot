@@ -19,19 +19,22 @@ const bounds: MapBounds = {
 const filtersWithBrand: SearchFilters = {
   brandIds: ['b1'],
   categoryIds: [],
-  loadingType: 'plate',
+  templateIds: [],
+  machineFilterMode: 'or',
 };
 
 const filtersWithMultipleBrands: SearchFilters = {
   brandIds: ['b1', 'b2'],
   categoryIds: ['c1'],
-  loadingType: null,
+  templateIds: [],
+  machineFilterMode: 'or',
 };
 
 const emptyFilters: SearchFilters = {
   brandIds: [],
   categoryIds: [],
-  loadingType: null,
+  templateIds: [],
+  machineFilterMode: 'or',
 };
 
 const apiGym: GymWithMachineCountResponse = {
@@ -44,6 +47,7 @@ const apiGym: GymWithMachineCountResponse = {
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
   machineCount: 5,
+  matchedMachineNames: [],
 };
 
 describe('searchGymsInBounds', () => {
@@ -64,11 +68,12 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: ['b1'],
       categoryIds: undefined,
-      loadingType: 'plate',
+      templateIds: undefined,
+      scope: undefined,
     });
   });
 
-  it('passes undefined for empty filter arrays and null loadingType', async () => {
+  it('passes undefined for empty filter arrays and OR mode', async () => {
     mockSearch.mockResolvedValue([]);
 
     await searchGymsInBounds(bounds, emptyFilters);
@@ -80,7 +85,8 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: undefined,
       categoryIds: undefined,
-      loadingType: undefined,
+      templateIds: undefined,
+      scope: undefined,
     });
   });
 
@@ -96,7 +102,52 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: ['b1', 'b2'],
       categoryIds: ['c1'],
-      loadingType: undefined,
+      templateIds: undefined,
+      scope: undefined,
+    });
+  });
+
+  it('forwards templateIds + scope=each when machine filter mode is or', async () => {
+    mockSearch.mockResolvedValue([]);
+
+    await searchGymsInBounds(bounds, {
+      brandIds: [],
+      categoryIds: [],
+      templateIds: ['t1', 't2'],
+      machineFilterMode: 'or',
+    });
+
+    expect(mockSearch).toHaveBeenCalledWith({
+      minLat: 37.48,
+      maxLat: 37.5,
+      minLng: 127.02,
+      maxLng: 127.04,
+      brandIds: undefined,
+      categoryIds: undefined,
+      templateIds: ['t1', 't2'],
+      scope: 'each',
+    });
+  });
+
+  it('forwards templateIds + scope=combined when machine filter mode is and', async () => {
+    mockSearch.mockResolvedValue([]);
+
+    await searchGymsInBounds(bounds, {
+      brandIds: [],
+      categoryIds: [],
+      templateIds: ['t1', 't2'],
+      machineFilterMode: 'and',
+    });
+
+    expect(mockSearch).toHaveBeenCalledWith({
+      minLat: 37.48,
+      maxLat: 37.5,
+      minLng: 127.02,
+      maxLng: 127.04,
+      brandIds: undefined,
+      categoryIds: undefined,
+      templateIds: ['t1', 't2'],
+      scope: 'combined',
     });
   });
 
@@ -126,6 +177,7 @@ describe('searchGymsInBounds', () => {
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
       machine_count: 5,
+      matched_machine_names: [],
     };
     expect(result).toEqual([expected]);
   });

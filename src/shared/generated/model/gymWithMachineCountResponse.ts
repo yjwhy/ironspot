@@ -20,4 +20,5 @@ export interface GymWithMachineCountResponse {
   createdAt: string;
   updatedAt: string;
   machineCount: number;
+  matchedMachineNames: string[];
 }

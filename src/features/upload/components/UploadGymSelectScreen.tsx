@@ -17,7 +17,12 @@ import { useNaverPlacesSearch } from '../hooks/useNaverPlacesSearch';
 
 const SEARCH_RADIUS_KM = 5;
 
-const EMPTY_FILTERS = { brandIds: [], categoryIds: [], loadingType: null } as const;
+const EMPTY_FILTERS = {
+  brandIds: [],
+  categoryIds: [],
+  templateIds: [],
+  machineFilterMode: 'or',
+} as const;
 
 type ScreenMode = 'list' | 'naver-search';
 

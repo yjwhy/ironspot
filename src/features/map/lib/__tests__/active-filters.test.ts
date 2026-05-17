@@ -1,6 +1,7 @@
+import type { MachineTemplateResponse } from '@/shared/generated/model';
 import type { Brand, Category, SearchFilters } from '@/shared/types/database';
 
-import { toActiveFilters } from '../active-filters';
+import { formatMachineTemplateLabel, toActiveFilters } from '../active-filters';
 
 const brands: Brand[] = [
   { id: 'b1', name: 'Panatta' },
@@ -12,15 +13,53 @@ const categories: Category[] = [
   { id: 'c2', name: '가슴' },
 ];
 
+const machineTemplates: MachineTemplateResponse[] = [
+  {
+    id: 't1',
+    brandId: 'b1',
+    brandName: 'Panatta',
+    categoryId: 'c1',
+    name: 'High Row',
+    loadingType: 'pin',
+  },
+  {
+    id: 't2',
+    brandId: 'b2',
+    brandName: 'Hammer Strength',
+    categoryId: 'c2',
+    name: 'Chest Press',
+    loadingType: 'plate',
+  },
+];
+
 const emptyFilters: SearchFilters = {
   brandIds: [],
   categoryIds: [],
-  loadingType: null,
+  templateIds: [],
+  machineFilterMode: 'or',
 };
+
+describe('formatMachineTemplateLabel', () => {
+  const [pinTemplate, plateTemplate] = machineTemplates;
+
+  it('formats pin loading with brand prefix + 핀 suffix', () => {
+    if (pinTemplate === undefined) throw new Error('test fixture missing');
+    expect(formatMachineTemplateLabel(pinTemplate)).toBe('Panatta High Row · 핀');
+  });
+
+  it('formats plate loading with 플레이트 suffix', () => {
+    if (plateTemplate === undefined) throw new Error('test fixture missing');
+    expect(formatMachineTemplateLabel(plateTemplate)).toBe(
+      'Hammer Strength Chest Press · 플레이트',
+    );
+  });
+});
 
 describe('toActiveFilters', () => {
   it('returns an empty array when no filter is active', () => {
-    expect(toActiveFilters({ filters: emptyFilters, brands, categories })).toEqual([]);
+    expect(
+      toActiveFilters({ filters: emptyFilters, brands, categories, machineTemplates }),
+    ).toEqual([]);
   });
 
   it('maps brand ids to brand names preserving selection order', () => {
@@ -28,6 +67,7 @@ describe('toActiveFilters', () => {
       filters: { ...emptyFilters, brandIds: ['b2', 'b1'] },
       brands,
       categories,
+      machineTemplates,
     });
     expect(result).toEqual([
       { kind: 'brand', id: 'b2', label: 'Hammer Strength' },
@@ -40,6 +80,7 @@ describe('toActiveFilters', () => {
       filters: { ...emptyFilters, categoryIds: ['c1', 'c2'] },
       brands,
       categories,
+      machineTemplates,
     });
     expect(result).toEqual([
       { kind: 'category', id: 'c1', label: '등' },
@@ -47,43 +88,48 @@ describe('toActiveFilters', () => {
     ]);
   });
 
-  it('skips brand ids that do not resolve to a known brand', () => {
+  it('maps template ids to brand-prefixed chip labels', () => {
     const result = toActiveFilters({
-      filters: { ...emptyFilters, brandIds: ['b1', 'unknown'] },
+      filters: { ...emptyFilters, templateIds: ['t1', 't2'] },
       brands,
       categories,
+      machineTemplates,
     });
-    expect(result).toEqual([{ kind: 'brand', id: 'b1', label: 'Panatta' }]);
+    expect(result).toEqual([
+      { kind: 'machineTemplate', id: 't1', label: 'Panatta High Row · 핀' },
+      { kind: 'machineTemplate', id: 't2', label: 'Hammer Strength Chest Press · 플레이트' },
+    ]);
   });
 
-  it('emits a loadingType entry with Korean label when set to pin', () => {
+  it('skips ids that do not resolve to a known item (defensive against stale selections)', () => {
     const result = toActiveFilters({
-      filters: { ...emptyFilters, loadingType: 'pin' },
+      filters: { ...emptyFilters, brandIds: ['b1', 'unknown'], templateIds: ['t1', 'tx'] },
       brands,
       categories,
+      machineTemplates,
     });
-    expect(result).toEqual([{ kind: 'loadingType', id: 'pin', label: '핀로딩' }]);
+    expect(result).toEqual([
+      { kind: 'brand', id: 'b1', label: 'Panatta' },
+      { kind: 'machineTemplate', id: 't1', label: 'Panatta High Row · 핀' },
+    ]);
   });
 
-  it('emits a loadingType entry with Korean label when set to plate', () => {
+  it('combines brand, category, and machineTemplate in order', () => {
     const result = toActiveFilters({
-      filters: { ...emptyFilters, loadingType: 'plate' },
+      filters: {
+        brandIds: ['b1'],
+        categoryIds: ['c2'],
+        templateIds: ['t2'],
+        machineFilterMode: 'or',
+      },
       brands,
       categories,
-    });
-    expect(result).toEqual([{ kind: 'loadingType', id: 'plate', label: '플레이트' }]);
-  });
-
-  it('combines brand, category, and loadingType in order brand → category → loadingType', () => {
-    const result = toActiveFilters({
-      filters: { brandIds: ['b1'], categoryIds: ['c2'], loadingType: 'plate' },
-      brands,
-      categories,
+      machineTemplates,
     });
     expect(result).toEqual([
       { kind: 'brand', id: 'b1', label: 'Panatta' },
       { kind: 'category', id: 'c2', label: '가슴' },
-      { kind: 'loadingType', id: 'plate', label: '플레이트' },
+      { kind: 'machineTemplate', id: 't2', label: 'Hammer Strength Chest Press · 플레이트' },
     ]);
   });
 });

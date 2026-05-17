@@ -8,6 +8,8 @@ Superseded-date: 2026-05-17
 # 0020 — 필터 UI: 가로 스크롤 바 → 필터 버튼 + 슬라이드다운 패널
 
 > **Superseded by ADR 0021** (2026-05-17). brand/category multi-select 는 Task 38b 에서 이미 완료되었고, 본 ADR 의 슬라이드다운 패널은 brand/category 수가 늘어남에 따른 세로 무한 증식 + 탐색 도구 부재 + `loadingType` 미노출 한계가 드러나 `BottomSheetModal` 로 교체되었다. 본 ADR 의 Phase 1 rationale (특히 bottom sheet 중첩 제스처 충돌 회피 결정) 은 보존 가치가 있어 본문을 유지한다.
+>
+> **Implemented by ADR 0022** (2026-05-17, Phase 4 Task 45). 본 ADR 의 Phase 2/3 deferred 항목 ("머신 모델 멀티셀렉트 검색" + "기구 위시리스트 별도 검색 플로우") 은 ADR 0022 에서 per-template chip + AND 토글 형태로 closeout 됨. 별도 플로우 없이 단일 필터 시트 안에 통합.
 
 ## Context
 

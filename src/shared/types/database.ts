@@ -75,6 +75,10 @@ export interface MachinePhoto {
 
 export interface GymWithMachineCount extends Gym {
   machine_count: number;
+  // ADR 0022 / Task 45: top 5 matching machines as "Brand TemplateName" strings,
+  // sorted alphabetically. Reflects WHERE-filtered set (brand/category/template
+  // filters applied). When no filters set, returns the gym's first 5 machines.
+  matched_machine_names: readonly string[];
 }
 
 export interface GymMachineWithDetails extends GymMachine {
@@ -92,5 +96,10 @@ export interface MapBounds {
 export interface SearchFilters {
   brandIds: readonly string[];
   categoryIds: readonly string[];
-  loadingType: LoadingType | null;
+  templateIds: readonly string[];
+  // ADR 0022 / Task 45: 'or' = gym has at least one matching template (default,
+  // matches brand/category semantics). 'and' = gym must have ALL selected
+  // templates (the user's "wishlist" compound search). Toggled in UI when 2+
+  // templates are selected.
+  machineFilterMode: 'or' | 'and';
 }

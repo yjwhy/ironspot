@@ -142,6 +142,16 @@ INSERT INTO gym_machines(id, gym_id, template_id, quantity)
     'e0000001-0000-0000-0000-000000000001',
     2
   );
+-- ADR 0022 / Slice 45c: 같은 gym 에 두 번째 template (Life Fitness Chest Press)
+-- 도 배치. templateIds AND 모드 IT 케이스가 "gym 이 두 template 모두 보유" 와
+-- "한 template 만 보유" 를 구분할 수 있도록 시드 확장.
+INSERT INTO gym_machines(id, gym_id, template_id, quantity)
+  VALUES (
+    'f0000002-0000-0000-0000-000000000002',
+    'a0000001-0000-0000-0000-000000000001',
+    'e0000002-0000-0000-0000-000000000002',
+    1
+  );
 INSERT INTO machine_photos(id, gym_machine_id, user_id, photo_url, upvote_count)
   VALUES (
     'aa000001-0000-0000-0000-000000000001',

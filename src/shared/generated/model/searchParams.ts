@@ -5,6 +5,7 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
+import type { SearchScope } from './searchScope';
 
 export type SearchParams = {
   /**
@@ -29,5 +30,6 @@ export type SearchParams = {
   maxLng: number;
   brandIds?: string[];
   categoryIds?: string[];
-  loadingType?: string;
+  templateIds?: string[];
+  scope?: SearchScope;
 };
