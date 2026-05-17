@@ -1,7 +1,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as burnt from 'burnt';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,8 +25,21 @@ interface LoginScreenProps {
 type OAuthProvider = 'google' | 'kakao' | 'apple';
 type LoadingProvider = OAuthProvider | null;
 
+const APPLE_CANCEL_CODE = 'ERR_REQUEST_CANCELED';
+const NONCE_BYTE_LENGTH = 16;
+
 export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenProps) {
   const [loading, setLoading] = useState<LoadingProvider>(null);
+  const [appleNativeAvailable, setAppleNativeAvailable] = useState(false);
+
+  useEffect(function detectAppleNativeAvailability() {
+    if (Platform.OS !== 'ios') return;
+    AppleAuthentication.isAvailableAsync()
+      .then(setAppleNativeAvailable)
+      .catch(function ignoreUnavailable() {
+        setAppleNativeAvailable(false);
+      });
+  }, []);
 
   /**
    * Drives the OAuth flow end-to-end: signInWithOAuth → WebBrowser → callback parse
@@ -75,6 +90,74 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
     }
   }
 
+  /**
+   * Native iOS Apple Sign In (Task 48 / ADR 0024). Uses expo-apple-authentication's
+   * in-process system sheet instead of the WebBrowser redirect — required by Apple
+   * HIG 4.8 and gives Face ID / Touch ID prompts. Falls back to {@link handleOAuthLogin}
+   * web flow on simulators / pre-iOS-13 devices where isAvailableAsync returns false.
+   *
+   * Nonce: a 16-byte random raw nonce is hashed (SHA-256) and sent to Apple; the raw
+   * value goes to Supabase. Supabase verifies the hash matches what Apple signed.
+   * Reusing raw on both sides would let a relay attacker swap identityTokens.
+   */
+  async function handleAppleNativeLogin() {
+    setLoading('apple');
+    try {
+      const rawBytes = await Crypto.getRandomBytesAsync(NONCE_BYTE_LENGTH);
+      const rawNonce = Array.from(rawBytes)
+        .map(function toHex(byte) {
+          return byte.toString(16).padStart(2, '0');
+        })
+        .join('');
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce,
+      );
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce: hashedNonce,
+      });
+
+      if (!credential.identityToken) {
+        throw new Error('Apple credential missing identityToken');
+      }
+
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce: rawNonce,
+      });
+      if (error) throw error;
+
+      // Apple only returns fullName on first sign-in. Persist to user_metadata so
+      // ProfileScreen has it even after the second login when Apple sends nothing.
+      const givenName = credential.fullName?.givenName;
+      const familyName = credential.fullName?.familyName;
+      const fullName = [givenName, familyName].filter(Boolean).join(' ').trim();
+      if (fullName.length > 0) {
+        await supabase.auth.updateUser({ data: { full_name: fullName } });
+      }
+
+      onAuthenticated();
+    } catch (err) {
+      const isCancel =
+        err instanceof Error &&
+        'code' in err &&
+        (err as { code?: string }).code === APPLE_CANCEL_CODE;
+      if (isCancel) return; // user closed the sheet — same UX as Google/Kakao cancel
+      captureError(err);
+      burnt.toast({ title: '로그인에 실패했습니다', preset: 'error' });
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  const showAppleButton = Platform.OS === 'ios';
+
   return (
     <SafeAreaView className="flex-1 bg-bg-base justify-between px-6 py-12">
       <View className="flex-1 items-center justify-center gap-4">
@@ -102,16 +185,24 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
           loading={loading === 'kakao'}
           variant="secondary"
         />
-        {Platform.OS === 'ios' ? (
+        {showAppleButton ? (
           <Button
             label="Apple로 계속하기"
             onPress={() => {
-              void handleOAuthLogin('apple');
+              if (appleNativeAvailable) {
+                void handleAppleNativeLogin();
+              } else {
+                void handleOAuthLogin('apple');
+              }
             }}
             loading={loading === 'apple'}
             variant="secondary"
+            testID="apple-sign-in-button"
           />
         ) : null}
+        <AppText className="text-caption text-text-tertiary text-center mt-2">
+          계속하기로 진행하면 개인정보처리방침과 이용약관에 동의하게 돼요.
+        </AppText>
         <Pressable
           onPress={onBrowseAsGuest}
           accessibilityRole="button"

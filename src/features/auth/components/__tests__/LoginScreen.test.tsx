@@ -12,14 +12,28 @@ jest.mock('@/shared/lib/supabase', () => ({
   supabase: {
     auth: {
       signInWithOAuth: jest.fn(),
+      signInWithIdToken: jest.fn(),
       exchangeCodeForSession: jest.fn(),
       setSession: jest.fn(),
+      updateUser: jest.fn(),
     },
   },
 }));
 
 jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn(),
+}));
+
+jest.mock('expo-apple-authentication', () => ({
+  isAvailableAsync: jest.fn(),
+  signInAsync: jest.fn(),
+  AppleAuthenticationScope: { FULL_NAME: 'fullName', EMAIL: 'email' },
+}));
+
+jest.mock('expo-crypto', () => ({
+  getRandomBytesAsync: jest.fn(),
+  digestStringAsync: jest.fn(),
+  CryptoDigestAlgorithm: { SHA256: 'SHA256' },
 }));
 
 jest.mock('burnt', () => ({
@@ -41,12 +55,30 @@ function getSupabaseMock() {
     supabase: {
       auth: {
         signInWithOAuth: jest.Mock;
+        signInWithIdToken: jest.Mock;
         exchangeCodeForSession: jest.Mock;
         setSession: jest.Mock;
+        updateUser: jest.Mock;
       };
     };
   };
   return supabase;
+}
+
+function getAppleAuthMock() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('expo-apple-authentication') as {
+    isAvailableAsync: jest.Mock;
+    signInAsync: jest.Mock;
+  };
+}
+
+function getCryptoMock() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('expo-crypto') as {
+    getRandomBytesAsync: jest.Mock;
+    digestStringAsync: jest.Mock;
+  };
 }
 
 function getWebBrowserMock() {
@@ -72,12 +104,22 @@ beforeEach(() => {
     data: { url: OAUTH_URL },
     error: null,
   });
+  getSupabaseMock().auth.signInWithIdToken.mockResolvedValue({
+    data: { session: null },
+    error: null,
+  });
   getSupabaseMock().auth.exchangeCodeForSession.mockResolvedValue({ error: null });
   getSupabaseMock().auth.setSession.mockResolvedValue({ error: null });
+  getSupabaseMock().auth.updateUser.mockResolvedValue({ data: { user: null }, error: null });
   getWebBrowserMock().openAuthSessionAsync.mockResolvedValue({
     type: 'success',
     url: PKCE_CALLBACK_URL,
   });
+  // Default: native Apple Sign In unavailable (simulator/jest env). Tests that need
+  // native flow override this with mockResolvedValueOnce(true) before rendering.
+  getAppleAuthMock().isAvailableAsync.mockResolvedValue(false);
+  getCryptoMock().getRandomBytesAsync.mockResolvedValue(new Uint8Array(16));
+  getCryptoMock().digestStringAsync.mockResolvedValue('mock-sha256-hash');
   setPlatform('ios');
 });
 
@@ -278,5 +320,148 @@ describe('LoginScreen — OAuth flow', () => {
     });
     expect(getWebBrowserMock().openAuthSessionAsync).not.toHaveBeenCalled();
     expect(getSentryMock().captureError).toHaveBeenCalledWith(oauthError);
+  });
+});
+
+describe('LoginScreen — native Apple Sign In (Task 48 / ADR 0024)', () => {
+  function arrangeNativeAvailable() {
+    getAppleAuthMock().isAvailableAsync.mockResolvedValue(true);
+  }
+
+  function makeCredential(
+    overrides: Partial<{
+      identityToken: string | null;
+      fullName: { givenName: string | null; familyName: string | null } | null;
+    }> = {},
+  ) {
+    return {
+      identityToken: 'mock-identity-token',
+      authorizationCode: 'mock-auth-code',
+      user: 'apple-user-id',
+      email: 'user@privaterelay.appleid.com',
+      fullName: { givenName: null, familyName: null },
+      realUserStatus: 1,
+      state: null,
+      ...overrides,
+    };
+  }
+
+  it('calls signInWithIdToken with the raw nonce when native is available', async () => {
+    arrangeNativeAvailable();
+    getAppleAuthMock().signInAsync.mockResolvedValueOnce(makeCredential());
+
+    const { onAuthenticated, getByRole, findByRole } = renderLoginScreen();
+    // wait for useEffect to flip appleNativeAvailable
+    await findByRole('button', { name: 'Apple로 계속하기' });
+    act(() => {
+      fireEvent.press(getByRole('button', { name: 'Apple로 계속하기' }));
+    });
+    await waitFor(() => {
+      expect(getAppleAuthMock().signInAsync).toHaveBeenCalledTimes(1);
+    });
+    expect(getAppleAuthMock().signInAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ nonce: 'mock-sha256-hash' }),
+    );
+    await waitFor(() => {
+      expect(getSupabaseMock().auth.signInWithIdToken).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: 'apple',
+          token: 'mock-identity-token',
+          // raw nonce (hex of 16 zero bytes) goes to Supabase; hashed went to Apple
+          nonce: '00000000000000000000000000000000',
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(onAuthenticated).toHaveBeenCalledTimes(1);
+    });
+    // No web browser opened on native path
+    expect(getWebBrowserMock().openAuthSessionAsync).not.toHaveBeenCalled();
+  });
+
+  it('persists fullName to user_metadata on first sign-in', async () => {
+    arrangeNativeAvailable();
+    getAppleAuthMock().signInAsync.mockResolvedValueOnce(
+      makeCredential({ fullName: { givenName: '길동', familyName: '홍' } }),
+    );
+
+    const { getByRole, findByRole } = renderLoginScreen();
+    await findByRole('button', { name: 'Apple로 계속하기' });
+    act(() => {
+      fireEvent.press(getByRole('button', { name: 'Apple로 계속하기' }));
+    });
+    await waitFor(() => {
+      expect(getSupabaseMock().auth.updateUser).toHaveBeenCalledWith({
+        data: { full_name: '길동 홍' },
+      });
+    });
+  });
+
+  it('skips updateUser on subsequent sign-in when fullName is empty', async () => {
+    arrangeNativeAvailable();
+    getAppleAuthMock().signInAsync.mockResolvedValueOnce(makeCredential());
+
+    const { getByRole, findByRole } = renderLoginScreen();
+    await findByRole('button', { name: 'Apple로 계속하기' });
+    act(() => {
+      fireEvent.press(getByRole('button', { name: 'Apple로 계속하기' }));
+    });
+    await waitFor(() => {
+      expect(getSupabaseMock().auth.signInWithIdToken).toHaveBeenCalledTimes(1);
+    });
+    expect(getSupabaseMock().auth.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('stays silent on user cancel (ERR_REQUEST_CANCELED)', async () => {
+    arrangeNativeAvailable();
+    const cancelError: Error & { code?: string } = new Error('user canceled');
+    cancelError.code = 'ERR_REQUEST_CANCELED';
+    getAppleAuthMock().signInAsync.mockRejectedValueOnce(cancelError);
+
+    const { onAuthenticated, getByRole, findByRole } = renderLoginScreen();
+    await findByRole('button', { name: 'Apple로 계속하기' });
+    act(() => {
+      fireEvent.press(getByRole('button', { name: 'Apple로 계속하기' }));
+    });
+    await waitFor(() => {
+      expect(getAppleAuthMock().signInAsync).toHaveBeenCalledTimes(1);
+    });
+    expect(getBurntMock().toast).not.toHaveBeenCalled();
+    expect(getSentryMock().captureError).not.toHaveBeenCalled();
+    expect(onAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('shows error toast + Sentry when native sign-in throws a non-cancel error', async () => {
+    arrangeNativeAvailable();
+    const nativeError = new Error('apple boom');
+    getAppleAuthMock().signInAsync.mockRejectedValueOnce(nativeError);
+
+    const { onAuthenticated, getByRole, findByRole } = renderLoginScreen();
+    await findByRole('button', { name: 'Apple로 계속하기' });
+    act(() => {
+      fireEvent.press(getByRole('button', { name: 'Apple로 계속하기' }));
+    });
+    await waitFor(() => {
+      expect(getBurntMock().toast).toHaveBeenCalledWith({
+        title: '로그인에 실패했습니다',
+        preset: 'error',
+      });
+    });
+    expect(getSentryMock().captureError).toHaveBeenCalledWith(nativeError);
+    expect(onAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('falls back to web OAuth when isAvailableAsync returns false', async () => {
+    // default beforeEach sets isAvailableAsync = false
+    const { getByRole } = renderLoginScreen();
+    act(() => {
+      fireEvent.press(getByRole('button', { name: 'Apple로 계속하기' }));
+    });
+    await waitFor(() => {
+      expect(getSupabaseMock().auth.signInWithOAuth).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: 'apple' }),
+      );
+    });
+    expect(getAppleAuthMock().signInAsync).not.toHaveBeenCalled();
   });
 });
