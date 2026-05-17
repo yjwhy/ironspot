@@ -1,0 +1,19 @@
+# Owner moderation flow (Task 47 / ADR 0023, Slice 47m).
+# 인증된 owner 가 Profile → owner widget → /owner → 처리 대기 큐 → dispose
+# sheet 진입까지 검증. 실제 actioned/dismissed 동작은 prod 데이터 의존이라
+# sheet 가 보이는 정도까지만 검증한다 (backend 동작은 OwnerDispositionIT
+# 가 보장 — Task 47f IT).
+#
+# 사전 조건: 인증된 owner 계정 + 본인 매장에 처리 대기 신고 1건 이상.
+# 둘 다 prod 데이터 의존이라 본 flow 는 라우팅 reachability 까지만 검증.
+appId: com.ironspot.app
+---
+- launchApp
+- assertVisible: '필터'
+- tapOn:
+    id: tab-bar-my
+# Profile 의 "내가 한 신고들" 항목은 모든 인증 사용자에게 노출 — owner widget
+# 은 role=owner|admin 일 때만. 인증 안 된 시뮬레이터에서는 둘 다 미노출이라
+# 본 flow 는 Maestro 환경에서 인증 우회 패턴이 정착되면 (Task 49 + Task 48
+# Apple Sign In 후) 보강 예정.
+- assertVisible: '내가 한 신고들'

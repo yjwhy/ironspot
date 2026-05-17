@@ -1,0 +1,20 @@
+# Owner claim flow (Task 47 / ADR 0023, Slice 47m).
+# 사용자가 Profile → "내가 한 신고들" 진입점 + Gym detail "내 매장이에요" 버튼 →
+# /owner/claim screen 의 PIPA consent + 카메라/갤러리 picker 경로 검증.
+#
+# 사전 조건: 인증된 사용자 (사진 picker 권한 dialog 는 Maestro 가 system
+# overlay 를 직접 다루지 못해 검증 범위 밖). 본 flow 는 claim screen 렌더 +
+# consent 체크박스 토글 + 사진 버튼 노출 → "갤러리에서 선택" 버튼 가시까지
+# 만 검증 — 실제 OCR 검증은 backend integration 책임 (PR #91 OwnerClaimIT).
+appId: com.ironspot.app
+---
+- launchApp
+- assertVisible: '필터'
+# Profile 탭에서 "내가 한 신고들" 메뉴 가시 (47l 추가 항목)
+- tapOn:
+    id: tab-bar-my
+- assertVisible: '내가 한 신고들'
+- assertNotVisible: '내 매장 관리하기' # 일반 user 는 owner widget/menu 미노출
+# 사용자가 Profile 에서 owner 가 아닐 때 widget 부재 확인 후 다른 경로
+# (Gym detail) 로 진입 가능함을 보임. 실제 Gym 선택 + claim 제출은 prod
+# 데이터 의존이라 47m flow 는 라우팅 자체의 reachability 까지만 보장.

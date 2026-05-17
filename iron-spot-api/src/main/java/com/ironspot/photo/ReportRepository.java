@@ -4,6 +4,7 @@ import com.ironspot.admin.dto.AdminQueueItem;
 import com.ironspot.admin.dto.AdminQueuePhotoSummary;
 import com.ironspot.admin.dto.AdminReportResponse;
 import com.ironspot.owner.dto.OwnerQueueItem;
+import com.ironspot.photo.dto.MyReportResponse;
 import lombok.RequiredArgsConstructor;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
@@ -24,6 +25,7 @@ import static com.ironspot.jooq.Tables.GYMS;
 import static com.ironspot.jooq.Tables.GYM_MACHINES;
 import static com.ironspot.jooq.Tables.MACHINE_PHOTOS;
 import static com.ironspot.jooq.Tables.MACHINE_TEMPLATES;
+import static com.ironspot.jooq.Tables.MODERATION_AUDIT_LOG;
 import static com.ironspot.jooq.Tables.REPORTS;
 
 @Repository
@@ -375,6 +377,42 @@ public class ReportRepository {
             .and(REPORTS.USER_ID.eq(reporterId))
             .fetchOneInto(Integer.class);
         return Objects.requireNonNullElse(count, 0);
+    }
+
+    /**
+     * List reports filed by the authenticated user (Task 47 / ADR 0023 Q5 R1).
+     * The {@code escalated} flag is sourced from moderation_audit_log so the FE
+     * can hide the escalate button once the user has already re-opened a report.
+     */
+    public List<MyReportResponse> findByReporter(UUID reporterId, int limit) {
+        Field<Boolean> escalatedField = DSL.field(
+            "EXISTS (SELECT 1 FROM {0} a WHERE a.user_id = {1} "
+                + "AND a.action = 'reporter_escalated' "
+                + "AND a.target_type = 'report' "
+                + "AND a.target_id = {2})",
+            Boolean.class,
+            MODERATION_AUDIT_LOG, REPORTS.USER_ID, REPORTS.ID
+        ).as("escalated");
+
+        return dsl.select(
+                REPORTS.ID, REPORTS.TARGET_TYPE, REPORTS.TARGET_ID,
+                REPORTS.REASON, REPORTS.DETAIL, REPORTS.STATUS,
+                REPORTS.CREATED_AT, REPORTS.DISPOSED_AT, escalatedField)
+            .from(REPORTS)
+            .where(REPORTS.USER_ID.eq(reporterId))
+            .orderBy(REPORTS.CREATED_AT.desc())
+            .limit(limit)
+            .fetch(r -> new MyReportResponse(
+                r.get(REPORTS.ID),
+                r.get(REPORTS.TARGET_TYPE),
+                r.get(REPORTS.TARGET_ID),
+                r.get(REPORTS.REASON),
+                r.get(REPORTS.DETAIL),
+                r.get(REPORTS.STATUS),
+                r.get(REPORTS.CREATED_AT) != null ? r.get(REPORTS.CREATED_AT).toInstant() : null,
+                r.get(REPORTS.DISPOSED_AT) != null ? r.get(REPORTS.DISPOSED_AT).toInstant() : null,
+                Boolean.TRUE.equals(r.get(escalatedField))
+            ));
     }
 
     /**
