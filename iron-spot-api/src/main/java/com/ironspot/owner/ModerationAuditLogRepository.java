@@ -32,4 +32,19 @@ public class ModerationAuditLogRepository {
             .set(MODERATION_AUDIT_LOG.METADATA, metadataJson == null ? null : JSONB.valueOf(metadataJson))
             .execute();
     }
+
+    /**
+     * Check whether an audit row with the given action/target/user already
+     * exists. Used to prevent a reporter from re-escalating the same report
+     * more than once (Task 47 / ADR 0023 Q5 R1).
+     */
+    public boolean exists(UUID userId, String action, String targetType, UUID targetId) {
+        return dsl.fetchExists(
+            dsl.selectOne()
+                .from(MODERATION_AUDIT_LOG)
+                .where(MODERATION_AUDIT_LOG.USER_ID.eq(userId))
+                .and(MODERATION_AUDIT_LOG.ACTION.eq(action))
+                .and(MODERATION_AUDIT_LOG.TARGET_TYPE.eq(targetType))
+                .and(MODERATION_AUDIT_LOG.TARGET_ID.eq(targetId)));
+    }
 }

@@ -99,7 +99,8 @@ public class GymRepository {
                 g.IS_VERIFIED, g.LAST_VERIFIED_AT, g.CREATED_AT, g.UPDATED_AT,
                 machineCount, matchedNamesField)
             .from(g)
-            .leftJoin(gm).on(gm.GYM_ID.eq(g.ID))
+            // Task 47 / ADR 0023 Q4 E3: skip soft-deleted gym_machines in search.
+            .leftJoin(gm).on(gm.GYM_ID.eq(g.ID).and(gm.DELETED_AT.isNull()))
             .leftJoin(mt).on(mt.ID.eq(gm.TEMPLATE_ID))
             .leftJoin(b).on(b.ID.eq(mt.BRAND_ID))
             .where(spatialCond)

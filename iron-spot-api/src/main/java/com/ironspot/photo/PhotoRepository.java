@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static com.ironspot.jooq.Tables.GYM_MACHINES;
 import static com.ironspot.jooq.Tables.MACHINE_PHOTOS;
 
 @Repository
@@ -150,5 +151,40 @@ public class PhotoRepository {
             .and(MACHINE_PHOTOS.IS_BLINDED.eq(false))
             .execute();
         return rows > 0;
+    }
+
+    /**
+     * Mark a photo as verified by an owner (Task 47 / ADR 0023 Q5 T1/T2).
+     * Idempotent: only flips NULL → NOW(). Returns rows affected so the
+     * service can detect "already verified" duplicates without a re-read.
+     */
+    public int markVerifiedByOwner(UUID photoId) {
+        return dsl.update(MACHINE_PHOTOS)
+            .set(MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT, OffsetDateTime.now())
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .and(MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT.isNull())
+            .execute();
+    }
+
+    /**
+     * Lookup the gym_id for a photo via its gym_machine (Task 47 /
+     * ADR 0023 Q5 P3). Used by service-layer ownership checks.
+     */
+    public Optional<UUID> findGymIdByPhotoId(UUID photoId) {
+        return dsl.select(GYM_MACHINES.GYM_ID)
+            .from(MACHINE_PHOTOS)
+            .join(GYM_MACHINES).on(GYM_MACHINES.ID.eq(MACHINE_PHOTOS.GYM_MACHINE_ID))
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .fetchOptional(r -> r.get(GYM_MACHINES.GYM_ID));
+    }
+
+    /**
+     * Lookup the gym_machine_id for a photo (Task 47 / ADR 0023 Q5 P3).
+     */
+    public Optional<UUID> findGymMachineIdByPhotoId(UUID photoId) {
+        return dsl.select(MACHINE_PHOTOS.GYM_MACHINE_ID)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .fetchOptional(r -> r.get(MACHINE_PHOTOS.GYM_MACHINE_ID));
     }
 }
