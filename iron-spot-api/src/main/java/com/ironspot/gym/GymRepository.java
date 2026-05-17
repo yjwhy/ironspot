@@ -5,6 +5,7 @@ import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
 import com.ironspot.search.dsl.SearchScope;
+import com.ironspot.jooq.tables.Brands;
 import com.ironspot.jooq.tables.GymMachines;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachineTemplates;
@@ -16,10 +17,12 @@ import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static com.ironspot.jooq.Tables.*;
 
@@ -29,14 +32,25 @@ public class GymRepository {
 
     private final DSLContext dsl;
 
+    private static final int MATCHED_MACHINES_LIMIT = 5;
+
     public List<GymWithMachineCountResponse> searchInBounds(GymSearchRequest req) {
         Gyms g = GYMS.as("g");
         GymMachines gm = GYM_MACHINES.as("gm");
         MachineTemplates mt = MACHINE_TEMPLATES.as("mt");
+        Brands b = BRANDS.as("b");
 
         Field<Double> lat = DSL.field("ST_Y(g.location::geometry)", Double.class);
         Field<Double> lng = DSL.field("ST_X(g.location::geometry)", Double.class);
         Field<Integer> machineCount = DSL.countDistinct(gm.ID).as("machine_count");
+        // PostgreSQL array_agg(DISTINCT ...) — top N trim happens in Java since
+        // PG doesn't allow LIMIT inside aggregate. Typical gym has <30 templates
+        // so unbounded aggregation is fine in practice.
+        Field<String[]> matchedNamesField = DSL.field(
+            "array_agg(DISTINCT {0} || ' ' || {1})",
+            String[].class,
+            b.NAME, mt.NAME
+        ).as("matched_names");
 
         Condition spatialCond = DSL.condition(
             "ST_Within(g.location::geometry, ST_MakeEnvelope({0}, {1}, {2}, {3}, 4326))",
@@ -77,10 +91,11 @@ public class GymRepository {
                 g.ID, g.NAME, g.ADDRESS, lat, lng,
                 g.PHONE, g.OPERATING_HOURS, g.DAY_PASS_PRICE,
                 g.IS_VERIFIED, g.LAST_VERIFIED_AT, g.CREATED_AT, g.UPDATED_AT,
-                machineCount)
+                machineCount, matchedNamesField)
             .from(g)
             .leftJoin(gm).on(gm.GYM_ID.eq(g.ID))
             .leftJoin(mt).on(mt.ID.eq(gm.TEMPLATE_ID))
+            .leftJoin(b).on(b.ID.eq(mt.BRAND_ID))
             .where(spatialCond)
             .and(brandCond)
             .and(categoryCond)
@@ -92,6 +107,14 @@ public class GymRepository {
             .orderBy(machineCount.desc())
             .fetch(r -> {
                 OffsetDateTime lastVerified = r.get(g.LAST_VERIFIED_AT);
+                String[] rawNames = r.get(matchedNamesField);
+                List<String> matched = rawNames == null
+                    ? List.of()
+                    : Stream.of(rawNames)
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.naturalOrder())
+                        .limit(MATCHED_MACHINES_LIMIT)
+                        .toList();
                 return new GymWithMachineCountResponse(
                     r.get(g.ID),
                     r.get(g.NAME),
@@ -105,7 +128,8 @@ public class GymRepository {
                     lastVerified != null ? lastVerified.toInstant() : null,
                     r.get(g.CREATED_AT).toInstant(),
                     r.get(g.UPDATED_AT).toInstant(),
-                    Objects.requireNonNullElse(r.get(machineCount), 0).longValue()
+                    Objects.requireNonNullElse(r.get(machineCount), 0).longValue(),
+                    matched
                 );
             });
     }

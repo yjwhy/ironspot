@@ -3,6 +3,7 @@ package com.ironspot.gym.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record GymWithMachineCountResponse(
@@ -18,5 +19,12 @@ public record GymWithMachineCountResponse(
     Instant lastVerifiedAt,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt,
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long machineCount
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long machineCount,
+    /**
+     * Top 5 matching machines as "Brand TemplateName" strings, sorted alphabetically.
+     * Reflects the WHERE-filtered set (brand/category/template filters apply).
+     * When no filters set, returns the gym's first 5 machines by name.
+     * ADR 0022 / Task 45 Slice 45d.
+     */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<String> matchedMachineNames
 ) {}

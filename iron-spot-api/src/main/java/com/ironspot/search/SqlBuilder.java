@@ -81,7 +81,12 @@ public class SqlBuilder {
                     lastVerified != null ? lastVerified.toInstant() : null,
                     r.get(g.CREATED_AT).toInstant(),
                     r.get(g.UPDATED_AT).toInstant(),
-                    Objects.requireNonNullElse(r.get(machineCount), 0).longValue()
+                    Objects.requireNonNullElse(r.get(machineCount), 0).longValue(),
+                    // ADR 0022 / Slice 45d: NL Search path 는 EXISTS 기반 필터링으로
+                    // matched machine names 집계가 더 복잡 (compound machineFilters).
+                    // 일단 빈 리스트 반환. 후속 Task 에서 NL Search 응답에도
+                    // 매칭 머신 이름 노출 검토.
+                    List.of()
                 );
             });
     }

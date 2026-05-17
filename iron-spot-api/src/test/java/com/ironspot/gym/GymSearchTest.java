@@ -156,6 +156,33 @@ class GymSearchTest extends IntegrationTestBase {
     }
 
     @Test
+    void searchReturnsMatchedMachineNamesInResponse() {
+        // ADR 0022 / Slice 45d: response includes matchedMachineNames (top 5,
+        // sorted, "Brand TemplateName" format). gym a0000001 has Panatta High Row
+        // + Life Fitness Chest Press (seed). 둘 다 응답에 포함되어야 함.
+        ResponseEntity<String> response =
+            restTemplate.getForEntity("/api/gyms/search" + GANGNAM_BOUNDS, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("Panatta High Row");
+        assertThat(response.getBody()).contains("Life Fitness Chest Press");
+        assertThat(response.getBody()).contains("matchedMachineNames");
+    }
+
+    @Test
+    void searchMatchedMachineNamesRespectsBrandFilter() {
+        // Brand=Panatta 필터 시 matchedMachineNames 는 Panatta 머신만 포함.
+        String url = "/api/gyms/search" + GANGNAM_BOUNDS
+            + "&brandIds=b0000001-0000-0000-0000-000000000001";
+
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("Panatta High Row");
+        assertThat(response.getBody()).doesNotContain("Life Fitness Chest Press");
+    }
+
+    @Test
     void searchFiltersByCategoryId() {
         String url = "/api/gyms/search" + GANGNAM_BOUNDS
             + "&categoryIds=c0000001-0000-0000-0000-000000000001";

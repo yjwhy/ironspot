@@ -180,7 +180,8 @@ class NlSearchServiceTest {
             null, null, null, true,
             null,
             Instant.now(), Instant.now(),
-            0L
+            0L,
+            List.of()
         );
     }
 }
