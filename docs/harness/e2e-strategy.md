@@ -28,6 +28,7 @@ Maestro 기반 E2E 테스트를 3단계 빈도로 실행:
 | Task 13 (map + markers)          | 전체 flow                                | 핵심 화면, 모든 플로우 진입점        |
 | Task 14 (animations polish)      | 전체 flow                                | 시각적 회귀 체크                     |
 | Task 15 (final verification)     | **`pnpm e2e:all`**                       | Phase 완료 최종 검증                 |
+| Task 44 (FilterSheet, ADR 0021)  | `smoke`, `filter-sheet-flow`             | 필터 시트 진입 + segmented + reset   |
 
 ## 실행 명령
 

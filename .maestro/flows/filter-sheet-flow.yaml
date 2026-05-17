@@ -1,0 +1,28 @@
+# Filter sheet flow.
+# Verifies the new BottomSheetModal-based FilterSheet replaces the old
+# slide-down FilterPanel (ADR 0021). Tests segmented control toggle,
+# active filter strip rendering, and reset CTA.
+#
+# FilterButton uses accessibilityLabel="필터" — same selector as the legacy
+# nl-search-flow.yaml's pre-condition assertion. After tapping, the
+# BottomSheetModal title "필터" replaces the same label semantically but is
+# now inside the sheet — we wait on the sheet-only label "로딩 방식" to
+# disambiguate.
+appId: com.ironspot.app
+---
+- launchApp
+- assertVisible: '필터'
+- tapOn: '필터'
+- extendedWaitUntil:
+    visible: '로딩 방식'
+    timeout: 5000
+- assertVisible: '브랜드'
+- assertVisible: '머신 종류'
+- tapOn: '핀로딩'
+- assertVisible: '1개 활성'
+- assertVisible: '전체 해제'
+- tapOn: '전체 해제'
+- assertNotVisible: '1개 활성'
+- assertNotVisible: '전체 해제'
+- tapOn: '필터 닫기'
+- assertNotVisible: '로딩 방식'
