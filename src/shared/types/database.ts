@@ -71,6 +71,12 @@ export interface MachinePhoto {
   created_at: string;
   upvote_count: number;
   is_upvoted_by_me?: boolean;
+  /**
+   * Task 47 / ADR 0023 Q5: set when an active owner has verified this photo.
+   * Optional in the type so fixtures predating Task 47 still satisfy the
+   * shape; null means "not verified" at runtime.
+   */
+  verified_by_owner_at?: string | null;
 }
 
 export interface GymWithMachineCount extends Gym {

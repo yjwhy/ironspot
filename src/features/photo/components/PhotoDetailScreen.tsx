@@ -90,7 +90,11 @@ export function PhotoDetailScreen({ photoId, machineId }: PhotoDetailScreenProps
 
       {reportSheetVisible && currentPhoto ? (
         <ReportReasonSheet
-          target={{ type: 'photo', photoId: currentPhoto.id }}
+          target={{
+            type: 'photo',
+            photoId: currentPhoto.id,
+            verifiedByOwnerAt: currentPhoto.verified_by_owner_at ?? null,
+          }}
           onClose={handleReportSheetClose}
         />
       ) : null}
@@ -272,7 +276,33 @@ function FooterBar({ photo, bottomInset }: FooterBarProps) {
         <AppText className="text-body-sm text-text-inverse opacity-80">{uploaderLabel}</AppText>
         <AppText className="text-body-sm text-text-inverse opacity-80">·</AppText>
         <AppText className="text-body-sm text-text-inverse opacity-80">{dateLabel}</AppText>
+        {typeof photo.verified_by_owner_at === 'string' && photo.verified_by_owner_at.length > 0 ? (
+          <OwnerVerifiedBadge />
+        ) : null}
       </View>
+    </View>
+  );
+}
+
+// Task 47 / ADR 0023 Q5 T1+T2: green badge surfaced when an active gym owner
+// has marked the photo as verified. The verifiedByOwnerAt instant itself is
+// for debugging / admin tooling — users see only the badge.
+function OwnerVerifiedBadge() {
+  return (
+    <View
+      testID="owner-verified-badge"
+      accessibilityRole="text"
+      accessibilityLabel="매장 owner 인증 사진"
+      className="flex-row items-center gap-1 rounded-full bg-green-600/30 px-2 py-0.5"
+    >
+      <MaterialIcons
+        name="verified"
+        size={12}
+        color={colors.success}
+        importantForAccessibility="no"
+        accessibilityElementsHidden
+      />
+      <AppText className="text-caption text-text-inverse">owner 인증</AppText>
     </View>
   );
 }

@@ -32,7 +32,7 @@ import {
  * reason subset + mutation hook internally.
  */
 export type ReportTarget =
-  | { type: 'photo'; photoId: string }
+  | { type: 'photo'; photoId: string; verifiedByOwnerAt?: string | null }
   | { type: 'gymMachine'; gymMachineId: string };
 
 interface ReportReasonSheetProps {
@@ -114,6 +114,12 @@ function ReportReasonSheetInner({ target, onClose }: ReportReasonSheetProps) {
     >
       <BottomSheetView className="flex-1 px-5 pb-6">
         <AppText className="text-heading-md mb-4">신고하기</AppText>
+
+        {target.type === 'photo' &&
+        typeof target.verifiedByOwnerAt === 'string' &&
+        target.verifiedByOwnerAt.length > 0 ? (
+          <OwnerVerifiedWarningBanner />
+        ) : null}
 
         <ReasonSection
           title={urgentReasons === null ? '신고 사유' : '일반 사유'}
@@ -225,6 +231,25 @@ function DetailInput({ value, onChangeText }: DetailInputProps) {
         placeholder="자세히 알려주세요 (선택)"
         placeholderTextColor={colors.text.tertiary}
       />
+    </View>
+  );
+}
+
+// Task 47 / ADR 0023 Q5 W2: when a photo has been verified by the gym's owner,
+// surface an amber banner before the user picks a reason. Owner-verified
+// content is unlikely to be inappropriate; the banner nudges the user to
+// reconsider before filing a report (does not block submission).
+function OwnerVerifiedWarningBanner() {
+  return (
+    <View
+      testID="owner-verified-warning-banner"
+      accessibilityRole="alert"
+      accessibilityLabel="이 사진은 매장 owner 가 인증한 사진이에요. 그래도 문제가 있다면 계속 진행하세요."
+      className="mb-4 rounded-lg bg-amber-100 px-3 py-2"
+    >
+      <AppText className="text-body-sm text-amber-900">
+        이 사진은 매장 owner 가 인증했어요. 그래도 문제가 있나요?
+      </AppText>
     </View>
   );
 }
