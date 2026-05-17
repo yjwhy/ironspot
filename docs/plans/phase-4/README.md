@@ -44,8 +44,8 @@ Schema drift between prod Supabase + test schema. Not Phase 3 blockers but worth
 
 App Store submission gates. Tracked in `phase-3/PROGRESS.md` Pre-Launch Backlog section.
 
-- Apple Sign In external wiring (Apple Developer enrollment + Service ID + Supabase provider config)
-- Privacy Policy + Terms of Service (Korean copy + hosted URLs)
+- **Apple Sign In external wiring** — Task 48 (in progress, Draft PR, ADR 0024) ships the Expo + Supabase code path (native sheet + web fallback). The 5 external prerequisites (Apple Developer enrollment + App ID + Service ID + .p8 + Supabase Apple provider) remain user-owned and are the gate from Draft → Ready.
+- Privacy Policy + Terms of Service (Korean copy + hosted URLs) — Task 48 adds the consent disclaimer text under login buttons, but the linked URLs stay placeholder until this backlog item delivers hosted copies.
 - UptimeRobot keep-warm 5-minute ping on `/actuator/health`
 
 ## Out of scope for Phase 4 (post-launch backlog)

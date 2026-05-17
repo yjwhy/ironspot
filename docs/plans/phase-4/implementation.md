@@ -472,6 +472,77 @@ Phase 4 README scope item 13 의 두 가치 — (a) moderation 분산, (b) trust
 - Risk 2: PIPA 동의 문구 법적 검토 (Pre-Launch Backlog Privacy Policy 작업과 함께 진행)
 - Risk 3: Vision API free tier 초과 시 비용 (월 1000 units 공유) → Task 42 + Task 47 합쳐 1100+ units 시점에 monitoring 필요
 
+## Task 48 — Apple Sign In native + web OAuth hybrid (ADR 0024)
+
+### Why now
+
+App Store Review Guideline 4.8 이 다른 third-party SSO 를 제공하는 앱에 Apple Sign In 옵션 동등 제공을 강제한다. 본 앱은 Google/Kakao 를 이미 제공 중이라 출시 전 Apple Sign In 경로가 functional 해야 한다. 또한 Task 49 (admin-flow Maestro) 가 in-app 인증 sheet 를 요구 — 현 web OAuth flow 는 system browser 를 띄워서 Maestro 가 driveable 하지 않다. Task 48 가 native sheet 를 도입해야 Task 49 가 가능해진다.
+
+Pre-Launch Backlog 의 "Apple Sign In external wiring" 항목을 본 Task 가 흡수한다. 5개 external 사전조건 (Apple Developer 등록 + App ID + Service ID + .p8 + Supabase provider) 은 user 가 별도로 처리해야 functional 하므로 본 PR 은 **Draft** 로 띄우고 code-only ship.
+
+### Grilled decisions (locked before code entry, ADR 0024)
+
+1. **Q1 패턴 = hybrid (native primary + web fallback)**. `AppleAuthentication.isAvailableAsync()` 가 true 이고 `Platform.OS === 'ios'` 일 때만 native sheet, 그 외 iOS 케이스는 기존 `signInWithOAuth({ provider: 'apple' })` web flow fallback. Android 는 둘 다 미렌더. native-only 와 web-only 는 거부 — native-only 는 `isAvailableAsync` false 케이스를 처리 못 함, web-only 는 HIG 위반 + Maestro 불가.
+2. **Q2 외부 사전조건 = user 책임**. 5단계 (Apple Developer enrollment $99/year + App ID with Sign In with Apple capability + Service ID + .p8 + Key ID + Team ID + Supabase Apple provider 설정). 본 PR 은 Draft 로 띄우고 user 가 5단계 완료 후 실 디바이스 테스트. 시뮬레이터 fallback 은 web OAuth path 로 동작.
+3. **Q3 슬라이싱 = 2 slice**. 48a 문서 (ADR 0024 + implementation.md Task 48 entry + Pre-Launch Backlog 재정렬). 48b 코드 (dependency 추가 + app.json `usesAppleSignIn` + LoginScreen hybrid handler + Jest +7).
+
+추가 구현 결정:
+
+- **Nonce** — `expo-crypto.getRandomBytesAsync(16)` → hex string → SHA-256 hash. Apple 에 sha256 hex 전달, Supabase 에 raw hex 전달. Supabase 내부에서 다시 sha256 으로 id token 의 nonce claim 과 비교 → replay 방어.
+- **fullName 캡처** — Apple 은 fullName 을 **최초 1회만** 응답한다. `credential.fullName?.givenName/familyName` 둘 중 하나라도 있으면 `supabase.auth.updateUser({ data: { full_name: '${given} ${family}' } })` 로 즉시 metadata 저장.
+- **Error handling** — `code === 'ERR_REQUEST_CANCELED'` 은 user-cancel silent return (toast/Sentry/onAuthenticated 미호출). 그 외 모든 에러는 기존 Google/Kakao 패턴 (`captureError` + `burnt.toast({ title: '로그인에 실패했습니다', preset: 'error' })`).
+- **Privacy Policy / ToS disclaimer** — 로그인 버튼 아래에 한 줄 disclaimer ("계속하기로 진행하면 개인정보처리방침과 이용약관에 동의하게 돼요."). URL hosting 은 Pre-Launch Backlog 별도 항목이라 본 Task 는 텍스트만 추가.
+
+### Approach
+
+**Dependencies**:
+
+- `expo-apple-authentication` (Expo SDK 54 호환 버전, 예상 `~7.x.x`).
+
+**app.json**:
+
+- `ios.usesAppleSignIn = true` 추가. config plugin 이 Xcode entitlement 자동 적용.
+
+**Frontend**:
+
+- `src/features/auth/components/LoginScreen.tsx` — `useEffect` mount detect (`isAvailableAsync()` → state), `handleAppleNativeLogin` 추가 (nonce 생성 → `signInAsync` → `signInWithIdToken` → fullName updateUser → onAuthenticated), iOS-only render gate (`appleNativeAvailable` 분기 → native vs web fallback 버튼), 한 줄 disclaimer 추가.
+- 기존 `handleOAuthLogin` 는 Google/Kakao + Apple fallback 으로 그대로 유지.
+- 테스트 `LoginScreen.test.tsx` — `expo-apple-authentication` + `expo-crypto` mock + 7 신규 케이스 (native success / fullName 캡처 / 재로그인 fullName 없음 / cancel silent / native error / `isAvailableAsync` false fallback / Android 미렌더).
+
+**Backend**:
+
+- 변경 없음. Supabase Apple provider 가 ID token audience claim (=Service ID) + nonce sha256 검증을 수행.
+
+### Slice breakdown
+
+2 review-gated slices. ~150 LOC across <10 files. 단일 commit PR criterion 충족하지만 ADR + 문서 + 코드 분리 가독성을 위해 의도적 2 slice.
+
+| Slice | 커밋 메시지                                                                                  | 내용                                                                                                                                                                                                                                          |
+| ----- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 48a   | `docs(phase-4): 48a — Task 48 entry + ADR 0024 + Pre-Launch Backlog reorganisation`          | ADR 0024 신규 (hybrid 결정 + 5단계 external 사전조건), implementation.md Task 48 entry 승격 (one-line bullet → full section), PROGRESS Status + Task 48 checkbox, ADRs README 0024 행, README.md Pre-Launch Backlog Apple 항목 → Task 48 흡수 |
+| 48b   | `feat(phase-4): 48b — Apple Sign In native hybrid (expo-apple-authentication + web fallback)` | `expo-apple-authentication` 의존성 추가, `app.json` `ios.usesAppleSignIn = true`, `LoginScreen.tsx` hybrid handler + render gate + disclaimer, `LoginScreen.test.tsx` +7 cases, Jest 523 → 530                                                |
+
+### Token / cost spend for Task 48
+
+- Groq: 0 (no NL calls)
+- Vision API: 0
+- Apple Developer Program: $99/year (user 결제, code 외)
+- Dependency: `expo-apple-authentication` MIT, 무료
+
+### Verification (code-only, this PR)
+
+1. `pnpm lint && pnpm exec tsc --noEmit && pnpm jest` — Jest +7 신규 (523 → 530)
+2. `/verify` 슬래시 커맨드 (FE 변경, FF review 4 reviewer)
+3. 시뮬레이터에서 web fallback 경로 manual smoke (시뮬레이터 iCloud 미로그인 가정 → web OAuth flow 가 발동되어야 함)
+4. 실 디바이스 native sheet 테스트 = user 가 5단계 외부 사전조건 완료 후 별도 수행 (본 PR 머지 후 follow-up)
+
+### 의존성 + risk
+
+- 의존성: Task 47 (gym owner workflow) 와 독립. Task 49 (admin-flow Maestro) 의 사전조건.
+- Risk 1: 시뮬레이터 `isAvailableAsync` false 빈도 — 시뮬레이터에 iCloud 미로그인 시 false. Web fallback 이 발동되도록 분기 로직 정확해야 함. Jest test #6 가 이를 검증.
+- Risk 2: Apple Review 4.8 위반 시 reject — fullName/email scope 누락이나 disclaimer 누락이 원인. 본 Task 는 둘 다 포함.
+- Risk 3: Privacy Policy / ToS URL hosting 누락 — Pre-Launch Backlog 별도 항목으로 분리. 본 Task 는 텍스트만 추가하므로 추후 backlog 작업에서 링크 활성화.
+
 ## Future Tasks (planned order, locked via Task 42 grill follow-up)
 
 The remainder of Phase 4 has a recommended order derived from dependency + cost analysis (not the README ordering, which is unsorted scope). Each Task still gets its own `grill-me` + plan entry before implementation; this list is the queue not the design.
@@ -485,7 +556,7 @@ The remainder of Phase 4 has a recommended order derived from dependency + cost 
 ### Tier 2 — Substantive moderation + launch gating
 
 - **Task 47**: Gym owner workflow — give gym owners scoped permissions to verify/approve photos and edit machine inventory for their gym. `users.role = 'owner'` already in prod CHECK constraint (Phase 3 prep, no migration). Distributes moderation load from admin queue, adds trust signal (owner-verified > anonymous). Largest Task in this tier (4-6 slices, comparable to Task 33-34). 6 design branches to grill at Task entry (owner verification path, permission scope, gym-to-owner cardinality, moderation flow re-design, UI, trust signal propagation).
-- **Task 48**: Apple Sign In external wiring — App Store submission requires Apple Sign In option on iOS. Apple Developer Program enrollment ($99/year) is a user prerequisite. Supabase Apple provider + `ios.usesAppleSignIn` + real-device test. Unlocks the Maestro-driveable in-app sheet that Task 49 depends on.
+- **Task 48** (in progress, Draft PR): Apple Sign In native + web OAuth hybrid (ADR 0024) — see full section above. App Store Review 4.8 + Task 49 의존성 closeout. Code-only ship, 5단계 external 사전조건 (Apple Developer enrollment $99/year + App ID + Service ID + .p8 + Supabase provider) 은 user 가 별도로 처리. 2 slice (48a docs + 48b code).
 - **Task 49**: admin-flow Maestro flow — depends on Task 48. Phase 3 verification carry-over (Task 40 deferred); closes the admin testing gap by using Apple Sign In as the Maestro-driveable login path. Small Task (1-2 slices).
 
 ### Operational (parallel, not numbered Tasks)
