@@ -26,7 +26,10 @@ import {
 const SNAP_POINTS = ['65%', '90%'];
 const BACKGROUND_STYLE = { backgroundColor: colors.bg.elevated };
 const SEARCH_THRESHOLD = 8;
-const MACHINE_SECTION_SEARCH_THRESHOLD = 0; // ADR 0022: always show search
+// ADR 0022: 머신 섹션은 항상 검색창 노출 (200-400 templates 예상). 0 은 "임계치
+// 무효화" 의미 — FilterSheetSection 의 `items.length >= searchThreshold` 비교
+// 가 모든 items 길이에 대해 true.
+const MACHINE_SECTION_ALWAYS_SHOW_SEARCH = 0;
 const MIN_FOOTER_BOTTOM_PADDING = 16;
 const AND_TOGGLE_MIN_SELECTION = 2;
 
@@ -137,7 +140,6 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
   const footerBottomPadding = Math.max(insets.bottom, MIN_FOOTER_BOTTOM_PADDING);
   const hasActiveFilters = activeFilters.length > 0;
   const showAndToggle = filters.templateIds.length >= AND_TOGGLE_MIN_SELECTION;
-  const andModeOn = filters.machineFilterMode === 'and';
 
   return (
     <BottomSheetModal
@@ -194,7 +196,7 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
             items={machineSectionItems}
             selectedIds={filters.templateIds}
             isError={machineTemplatesError}
-            searchThreshold={MACHINE_SECTION_SEARCH_THRESHOLD}
+            searchThreshold={MACHINE_SECTION_ALWAYS_SHOW_SEARCH}
             searchPlaceholder="머신 검색"
             onToggle={onToggleTemplate}
           />
@@ -206,7 +208,7 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
               </AppText>
               <Switch
                 accessibilityLabel="선택한 머신 모두 보유한 헬스장만"
-                value={andModeOn}
+                value={filters.machineFilterMode === 'and'}
                 onValueChange={handleAndModeToggle}
                 trackColor={{ false: colors.bg.subtle, true: colors.accent.DEFAULT }}
                 thumbColor={colors.bg.elevated}

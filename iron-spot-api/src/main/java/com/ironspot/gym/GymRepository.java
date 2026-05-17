@@ -32,6 +32,12 @@ public class GymRepository {
 
     private final DSLContext dsl;
 
+    /**
+     * Max distinct machine names returned in {@link GymWithMachineCountResponse#matchedMachineNames}.
+     * Kept &gt; GymCard.MATCHED_MACHINES_INLINE_LIMIT (frontend, currently 3) so the
+     * "외 +N" overflow indicator in the card has at least 2 hidden items to count.
+     * Reducing this below 3 will hide content the UI expects to present.
+     */
     private static final int MATCHED_MACHINES_LIMIT = 5;
 
     public List<GymWithMachineCountResponse> searchInBounds(GymSearchRequest req) {

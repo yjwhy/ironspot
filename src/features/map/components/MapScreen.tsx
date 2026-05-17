@@ -25,6 +25,7 @@ import { useFilters } from '../hooks/useFilters';
 import { useMachineTemplates } from '../hooks/useMachineTemplates';
 import { useMapSearch } from '../hooks/useMapSearch';
 import { useMarkerReveal } from '../hooks/useMarkerReveal';
+import { scopeToMachineFilterMode } from '../lib/active-filters';
 import { toGymWithMachineCount } from '../services/gym-search';
 
 const INITIAL_ZOOM = 14;
@@ -171,7 +172,7 @@ export function MapScreen() {
       brandIds: parsed.brandIds,
       categoryIds: parsed.categoryIds,
       templateIds: parsed.templateIds,
-      machineFilterMode: parsed.scope === 'combined' ? 'and' : 'or',
+      machineFilterMode: scopeToMachineFilterMode(parsed.scope),
     });
     dispatch({ type: 'enter_filter_mode' });
     filterSheetRef.current?.present();

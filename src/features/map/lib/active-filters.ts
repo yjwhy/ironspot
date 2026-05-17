@@ -1,5 +1,21 @@
-import type { MachineTemplateResponse } from '@/shared/generated/model';
-import type { Brand, Category, SearchFilters } from '@/shared/types/database';
+import type { MachineTemplateResponse, SearchScope } from '@/shared/generated/model';
+import type { Brand, Category, LoadingType, SearchFilters } from '@/shared/types/database';
+
+type MachineFilterMode = SearchFilters['machineFilterMode'];
+
+/**
+ * ADR 0022: structured filter UI uses `machineFilterMode: 'or' | 'and'` for
+ * UX clarity; backend API uses `scope: 'each' | 'combined'` (same semantics
+ * as NL Search's `SearchScope`). These two helpers keep the mapping in a
+ * single source of truth — adding an enum value to one side forces a fix here.
+ */
+export function machineFilterModeToScope(mode: MachineFilterMode): SearchScope {
+  return mode === 'and' ? 'combined' : 'each';
+}
+
+export function scopeToMachineFilterMode(scope: SearchScope | undefined): MachineFilterMode {
+  return scope === 'combined' ? 'and' : 'or';
+}
 
 export type ActiveFilterKind = 'brand' | 'category' | 'machineTemplate';
 
@@ -25,14 +41,30 @@ export const ACTIVE_FILTER_KIND_LABEL: Record<ActiveFilterKind, string> = {
   machineTemplate: '머신',
 };
 
+// Chip suffix mapping for machine template loading type. `Record<LoadingType, ...>`
+// enforces compile-time exhaustiveness — adding a new LoadingType triggers a TS
+// error here, preventing silent fallback through a ternary.
+const LOADING_TYPE_SUFFIX: Record<LoadingType, string> = {
+  pin: '핀',
+  plate: '플레이트',
+};
+
+function loadingTypeSuffix(loadingType: string): string {
+  // OpenAPI schema types loadingType as `string`, but the backend constrains it
+  // to the LoadingType enum at the source. Defensive lookup: known value → label,
+  // unknown value → raw passthrough (logged would be nice but out of scope).
+  return loadingType in LOADING_TYPE_SUFFIX
+    ? LOADING_TYPE_SUFFIX[loadingType as LoadingType]
+    : loadingType;
+}
+
 /**
  * Renders a machine template chip label.
  * ADR 0022: chip 라벨은 "BrandName TemplateName · LoadingType" 형식. 사용자가
  * 정확히 어떤 (브랜드, 머신) 짝을 선택했는지 한눈에 파악 가능.
  */
 export function formatMachineTemplateLabel(template: MachineTemplateResponse): string {
-  const loadingSuffix = template.loadingType === 'pin' ? '핀' : '플레이트';
-  return `${template.brandName} ${template.name} · ${loadingSuffix}`;
+  return `${template.brandName} ${template.name} · ${loadingTypeSuffix(template.loadingType)}`;
 }
 
 export function toActiveFilters({
