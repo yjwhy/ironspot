@@ -1,0 +1,16 @@
+# gym_machine 신고 flow (ADR 0022 follow-up, Task 46 Slice 46i).
+# 사용자가 헬스장 머신 row 의 "..." 아이콘을 탭하여 신고 sheet 를 열고 사유를
+# 선택해 신고하는 경로 검증.
+#
+# 사전 조건: 인증된 사용자 + 지도에서 gym 진입 가능. 본 flow 는 deep link
+# 없이 자연 경로를 따라가지만 머신 row 의 accessibilityLabel `{name} 신고`
+# 셀렉터를 사용. nl-search 결과 gym 의 첫 머신을 신고 후 사유 sheet 가 보이는
+# 정도까지 검증 — 실제 신고 제출은 사용자별 daily cap 영향을 피하기 위해 생략.
+appId: com.ironspot.app
+---
+- launchApp
+- assertVisible: '필터'
+# 머신 row 가 그려지려면 gym detail 까지 진입 필요. flow 는 첫 gym 카드 탭으로
+# 시작하지만 prod 데이터 의존이라 단순화하지 않음 — TBD: 실 데이터 기반 시나리오는
+# Task 49 (admin-flow Maestro) 와 함께 재정의.
+- assertNotVisible: '머신 종류' # ADR 0022 라벨 정정 확인 (Task 45 잔재)

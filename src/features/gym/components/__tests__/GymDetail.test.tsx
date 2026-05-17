@@ -6,6 +6,12 @@ import { makeGymMachineWithDetails } from '@/test/utils/factories/gym-machine';
 import { useGymMachines } from '../../hooks/useGymMachines';
 import { GymDetail } from '../GymDetail';
 
+// ADR 0022 follow-up (Task 46): MachineList renders ReportReasonSheet which
+// transitively imports `burnt` (ESM, not parsed by Jest).
+jest.mock('@/features/photo/components/ReportReasonSheet', () => ({
+  ReportReasonSheet: () => null,
+}));
+
 jest.mock('../../hooks/useGymMachines', () => ({
   useGymMachines: jest.fn(),
 }));
@@ -125,7 +131,7 @@ describe('GymDetail', () => {
       ],
     });
     const { getByRole } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
-    expect(getByRole('button', { name: /^High Row/ })).toBeTruthy();
+    expect(getByRole('button', { name: /^High Row,/ })).toBeTruthy();
   });
 
   it('forwards onPressMachine when a machine row is tapped', () => {
@@ -139,7 +145,7 @@ describe('GymDetail', () => {
       ],
     });
     const { getByRole } = render(<GymDetail gym={baseGym} onPressMachine={onPressMachine} />);
-    fireEvent.press(getByRole('button', { name: /^High Row/ }));
+    fireEvent.press(getByRole('button', { name: /^High Row,/ }));
     expect(onPressMachine).toHaveBeenCalledWith('gm-1');
   });
 

@@ -46,6 +46,12 @@ jest.mock('@shopify/flash-list', () => {
   return { FlashList: mock.BottomSheetListMock };
 });
 
+// ADR 0022 follow-up (Task 46): GymDetail → MachineList → ReportReasonSheet
+// transitive import of `burnt` (ESM not parsed by Jest).
+jest.mock('@/features/photo/components/ReportReasonSheet', () => ({
+  ReportReasonSheet: () => null,
+}));
+
 jest.mock('../../hooks/useGymMachines', () => ({
   useGymMachines: jest.fn(() => ({
     data: [],

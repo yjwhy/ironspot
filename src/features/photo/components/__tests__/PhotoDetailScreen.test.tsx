@@ -30,11 +30,13 @@ jest.mock('@/features/auth/hooks/useRequireAuth', () => ({
 }));
 
 jest.mock('../ReportReasonSheet', () => ({
-  ReportReasonSheet: jest.fn(({ photoId }: { photoId: string; onClose: () => void }) => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const RN = require('react-native') as typeof ReactNative;
-    return <RN.View testID={`report-sheet-${photoId}`} />;
-  }),
+  ReportReasonSheet: jest.fn(
+    ({ target }: { target: { type: 'photo'; photoId: string }; onClose: () => void }) => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const RN = require('react-native') as typeof ReactNative;
+      return <RN.View testID={`report-sheet-${target.photoId}`} />;
+    },
+  ),
 }));
 
 jest.mock('expo-router', () => ({

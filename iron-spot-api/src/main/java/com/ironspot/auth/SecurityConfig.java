@@ -42,6 +42,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/machine-templates").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/machines/*/photos").permitAll()
+                // Task 46: gym_machine 신고는 인증 사용자만 가능. anyRequest 가
+                // 어차피 authenticated 라 redundant 하지만, 사진 신고 endpoint 와
+                // 대칭으로 명시해 review-time 발견성 ↑.
+                .requestMatchers(HttpMethod.POST, "/api/gym-machines/*/reports").authenticated()
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
                 // Explicit so a future permitAll for actuator-like admin tools cannot

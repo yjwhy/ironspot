@@ -1,5 +1,6 @@
 package com.ironspot.photo;
 
+import com.ironspot.admin.dto.AdminQueueItem;
 import com.ironspot.admin.dto.AdminQueuePhotoSummary;
 import com.ironspot.admin.dto.AdminReportResponse;
 import lombok.RequiredArgsConstructor;
@@ -9,19 +10,25 @@ import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
+import static com.ironspot.jooq.Tables.BRANDS;
+import static com.ironspot.jooq.Tables.GYM_MACHINES;
 import static com.ironspot.jooq.Tables.MACHINE_PHOTOS;
+import static com.ironspot.jooq.Tables.MACHINE_TEMPLATES;
 import static com.ironspot.jooq.Tables.REPORTS;
 
 @Repository
 @RequiredArgsConstructor
 public class ReportRepository {
 
-    static final String TARGET_TYPE_PHOTO = "photo";
+    public static final String TARGET_TYPE_PHOTO = "photo";
+    public static final String TARGET_TYPE_GYM_MACHINE = "gym_machine";
     static final String STATUS_PENDING = "pending";
 
     public enum InsertResult { INSERTED, ESCALATED, DUPLICATE }
@@ -31,14 +38,20 @@ public class ReportRepository {
     /**
      * Insert a new report, or escalate an existing one if the new reason is urgent
      * and the existing reason is not. UNIQUE on (user_id, target_id) means a single
-     * user can have at most one row per photo; escalation overwrites reason/detail
+     * user can have at most one row per target; escalation overwrites reason/detail
      * in place rather than inserting a second row.
+     * <p>
+     * ADR 0022 follow-up (Task 46): {@code targetType} is now an explicit parameter
+     * — photo callers pass {@link #TARGET_TYPE_PHOTO}, gym_machine callers pass
+     * {@link #TARGET_TYPE_GYM_MACHINE}. Escalation (LEGAL_PERSONAL upgrade) only
+     * applies on the photo surface — gym_machine reasons never escalate.
      */
-    public InsertResult insertOrEscalate(UUID userId, UUID photoId, ReportReason reason, String detail) {
+    public InsertResult insertOrEscalate(
+            UUID userId, String targetType, UUID targetId, ReportReason reason, String detail) {
         int inserted = dsl.insertInto(REPORTS)
             .set(REPORTS.USER_ID, userId)
-            .set(REPORTS.TARGET_TYPE, TARGET_TYPE_PHOTO)
-            .set(REPORTS.TARGET_ID, photoId)
+            .set(REPORTS.TARGET_TYPE, targetType)
+            .set(REPORTS.TARGET_ID, targetId)
             .set(REPORTS.REASON, reason.name())
             .set(REPORTS.DETAIL, detail)
             .onConflict(REPORTS.USER_ID, REPORTS.TARGET_ID)
@@ -46,12 +59,12 @@ public class ReportRepository {
             .execute();
         if (inserted > 0) return InsertResult.INSERTED;
 
-        if (reason == ReportReason.LEGAL_PERSONAL) {
+        if (TARGET_TYPE_PHOTO.equals(targetType) && reason == ReportReason.LEGAL_PERSONAL) {
             int escalated = dsl.update(REPORTS)
                 .set(REPORTS.REASON, reason.name())
                 .set(REPORTS.DETAIL, detail)
                 .where(REPORTS.USER_ID.eq(userId))
-                .and(REPORTS.TARGET_ID.eq(photoId))
+                .and(REPORTS.TARGET_ID.eq(targetId))
                 .and(REPORTS.REASON.notEqual(ReportReason.LEGAL_PERSONAL.name()))
                 .execute();
             if (escalated > 0) return InsertResult.ESCALATED;
@@ -170,7 +183,102 @@ public class ReportRepository {
             ));
     }
 
+    /**
+     * Unified admin moderation queue: photo + gym_machine pending reports grouped
+     * by target, ordered by oldest report. ADR 0022 follow-up (Task 46).
+     * <p>
+     * Implemented as two grouped queries + Java merge rather than a SQL UNION
+     * because the per-type label/imageUrl projections differ in joined tables
+     * (machine_photos vs gym_machines × machine_templates × brands) — UNION
+     * would force NULL padding the unused columns and obscure intent.
+     */
+    public List<AdminQueueItem> listPendingQueue(int limit) {
+        List<AdminQueueItem> photo = listPendingPhotoQueueItems(limit);
+        List<AdminQueueItem> gymMachine = listPendingGymMachineQueueItems(limit);
+        return Stream.concat(photo.stream(), gymMachine.stream())
+            .sorted(Comparator.comparing(AdminQueueItem::oldestReportAt))
+            .limit(limit)
+            .toList();
+    }
+
+    private List<AdminQueueItem> listPendingPhotoQueueItems(int limit) {
+        Field<Integer> pendingCount = DSL.count(REPORTS.ID).as("pending_count");
+        Field<OffsetDateTime> oldestReportAt = DSL.min(REPORTS.CREATED_AT).as("oldest_report_at");
+        Field<String> topReason = DSL.field(
+            "mode() WITHIN GROUP (ORDER BY {0})", String.class, REPORTS.REASON
+        ).as("top_reason");
+
+        return dsl.select(MACHINE_PHOTOS.ID, MACHINE_PHOTOS.PHOTO_URL,
+                pendingCount, oldestReportAt, topReason)
+            .from(MACHINE_PHOTOS)
+            .join(REPORTS).on(REPORTS.TARGET_ID.eq(MACHINE_PHOTOS.ID))
+            .where(REPORTS.STATUS.eq(STATUS_PENDING))
+            .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_PHOTO))
+            .groupBy(MACHINE_PHOTOS.ID, MACHINE_PHOTOS.PHOTO_URL)
+            .orderBy(oldestReportAt.asc())
+            .limit(limit)
+            .fetch(r -> new AdminQueueItem(
+                TARGET_TYPE_PHOTO,
+                r.get(MACHINE_PHOTOS.ID),
+                "사진",
+                r.get(MACHINE_PHOTOS.PHOTO_URL),
+                r.get(pendingCount),
+                r.get(oldestReportAt),
+                r.get(topReason)
+            ));
+    }
+
+    private List<AdminQueueItem> listPendingGymMachineQueueItems(int limit) {
+        Field<Integer> pendingCount = DSL.count(REPORTS.ID).as("pending_count");
+        Field<OffsetDateTime> oldestReportAt = DSL.min(REPORTS.CREATED_AT).as("oldest_report_at");
+        Field<String> topReason = DSL.field(
+            "mode() WITHIN GROUP (ORDER BY {0})", String.class, REPORTS.REASON
+        ).as("top_reason");
+        // CONCAT with space: brandName + ' ' + templateName. NULL-safe via COALESCE
+        // since gym_machines.template_id is nullable in principle (custom rows).
+        Field<String> labelField = DSL.field(
+            "COALESCE({0} || ' ' || {1}, '머신')",
+            String.class, BRANDS.NAME, MACHINE_TEMPLATES.NAME
+        ).as("label");
+
+        return dsl.select(GYM_MACHINES.ID, labelField,
+                pendingCount, oldestReportAt, topReason)
+            .from(GYM_MACHINES)
+            .join(REPORTS).on(REPORTS.TARGET_ID.eq(GYM_MACHINES.ID))
+            .leftJoin(MACHINE_TEMPLATES).on(MACHINE_TEMPLATES.ID.eq(GYM_MACHINES.TEMPLATE_ID))
+            .leftJoin(BRANDS).on(BRANDS.ID.eq(MACHINE_TEMPLATES.BRAND_ID))
+            .where(REPORTS.STATUS.eq(STATUS_PENDING))
+            .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_GYM_MACHINE))
+            .groupBy(GYM_MACHINES.ID, BRANDS.NAME, MACHINE_TEMPLATES.NAME)
+            .orderBy(oldestReportAt.asc())
+            .limit(limit)
+            .fetch(r -> new AdminQueueItem(
+                TARGET_TYPE_GYM_MACHINE,
+                r.get(GYM_MACHINES.ID),
+                r.get(labelField),
+                null,
+                r.get(pendingCount),
+                r.get(oldestReportAt),
+                r.get(topReason)
+            ));
+    }
+
+    /**
+     * @deprecated Use {@link #findByTargetTypeAndIdAndStatus} so the surface
+     *     filter is explicit. Photo callers pre-Task-46 used this implicit
+     *     {@code target_type='photo'} form.
+     */
+    @Deprecated
     public List<AdminReportResponse> findByTargetIdAndStatus(UUID targetId, String status) {
+        return findByTargetTypeAndIdAndStatus(TARGET_TYPE_PHOTO, targetId, status);
+    }
+
+    /**
+     * ADR 0022 follow-up (Task 46): explicit target_type filter so admin screens
+     * can scope to the right surface (photo detail vs gym_machine detail).
+     */
+    public List<AdminReportResponse> findByTargetTypeAndIdAndStatus(
+            String targetType, UUID targetId, String status) {
         return dsl.select(
                 REPORTS.ID, REPORTS.USER_ID, REPORTS.TARGET_TYPE, REPORTS.TARGET_ID,
                 REPORTS.REASON, REPORTS.DETAIL, REPORTS.STATUS,
@@ -178,7 +286,7 @@ public class ReportRepository {
             .from(REPORTS)
             .where(REPORTS.TARGET_ID.eq(targetId))
             .and(REPORTS.STATUS.eq(status))
-            .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_PHOTO))
+            .and(REPORTS.TARGET_TYPE.eq(targetType))
             .orderBy(REPORTS.CREATED_AT.asc())
             .fetch(r -> new AdminReportResponse(
                 r.get(REPORTS.ID),

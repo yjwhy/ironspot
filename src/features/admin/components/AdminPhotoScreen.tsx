@@ -169,9 +169,13 @@ function ReportRow({
   onDisposed: () => void;
 }) {
   const reportId = report.id ?? '';
-  const dispose = useDisposeReport(reportId, photoId, {
-    onSuccess: onDisposed,
-  });
+  const dispose = useDisposeReport(
+    reportId,
+    { type: 'photo', photoId },
+    {
+      onSuccess: onDisposed,
+    },
+  );
 
   return (
     <View className="rounded-lg border border-border p-3">
@@ -189,7 +193,7 @@ function ReportRow({
           label={ACTION_LABEL}
           variant="primary"
           onPress={() => {
-            dispose.handleDispose('actioned');
+            dispose.handleDispose({ disposition: 'actioned' });
           }}
           disabled={dispose.isPending}
         />
@@ -197,7 +201,7 @@ function ReportRow({
           label={DISMISS_LABEL}
           variant="secondary"
           onPress={() => {
-            dispose.handleDispose('dismissed');
+            dispose.handleDispose({ disposition: 'dismissed' });
           }}
           disabled={dispose.isPending}
         />

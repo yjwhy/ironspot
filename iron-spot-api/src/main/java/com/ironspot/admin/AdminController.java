@@ -45,7 +45,7 @@ public class AdminController {
         @Valid @RequestBody DispositionRequest body,
         @AuthenticationPrincipal UserPrincipal admin
     ) {
-        return adminService.disposeReport(id, body.disposition(), admin.getUserId());
+        return adminService.disposeReport(id, body, admin.getUserId());
     }
 
     @GetMapping("/photos")
@@ -56,9 +56,31 @@ public class AdminController {
         return adminService.listPendingPhotos(limit);
     }
 
+    /**
+     * ADR 0022 follow-up (Task 46): unified admin queue (photo + gym_machine).
+     * Replaces {@code GET /admin/photos} as the queue source. Frontend migrates
+     * to this endpoint in Slice 46h; the photo-only endpoint remains for
+     * one-release backwards compatibility.
+     */
+    @GetMapping("/queue")
+    public List<com.ironspot.admin.dto.AdminQueueItem> listPendingQueue(
+        @RequestParam(defaultValue = "50") int limit
+    ) {
+        return adminService.listPendingQueue(limit);
+    }
+
     @GetMapping("/photos/{id}")
     public AdminPhotoDetailResponse getPhoto(@PathVariable UUID id) {
         return adminService.getPhotoDetail(id);
+    }
+
+    /**
+     * ADR 0022 follow-up (Task 46) Slice 46h: gym_machine admin detail. Driven
+     * by {@code AdminGymMachineScreen} on the frontend.
+     */
+    @GetMapping("/gym-machines/{id}")
+    public com.ironspot.admin.dto.AdminGymMachineDetailResponse getGymMachine(@PathVariable UUID id) {
+        return adminService.getGymMachineDetail(id);
     }
 
     @PatchMapping("/photos/{id}/restore")

@@ -305,6 +305,78 @@ ADR 0022 본문 참조. 핵심 7결정:
 4. 시뮬레이터 수동 스모크: 머신 chip 선택 + AND 토글 + matched machines 표시 시각 확인 (사용자 외출 후 처리)
 5. Maestro `filter-sheet-flow` 갱신 (LoadingType 검증 제거, 머신 차원 추가)
 
+## Task 46 — gym_machine report target (moderation surface 확장)
+
+### Why now
+
+Task 45 가 완료되면서 머신 템플릿 필터 + 검색이 정밀해졌는데, 이제 **잘못된 gym_machine 매핑** (예: "이 헬스장의 Panatta High Row 는 실제로는 Hammer 의 High Row 임", "이 머신은 헬스장에 존재하지 않음") 이 검색 결과 품질을 해치는 다음 약점. 현재 reports 시스템은 photo-only — gym_machine 자체에 대한 신고 surface 가 없어 데이터 품질 이슈가 누적됨.
+
+reports 테이블은 이미 polymorphic schema (`target_type TEXT NOT NULL`, `target_id UUID NOT NULL`) 라 schema migration 없이 확장 가능. 백엔드 hard-coded `target_type='photo'` 만 일반화하면 됨.
+
+### Grilled decisions (locked before code entry)
+
+1. **Scope = 둘 다 cover** ((a) 잘못된 template 매칭 + (b) 헬스장에 없음). 신고 사유로 분기, admin 액션 차별화 (`WRONG_TEMPLATE` → template_id 수정, `NOT_PRESENT` → 행 삭제).
+2. **Task 45 머지 후 main 에서 fork**. Task 45 의 `/api/machine-templates` catalog endpoint 가 admin 의 "다른 머신으로 교체" picker 에 직접 필요. stacked PR (β) 의 rebase 부담 회피.
+3. **ReportReason enum 신규 값 + UI subset**. `WRONG_TEMPLATE` / `NOT_PRESENT` 추가, frontend `ReportReasonSheet` 가 target_type 별 사유 subset 노출. 공유 enum (a) 거부 (사용자에 무관한 사진 NSFW 노출), 완전 분리 (별 enum) 도 거부 (`OTHER`, `LEGAL_PERSONAL` 같은 cross-cutting 사유 공유 유지가 좋음).
+4. **Disposition cascade per target_type**. `applyActionedCascade(report)` 가 `report.targetType` switch:
+   - `'photo' + actioned` → 기존 동작 (`photoRepository.setBlinded(true)` + uploader auto-ban 카운트)
+   - `'gym_machine' + actioned + WRONG_TEMPLATE` → `gym_machines.template_id` 업데이트 (admin 이 picker 로 선택한 새 template_id 사용)
+   - `'gym_machine' + actioned + NOT_PRESENT` → `gym_machines` 행 삭제 (FK cascade)
+   - `'gym_machine' + actioned + OTHER` → admin 의 명시적 선택 (둘 중 하나)
+   - `'gym_machine' + dismissed` → no cascade
+5. **Reporter auto-ban counter 는 단일 공유**. `countDismissedByReporter` 가 target_type 무관 dismissed 합산. 회피성 abusive reporter 가 surface 간 분산 신고하는 패턴 방지.
+6. **Admin 큐 = 통합** (photo + gym_machine 한 리스트, type 인디케이터). `AdminQueueItem` 통합 DTO 도입 (type, targetId, label, pendingReportCount, oldestReportAt, topReason). 기존 `AdminQueuePhotoSummary` 는 일반화로 교체.
+7. **사용자 신고 진입점 = `MachineList` overflow icon**. 각 row 우측에 "..." 아이콘 → 탭 시 `ReportReasonSheet` 오픈 (target_type='gym_machine' 모드, 사유 subset = WRONG_TEMPLATE / NOT_PRESENT / OTHER).
+8. **`AdminGymMachineScreen` 신규**. `AdminPhotoScreen` 패턴 따라 별도 화면 (route `ADMIN_ROUTES.gymMachine(id)`). 표시: gym name + 현재 template (브랜드 + 머신명 + 로딩) + pending reports + 3 액션 버튼 (`다른 머신으로 교체` / `이 머신 삭제` / `신고 기각`).
+9. **ADR 없음**. reports 스키마 polymorphic + ReportReason enum 확장은 기존 패턴 따름, architectural 결정 없음. Task 46 entry 만 충분.
+
+### Approach
+
+**Backend**:
+
+- `ReportReason` enum: 신규 `WRONG_TEMPLATE`, `NOT_PRESENT` 추가. `INAPPROPRIATE` / `WRONG_MACHINE` / `DUPLICATE` / `OTHER` / `LEGAL_PERSONAL` 유지 (photo 용).
+- `ReportRepository.TARGET_TYPE_GYM_MACHINE = "gym_machine"` 상수. `submitReport` 메서드가 target_type 파라미터 받음 (또는 별 메서드 `submitGymMachineReport`).
+- `AdminService.disposeReport` switch by target_type. `applyGymMachineActionedCascade` 신규 (`updateTemplateId` / `deleteGymMachine` 분기).
+- `AdminQueueItem` DTO (`AdminQueuePhotoSummary` 대체).
+- `gym_machines` 행 삭제 시 FK 영향 점검: `machine_photos.gym_machine_id` 가 참조 → ON DELETE 정책 필요 (CASCADE vs SET NULL). 일단 CASCADE (관련 사진도 의미 없어짐). 단, 이미 reports 가 photo 대상이면 photo 신고 따로 처리됨.
+
+**Frontend**:
+
+- `ReportReasonSheet` 일반화: `targetType: 'photo' | 'gym_machine'` prop, `targetId` 일반화 (기존 `photoId` 대체), 사유 subset 자동 필터링.
+- `MachineList` row 에 overflow icon ("..." 또는 MaterialIcons `more_vert`) → onPress → ReportReasonSheet open.
+- `AdminQueueScreen` 통합 큐 렌더: type 별 thumbnail/label 분기, navigate 분기 (`navigateToPhoto` vs `navigateToGymMachine`).
+- `AdminGymMachineScreen` 신규: gym + template 디테일, 3 액션 버튼, template picker modal (Task 45 의 `useMachineTemplates` 재사용).
+
+### Slice breakdown
+
+9 review-gated slices, ~700-900 LOC across ~20 files. Task 45 동급 또는 약간 작음.
+
+| Slice | 커밋 메시지                                                         | 내용                                                                                                                                                                      |
+| ----- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 46a   | `docs(phase-4): 46a — Task 46 entry + PROGRESS Task 45 closeout`    | 이 entry, PROGRESS Status + Task 45 SHA + 체크박스, Future Tasks Task 45/46 라인 정정                                                                                     |
+| 46b   | `feat(phase-4): 46b — ReportReason enum + gym_machine target_type`  | `ReportReason.WRONG_TEMPLATE` / `NOT_PRESENT` 추가, `ReportRepository` 의 target_type 일반화 (`TARGET_TYPE_GYM_MACHINE` 상수 + 메서드)                                    |
+| 46c   | `feat(phase-4): 46c — Admin disposition cascade per target_type`    | `AdminService.disposeReport` switch, `applyGymMachineActionedCascade` (updateTemplateId / deleteGymMachine 분기), admin endpoint 시그니처 확장 (옵션 newTemplateId param) |
+| 46d   | `feat(phase-4): 46d — AdminQueueItem unified DTO`                   | `AdminQueueItem` (type, targetId, label, pendingReportCount, oldestReportAt, topReason) → `AdminQueuePhotoSummary` 대체. queue SQL 의 group by target_type+target_id      |
+| 46e   | `chore(phase-4): 46e — regenerate openapi + Orval client`           | 자동 생성 산출물 + minimal compile-fix                                                                                                                                    |
+| 46f   | `feat(phase-4): 46f — ReportReasonSheet target_type generalization` | `ReportReasonSheet` 의 props 일반화 (`targetType`, `targetId`), 사유 subset 자동 필터 (reportReasons.ts), useReport hook 의 mutate 일반화                                 |
+| 46g   | `feat(phase-4): 46g — MachineList overflow report entry`            | `MachineList` row 의 overflow "..." 아이콘 + ReportReasonSheet 진입                                                                                                       |
+| 46h   | `feat(phase-4): 46h — Admin queue unified + AdminGymMachineScreen`  | `AdminQueueScreen` type 분기 렌더, 새 `AdminGymMachineScreen` (gym + template + 3 액션 + template picker modal)                                                           |
+| 46i   | `feat(phase-4): 46i — verification + Maestro flow`                  | Maestro flow (gym detail → "..." → report sheet), unit/IT 마무리, /verify + 가능 시 FF review fixes                                                                       |
+
+### Token / cost spend for Task 46
+
+- Vision API: 0
+- Groq: 0
+- 신규 runtime 비용: 없음 (FK CASCADE 가 가장 큰 항목, gym_machine 삭제 시 photos 처리)
+
+### Verification
+
+1. `pnpm lint && pnpm exec tsc --noEmit && pnpm jest` — 신규 테스트 +20~30 예상
+2. `./gradlew test` — 신규 IT +5~8 예상 (ReportRepository, AdminService gym_machine path, queue 통합)
+3. `/verify` 슬래시 커맨드 (FF review 4 reviewer)
+4. 시뮬레이터 수동 스모크: gym detail → 머신 row "..." → 신고 → admin 큐에 진입 → admin gym_machine screen → 3 액션 검증
+5. Maestro flow `.maestro/flows/gym-machine-report-flow.yaml` 신규 또는 기존 flow 확장
+
 ## Future Tasks (planned order, locked via Task 42 grill follow-up)
 
 The remainder of Phase 4 has a recommended order derived from dependency + cost analysis (not the README ordering, which is unsorted scope). Each Task still gets its own `grill-me` + plan entry before implementation; this list is the queue not the design.
@@ -312,8 +384,8 @@ The remainder of Phase 4 has a recommended order derived from dependency + cost 
 ### Tier 1 — Immediate value, no dependencies
 
 - **Task 44** (done, PR #87 merged): FilterPanel scalability + `loadingType` surface (ADR 0021) — brand/category multi-select 는 Task 38b 에서 이미 완료. 본 Task 는 (a) brand/category 가 50+ 까지 늘어났을 때의 overflow 대응 + (b) `loadingType` UI 노출 + (c) 활성 필터 가시성/리셋 부재 등 Phase 1 패널의 성숙도 갭을 닫음.
-- **Task 45**: 머신 템플릿 필터 + 카테고리 라벨 정정 (ADR 0022) — see full section below. Task 44 머지 직후 사용자 시뮬레이터 테스트에서 표면화된 두 문제 ((a) "머신 종류" 라벨이 실제로는 운동 부위 데이터, (b) brand × machine cross-product 표현 불가) 를 ADR 0022 로 closeout. ADR 0020 이 Phase 2/3 으로 deferred 했던 "머신 모델 멀티셀렉트 검색" 항목의 Phase 4 구현. Backend (DTO + jOOQ SQL + IT) + Frontend (hook + UI + NL 통합 + GymCard) 9 슬라이스.
-- **Task 46**: gym_machine report target — extend the report system from photo-only to also cover wrong-machine-mapping. Enables crowd-correcting `gym_machines` rows. Modest backend + admin UI extension. Feeds Tier 2 (owner workflow input) and Tier 4 (reporter trust scoring input) with more data shapes.
+- **Task 45** (done, PR #88 merged): 머신 템플릿 필터 + 카테고리 라벨 정정 (ADR 0022) — Task 44 머지 직후 사용자 시뮬레이터 테스트에서 표면화된 두 문제 closeout. ADR 0020 이 Phase 2/3 으로 deferred 했던 "머신 모델 멀티셀렉트 검색" 항목의 Phase 4 구현.
+- **Task 46**: gym_machine report target — see full section below. Reports 시스템을 photo-only 에서 gym_machine 까지 확장하여 잘못된 머신 매핑을 사용자가 신고 + admin 이 재매핑/삭제 가능하게 함. crowd-source 데이터 품질 surface. Backend (ReportReason 확장 + per-target_type disposition cascade + 통합 큐 DTO) + Frontend (`ReportReasonSheet` 일반화 + `MachineList` 신고 진입점 + `AdminGymMachineScreen` 신규) 9 슬라이스.
 
 ### Tier 2 — Substantive moderation + launch gating
 

@@ -26,6 +26,13 @@ jest.mock('../../hooks/useReport', () => ({
   useReport: jest.fn(),
 }));
 
+// ADR 0022 follow-up (Task 46): ReportReasonSheet now resolves a gym_machine
+// hook unconditionally even when target.type='photo'. Mock to avoid the real
+// `burnt` import which Jest cannot parse.
+jest.mock('../../hooks/useReportGymMachine', () => ({
+  useReportGymMachine: jest.fn(() => ({ handleReport: jest.fn(), isPending: false })),
+}));
+
 const mockUseReport = useReport as jest.MockedFunction<typeof useReport>;
 
 const PHOTO_ID = 'photo-1';
@@ -38,7 +45,9 @@ interface SetupOpts {
 function setup({ isPending = false }: SetupOpts = {}) {
   const handleReport = jest.fn();
   mockUseReport.mockReturnValue({ handleReport, isPending });
-  const utils = render(<ReportReasonSheet photoId={PHOTO_ID} onClose={ON_CLOSE} />);
+  const utils = render(
+    <ReportReasonSheet target={{ type: 'photo', photoId: PHOTO_ID }} onClose={ON_CLOSE} />,
+  );
   return { ...utils, handleReport };
 }
 

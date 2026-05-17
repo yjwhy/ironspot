@@ -10,6 +10,12 @@ import {
 
 import { MachineList } from '../MachineList';
 
+// ADR 0022 follow-up (Task 46): MachineList renders ReportReasonSheet which
+// transitively pulls in `burnt` (ESM, not parsed by Jest). Mock as a no-op.
+jest.mock('@/features/photo/components/ReportReasonSheet', () => ({
+  ReportReasonSheet: () => null,
+}));
+
 const panatta = makeBrand({ id: 'b-pan', name: 'Panatta' });
 const hammer = makeBrand({ id: 'b-ham', name: 'Hammer Strength' });
 const back = makeCategory({ id: 'c-back', name: 'Back' });
@@ -52,9 +58,9 @@ describe('MachineList', () => {
 
   it('renders each machine display name as a button', () => {
     const { getByRole } = render(<MachineList machines={all} onPressMachine={() => undefined} />);
-    expect(getByRole('button', { name: /^High Row/ })).toBeTruthy();
-    expect(getByRole('button', { name: /^Low Row/ })).toBeTruthy();
-    expect(getByRole('button', { name: /^Lat Pull Down/ })).toBeTruthy();
+    expect(getByRole('button', { name: /^High Row,/ })).toBeTruthy();
+    expect(getByRole('button', { name: /^Low Row,/ })).toBeTruthy();
+    expect(getByRole('button', { name: /^Lat Pull Down,/ })).toBeTruthy();
   });
 
   it('shows a quantity badge when quantity >= 2', () => {
@@ -78,7 +84,7 @@ describe('MachineList', () => {
   it('calls onPressMachine with the gym_machine id when a row is tapped', () => {
     const onPressMachine = jest.fn();
     const { getByRole } = render(<MachineList machines={all} onPressMachine={onPressMachine} />);
-    fireEvent.press(getByRole('button', { name: /^Low Row/ }));
+    fireEvent.press(getByRole('button', { name: /^Low Row,/ }));
     expect(onPressMachine).toHaveBeenCalledWith('gm-2');
   });
 
@@ -87,15 +93,15 @@ describe('MachineList', () => {
       <MachineList machines={all} onPressMachine={() => undefined} />,
     );
     fireEvent.press(getByRole('button', { name: 'Panatta 섹션 접기' }));
-    expect(queryByRole('button', { name: /^High Row/ })).toBeNull();
-    expect(queryByRole('button', { name: /^Low Row/ })).toBeNull();
-    expect(queryByRole('button', { name: /^Lat Pull Down/ })).toBeTruthy();
+    expect(queryByRole('button', { name: /^High Row,/ })).toBeNull();
+    expect(queryByRole('button', { name: /^Low Row,/ })).toBeNull();
+    expect(queryByRole('button', { name: /^Lat Pull Down,/ })).toBeTruthy();
   });
 
   it('expands a previously-collapsed brand section when its header is tapped again', () => {
     const { getByRole } = render(<MachineList machines={all} onPressMachine={() => undefined} />);
     fireEvent.press(getByRole('button', { name: 'Panatta 섹션 접기' }));
     fireEvent.press(getByRole('button', { name: 'Panatta 섹션 펼치기' }));
-    expect(getByRole('button', { name: /^High Row/ })).toBeTruthy();
+    expect(getByRole('button', { name: /^High Row,/ })).toBeTruthy();
   });
 });
