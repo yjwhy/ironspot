@@ -5,20 +5,449 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
+  DataTag,
+  DefinedInitialDataOptions,
+  DefinedUseQueryResult,
   MutationFunction,
   QueryClient,
+  QueryFunction,
+  QueryKey,
+  UndefinedInitialDataOptions,
   UseMutationOptions,
   UseMutationResult,
+  UseQueryOptions,
+  UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ClaimBody, ClaimParams, OwnerClaimResponse } from '../model';
+import type {
+  AdminReportResponse,
+  ClaimBody,
+  ClaimParams,
+  Create200,
+  OwnerClaimResponse,
+  OwnerCreateMachineRequest,
+  OwnerDispositionRequest,
+  OwnerQueueItem,
+  OwnerUpdateMachineRequest,
+  QueueParams,
+} from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+export type updateResponse204 = {
+  data: void;
+  status: 204;
+};
+
+export type updateResponseSuccess = updateResponse204 & {
+  headers: Headers;
+};
+export type updateResponse = updateResponseSuccess;
+
+export const getUpdateUrl = (id: string) => {
+  return `/api/owner/gym-machines/${id}`;
+};
+
+/**
+ * @summary Update template/quantity on an owned gym_machine
+ */
+export const update = async (
+  id: string,
+  ownerUpdateMachineRequest: OwnerUpdateMachineRequest,
+  options?: RequestInit,
+): Promise<updateResponse> => {
+  return apiClient<updateResponse>(getUpdateUrl(id), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(ownerUpdateMachineRequest),
+  });
+};
+
+export const getUpdateMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof update>>,
+    TError,
+    { id: string; data: OwnerUpdateMachineRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof update>>,
+  TError,
+  { id: string; data: OwnerUpdateMachineRequest },
+  TContext
+> => {
+  const mutationKey = ['update'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof update>>,
+    { id: string; data: OwnerUpdateMachineRequest }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return update(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMutationResult = NonNullable<Awaited<ReturnType<typeof update>>>;
+export type UpdateMutationBody = OwnerUpdateMachineRequest;
+export type UpdateMutationError = unknown;
+
+/**
+ * @summary Update template/quantity on an owned gym_machine
+ */
+export const useUpdate = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof update>>,
+      TError,
+      { id: string; data: OwnerUpdateMachineRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof update>>,
+  TError,
+  { id: string; data: OwnerUpdateMachineRequest },
+  TContext
+> => {
+  return useMutation(getUpdateMutationOptions(options), queryClient);
+};
+export type _deleteResponse204 = {
+  data: void;
+  status: 204;
+};
+
+export type _deleteResponseSuccess = _deleteResponse204 & {
+  headers: Headers;
+};
+export type _deleteResponse = _deleteResponseSuccess;
+
+export const getDeleteUrl = (id: string) => {
+  return `/api/owner/gym-machines/${id}`;
+};
+
+/**
+ * @summary Soft-delete an owned gym_machine
+ */
+export const _delete = async (id: string, options?: RequestInit): Promise<_deleteResponse> => {
+  return apiClient<_deleteResponse>(getDeleteUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDeleteMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof _delete>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError, { id: string }, TContext> => {
+  const mutationKey = ['_delete'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof _delete>>, { id: string }> = (
+    props,
+  ) => {
+    const { id } = props ?? {};
+
+    return _delete(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type _DeleteMutationResult = NonNullable<Awaited<ReturnType<typeof _delete>>>;
+
+export type _DeleteMutationError = unknown;
+
+/**
+ * @summary Soft-delete an owned gym_machine
+ */
+export const useDelete = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof _delete>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof _delete>>, TError, { id: string }, TContext> => {
+  return useMutation(getDeleteMutationOptions(options), queryClient);
+};
+export type disposeResponse200 = {
+  data: AdminReportResponse;
+  status: 200;
+};
+
+export type disposeResponseSuccess = disposeResponse200 & {
+  headers: Headers;
+};
+export type disposeResponse = disposeResponseSuccess;
+
+export const getDisposeUrl = (id: string) => {
+  return `/api/owner/reports/${id}/disposition`;
+};
+
+/**
+ * @summary Owner disposition (actioned / dismissed) on a queue report
+ */
+export const dispose = async (
+  id: string,
+  ownerDispositionRequest: OwnerDispositionRequest,
+  options?: RequestInit,
+): Promise<disposeResponse> => {
+  return apiClient<disposeResponse>(getDisposeUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(ownerDispositionRequest),
+  });
+};
+
+export const getDisposeMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof dispose>>,
+    TError,
+    { id: string; data: OwnerDispositionRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof dispose>>,
+  TError,
+  { id: string; data: OwnerDispositionRequest },
+  TContext
+> => {
+  const mutationKey = ['dispose'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof dispose>>,
+    { id: string; data: OwnerDispositionRequest }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return dispose(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DisposeMutationResult = NonNullable<Awaited<ReturnType<typeof dispose>>>;
+export type DisposeMutationBody = OwnerDispositionRequest;
+export type DisposeMutationError = unknown;
+
+/**
+ * @summary Owner disposition (actioned / dismissed) on a queue report
+ */
+export const useDispose = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof dispose>>,
+      TError,
+      { id: string; data: OwnerDispositionRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof dispose>>,
+  TError,
+  { id: string; data: OwnerDispositionRequest },
+  TContext
+> => {
+  return useMutation(getDisposeMutationOptions(options), queryClient);
+};
+export type verifyResponse204 = {
+  data: void;
+  status: 204;
+};
+
+export type verifyResponseSuccess = verifyResponse204 & {
+  headers: Headers;
+};
+export type verifyResponse = verifyResponseSuccess;
+
+export const getVerifyUrl = (id: string) => {
+  return `/api/owner/photos/${id}/verify`;
+};
+
+/**
+ * @summary Mark a photo as verified by owner
+ */
+export const verify = async (id: string, options?: RequestInit): Promise<verifyResponse> => {
+  return apiClient<verifyResponse>(getVerifyUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getVerifyMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verify>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<Awaited<ReturnType<typeof verify>>, TError, { id: string }, TContext> => {
+  const mutationKey = ['verify'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof verify>>, { id: string }> = (
+    props,
+  ) => {
+    const { id } = props ?? {};
+
+    return verify(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyMutationResult = NonNullable<Awaited<ReturnType<typeof verify>>>;
+
+export type VerifyMutationError = unknown;
+
+/**
+ * @summary Mark a photo as verified by owner
+ */
+export const useVerify = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof verify>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof verify>>, TError, { id: string }, TContext> => {
+  return useMutation(getVerifyMutationOptions(options), queryClient);
+};
+export type createResponse200 = {
+  data: Create200;
+  status: 200;
+};
+
+export type createResponseSuccess = createResponse200 & {
+  headers: Headers;
+};
+export type createResponse = createResponseSuccess;
+
+export const getCreateUrl = () => {
+  return `/api/owner/gym-machines`;
+};
+
+/**
+ * @summary Create a gym_machine in the owner's gym
+ */
+export const create = async (
+  ownerCreateMachineRequest: OwnerCreateMachineRequest,
+  options?: RequestInit,
+): Promise<createResponse> => {
+  return apiClient<createResponse>(getCreateUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(ownerCreateMachineRequest),
+  });
+};
+
+export const getCreateMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof create>>,
+    TError,
+    { data: OwnerCreateMachineRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof create>>,
+  TError,
+  { data: OwnerCreateMachineRequest },
+  TContext
+> => {
+  const mutationKey = ['create'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof create>>,
+    { data: OwnerCreateMachineRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return create(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateMutationResult = NonNullable<Awaited<ReturnType<typeof create>>>;
+export type CreateMutationBody = OwnerCreateMachineRequest;
+export type CreateMutationError = unknown;
+
+/**
+ * @summary Create a gym_machine in the owner's gym
+ */
+export const useCreate = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof create>>,
+      TError,
+      { data: OwnerCreateMachineRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof create>>,
+  TError,
+  { data: OwnerCreateMachineRequest },
+  TContext
+> => {
+  return useMutation(getCreateMutationOptions(options), queryClient);
+};
 export type claimResponse200 = {
   data: OwnerClaimResponse;
   status: 200;
@@ -124,3 +553,130 @@ export const useClaim = <TError = unknown, TContext = unknown>(
 > => {
   return useMutation(getClaimMutationOptions(options), queryClient);
 };
+export type queueResponse200 = {
+  data: OwnerQueueItem[];
+  status: 200;
+};
+
+export type queueResponseSuccess = queueResponse200 & {
+  headers: Headers;
+};
+export type queueResponse = queueResponseSuccess;
+
+export const getQueueUrl = (params?: QueueParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/owner/queue?${stringifiedParams}`
+    : `/api/owner/queue`;
+};
+
+/**
+ * @summary List the owner's pending moderation queue (24h first-look)
+ */
+export const queue = async (
+  params?: QueueParams,
+  options?: RequestInit,
+): Promise<queueResponse> => {
+  return apiClient<queueResponse>(getQueueUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getQueueQueryKey = (params?: QueueParams) => {
+  return [`/api/owner/queue`, ...(params ? [params] : [])] as const;
+};
+
+export const getQueueQueryOptions = <TData = Awaited<ReturnType<typeof queue>>, TError = unknown>(
+  params?: QueueParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof queue>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getQueueQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof queue>>> = ({ signal }) =>
+    queue(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof queue>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type QueueQueryResult = NonNullable<Awaited<ReturnType<typeof queue>>>;
+export type QueueQueryError = unknown;
+
+export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unknown>(
+  params: undefined | QueueParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof queue>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof queue>>,
+          TError,
+          Awaited<ReturnType<typeof queue>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unknown>(
+  params?: QueueParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof queue>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof queue>>,
+          TError,
+          Awaited<ReturnType<typeof queue>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unknown>(
+  params?: QueueParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof queue>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List the owner's pending moderation queue (24h first-look)
+ */
+
+export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unknown>(
+  params?: QueueParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof queue>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getQueueQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
