@@ -62,6 +62,14 @@ jest.mock('../../hooks/useGymMachines', () => ({
   })),
 }));
 
+// Task 47 / Slice 47l: GymDetail → GymOwnerEntry consumes useCurrentUser + useQueue.
+jest.mock('@/features/auth/hooks/useCurrentUser', () => ({
+  useCurrentUser: () => ({ data: undefined }),
+}));
+jest.mock('@/shared/generated/owner/owner', () => ({
+  useQueue: () => ({ data: undefined }),
+}));
+
 const userLocation: Coordinate = { latitude: 37.4979, longitude: 127.0276 };
 
 const fitnessFactory: GymWithMachineCount = {

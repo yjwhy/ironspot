@@ -25,6 +25,13 @@ jest.mock('../../hooks/useLogout', () => ({
   useLogout: jest.fn(),
 }));
 
+// Task 47 / Slice 47l: OwnerActivityWidget consumes useQueue. Stub the Orval
+// hook to keep the existing AuthenticatedProfile suite focused on its own
+// behaviour (the widget's pending-state branches are covered separately).
+jest.mock('@/shared/generated/owner/owner', () => ({
+  useQueue: () => ({ data: undefined }),
+}));
+
 const useCurrentUserMock = useCurrentUser as jest.Mock;
 const useMyPhotosMock = useMyPhotos as jest.Mock;
 const useMyVotesMock = useMyVotes as jest.Mock;

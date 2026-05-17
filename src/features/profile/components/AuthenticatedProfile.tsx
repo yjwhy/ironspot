@@ -8,6 +8,7 @@ import { AppText } from '@/shared/components/AppText';
 import { formatVerifiedDate } from '@/shared/lib/format';
 import { colors } from '@/shared/theme/tokens';
 
+import { OwnerActivityWidget } from './OwnerActivityWidget';
 import { ProfileMenuRow } from './ProfileMenuRow';
 import { useLogout } from '../hooks/useLogout';
 import { useMyPhotos } from '../hooks/useMyPhotos';
@@ -31,6 +32,14 @@ function navigateToMyVotes() {
 
 function navigateToAccountSettings() {
   router.push(PROFILE_ROUTES.accountSettings);
+}
+
+function navigateToOwnerHome() {
+  router.push(PROFILE_ROUTES.ownerHome);
+}
+
+function navigateToMyReports() {
+  router.push(PROFILE_ROUTES.myReports);
 }
 
 export function AuthenticatedProfile() {
@@ -73,6 +82,8 @@ export function AuthenticatedProfile() {
         ) : null}
       </View>
 
+      {user?.role === 'owner' || user?.role === 'admin' ? <OwnerActivityWidget /> : null}
+
       <ProfileMenuRow
         testID="profile-menu-my-photos"
         icon="photo-library"
@@ -87,6 +98,20 @@ export function AuthenticatedProfile() {
         badge={formatCount(myVotes.data?.length)}
         onPress={navigateToMyVotes}
       />
+      <ProfileMenuRow
+        testID="profile-menu-my-reports"
+        icon="flag"
+        label="내가 한 신고들"
+        onPress={navigateToMyReports}
+      />
+      {user?.role === 'owner' || user?.role === 'admin' ? (
+        <ProfileMenuRow
+          testID="profile-menu-owner-home"
+          icon="store"
+          label="내 매장 관리하기"
+          onPress={navigateToOwnerHome}
+        />
+      ) : null}
 
       <View className="border-t border-border-DEFAULT mt-4" />
 

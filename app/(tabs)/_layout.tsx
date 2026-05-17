@@ -1,10 +1,16 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Tabs } from 'expo-router';
+import { View } from 'react-native';
 
+import { useOwnerPendingDot } from '@/features/owner/hooks/useOwnerPendingDot';
 import { colors } from '@/shared/theme/tokens';
 
+const DOT_SIZE = 8;
+
 export default function TabLayout() {
+  const { showDot } = useOwnerPendingDot();
+
   return (
     <BottomSheetModalProvider>
       <Tabs
@@ -26,7 +32,24 @@ export default function TabLayout() {
           options={{
             tabBarLabel: '마이',
             tabBarIcon: ({ color, size }) => (
-              <MaterialIcons name="person" size={size} color={color} />
+              <View>
+                <MaterialIcons name="person" size={size} color={color} />
+                {showDot ? (
+                  <View
+                    testID="profile-tab-pending-dot"
+                    accessibilityLabel="처리 대기 알림"
+                    style={{
+                      position: 'absolute',
+                      top: -2,
+                      right: -2,
+                      width: DOT_SIZE,
+                      height: DOT_SIZE,
+                      borderRadius: DOT_SIZE / 2,
+                      backgroundColor: colors.error,
+                    }}
+                  />
+                ) : null}
+              </View>
             ),
           }}
         />
