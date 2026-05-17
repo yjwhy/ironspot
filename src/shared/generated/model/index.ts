@@ -35,6 +35,7 @@ export * from './photoUploadResponse';
 export * from './resolvedLocation';
 export * from './searchParams';
 export * from './searchPlacesParams';
+export * from './searchScope';
 export * from './updateUserRequest';
 export * from './uploadBody';
 export * from './uploadParams';

@@ -33,7 +33,9 @@ export async function searchGymsInBounds(
       maxLng: bounds.maxLng,
       brandIds: filters.brandIds.length > 0 ? [...filters.brandIds] : undefined,
       categoryIds: filters.categoryIds.length > 0 ? [...filters.categoryIds] : undefined,
-      loadingType: filters.loadingType ?? undefined,
+      // ADR 0022 / Slice 45f: templateIds + scope 전송은 Slice 45f 에서 추가
+      // (SearchFilters 타입 확장 + useFilters 토글 후). 본 슬라이스 (45e) 는
+      // codegen 결과 (loadingType 제거) 만 반영.
     }),
   );
   return result.map(toGymWithMachineCount);

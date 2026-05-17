@@ -44,6 +44,7 @@ const apiGym: GymWithMachineCountResponse = {
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
   machineCount: 5,
+  matchedMachineNames: [],
 };
 
 describe('searchGymsInBounds', () => {
@@ -64,7 +65,6 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: ['b1'],
       categoryIds: undefined,
-      loadingType: 'plate',
     });
   });
 
@@ -80,7 +80,6 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: undefined,
       categoryIds: undefined,
-      loadingType: undefined,
     });
   });
 
@@ -96,7 +95,6 @@ describe('searchGymsInBounds', () => {
       maxLng: 127.04,
       brandIds: ['b1', 'b2'],
       categoryIds: ['c1'],
-      loadingType: undefined,
     });
   });
 
