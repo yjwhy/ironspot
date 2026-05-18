@@ -112,7 +112,10 @@ jobs:
           done
 
       - name: Post deploy outcome to Slack
-        if: ${{ env.RENDER_API_KEY != '' && steps.poll.conclusion != 'skipped' }}
+        # Skip the outcome message when Render didn't pick up the push at all
+        # (docs / workflow / non-deploy paths). The earlier "Deploy triggered"
+        # is enough; a follow-up "not matched" line just adds noise.
+        if: ${{ env.RENDER_API_KEY != '' && steps.poll.conclusion != 'skipped' && steps.poll.outputs.result != 'not_found' }}
         env:
           RESULT: ${{ steps.poll.outputs.result }}
           ELAPSED: ${{ steps.poll.outputs.elapsed }}
