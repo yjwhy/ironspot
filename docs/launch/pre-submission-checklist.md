@@ -27,7 +27,7 @@ The Apple Developer Program enrolment is deliberately deferred until everything 
 - [x] **1.2 User-generated content moderation**: in-app reporting with admin disposition queue covers photo and `gym_machine` targets (Tasks 33, 34, 46). Auto-blind on `actioned_count >= 3` plus auto-ban on `dismissed_count >= 5` (Task 34). Per-target disposition cascade with re-template or delete (Task 46).
 - [x] **1.2 Method to report objectionable content**: `ReportReasonSheet` from photo detail and machine list entry points.
 - [x] **1.2 Method to block abusive users**: covered by reporter side via `reports_unique_reporter_target` constraint plus admin ban path. No user-facing block button (single-target moderation model, acceptable for Health and Fitness category at launch).
-- [ ] **1.2 Account deletion in-app** (Guideline 5.1.1(v) as well): `users.deleted_at` column exists in `init-test-db.sql` and `UserRepository.markDeleted` ships, but prod schema is missing the column (Phase 2 carry-over gap). Pre-submission hotfix: `ALTER TABLE users ADD COLUMN deleted_at TIMESTAMPTZ` plus user-facing delete entry point on Profile.
+- [x] **1.2 Account deletion in-app** (Guideline 5.1.1(v) as well): `DELETE /api/users/me` ships (`UserController.deleteMe` → `UserService.deleteAccount` does anonymise photos plus delete votes plus soft delete `users.deleted_at`). `AccountSettingsScreen.tsx` exposes the 계정 삭제 entry point reached from Profile → 계정 설정, with destructive Alert confirmation plus post-delete `supabase.auth.signOut()` plus `router.replace(AUTH_ROUTES.login)`. Prod schema `users.deleted_at` column verified present via Task 40 live trace (see `docs/plans/phase-3/PROGRESS.md` carry-over note).
 - [x] **1.5 Developer information**: support email `yyou017@gmail.com` (personal) ready for App Store Connect.
 
 ## 2. Guideline 2: Performance
@@ -36,7 +36,7 @@ The Apple Developer Program enrolment is deliberately deferred until everything 
 - [x] **2.3 Accurate Metadata**: app description should reflect (a) Korean-only at launch, (b) gym discovery with machine search, (c) Naver Maps based, (d) user-contributed photo verification. Draft when filling App Store Connect.
 - [x] **2.5.1 Software Requirements**: Expo SDK 54 dev build, all native modules public (Naver Map SDK, expo-camera, expo-speech-recognition, expo-apple-authentication). No private APIs.
 - [x] **2.5.6 Public APIs only**: confirmed via `app.json` plugin list.
-- [~] **2.5.10 Provide accurate information about your app**: review notes for the reviewer need a Seoul demo location (suggest 강남역 `37.4979, 127.0276`) plus a test account credential pair. Test account creation script lives at `iron-spot-api` Supabase admin API path (used by Task 40 live verification). Codify the credentials in App Store Connect review notes at submission time.
+- [~] **2.5.10 Provide accurate information about your app**: review notes for the reviewer need a Seoul demo location (suggest 강남역 `37.4979, 127.0276`) plus an access plan. Full procedure now documented in Section 11 below (Guest mode for read-only browse + Apple Sign In with reviewer's own Apple ID for interactive features + optional admin demo account). At submission day, paste the Section 11 boilerplate into App Store Connect review notes verbatim.
 
 ## 3. Guideline 3: Business
 
@@ -62,7 +62,7 @@ The Apple Developer Program enrolment is deliberately deferred until everything 
   - Diagnostics: Sentry crash and performance (anonymised IDs)
   - Location: coarse and precise (search proximity)
   - NL search queries: retained 90 days for usage-pattern analysis (Phase 4 Operational item, see `docs/plans/phase-4/implementation.md` "NL search query log infra plan"). Disclosed in `docs/legal/privacy-policy.{ko,en}.md` Section 2 + 3.
-- [x] **5.1.1(v) Account deletion in-app**: tracked under Section 1 above. Submission blocker if not closed.
+- [x] **5.1.1(v) Account deletion in-app**: resolved under Section 1 above.
 - [x] **5.1.2 Data Use and Sharing**: no third-party data sharing beyond Sentry (diagnostics), Supabase (storage and auth), Naver Maps (location for tile rendering), Groq plus Gemini (NL search query text only, no PII). Itemised in privacy policy.
 - [ ] **5.1.5 Location Services**: confirm Info.plist `NSLocationWhenInUseUsageDescription` matches user-facing copy after EAS prebuild. App.json string in place but worth visual check post-build.
 - [x] **5.2.3 Sweepstakes, Contests**: N/A.
@@ -108,9 +108,9 @@ PIPA (개인정보보호법) overlaps with Guideline 5 but adds Korea-specific i
 - [ ] Copyright: `(C) 2026 IronSpot`
 - [ ] Support URL: `https://yjwhy.github.io/ironspot/`
 - [ ] Marketing URL: same as support URL or skip
-- [ ] App Review contact info: yyou017@gmail.com
-- [ ] App Review demo credentials: TBD test account
-- [ ] App Review notes: explain photo-based gym equipment search, Korean-only at launch, demo coordinates 강남역
+- [ ] App Review contact info: `yyou017@gmail.com`
+- [ ] App Review demo credentials: see Section 11 procedure. At submission day, paste either (a) "Guest mode + Apple Sign In with your own Apple ID" instructions or (b) the optional admin demo Google account creds (created same day per Section 11.3 steps).
+- [ ] App Review notes: paste Section 11 boilerplate (photo-based gym equipment search, Korean-only at launch, demo coordinates 강남역, access procedure, sample queries).
 - [ ] Screenshots iPhone 6.7 inch (required, 3 to 10): map screen, gym detail, filter sheet, NL search result, photo upload flow
 - [ ] Screenshots iPhone 6.5 inch (required if 6.7 not auto-generated)
 - [ ] Screenshots iPhone 5.5 inch (optional in 2026, App Store Connect may relax this)
@@ -135,7 +135,86 @@ Run these the day before tapping Submit for Review.
 - [ ] Network offline: app degrades gracefully (cached map tiles or clear error).
 - [ ] Crash-free across the smoke session (Sentry remains quiet).
 
-## 11. Day-of submission
+## 11. App Review reviewer access procedure
+
+IronSpot is OAuth-only (no email/password) plus has a Guest mode for read-only browsing. This section locks how Apple's reviewer should access each surface, so submission day reduces to copy-paste into App Store Connect notes.
+
+### 11.1 Login paths inventory
+
+`src/features/auth/components/LoginScreen.tsx` exposes:
+
+- **Google OAuth** (always shown)
+- **Kakao OAuth** (always shown, Korean market default)
+- **Apple OAuth** (iOS only, via Supabase Web OAuth pattern in main; Task 48 Draft PR #94 upgrades this to native `expo-apple-authentication`)
+- **Guest mode** ("로그인 없이 둘러보기") — bypasses auth, app proceeds with no `users` row
+
+### 11.2 Recommended reviewer access (no admin demo)
+
+The minimal-risk path. Use this as the default.
+
+1. **Read-only review** (map, search, filter, photo browse, NL search interpretation): tap `로그인 없이 둘러보기` on the Login screen. No credentials needed.
+2. **Interactive features** (photo upload, report submission, profile, my photos, my reports, my votes): tap `Apple로 계속하기` and complete Sign in with Apple using the reviewer's own Apple ID. The app creates a `users` row automatically on first sign-in.
+3. **Admin-gated surfaces** (admin queue, gym_machine dispositions, photo restore/ban): skipped. Apple typically does not review admin-only flows for non-admin app types; these are operator tools, not user features. Document this in review notes so the reviewer knows not to look for them.
+
+### 11.3 Optional admin demo procedure (only if reviewing moderation features)
+
+Use this if Section 11.2 risks the reviewer flagging "moderation features not testable". Adds ~30 minutes of setup at submission day.
+
+1. Create a Gmail account, e.g. `ironspot.review.<random4>@gmail.com`. Use a strong random password. Disable 2FA so the reviewer can sign in unaided.
+2. Launch IronSpot on the simulator or a TestFlight build. Tap `Google로 계속하기` and sign in with the new account. The app creates a `users` row with `role='user'`.
+3. In Supabase dashboard → SQL Editor, run:
+
+   ```sql
+   UPDATE public.users
+     SET role = 'admin'
+   WHERE email = 'ironspot.review.<random4>@gmail.com';
+   ```
+
+4. Verify by signing out and back in, then tap Profile → Admin shortcut. The admin queue should be reachable.
+5. Paste the Gmail address + password into App Store Connect App Review notes.
+
+Cleanup post-review: SQL-delete the `auth.users` row via Supabase Admin API or dashboard; the `public.users` row cascades. Delete the Gmail account too if it has no further use.
+
+### 11.4 Boilerplate to paste into App Store Connect review notes
+
+```
+IronSpot — gym equipment finder, Korean only at launch.
+
+Demo location: Gangnam Station (강남역), 37.4979, 127.0276.
+The map opens to your current location; allow Location when prompted, or move
+the simulator to the demo coordinates via Features > Location > Custom.
+
+Sample interactions:
+- Map: pinch to zoom, tap a gym marker, scroll the bottom sheet.
+- Filter: tap the filter button, try selecting brand "Panatta" or category "가슴".
+- NL search: tap the search bar, type "강남역 파나타 있는 헬스장", submit.
+- Voice search: tap the mic icon, allow Speech Recognition, say "근처 파나타".
+- Photo gallery: tap a machine row in a gym, browse the photo gallery.
+- Upload (requires sign-in): tap a gym's "+" icon, take or pick a photo.
+  Faces are auto-rejected by Vision API per Korean privacy law (PIPA);
+  upload a no-face photo to succeed.
+
+Sign in:
+- Tap "로그인 없이 둘러보기" on the Login screen for read-only access (covers
+  map, filter, NL search, voice, photo browse). This is the recommended path.
+- For interactive features (upload, report, profile), tap "Apple로 계속하기"
+  and use your own Apple ID. Account creation is automatic.
+
+Admin features (moderation queue, report dispositions, owner workflow) are
+operator tools and are intentionally not exposed to standard users.
+[Optional addendum if Section 11.3 procedure is executed:
+Demo admin account: <email> / <password>. After signing in via "Google로
+계속하기", tap Profile > Admin to reach the moderation queue.]
+
+Contact: yyou017@gmail.com
+```
+
+### 11.5 Open decisions for submission day
+
+- Provide admin demo (Section 11.3) yes / no. Default: **no**, justify in review notes per Section 11.4 boilerplate. Flip to yes only if first submission gets bounced for "moderation features not testable".
+- Apple Sign In: at submission day, confirm whether Task 48 native upgrade (PR #94) is merged. If yes, the boilerplate `Apple로 계속하기` works via native flow. If still on Web OAuth, the flow opens a WebBrowser which is acceptable but reviewer may comment.
+
+## 12. Day-of submission
 
 - [ ] Tag release in git (`v0.1.0`).
 - [ ] EAS build production, submit via EAS Submit.
@@ -148,10 +227,13 @@ Run these the day before tapping Submit for Review.
 
 Items that are NOT yet resolved and need explicit decisions before submission:
 
-1. **Account deletion UI plus prod `users.deleted_at` hotfix** (Section 1). Blocker per 5.1.1(v).
-2. **Apple Developer enrolment timing** (Section 0). User-controlled, deferred per memory.
-3. **Test account credentials for App Review** (Section 9). Decide whether to create a dedicated `apple-review@ironspot.test` account with admin role pre-baked so the reviewer can exercise the admin queue, or keep reviewer as plain user.
-4. **Re-scope `SENTRY_AUTH_TOKEN`** (Section 7) if Phase 5 wants automated Sentry event verification.
+1. **Apple Developer enrolment timing** (Section 0). User-controlled, deferred per memory.
+2. **Test account credentials for App Review** (Section 9). Decide whether to create a dedicated `apple-review@ironspot.test` account with admin role pre-baked so the reviewer can exercise the admin queue, or keep reviewer as plain user.
+3. **Re-scope `SENTRY_AUTH_TOKEN`** (Section 7) if Phase 5 wants automated Sentry event verification.
+
+Items recently resolved during Phase 4 close audit:
+
+- **Account deletion UI** plus **prod `users.deleted_at` hotfix** (Section 1, originally tracked as a blocker per 5.1.1(v)). Closed 2026-05-18 after verifying that backend, frontend, routing, tests, and prod schema were all already in place. Trail in `docs/plans/phase-3/PROGRESS.md` carry-over note.
 
 ## Related documents
 

@@ -546,20 +546,8 @@ Without a query-text audit table, Phase 5 NL query caching (item 5 in `docs/plan
 
 If a slice introduces regression: revert the commit. Schema is additive — `nl_search_log` table can be `DROP TABLE` without affecting other tables. The `UserService.deleteAccount` extension (D5) is the only non-additive change to existing behaviour; rollback drops the `anonymizeNlSearchLog` call but leaves the helper method idempotent for re-introduction.
 
-### Tier 3 — Post-launch data-driven (deferred until users)
+### Tier 3 + Phase 5+ — Ported to `docs/plans/phase-5/README.md`
 
-After launch, these become decidable with real data:
+All post-launch data-driven items (reporter trust scoring, appeal flow, voice live verification, push notifications, NL query caching, standalone admin web UI, PostHog analytics, dark mode) and Phase 5+ items (multi-platform push routing, ML reranking on NL search) now live in `docs/plans/phase-5/README.md` along with the 6 falsifiable hypotheses (H1-H6) that gate each item's design entry and the measurement plan that tells us when each hypothesis becomes decidable.
 
-- Reporter trust scoring + auto-ban tuning — needs real abuse patterns; current `actioned >= 3` / `dismissed >= 5` thresholds are guesses. Task 46 (owner workflow) reduces the urgency by replacing parts of the value proposition.
-- Appeal flow — needs auto-ban events to know if thresholds are too aggressive.
-- Voice live verification — accept manual smoke on each release tag until either (a) test fixture is built, or (b) EAS preview-simulator path lands.
-- Push notifications — needs a user base to notify; admin disposition + ban events as first triggers.
-- NL query caching — needs query volume; quota 100/month/user already gates spend so this is premature.
-- Standalone admin web UI (Next.js) — needs moderation queue volume to justify duplicating mobile admin work. Task 46 (owner workflow) reduces urgency by distributing load.
-- PostHog analytics — needs users; funnel/retention questions become askable.
-- Dark mode — polish; tokens already abstracted, needs theme switch + dark variants.
-
-### Phase 5+ (out of Phase 4 scope)
-
-- Multi-platform push routing
-- ML reranking on NL search
+Phase 5 planning unblocks only after App Store launch + a measurable user base, so the inherited list is held as a queue, not a commitment. First Phase 5 task forks off main via `grill-me` once at least one hypothesis has real evidence to weigh.

@@ -6,6 +6,8 @@ Updated automatically as tasks complete via `/commit-task` command.
 
 Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b106). Task 42 (photo PII detection) merged via PR #84 (39021cf). Task 43 (Slack routing) merged via PR #86 (988885b). Task 44 (FilterPanel scalability + `loadingType` surface, ADR 0021) merged via PR #87 (bb74a58). Task 45 (머신 템플릿 필터 + 라벨 정정, ADR 0022) merged via PR #88 (17b8270). Task 46 (gym_machine report target) merged via PR #89 (a6b0a5b). PR #90 hotfix (ba35e56). Task 47 (Gym owner workflow, ADR 0023) **backend complete in two merges**: PR #91 (slices 47a-47e) + **PR #93 (slices 47f-47h, 6f8c0c2)** — owner queue + dispose + machine CRUD + photo verify + reporter escalation + 24h-then-admin escalation cron, gradle test 360/360. **Task 47 FE follow-up complete**: 47i OwnerClaimScreen (PR #95) + 47j OwnerGuard + owner queue/machines/photos screens (PR #100) + 47k trust signal UI (PR #105 BE + PR #106 FE) + 47l Profile widget + Tab dot badge + Gym detail entry (PR #107) + 47m MyReportsScreen + Maestro flows (PR #108). Task 48 (Apple Sign In, ADR 0024) **Draft PR #94** — code complete (expo-apple-authentication native + web fallback, jest 529/529), blocked on 5 external prerequisites (Apple Developer enrollment + App ID + Service ID + .p8 + Supabase Apple provider).
 
+**Phase 4 effective close (2026-05-18)**: all code-side work landed. Remaining items (Task 48 wiring, Task 49 admin-flow Maestro, EAS preview-simulator) are all gated on Apple Developer enrolment, which is intentionally deferred until everything else is submission-ready (see memory `project_apple_developer_deferral`). Phase 4 wishlist Tier 3 (post-launch, data-driven) ported to `docs/plans/phase-5/README.md`. Pre-submission audit lives in `docs/launch/pre-submission-checklist.md` (PR #114, refined in PR #115).
+
 ## Task Checklist
 
 - [x] Task 41: Trim eval suite to 6 product-value cases (eval workflow repair)
@@ -21,7 +23,7 @@ Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b1
 - [x] Operational — Privacy Policy + ToS: drafted (KR + EN, `docs/legal/`) + Pages deploy workflow live (`.github/workflows/deploy-legal-pages.yml`). Hosted URLs: https://yjwhy.github.io/ironspot/ (landing), `/privacy-policy.{ko,en}.html`, `/terms-of-service.{ko,en}.html`. Wire into App Store Connect at submission time.
 - [ ] Operational — EAS preview-simulator
 - [x] Operational — NL search query log infra (Phase 5 H2 measurement enablement, pre-launch ship): 6 slices D1-D6 merged on `chore/nl-search-log-infra`. Schema (Flyway V3 + JOOQ regen) + writer (REQUIRES_NEW tx, skip-on-429, swallow-on-error) + retention cron (04:00 KST daily, 90-day cut-off) + admin endpoint (`GET /api/admin/nl-search-analytics?period=7d|30d|90d`) + account-delete anonymise + privacy policy disclosure (KR + EN). Backend +9 IT cases. See `implementation.md` "NL search query log infra plan" for the 13-decision grill outcome.
-- [ ] Tier 3 (post-launch, data-driven): see `implementation.md` Future Tasks section
+- [x] Tier 3 (post-launch, data-driven) ported to `docs/plans/phase-5/README.md` (Phase 5 planning unblocks after launch + real users)
 
 ## Completed Tasks Log
 
