@@ -28,7 +28,7 @@ export * from './dashboardData';
 export * from './dispositionRequest';
 export * from './dispositionRequestDisposition';
 export * from './errorResponse';
-export * from './getDataParams';
+export * from './getDashboardDataParams';
 export * from './getModerationAnalyticsParams';
 export * from './getNlSearchAnalyticsParams';
 export * from './gymDetailResponse';

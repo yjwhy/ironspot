@@ -18,23 +18,23 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { DashboardData, GetDataParams } from '../model';
+import type { DashboardData, GetDashboardDataParams } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
-export type getDataResponse200 = {
+export type getDashboardDataResponse200 = {
   data: DashboardData;
   status: 200;
 };
 
-export type getDataResponseSuccess = getDataResponse200 & {
+export type getDashboardDataResponseSuccess = getDashboardDataResponse200 & {
   headers: Headers;
 };
-export type getDataResponse = getDataResponseSuccess;
+export type getDashboardDataResponse = getDashboardDataResponseSuccess;
 
-export const getGetDataUrl = (params?: GetDataParams) => {
+export const getGetDashboardDataUrl = (params?: GetDashboardDataParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -50,56 +50,59 @@ export const getGetDataUrl = (params?: GetDataParams) => {
     : `/admin/dashboard/data`;
 };
 
-export const getData = async (
-  params?: GetDataParams,
+export const getDashboardData = async (
+  params?: GetDashboardDataParams,
   options?: RequestInit,
-): Promise<getDataResponse> => {
-  return apiClient<getDataResponse>(getGetDataUrl(params), {
+): Promise<getDashboardDataResponse> => {
+  return apiClient<getDashboardDataResponse>(getGetDashboardDataUrl(params), {
     ...options,
     method: 'GET',
   });
 };
 
-export const getGetDataQueryKey = (params?: GetDataParams) => {
+export const getGetDashboardDataQueryKey = (params?: GetDashboardDataParams) => {
   return [`/admin/dashboard/data`, ...(params ? [params] : [])] as const;
 };
 
-export const getGetDataQueryOptions = <
-  TData = Awaited<ReturnType<typeof getData>>,
+export const getGetDashboardDataQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDashboardData>>,
   TError = unknown,
 >(
-  params?: GetDataParams,
+  params?: GetDashboardDataParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getData>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardData>>, TError, TData>>;
     request?: SecondParameter<typeof apiClient>;
   },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetDataQueryKey(params);
+  const queryKey = queryOptions?.queryKey ?? getGetDashboardDataQueryKey(params);
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getData>>> = ({ signal }) =>
-    getData(params, { signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardData>>> = ({ signal }) =>
+    getDashboardData(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getData>>,
+    Awaited<ReturnType<typeof getDashboardData>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type GetDataQueryResult = NonNullable<Awaited<ReturnType<typeof getData>>>;
-export type GetDataQueryError = unknown;
+export type GetDashboardDataQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardData>>>;
+export type GetDashboardDataQueryError = unknown;
 
-export function useGetData<TData = Awaited<ReturnType<typeof getData>>, TError = unknown>(
-  params: undefined | GetDataParams,
+export function useGetDashboardData<
+  TData = Awaited<ReturnType<typeof getDashboardData>>,
+  TError = unknown,
+>(
+  params: undefined | GetDashboardDataParams,
   options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getData>>, TError, TData>> &
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardData>>, TError, TData>> &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getData>>,
+          Awaited<ReturnType<typeof getDashboardData>>,
           TError,
-          Awaited<ReturnType<typeof getData>>
+          Awaited<ReturnType<typeof getDashboardData>>
         >,
         'initialData'
       >;
@@ -107,15 +110,18 @@ export function useGetData<TData = Awaited<ReturnType<typeof getData>>, TError =
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useGetData<TData = Awaited<ReturnType<typeof getData>>, TError = unknown>(
-  params?: GetDataParams,
+export function useGetDashboardData<
+  TData = Awaited<ReturnType<typeof getDashboardData>>,
+  TError = unknown,
+>(
+  params?: GetDashboardDataParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getData>>, TError, TData>> &
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardData>>, TError, TData>> &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getData>>,
+          Awaited<ReturnType<typeof getDashboardData>>,
           TError,
-          Awaited<ReturnType<typeof getData>>
+          Awaited<ReturnType<typeof getDashboardData>>
         >,
         'initialData'
       >;
@@ -123,24 +129,30 @@ export function useGetData<TData = Awaited<ReturnType<typeof getData>>, TError =
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useGetData<TData = Awaited<ReturnType<typeof getData>>, TError = unknown>(
-  params?: GetDataParams,
+export function useGetDashboardData<
+  TData = Awaited<ReturnType<typeof getDashboardData>>,
+  TError = unknown,
+>(
+  params?: GetDashboardDataParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getData>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardData>>, TError, TData>>;
     request?: SecondParameter<typeof apiClient>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
-export function useGetData<TData = Awaited<ReturnType<typeof getData>>, TError = unknown>(
-  params?: GetDataParams,
+export function useGetDashboardData<
+  TData = Awaited<ReturnType<typeof getDashboardData>>,
+  TError = unknown,
+>(
+  params?: GetDashboardDataParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getData>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardData>>, TError, TData>>;
     request?: SecondParameter<typeof apiClient>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getGetDataQueryOptions(params, options);
+  const queryOptions = getGetDashboardDataQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

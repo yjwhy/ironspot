@@ -37,7 +37,7 @@ public class DashboardController {
     private final AdminService adminService;
 
     @GetMapping("/data")
-    public DashboardData getData(@RequestParam(defaultValue = "30d") String period) {
+    public DashboardData getDashboardData(@RequestParam(defaultValue = "30d") String period) {
         String nlSearchPeriod = "all".equals(period) ? "90d" : period;
         NlSearchAnalyticsResponse nlSearch = adminService.getNlSearchAnalytics(nlSearchPeriod);
         ModerationAnalyticsResponse moderation = adminService.getModerationAnalytics(period);

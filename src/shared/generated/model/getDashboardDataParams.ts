@@ -6,6 +6,6 @@
  * OpenAPI spec version: v1
  */
 
-export type GetDataParams = {
+export type GetDashboardDataParams = {
   period?: string;
 };
