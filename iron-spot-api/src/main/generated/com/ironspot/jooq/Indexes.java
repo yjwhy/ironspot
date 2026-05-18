@@ -8,6 +8,7 @@ import com.ironspot.jooq.tables.GymMachines;
 import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.ModerationAuditLog;
+import com.ironspot.jooq.tables.NlSearchLog;
 import com.ironspot.jooq.tables.Reports;
 import com.ironspot.jooq.tables.Users;
 
@@ -33,6 +34,9 @@ public class Indexes {
     public static final Index IDX_GYM_OWNERS_GYM_ACTIVE = Internal.createIndex(DSL.name("idx_gym_owners_gym_active"), GymOwners.GYM_OWNERS, new OrderField[] { GymOwners.GYM_OWNERS.GYM_ID }, false);
     public static final Index IDX_GYM_OWNERS_USER_ACTIVE = Internal.createIndex(DSL.name("idx_gym_owners_user_active"), GymOwners.GYM_OWNERS, new OrderField[] { GymOwners.GYM_OWNERS.USER_ID }, false);
     public static final Index IDX_USERS_ROLE = Internal.createIndex(DSL.name("idx_users_role"), Users.USERS, new OrderField[] { Users.USERS.ROLE }, false);
+    public static final Index NL_SEARCH_LOG_CREATED_AT_IDX = Internal.createIndex(DSL.name("nl_search_log_created_at_idx"), NlSearchLog.NL_SEARCH_LOG, new OrderField[] { NlSearchLog.NL_SEARCH_LOG.CREATED_AT }, false);
+    public static final Index NL_SEARCH_LOG_NORMALISED_CREATED_IDX = Internal.createIndex(DSL.name("nl_search_log_normalised_created_idx"), NlSearchLog.NL_SEARCH_LOG, new OrderField[] { NlSearchLog.NL_SEARCH_LOG.NORMALISED_QUERY, NlSearchLog.NL_SEARCH_LOG.CREATED_AT }, false);
+    public static final Index NL_SEARCH_LOG_USER_ID_IDX = Internal.createIndex(DSL.name("nl_search_log_user_id_idx"), NlSearchLog.NL_SEARCH_LOG, new OrderField[] { NlSearchLog.NL_SEARCH_LOG.USER_ID }, false);
     public static final Index REPORTS_REPORTER_RECENT_IDX = Internal.createIndex(DSL.name("reports_reporter_recent_idx"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.USER_ID, Reports.REPORTS.CREATED_AT.desc() }, false);
     public static final Index REPORTS_TARGET_PENDING_IDX = Internal.createIndex(DSL.name("reports_target_pending_idx"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.TARGET_ID }, false);
 }

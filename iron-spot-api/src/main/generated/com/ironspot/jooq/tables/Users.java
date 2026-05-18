@@ -11,6 +11,7 @@ import com.ironspot.jooq.tables.GymOwners.GymOwnersPath;
 import com.ironspot.jooq.tables.Gyms.GymsPath;
 import com.ironspot.jooq.tables.MachinePhotos.MachinePhotosPath;
 import com.ironspot.jooq.tables.ModerationAuditLog.ModerationAuditLogPath;
+import com.ironspot.jooq.tables.NlSearchLog.NlSearchLogPath;
 import com.ironspot.jooq.tables.PhotoVotes.PhotoVotesPath;
 import com.ironspot.jooq.tables.Reports.ReportsPath;
 
@@ -230,6 +231,19 @@ public class Users extends TableImpl<Record> {
             _moderationAuditLog = new ModerationAuditLogPath(this, null, Keys.MODERATION_AUDIT_LOG__MODERATION_AUDIT_LOG_USER_ID_FKEY.getInverseKey());
 
         return _moderationAuditLog;
+    }
+
+    private transient NlSearchLogPath _nlSearchLog;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.nl_search_log</code> table
+     */
+    public NlSearchLogPath nlSearchLog() {
+        if (_nlSearchLog == null)
+            _nlSearchLog = new NlSearchLogPath(this, null, Keys.NL_SEARCH_LOG__NL_SEARCH_LOG_USER_ID_FKEY.getInverseKey());
+
+        return _nlSearchLog;
     }
 
     private transient PhotoVotesPath _photoVotes;

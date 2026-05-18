@@ -12,6 +12,8 @@ import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
 import com.ironspot.jooq.tables.MachineTemplates;
 import com.ironspot.jooq.tables.ModerationAuditLog;
+import com.ironspot.jooq.tables.NlSearchAnalytics_30d;
+import com.ironspot.jooq.tables.NlSearchLog;
 import com.ironspot.jooq.tables.PhotoVotes;
 import com.ironspot.jooq.tables.PostgisSrs;
 import com.ironspot.jooq.tables.PostgisSrsAll;
@@ -81,6 +83,16 @@ public class Tables {
      * The table <code>public.moderation_audit_log</code>.
      */
     public static final ModerationAuditLog MODERATION_AUDIT_LOG = ModerationAuditLog.MODERATION_AUDIT_LOG;
+
+    /**
+     * The table <code>public.nl_search_analytics_30d</code>.
+     */
+    public static final NlSearchAnalytics_30d NL_SEARCH_ANALYTICS_30D = NlSearchAnalytics_30d.NL_SEARCH_ANALYTICS_30D;
+
+    /**
+     * The table <code>public.nl_search_log</code>.
+     */
+    public static final NlSearchLog NL_SEARCH_LOG = NlSearchLog.NL_SEARCH_LOG;
 
     /**
      * The table <code>public.photo_votes</code>.

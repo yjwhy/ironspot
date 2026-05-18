@@ -12,6 +12,8 @@ import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
 import com.ironspot.jooq.tables.MachineTemplates;
 import com.ironspot.jooq.tables.ModerationAuditLog;
+import com.ironspot.jooq.tables.NlSearchAnalytics_30d;
+import com.ironspot.jooq.tables.NlSearchLog;
 import com.ironspot.jooq.tables.PhotoVotes;
 import com.ironspot.jooq.tables.PostgisSrs;
 import com.ironspot.jooq.tables.PostgisSrsAll;
@@ -98,6 +100,16 @@ public class Public extends SchemaImpl {
      * The table <code>public.moderation_audit_log</code>.
      */
     public final ModerationAuditLog MODERATION_AUDIT_LOG = ModerationAuditLog.MODERATION_AUDIT_LOG;
+
+    /**
+     * The table <code>public.nl_search_analytics_30d</code>.
+     */
+    public final NlSearchAnalytics_30d NL_SEARCH_ANALYTICS_30D = NlSearchAnalytics_30d.NL_SEARCH_ANALYTICS_30D;
+
+    /**
+     * The table <code>public.nl_search_log</code>.
+     */
+    public final NlSearchLog NL_SEARCH_LOG = NlSearchLog.NL_SEARCH_LOG;
 
     /**
      * The table <code>public.photo_votes</code>.
@@ -650,6 +662,8 @@ public class Public extends SchemaImpl {
             MachinePhotos.MACHINE_PHOTOS,
             MachineTemplates.MACHINE_TEMPLATES,
             ModerationAuditLog.MODERATION_AUDIT_LOG,
+            NlSearchAnalytics_30d.NL_SEARCH_ANALYTICS_30D,
+            NlSearchLog.NL_SEARCH_LOG,
             PhotoVotes.PHOTO_VOTES,
             PostgisSrs.POSTGIS_SRS,
             PostgisSrsAll.POSTGIS_SRS_ALL,
