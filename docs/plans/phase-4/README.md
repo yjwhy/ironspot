@@ -35,7 +35,7 @@ Tracked but not designed yet. Order is rough priority, not commitment.
 
 Schema drift between prod Supabase + test schema. Not Phase 3 blockers but worth flagging.
 
-1. **`users.deleted_at` missing in prod** — Phase 2 Task 30 (PR #45) added the column to `init-test-db.sql` and `UserRepository.findById`/`markDeleted` reference it; prod schema doesn't have it. `GET /api/users/me` would fail at runtime against prod. Needs `ALTER TABLE users ADD COLUMN deleted_at TIMESTAMPTZ` one-line hotfix.
+1. **`users.deleted_at` missing in prod** — ~~Phase 2 Task 30 (PR #45) added the column to `init-test-db.sql` and `UserRepository.findById`/`markDeleted` reference it; prod schema doesn't have it.~~ **Resolved (verified 2026-05-18).** Task 40 live verification ran `POST /api/search/natural` with a valid JWT, which exercises `JwtValidator.findAuthContext` → `SELECT ... WHERE deleted_at IS NULL` and returned 200. A missing column would have raised a JOOQ SQL error → 500. Prod schema already has the column; the original note was stale carry-over from when the gap was first surfaced during Task 33 inspection. `init-test-db.sql` and prod are in sync on this column.
 2. **`reports.reviewed_at` exists in prod, missing from `init-test-db.sql`** — test-schema drift only. Low priority alignment.
 3. **`reports.status` enum vs TEXT divergence** — prod uses Postgres enum, test schema uses TEXT. JOOQ generates String. No immediate impact; fixture tests can't reproduce constraint violations.
 4. **`users.role` CHECK divergence** — prod allows `('admin','user','owner')`, test allows `('user','admin')`. Test is stricter; harmless for Task 33/34. Likely Phase 4 gym-owner workflow artefact.
