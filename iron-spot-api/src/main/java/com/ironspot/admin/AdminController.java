@@ -4,6 +4,7 @@ import com.ironspot.admin.dto.AdminPhotoDetailResponse;
 import com.ironspot.admin.dto.AdminQueuePhotoSummary;
 import com.ironspot.admin.dto.AdminReportResponse;
 import com.ironspot.admin.dto.DispositionRequest;
+import com.ironspot.admin.dto.NlSearchAnalyticsResponse;
 import com.ironspot.auth.UserPrincipal;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -99,5 +100,12 @@ public class AdminController {
     public ResponseEntity<Void> unbanUser(@PathVariable UUID id) {
         adminService.unbanUser(id.toString());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/nl-search-analytics")
+    public NlSearchAnalyticsResponse getNlSearchAnalytics(
+        @RequestParam(defaultValue = "30d") String period
+    ) {
+        return adminService.getNlSearchAnalytics(period);
     }
 }

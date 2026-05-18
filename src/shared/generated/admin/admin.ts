@@ -28,9 +28,11 @@ import type {
   AdminQueuePhotoSummary,
   AdminReportResponse,
   DispositionRequest,
+  GetNlSearchAnalyticsParams,
   ListPendingPhotosParams,
   ListPendingQueueParams,
   ListReportsParams,
+  NlSearchAnalyticsResponse,
 } from '../model';
 
 import { apiClient } from '../../lib/api-client';
@@ -834,6 +836,155 @@ export function useGetPhoto<TData = Awaited<ReturnType<typeof getPhoto>>, TError
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getGetPhotoQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export type getNlSearchAnalyticsResponse200 = {
+  data: NlSearchAnalyticsResponse;
+  status: 200;
+};
+
+export type getNlSearchAnalyticsResponseSuccess = getNlSearchAnalyticsResponse200 & {
+  headers: Headers;
+};
+export type getNlSearchAnalyticsResponse = getNlSearchAnalyticsResponseSuccess;
+
+export const getGetNlSearchAnalyticsUrl = (params?: GetNlSearchAnalyticsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/nl-search-analytics?${stringifiedParams}`
+    : `/api/admin/nl-search-analytics`;
+};
+
+export const getNlSearchAnalytics = async (
+  params?: GetNlSearchAnalyticsParams,
+  options?: RequestInit,
+): Promise<getNlSearchAnalyticsResponse> => {
+  return apiClient<getNlSearchAnalyticsResponse>(getGetNlSearchAnalyticsUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetNlSearchAnalyticsQueryKey = (params?: GetNlSearchAnalyticsParams) => {
+  return [`/api/admin/nl-search-analytics`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetNlSearchAnalyticsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getNlSearchAnalytics>>,
+  TError = unknown,
+>(
+  params?: GetNlSearchAnalyticsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getNlSearchAnalytics>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetNlSearchAnalyticsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getNlSearchAnalytics>>> = ({ signal }) =>
+    getNlSearchAnalytics(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getNlSearchAnalytics>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetNlSearchAnalyticsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getNlSearchAnalytics>>
+>;
+export type GetNlSearchAnalyticsQueryError = unknown;
+
+export function useGetNlSearchAnalytics<
+  TData = Awaited<ReturnType<typeof getNlSearchAnalytics>>,
+  TError = unknown,
+>(
+  params: undefined | GetNlSearchAnalyticsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getNlSearchAnalytics>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getNlSearchAnalytics>>,
+          TError,
+          Awaited<ReturnType<typeof getNlSearchAnalytics>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetNlSearchAnalytics<
+  TData = Awaited<ReturnType<typeof getNlSearchAnalytics>>,
+  TError = unknown,
+>(
+  params?: GetNlSearchAnalyticsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getNlSearchAnalytics>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getNlSearchAnalytics>>,
+          TError,
+          Awaited<ReturnType<typeof getNlSearchAnalytics>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetNlSearchAnalytics<
+  TData = Awaited<ReturnType<typeof getNlSearchAnalytics>>,
+  TError = unknown,
+>(
+  params?: GetNlSearchAnalyticsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getNlSearchAnalytics>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetNlSearchAnalytics<
+  TData = Awaited<ReturnType<typeof getNlSearchAnalytics>>,
+  TError = unknown,
+>(
+  params?: GetNlSearchAnalyticsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getNlSearchAnalytics>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetNlSearchAnalyticsQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
