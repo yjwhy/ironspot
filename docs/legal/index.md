@@ -21,4 +21,4 @@ IronSpot is a mobile application for discovering gym equipment at nearby gyms.
 ## Contact
 
 - Operator: YJ YOU
-- Email: yongjun.you@generatezero.com
+- Email: yyou017@gmail.com

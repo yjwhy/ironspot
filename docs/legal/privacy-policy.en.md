@@ -89,11 +89,11 @@ We may update this policy due to changes in law, policy, or the Service. Updates
 
 ## 11. Contact
 
-| Field | Detail                       |
-| ----- | ---------------------------- |
-| Name  | YJ YOU                       |
-| Role  | Service Operator             |
-| Email | yongjun.you@generatezero.com |
+| Field | Detail            |
+| ----- | ----------------- |
+| Name  | YJ YOU            |
+| Role  | Service Operator  |
+| Email | yyou017@gmail.com |
 
 We will respond to any privacy enquiries, complaints, or remediation requests without delay.
 

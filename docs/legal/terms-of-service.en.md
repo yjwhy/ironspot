@@ -85,7 +85,7 @@ The Operator's handling of personal data is governed by the separate [Privacy Po
 
 ## Article 14 (Contact)
 
-| Field    | Detail                       |
-| -------- | ---------------------------- |
-| Operator | YJ YOU                       |
-| Email    | yongjun.you@generatezero.com |
+| Field    | Detail            |
+| -------- | ----------------- |
+| Operator | YJ YOU            |
+| Email    | yyou017@gmail.com |
