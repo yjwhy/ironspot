@@ -101,7 +101,7 @@ Recommended: **UptimeRobot free monitor** (no card, no time limit).
 2. Add New Monitor → **Monitor Type: HTTP(S)** → URL: `https://ironspot.onrender.com/actuator/health` → Interval: **5 minutes** → Save.
 3. Bonus: configure email alerts on the monitor for downtime visibility.
 
-Fallback if UptimeRobot ever degrades: a GitHub Actions cron workflow runs `curl --max-time 30 <render-url>/actuator/health` every 10 minutes. GitHub Actions cron can be skipped under high platform load, so it's a backup rather than the primary mechanism.
+Fallback if UptimeRobot ever degrades: `.github/workflows/keep-warm.yml` runs `curl --max-time 30 https://ironspot.onrender.com/actuator/health` every 10 minutes. GitHub Actions cron can be skipped under high platform load, so it's a backup rather than the primary mechanism.
 
 ## EAS build secrets (preview-simulator profile)
 
