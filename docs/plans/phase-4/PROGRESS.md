@@ -18,7 +18,7 @@ Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b1
 - [~] Task 48: Apple Sign In — Draft PR #94, blocked on 5 external prerequisites
 - [ ] Task 49: admin-flow Maestro flow (Phase 3 verification carry-over, depends on Task 48)
 - [x] Operational — UptimeRobot keep-warm: backup GH Actions cron added (`.github/workflows/keep-warm.yml`); primary UptimeRobot HTTP monitor live against `/actuator/health` (5 min interval)
-- [ ] Operational — Privacy Policy + ToS
+- [~] Operational — Privacy Policy + ToS: drafted (KR + EN, `docs/legal/`) + Pages deploy workflow added (`.github/workflows/deploy-legal-pages.yml`); pending one-time repo setup (Settings → Pages → Source = "GitHub Actions") to publish the hosted URL for App Store Connect
 - [ ] Operational — EAS preview-simulator
 - [ ] Tier 3 (post-launch, data-driven): see `implementation.md` Future Tasks section
 

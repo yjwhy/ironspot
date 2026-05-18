@@ -1,0 +1,11 @@
+title: IronSpot Legal
+description: Privacy Policy and Terms of Service for IronSpot
+theme: jekyll-theme-cayman
+markdown: kramdown
+kramdown:
+  hard_wrap: false
+defaults:
+  - scope:
+      path: ''
+    values:
+      layout: default
