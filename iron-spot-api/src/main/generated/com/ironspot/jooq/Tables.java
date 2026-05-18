@@ -11,6 +11,7 @@ import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
 import com.ironspot.jooq.tables.MachineTemplates;
+import com.ironspot.jooq.tables.ModerationAnalytics_30d;
 import com.ironspot.jooq.tables.ModerationAuditLog;
 import com.ironspot.jooq.tables.NlSearchAnalytics_30d;
 import com.ironspot.jooq.tables.NlSearchLog;
@@ -78,6 +79,11 @@ public class Tables {
      * The table <code>public.machine_templates</code>.
      */
     public static final MachineTemplates MACHINE_TEMPLATES = MachineTemplates.MACHINE_TEMPLATES;
+
+    /**
+     * The table <code>public.moderation_analytics_30d</code>.
+     */
+    public static final ModerationAnalytics_30d MODERATION_ANALYTICS_30D = ModerationAnalytics_30d.MODERATION_ANALYTICS_30D;
 
     /**
      * The table <code>public.moderation_audit_log</code>.

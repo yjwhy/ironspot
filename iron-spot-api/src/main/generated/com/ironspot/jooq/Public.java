@@ -11,6 +11,7 @@ import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
 import com.ironspot.jooq.tables.MachineTemplates;
+import com.ironspot.jooq.tables.ModerationAnalytics_30d;
 import com.ironspot.jooq.tables.ModerationAuditLog;
 import com.ironspot.jooq.tables.NlSearchAnalytics_30d;
 import com.ironspot.jooq.tables.NlSearchLog;
@@ -95,6 +96,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.machine_templates</code>.
      */
     public final MachineTemplates MACHINE_TEMPLATES = MachineTemplates.MACHINE_TEMPLATES;
+
+    /**
+     * The table <code>public.moderation_analytics_30d</code>.
+     */
+    public final ModerationAnalytics_30d MODERATION_ANALYTICS_30D = ModerationAnalytics_30d.MODERATION_ANALYTICS_30D;
 
     /**
      * The table <code>public.moderation_audit_log</code>.
@@ -661,6 +667,7 @@ public class Public extends SchemaImpl {
             Gyms.GYMS,
             MachinePhotos.MACHINE_PHOTOS,
             MachineTemplates.MACHINE_TEMPLATES,
+            ModerationAnalytics_30d.MODERATION_ANALYTICS_30D,
             ModerationAuditLog.MODERATION_AUDIT_LOG,
             NlSearchAnalytics_30d.NL_SEARCH_ANALYTICS_30D,
             NlSearchLog.NL_SEARCH_LOG,
