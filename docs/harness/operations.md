@@ -11,8 +11,9 @@ Per Task 31 decision #5 app and API are tracked separately so dashboards stay re
 1. Sign in / create Sentry org at https://sentry.io (Generate Zero Platform organisation).
 2. Create project `ironspot-app` (platform: React Native) → copy DSN → set `EXPO_PUBLIC_SENTRY_DSN` on the EAS build profile and any local `.env` that needs symbolicated events.
 3. Create project `ironspot-api` (platform: Java / Spring Boot) → copy DSN → set `SENTRY_DSN` on the Render service environment (and local `iron-spot-api/.env` if exercising the path locally).
-4. Sentry → User → Account → Auth Tokens → create a token with scope `project:releases` → set `SENTRY_AUTH_TOKEN` on EAS build env (used by `@sentry/expo-upload-sourcemaps`; never bundled into the app).
-5. Set environments in both projects: `development`, `production`. Default sample rates per decision #11 are wired in code; adjust in dashboard if quota becomes a concern.
+4. Sentry → Organization Tokens → create a token (org tokens only carry `org:ci` which covers source-map upload + release creation) → set `SENTRY_AUTH_TOKEN` on EAS build env (used by `@sentry/expo-upload-sourcemaps`; never bundled into the app).
+5. **(Optional, for automated verification)** Sentry → Account → API → Personal Tokens → create a token with `Issue & Event = Read` scope only → set `SENTRY_EVENTS_TOKEN` as a GitHub Actions secret. Used by future verification workflows that need to confirm captured events (Phase 3 Task 40 follow-up: `nl_search_empty_result` and similar breadcrumbs). The legacy `SENTRY_AUTH_TOKEN` does **not** cover `event:read` because organization tokens are scope-limited to `org:ci`.
+6. Set environments in both projects: `development`, `production`. Default sample rates per decision #11 are wired in code; adjust in dashboard if quota becomes a concern.
 
 DSN-empty contract: both `src/shared/lib/sentry.ts` (`initSentry`) and `iron-spot-api/src/main/java/com/ironspot/common/monitoring/SentryConfig.java` skip init entirely when DSN is blank, so unset values fail open (no traffic) rather than crashing.
 
@@ -20,11 +21,11 @@ DSN-empty contract: both `src/shared/lib/sentry.ts` (`initSentry`) and `iron-spo
 
 Slack acts as the operator's inbox for three different signal types. Each channel has a distinct trigger surface so noise stays separated.
 
-| Channel                | Source                                                | What lands here                                                                            |
-| ---------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `#ironspot-moderation` | Backend (`AdminNotificationService`) Incoming Webhook | Urgent reports, auto-blind, SafeSearch queue, auto-ban uploader/reporter (Phase 2 wiring). |
-| `#ironspot-errors`     | Sentry Slack integration (OAuth, alert rule)          | Sentry 5xx new issue + regression, `environment=production` only (Task 43 decision).       |
-| `#ironspot-deploy`     | GitHub Actions `deploy-notify.yml` Incoming Webhook   | "Deploy triggered" event on push to `main`. Render Hobby has no Slack notify support.      |
+| Channel                | Source                                                | What lands here                                                                                                                                                                |
+| ---------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `#ironspot-moderation` | Backend (`AdminNotificationService`) Incoming Webhook | Urgent reports, auto-blind, SafeSearch queue, auto-ban uploader/reporter (Phase 2 wiring).                                                                                     |
+| `#ironspot-errors`     | Sentry Slack integration (OAuth, alert rule)          | Sentry 5xx new issue + regression, `environment=production` only (Task 43 decision).                                                                                           |
+| `#ironspot-deploy`     | GitHub Actions `deploy-notify.yml` Incoming Webhook   | "Deploy triggered" on push to `main` + ":white_check_mark: succeeded" / ":x: failed" once the Render deploy reaches a terminal state (Render API polled by the same workflow). |
 
 #### One-time setup
 
@@ -43,10 +44,11 @@ Slack acts as the operator's inbox for three different signal types. Each channe
    1. Create channel in `iron-spot` workspace.
    2. Install Incoming Webhooks app (`https://iron-spot.slack.com/services/new/incoming-webhook`) → pick channel → copy URL.
    3. GitHub → repo Settings → Secrets and variables → Actions → New secret `SLACK_DEPLOY_WEBHOOK_URL` with the URL above. `.github/workflows/deploy-notify.yml` reads this on every push to `main` and posts `Deploy triggered — <repo> <sha> by <actor>` plus the commit message + link.
+   4. **(Outcome polling)** Render Dashboard → Account Settings → API Keys → Create API key → copy. GitHub → Settings → Secrets → Actions → New secret `RENDER_API_KEY`. Once set, `deploy-notify.yml` polls `https://api.render.com/v1/services/<RENDER_SERVICE_ID>/deploys` for the deploy whose `commit.id` matches the pushed SHA, and posts ":white_check_mark: succeeded" / ":x: failed (<render_status>)" / ":hourglass: status check timed out (15m)" / ":grey_question: not matched". When `RENDER_API_KEY` is empty the outcome step is skipped silently and only the "Deploy triggered" message is posted, matching the legacy behaviour.
 
-#### Why no success/failure confirmation
+#### Deploy outcome polling design
 
-Render Hobby auto-deploys on push but doesn't surface deploy outcome events to GitHub or any external hook. A health probe after the push would race with cold-start cycles (old container still 200s while new container builds). Operators confirm success on the Render dashboard. If you later upgrade to a paid Render plan, the dashboard notification setting forwards `deploy started / succeeded / failed` natively — drop `deploy-notify.yml` at that point.
+Render free Web Service doesn't push deploy events to any external hook, so the same GitHub Actions workflow that posts "Deploy triggered" also polls the Render API (`GET /v1/services/<service-id>/deploys`) for the deploy whose `commit.id` matches `${{ github.sha }}`. Once that deploy reaches a terminal state (`live`, `build_failed`, `update_failed`, `canceled`, `pre_deploy_failed`, `deactivated`) the workflow posts the outcome with elapsed wall-clock time. The 15-minute timeout covers Render free-tier cold start + build + boot worst-case; if the timeout fires the workflow posts ":hourglass: status check timed out" and the operator can inspect the Render dashboard. Required secret: `RENDER_API_KEY` (see one-time setup table above). If you later move to a paid Render plan the dashboard's native Slack integration replaces both steps and the workflow can be dropped.
 
 ## Render service configuration (Spring Boot)
 
@@ -107,14 +109,14 @@ Fallback if UptimeRobot ever degrades: `.github/workflows/keep-warm.yml` runs `c
 
 Set on the EAS project via `pnpm dlx eas-cli secret:create --scope project --name <NAME> --value <VALUE>`. Used by the `preview-simulator` build profile in `eas.json` (Task 32b iOS Simulator Sentry app smoke).
 
-| Variable                          | Required? | Source                                                                         |
-| --------------------------------- | --------- | ------------------------------------------------------------------------------ |
-| `EXPO_PUBLIC_SUPABASE_URL`        | Yes       | Supabase project URL                                                           |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY`   | Yes       | Supabase anon key (publishable in client bundles)                              |
-| `EXPO_PUBLIC_NAVER_MAP_CLIENT_ID` | Yes       | ncloud Naver Maps client ID (Phase 1 setup)                                    |
-| `EXPO_PUBLIC_API_URL`             | Yes       | Render service URL (e.g. `https://ironspot.onrender.com`)                      |
-| `EXPO_PUBLIC_SENTRY_DSN`          | No        | Sentry `ironspot-app` project DSN. Empty value skips Sentry init (fail-open).  |
-| `SENTRY_AUTH_TOKEN`               | Yes\*     | Sentry auth token (`project:releases` scope). \*Required for sourcemap upload. |
+| Variable                          | Required? | Source                                                                                                                 |
+| --------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`        | Yes       | Supabase project URL                                                                                                   |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY`   | Yes       | Supabase anon key (publishable in client bundles)                                                                      |
+| `EXPO_PUBLIC_NAVER_MAP_CLIENT_ID` | Yes       | ncloud Naver Maps client ID (Phase 1 setup)                                                                            |
+| `EXPO_PUBLIC_API_URL`             | Yes       | Render service URL (e.g. `https://ironspot.onrender.com`)                                                              |
+| `EXPO_PUBLIC_SENTRY_DSN`          | No        | Sentry `ironspot-app` project DSN. Empty value skips Sentry init (fail-open).                                          |
+| `SENTRY_AUTH_TOKEN`               | Yes\*     | Sentry **organization** token (`org:ci` scope: source-map upload + release creation). \*Required for sourcemap upload. |
 
 `eas.json` itself only bakes the non-secret `EXPO_PUBLIC_SENTRY_SMOKE=true` into the preview-simulator profile so the smoke button gates correctly.
 
