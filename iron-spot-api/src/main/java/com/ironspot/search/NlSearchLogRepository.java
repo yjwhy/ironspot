@@ -51,9 +51,10 @@ public class NlSearchLogRepository {
      * LIMIT cleanly without window functions.
      */
     public NlSearchAnalyticsResponse analytics(String periodLabel, int periodDays, int topN) {
-        var cutoff = DSL.field(
-            "NOW() - INTERVAL '" + periodDays + " days'",
-            java.time.OffsetDateTime.class);
+        // Java-side cutoff for type safety + DSL consistency. JVM/Postgres
+        // clock drift is NTP-bounded to milliseconds — irrelevant for
+        // 7/30/90-day analytics windows.
+        java.time.OffsetDateTime cutoff = java.time.OffsetDateTime.now().minusDays(periodDays);
 
         var totals = dsl.select(
                 DSL.count().as("total"),
@@ -68,6 +69,9 @@ public class NlSearchLogRepository {
         long distinctNormalised = totals != null ? totals.get("distinct_normalised", Long.class) : 0L;
         long distinctUsers = totals != null ? totals.get("distinct_users", Long.class) : 0L;
 
+        // ORDER BY DSL.count().desc() instead of by alias string. Same shape as
+        // ModerationAnalyticsRepository.topReporters() — type-safe, no string
+        // interpolation, no Postgres "column does not exist" risk.
         List<NlSearchAnalyticsResponse.TopQuery> topQueries = dsl.select(
                 NL_SEARCH_LOG.NORMALISED_QUERY,
                 DSL.count().as("hit_count"),
@@ -76,7 +80,7 @@ public class NlSearchLogRepository {
             .from(NL_SEARCH_LOG)
             .where(NL_SEARCH_LOG.CREATED_AT.greaterOrEqual(cutoff))
             .groupBy(NL_SEARCH_LOG.NORMALISED_QUERY)
-            .orderBy(DSL.field("hit_count").desc())
+            .orderBy(DSL.count().desc())
             .limit(topN)
             .fetch(r -> new NlSearchAnalyticsResponse.TopQuery(
                 r.get(NL_SEARCH_LOG.NORMALISED_QUERY),

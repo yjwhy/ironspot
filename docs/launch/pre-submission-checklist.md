@@ -87,6 +87,8 @@ PIPA (개인정보보호법) overlaps with Guideline 5 but adds Korea-specific i
 - [x] **Groq plus Gemini API keys**: prod Render env populated (fixed during Task 40 live verification).
 - [x] **Supabase JWKS URL**: prod env corrected to ECC P-256 JWKS endpoint (Task 40 fix).
 - [ ] **Sentry events token re-scoped**: current `SENTRY_AUTH_TOKEN` has `project:releases` only (sourcemap upload). Re-scope or add a read-only token with `event:read` if Phase 5 wants automated event verification (Task 40 follow-up note).
+- [ ] **`DASHBOARD_PASSWORD` env on Render**: set before first deploy after merging Phase 4 E + C. Empty value fails Spring Boot startup by design (the `/admin/dashboard.html` route would otherwise land unauthenticated). Username is hardcoded to `admin`. See `docs/harness/operations.md` "Ops dashboard" for usage.
+- [x] **Ops dashboard**: `/admin/dashboard.html` behind Basic Auth surfaces NL search analytics + moderation analytics (Phase 4 Operational items D + E + C). Slack weekly digest Monday 09:00 KST to `#ironspot-moderation` complements the pull-based dashboard with a push cadence.
 
 ## 8. Build and submission pipeline
 

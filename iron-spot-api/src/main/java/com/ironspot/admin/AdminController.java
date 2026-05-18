@@ -4,6 +4,7 @@ import com.ironspot.admin.dto.AdminPhotoDetailResponse;
 import com.ironspot.admin.dto.AdminQueuePhotoSummary;
 import com.ironspot.admin.dto.AdminReportResponse;
 import com.ironspot.admin.dto.DispositionRequest;
+import com.ironspot.admin.dto.ModerationAnalyticsResponse;
 import com.ironspot.admin.dto.NlSearchAnalyticsResponse;
 import com.ironspot.auth.UserPrincipal;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -107,5 +108,12 @@ public class AdminController {
         @RequestParam(defaultValue = "30d") String period
     ) {
         return adminService.getNlSearchAnalytics(period);
+    }
+
+    @GetMapping("/moderation-analytics")
+    public ModerationAnalyticsResponse getModerationAnalytics(
+        @RequestParam(defaultValue = "30d") String period
+    ) {
+        return adminService.getModerationAnalytics(period);
     }
 }

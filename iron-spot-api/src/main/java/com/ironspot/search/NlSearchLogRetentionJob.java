@@ -5,10 +5,11 @@ import io.sentry.SentryLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
 
 import static com.ironspot.jooq.Tables.NL_SEARCH_LOG;
 
@@ -37,10 +38,13 @@ public class NlSearchLogRetentionJob {
     @Scheduled(cron = "0 0 4 * * ?", zone = "Asia/Seoul")
     @Transactional
     public void pruneOldRows() {
+        // Java-side cutoff via OffsetDateTime.now() instead of Postgres NOW()
+        // for type safety + DSL consistency (ModerationAnalyticsRepository uses
+        // the same pattern). JVM/Postgres clock drift is NTP-bounded to
+        // milliseconds — irrelevant against a 90-day retention window.
+        OffsetDateTime cutoff = OffsetDateTime.now().minusDays(RETENTION_DAYS);
         int deleted = dsl.deleteFrom(NL_SEARCH_LOG)
-            .where(NL_SEARCH_LOG.CREATED_AT.lessThan(
-                DSL.field("NOW() - INTERVAL '" + RETENTION_DAYS + " days'",
-                    java.time.OffsetDateTime.class)))
+            .where(NL_SEARCH_LOG.CREATED_AT.lessThan(cutoff))
             .execute();
         log.info("nl_search_log retention prune: deleted {} rows older than {} days",
             deleted, RETENTION_DAYS);

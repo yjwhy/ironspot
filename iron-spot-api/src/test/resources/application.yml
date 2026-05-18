@@ -35,3 +35,9 @@ naver:
 springdoc:
   api-docs:
     path: /api-docs
+
+# Dashboard Basic Auth password for IT — production sets this via DASHBOARD_PASSWORD
+# env on Render. Fail-fast behaviour (startup throws when blank) is verified
+# indirectly by every IT in the suite booting successfully with this value present.
+dashboard:
+  password: test-dashboard-password
