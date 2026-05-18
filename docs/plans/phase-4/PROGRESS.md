@@ -17,7 +17,7 @@ Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b1
 - [x] Task 47: Gym owner workflow — Backend (PR #91 + PR #93) + FE follow-up complete (47i PR #95, 47j PR #100, 47k PR #105 + PR #106, 47l PR #107, 47m PR #108)
 - [~] Task 48: Apple Sign In — Draft PR #94, blocked on 5 external prerequisites
 - [ ] Task 49: admin-flow Maestro flow (Phase 3 verification carry-over, depends on Task 48)
-- [~] Operational — UptimeRobot keep-warm: backup GH Actions cron added (`.github/workflows/keep-warm.yml`); primary UptimeRobot monitor signup pending user action
+- [x] Operational — UptimeRobot keep-warm: backup GH Actions cron added (`.github/workflows/keep-warm.yml`); primary UptimeRobot HTTP monitor live against `/actuator/health` (5 min interval)
 - [ ] Operational — Privacy Policy + ToS
 - [ ] Operational — EAS preview-simulator
 - [ ] Tier 3 (post-launch, data-driven): see `implementation.md` Future Tasks section
