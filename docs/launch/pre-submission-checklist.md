@@ -36,7 +36,7 @@ The Apple Developer Program enrolment is deliberately deferred until everything 
 - [x] **2.3 Accurate Metadata**: app description should reflect (a) Korean-only at launch, (b) gym discovery with machine search, (c) Naver Maps based, (d) user-contributed photo verification. Draft when filling App Store Connect.
 - [x] **2.5.1 Software Requirements**: Expo SDK 54 dev build, all native modules public (Naver Map SDK, expo-camera, expo-speech-recognition, expo-apple-authentication). No private APIs.
 - [x] **2.5.6 Public APIs only**: confirmed via `app.json` plugin list.
-- [~] **2.5.10 Provide accurate information about your app**: review notes for the reviewer need a Seoul demo location (suggest 강남역 `37.4979, 127.0276`) plus a test account credential pair. Test account creation script lives at `iron-spot-api` Supabase admin API path (used by Task 40 live verification). Codify the credentials in App Store Connect review notes at submission time.
+- [~] **2.5.10 Provide accurate information about your app**: review notes for the reviewer need a Seoul demo location (suggest 강남역 `37.4979, 127.0276`) plus an access plan. Full procedure now documented in Section 11 below (Guest mode for read-only browse + Apple Sign In with reviewer's own Apple ID for interactive features + optional admin demo account). At submission day, paste the Section 11 boilerplate into App Store Connect review notes verbatim.
 
 ## 3. Guideline 3: Business
 
@@ -107,9 +107,9 @@ PIPA (개인정보보호법) overlaps with Guideline 5 but adds Korea-specific i
 - [ ] Copyright: `(C) 2026 IronSpot`
 - [ ] Support URL: `https://yjwhy.github.io/ironspot/`
 - [ ] Marketing URL: same as support URL or skip
-- [ ] App Review contact info: yyou017@gmail.com
-- [ ] App Review demo credentials: TBD test account
-- [ ] App Review notes: explain photo-based gym equipment search, Korean-only at launch, demo coordinates 강남역
+- [ ] App Review contact info: `yyou017@gmail.com`
+- [ ] App Review demo credentials: see Section 11 procedure. At submission day, paste either (a) "Guest mode + Apple Sign In with your own Apple ID" instructions or (b) the optional admin demo Google account creds (created same day per Section 11.3 steps).
+- [ ] App Review notes: paste Section 11 boilerplate (photo-based gym equipment search, Korean-only at launch, demo coordinates 강남역, access procedure, sample queries).
 - [ ] Screenshots iPhone 6.7 inch (required, 3 to 10): map screen, gym detail, filter sheet, NL search result, photo upload flow
 - [ ] Screenshots iPhone 6.5 inch (required if 6.7 not auto-generated)
 - [ ] Screenshots iPhone 5.5 inch (optional in 2026, App Store Connect may relax this)
@@ -134,7 +134,86 @@ Run these the day before tapping Submit for Review.
 - [ ] Network offline: app degrades gracefully (cached map tiles or clear error).
 - [ ] Crash-free across the smoke session (Sentry remains quiet).
 
-## 11. Day-of submission
+## 11. App Review reviewer access procedure
+
+IronSpot is OAuth-only (no email/password) plus has a Guest mode for read-only browsing. This section locks how Apple's reviewer should access each surface, so submission day reduces to copy-paste into App Store Connect notes.
+
+### 11.1 Login paths inventory
+
+`src/features/auth/components/LoginScreen.tsx` exposes:
+
+- **Google OAuth** (always shown)
+- **Kakao OAuth** (always shown, Korean market default)
+- **Apple OAuth** (iOS only, via Supabase Web OAuth pattern in main; Task 48 Draft PR #94 upgrades this to native `expo-apple-authentication`)
+- **Guest mode** ("로그인 없이 둘러보기") — bypasses auth, app proceeds with no `users` row
+
+### 11.2 Recommended reviewer access (no admin demo)
+
+The minimal-risk path. Use this as the default.
+
+1. **Read-only review** (map, search, filter, photo browse, NL search interpretation): tap `로그인 없이 둘러보기` on the Login screen. No credentials needed.
+2. **Interactive features** (photo upload, report submission, profile, my photos, my reports, my votes): tap `Apple로 계속하기` and complete Sign in with Apple using the reviewer's own Apple ID. The app creates a `users` row automatically on first sign-in.
+3. **Admin-gated surfaces** (admin queue, gym_machine dispositions, photo restore/ban): skipped. Apple typically does not review admin-only flows for non-admin app types; these are operator tools, not user features. Document this in review notes so the reviewer knows not to look for them.
+
+### 11.3 Optional admin demo procedure (only if reviewing moderation features)
+
+Use this if Section 11.2 risks the reviewer flagging "moderation features not testable". Adds ~30 minutes of setup at submission day.
+
+1. Create a Gmail account, e.g. `ironspot.review.<random4>@gmail.com`. Use a strong random password. Disable 2FA so the reviewer can sign in unaided.
+2. Launch IronSpot on the simulator or a TestFlight build. Tap `Google로 계속하기` and sign in with the new account. The app creates a `users` row with `role='user'`.
+3. In Supabase dashboard → SQL Editor, run:
+
+   ```sql
+   UPDATE public.users
+     SET role = 'admin'
+   WHERE email = 'ironspot.review.<random4>@gmail.com';
+   ```
+
+4. Verify by signing out and back in, then tap Profile → Admin shortcut. The admin queue should be reachable.
+5. Paste the Gmail address + password into App Store Connect App Review notes.
+
+Cleanup post-review: SQL-delete the `auth.users` row via Supabase Admin API or dashboard; the `public.users` row cascades. Delete the Gmail account too if it has no further use.
+
+### 11.4 Boilerplate to paste into App Store Connect review notes
+
+```
+IronSpot — gym equipment finder, Korean only at launch.
+
+Demo location: Gangnam Station (강남역), 37.4979, 127.0276.
+The map opens to your current location; allow Location when prompted, or move
+the simulator to the demo coordinates via Features > Location > Custom.
+
+Sample interactions:
+- Map: pinch to zoom, tap a gym marker, scroll the bottom sheet.
+- Filter: tap the filter button, try selecting brand "Panatta" or category "가슴".
+- NL search: tap the search bar, type "강남역 파나타 있는 헬스장", submit.
+- Voice search: tap the mic icon, allow Speech Recognition, say "근처 파나타".
+- Photo gallery: tap a machine row in a gym, browse the photo gallery.
+- Upload (requires sign-in): tap a gym's "+" icon, take or pick a photo.
+  Faces are auto-rejected by Vision API per Korean privacy law (PIPA);
+  upload a no-face photo to succeed.
+
+Sign in:
+- Tap "로그인 없이 둘러보기" on the Login screen for read-only access (covers
+  map, filter, NL search, voice, photo browse). This is the recommended path.
+- For interactive features (upload, report, profile), tap "Apple로 계속하기"
+  and use your own Apple ID. Account creation is automatic.
+
+Admin features (moderation queue, report dispositions, owner workflow) are
+operator tools and are intentionally not exposed to standard users.
+[Optional addendum if Section 11.3 procedure is executed:
+Demo admin account: <email> / <password>. After signing in via "Google로
+계속하기", tap Profile > Admin to reach the moderation queue.]
+
+Contact: yyou017@gmail.com
+```
+
+### 11.5 Open decisions for submission day
+
+- Provide admin demo (Section 11.3) yes / no. Default: **no**, justify in review notes per Section 11.4 boilerplate. Flip to yes only if first submission gets bounced for "moderation features not testable".
+- Apple Sign In: at submission day, confirm whether Task 48 native upgrade (PR #94) is merged. If yes, the boilerplate `Apple로 계속하기` works via native flow. If still on Web OAuth, the flow opens a WebBrowser which is acceptable but reviewer may comment.
+
+## 12. Day-of submission
 
 - [ ] Tag release in git (`v0.1.0`).
 - [ ] EAS build production, submit via EAS Submit.
