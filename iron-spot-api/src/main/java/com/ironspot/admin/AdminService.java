@@ -9,6 +9,7 @@ import com.ironspot.admin.dto.DispositionRequest;
 import com.ironspot.auth.UserRepository;
 import com.ironspot.common.exception.BusinessException;
 import com.ironspot.common.notification.AdminNotificationService;
+import com.ironspot.admin.dto.ModerationAnalyticsResponse;
 import com.ironspot.admin.dto.NlSearchAnalyticsResponse;
 import com.ironspot.machine.MachineRepository;
 import com.ironspot.photo.PhotoRepository;
@@ -39,8 +40,10 @@ public class AdminService {
     private final MachineRepository machineRepository;
     private final AdminNotificationService adminNotifier;
     private final NlSearchLogRepository nlSearchLogRepository;
+    private final ModerationAnalyticsRepository moderationAnalyticsRepository;
 
     private static final int NL_SEARCH_ANALYTICS_TOP_N = 20;
+    private static final int MODERATION_TOP_REPORTERS_LIMIT = 20;
 
     public List<AdminReportResponse> listReports(String status, int limit) {
         return reportRepository.findByStatusOrderByCreatedAtDesc(status, limit);
@@ -56,6 +59,26 @@ public class AdminService {
                 "Invalid period. Use 7d, 30d, or 90d.", HttpStatus.BAD_REQUEST);
         };
         return nlSearchLogRepository.analytics(period, days, NL_SEARCH_ANALYTICS_TOP_N);
+    }
+
+    @Transactional(readOnly = true)
+    public ModerationAnalyticsResponse getModerationAnalytics(String period) {
+        // null periodDays = "all time" (no disposition cutoff, full ban audit log).
+        Integer periodDays = switch (period) {
+            case "7d" -> 7;
+            case "30d" -> 30;
+            case "all" -> null;
+            default -> throw new BusinessException(
+                "Invalid period. Use 7d, 30d, or all.", HttpStatus.BAD_REQUEST);
+        };
+        return new ModerationAnalyticsResponse(
+            period,
+            moderationAnalyticsRepository.totalDispositions(periodDays),
+            moderationAnalyticsRepository.uploaderActionedHistogram(periodDays),
+            moderationAnalyticsRepository.reporterDismissedHistogram(periodDays),
+            moderationAnalyticsRepository.topReporters(periodDays, MODERATION_TOP_REPORTERS_LIMIT),
+            moderationAnalyticsRepository.banEvents(periodDays)
+        );
     }
 
     public List<AdminQueuePhotoSummary> listPendingPhotos(int limit) {

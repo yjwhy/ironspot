@@ -904,4 +904,65 @@ class AdminControllerIT extends IntegrationTestBase {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
+
+    @Test
+    void moderationAnalyticsAsAdminReturnsShape() {
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/moderation-analytics?period=30d",
+            HttpMethod.GET, bearerRequest("token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String body = response.getBody();
+        assertThat(body).contains("\"period\":\"30d\"");
+        assertThat(body).contains("\"totalDispositions\"");
+        assertThat(body).contains("\"uploaderActionedHistogram\"");
+        assertThat(body).contains("\"reporterDismissedHistogram\"");
+        assertThat(body).contains("\"topReporters\"");
+        assertThat(body).contains("\"banEvents\"");
+    }
+
+    @Test
+    void moderationAnalyticsAsRegularReturns403() {
+        mockPrincipal(REGULAR_ID, "user");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/moderation-analytics?period=30d",
+            HttpMethod.GET, bearerRequest("token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void moderationAnalyticsAsAnonymousReturns401() {
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/moderation-analytics?period=30d",
+            HttpMethod.GET, HttpEntity.EMPTY, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void moderationAnalyticsInvalidPeriodReturns400() {
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/moderation-analytics?period=1y",
+            HttpMethod.GET, bearerRequest("token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void moderationAnalyticsAllPeriodReturnsCumulativeBanEvents() {
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/moderation-analytics?period=all",
+            HttpMethod.GET, bearerRequest("token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("\"period\":\"all\"");
+    }
 }

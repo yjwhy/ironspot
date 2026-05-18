@@ -49,6 +49,10 @@ public class ModerationAnalyticsRepository {
     public List<ModerationAnalyticsResponse.TopReporter> topReporters(Integer periodDays, int limit) {
         var disposedAtCutoff = cutoff(periodDays);
 
+        // ORDER BY COUNT(*) because the WHERE clause restricts to actioned +
+        // dismissed only, so COUNT(*) equals the sum of the two SUM expressions.
+        // Avoids the "column actioned does not exist" Postgres error from
+        // referencing aliases in arithmetic ORDER BY clauses.
         return dsl.select(
                 REPORTS.USER_ID,
                 DSL.sum(DSL.case_()
@@ -65,11 +69,11 @@ public class ModerationAnalyticsRepository {
                 ? REPORTS.DISPOSED_AT.greaterOrEqual(disposedAtCutoff)
                 : DSL.trueCondition())
             .groupBy(REPORTS.USER_ID)
-            .orderBy(DSL.field("actioned + dismissed", Long.class).desc())
+            .orderBy(DSL.count().desc())
             .limit(limit)
             .fetch(r -> {
-                long actioned = r.get("actioned", Long.class);
-                long dismissed = r.get("dismissed", Long.class);
+                long actioned = r.get("actioned", java.math.BigDecimal.class).longValue();
+                long dismissed = r.get("dismissed", java.math.BigDecimal.class).longValue();
                 long total = actioned + dismissed;
                 double accuracy = total == 0 ? 0.0 : (double) actioned / total;
                 return new ModerationAnalyticsResponse.TopReporter(
