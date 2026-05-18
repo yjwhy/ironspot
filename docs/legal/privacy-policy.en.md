@@ -26,12 +26,14 @@ We process personal data to:
 | Optional (app use)      | Precise location (GPS coordinates)                                                         | When you grant the location permission  |
 | Optional (photo upload) | Photos of gym equipment (uploads containing identifiable faces are automatically rejected) | When you upload a photo                 |
 | Automatic               | Device identifiers, OS version, app version, IP address, access logs, error logs           | On app launch / when an error is raised |
+| Automatic               | Natural-language search queries and timestamps                                             | When you run a natural-language search  |
 
 ## 3. Retention Periods
 
 - Account data: retained until **you delete your account**, then deleted immediately.
 - Uploaded photos: retained until you delete them or until they are removed through moderation.
 - Automatic logs (access / error): retained for **90 days** and then destroyed.
+- Natural-language search queries and timestamps: retained for **90 days** for usage-pattern analysis and search-quality improvement, then destroyed. When you delete your account, the user identifier on each query row is anonymised immediately; the query text is destroyed when the retention period ends.
 
 Where retention is required by law (e.g. commercial-transaction records), we will retain the relevant data for the legally mandated period. The Service does not currently process payments, so no such statutory retention applies.
 
