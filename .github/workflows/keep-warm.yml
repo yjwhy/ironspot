@@ -1,0 +1,30 @@
+name: Keep Warm (Render free tier)
+
+# Backup keep-warm for the Render free Web Service in case the primary
+# UptimeRobot monitor is degraded. See docs/harness/operations.md for the
+# primary mechanism and the rationale. GitHub Actions cron triggers are
+# best-effort and can be skipped under platform load, so this is a backup
+# only — UptimeRobot remains the source of truth.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-warm
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping /actuator/health
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: curl health endpoint
+        run: |
+          curl --silent --show-error --fail --max-time 30 \
+            https://ironspot.onrender.com/actuator/health
