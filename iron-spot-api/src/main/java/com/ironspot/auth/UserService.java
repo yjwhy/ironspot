@@ -2,16 +2,20 @@ package com.ironspot.auth;
 
 import com.ironspot.auth.dto.UserResponse;
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.search.NlSearchLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
+    private final NlSearchLogRepository nlSearchLogRepository;
 
     @Transactional
     public UserResponse getOrCreate(UserPrincipal principal) {
@@ -36,6 +40,7 @@ public class UserService {
     public void deleteAccount(String userId) {
         userRepository.anonymizePhotos(userId);
         userRepository.deleteVotes(userId);
+        nlSearchLogRepository.anonymise(UUID.fromString(userId));
         int rows = userRepository.markDeleted(userId);
         if (rows == 0) {
             throw new BusinessException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND);

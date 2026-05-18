@@ -9,10 +9,12 @@ import com.ironspot.admin.dto.DispositionRequest;
 import com.ironspot.auth.UserRepository;
 import com.ironspot.common.exception.BusinessException;
 import com.ironspot.common.notification.AdminNotificationService;
+import com.ironspot.admin.dto.NlSearchAnalyticsResponse;
 import com.ironspot.machine.MachineRepository;
 import com.ironspot.photo.PhotoRepository;
 import com.ironspot.photo.ReportReason;
 import com.ironspot.photo.ReportRepository;
+import com.ironspot.search.NlSearchLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -36,9 +38,24 @@ public class AdminService {
     private final UserRepository userRepository;
     private final MachineRepository machineRepository;
     private final AdminNotificationService adminNotifier;
+    private final NlSearchLogRepository nlSearchLogRepository;
+
+    private static final int NL_SEARCH_ANALYTICS_TOP_N = 20;
 
     public List<AdminReportResponse> listReports(String status, int limit) {
         return reportRepository.findByStatusOrderByCreatedAtDesc(status, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public NlSearchAnalyticsResponse getNlSearchAnalytics(String period) {
+        int days = switch (period) {
+            case "7d" -> 7;
+            case "30d" -> 30;
+            case "90d" -> 90;
+            default -> throw new BusinessException(
+                "Invalid period. Use 7d, 30d, or 90d.", HttpStatus.BAD_REQUEST);
+        };
+        return nlSearchLogRepository.analytics(period, days, NL_SEARCH_ANALYTICS_TOP_N);
     }
 
     public List<AdminQueuePhotoSummary> listPendingPhotos(int limit) {

@@ -856,4 +856,52 @@ class AdminControllerIT extends IntegrationTestBase {
             "SELECT COUNT(*) FROM gym_machines WHERE id = ?", Integer.class, GYM_MACHINE_ID);
         assertThat(count).isEqualTo(1);
     }
+
+    @Test
+    void nlSearchAnalyticsAsAdminReturnsShape() {
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/nl-search-analytics?period=30d",
+            HttpMethod.GET, bearerRequest("token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String body = response.getBody();
+        assertThat(body).contains("\"period\":\"30d\"");
+        assertThat(body).contains("\"totalQueries\"");
+        assertThat(body).contains("\"distinctNormalised\"");
+        assertThat(body).contains("\"distinctUsers\"");
+        assertThat(body).contains("\"topQueries\"");
+    }
+
+    @Test
+    void nlSearchAnalyticsAsRegularReturns403() {
+        mockPrincipal(REGULAR_ID, "user");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/nl-search-analytics?period=30d",
+            HttpMethod.GET, bearerRequest("token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void nlSearchAnalyticsAsAnonymousReturns401() {
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/nl-search-analytics?period=30d",
+            HttpMethod.GET, HttpEntity.EMPTY, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void nlSearchAnalyticsInvalidPeriodReturns400() {
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/nl-search-analytics?period=1y",
+            HttpMethod.GET, bearerRequest("token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
 }

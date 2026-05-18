@@ -1,6 +1,7 @@
 package com.ironspot.auth;
 
 import com.ironspot.common.IntegrationTestBase;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -10,7 +11,9 @@ import org.springframework.http.*;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.Optional;
+import java.util.UUID;
 
+import static com.ironspot.jooq.Tables.NL_SEARCH_LOG;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -122,6 +125,50 @@ class UserControllerTest extends IntegrationTestBase {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     }
+
+    @Test
+    void deleteMeAnonymisesNlSearchLogRows() {
+        String userId = "a1b2c3d4-1111-2222-3333-444455556666";
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(
+            UserPrincipal.builder()
+                .userId(userId)
+                .email("anonymise-delete@example.com")
+                .build()));
+
+        // Seed the user via the GET /me getOrCreate path so the FK in
+        // nl_search_log.user_id has a target.
+        restTemplate.exchange("/api/users/me", HttpMethod.GET, bearerRequest(null), String.class);
+
+        UUID userUuid = UUID.fromString(userId);
+        dsl.insertInto(NL_SEARCH_LOG)
+            .set(NL_SEARCH_LOG.ID, UUID.randomUUID())
+            .set(NL_SEARCH_LOG.USER_ID, userUuid)
+            .set(NL_SEARCH_LOG.RAW_QUERY, "ANON-DEL-IT-사전 데이터")
+            .set(NL_SEARCH_LOG.NORMALISED_QUERY, "anon-del-it-사전 데이터")
+            .set(NL_SEARCH_LOG.OUTCOME, "success")
+            .set(NL_SEARCH_LOG.DURATION_MS, 50)
+            .set(NL_SEARCH_LOG.FILTER_COUNT, 1)
+            .execute();
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+            "/api/users/me", HttpMethod.DELETE, bearerRequest(null), Void.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        // Row should still exist (analytics retains it for 90 days) but with
+        // user_id NULLed so it no longer ties back to the deleted user.
+        Integer rowsByUser = dsl.fetchCount(NL_SEARCH_LOG, NL_SEARCH_LOG.USER_ID.eq(userUuid));
+        Integer rowsByRaw = dsl.fetchCount(NL_SEARCH_LOG,
+            NL_SEARCH_LOG.RAW_QUERY.eq("ANON-DEL-IT-사전 데이터"));
+        assertThat(rowsByUser).as("user_id must be NULLed post-delete").isZero();
+        assertThat(rowsByRaw).as("row itself must survive (retention is 90 days)").isEqualTo(1);
+
+        // Cleanup
+        dsl.deleteFrom(NL_SEARCH_LOG)
+            .where(NL_SEARCH_LOG.RAW_QUERY.eq("ANON-DEL-IT-사전 데이터"))
+            .execute();
+    }
+
+    @Autowired private DSLContext dsl;
 
     private HttpEntity<Void> bearerRequest(HttpHeaders extra) {
         HttpHeaders headers = new HttpHeaders();

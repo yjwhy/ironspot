@@ -61,6 +61,7 @@ The Apple Developer Program enrolment is deliberately deferred until everything 
   - Identifiers: user ID
   - Diagnostics: Sentry crash and performance (anonymised IDs)
   - Location: coarse and precise (search proximity)
+  - NL search queries: retained 90 days for usage-pattern analysis (Phase 4 Operational item, see `docs/plans/phase-4/implementation.md` "NL search query log infra plan"). Disclosed in `docs/legal/privacy-policy.{ko,en}.md` Section 2 + 3.
 - [x] **5.1.1(v) Account deletion in-app**: resolved under Section 1 above.
 - [x] **5.1.2 Data Use and Sharing**: no third-party data sharing beyond Sentry (diagnostics), Supabase (storage and auth), Naver Maps (location for tile rendering), Groq plus Gemini (NL search query text only, no PII). Itemised in privacy policy.
 - [ ] **5.1.5 Location Services**: confirm Info.plist `NSLocationWhenInUseUsageDescription` matches user-facing copy after EAS prebuild. App.json string in place but worth visual check post-build.

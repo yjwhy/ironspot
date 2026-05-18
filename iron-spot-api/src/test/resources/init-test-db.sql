@@ -157,6 +157,40 @@ CREATE INDEX IF NOT EXISTS reports_target_pending_idx
 CREATE INDEX IF NOT EXISTS reports_reporter_recent_idx
   ON reports (user_id, created_at DESC);
 
+-- V3 / NL search query log infra (Phase 4 Operational). Hand-mirror of
+-- iron-spot-api/src/main/resources/db/migration/V3__nl_search_log.sql.
+-- See docs/plans/phase-4/implementation.md "NL search query log infra plan".
+CREATE TABLE IF NOT EXISTS nl_search_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  raw_query TEXT NOT NULL,
+  normalised_query TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  total_count INT,
+  duration_ms INT NOT NULL,
+  filter_count INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS nl_search_log_created_at_idx
+  ON nl_search_log (created_at);
+
+CREATE INDEX IF NOT EXISTS nl_search_log_normalised_created_idx
+  ON nl_search_log (normalised_query, created_at);
+
+CREATE INDEX IF NOT EXISTS nl_search_log_user_id_idx
+  ON nl_search_log (user_id) WHERE user_id IS NOT NULL;
+
+CREATE OR REPLACE VIEW nl_search_analytics_30d AS
+SELECT
+  normalised_query,
+  COUNT(*) AS hit_count,
+  COUNT(DISTINCT user_id) AS distinct_user_count
+FROM nl_search_log
+WHERE created_at >= NOW() - INTERVAL '30 days'
+GROUP BY normalised_query
+ORDER BY hit_count DESC;
+
 -- Minimal seed for tests
 INSERT INTO brands(id, name) VALUES ('b0000001-0000-0000-0000-000000000001', 'Panatta');
 INSERT INTO brands(id, name) VALUES ('b0000002-0000-0000-0000-000000000002', 'Life Fitness');

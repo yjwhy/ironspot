@@ -22,6 +22,7 @@ Phase 4 in progress. Task 41 (LLM eval workflow repair) merged via PR #83 (267b1
 - [x] Operational — UptimeRobot keep-warm: backup GH Actions cron added (`.github/workflows/keep-warm.yml`); primary UptimeRobot HTTP monitor live against `/actuator/health` (5 min interval)
 - [x] Operational — Privacy Policy + ToS: drafted (KR + EN, `docs/legal/`) + Pages deploy workflow live (`.github/workflows/deploy-legal-pages.yml`). Hosted URLs: https://yjwhy.github.io/ironspot/ (landing), `/privacy-policy.{ko,en}.html`, `/terms-of-service.{ko,en}.html`. Wire into App Store Connect at submission time.
 - [ ] Operational — EAS preview-simulator
+- [x] Operational — NL search query log infra (Phase 5 H2 measurement enablement, pre-launch ship): 6 slices D1-D6 merged on `chore/nl-search-log-infra`. Schema (Flyway V3 + JOOQ regen) + writer (REQUIRES_NEW tx, skip-on-429, swallow-on-error) + retention cron (04:00 KST daily, 90-day cut-off) + admin endpoint (`GET /api/admin/nl-search-analytics?period=7d|30d|90d`) + account-delete anonymise + privacy policy disclosure (KR + EN). Backend +9 IT cases. See `implementation.md` "NL search query log infra plan" for the 13-decision grill outcome.
 - [x] Tier 3 (post-launch, data-driven) ported to `docs/plans/phase-5/README.md` (Phase 5 planning unblocks after launch + real users)
 
 ## Completed Tasks Log
