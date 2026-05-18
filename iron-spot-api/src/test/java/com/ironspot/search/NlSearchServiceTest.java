@@ -46,6 +46,8 @@ class NlSearchServiceTest {
     private NlSearchQuotaService quotaService;
     @Mock
     private NlSearchEmptyResultReporter emptyResultReporter;
+    @Mock
+    private NlSearchLogWriter logWriter;
 
     @InjectMocks
     private NlSearchService service;

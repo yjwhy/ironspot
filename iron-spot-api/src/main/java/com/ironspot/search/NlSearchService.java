@@ -30,6 +30,7 @@ public class NlSearchService {
     private final InterpretationFormatter interpretationFormatter;
     private final NlSearchQuotaService quotaService;
     private final NlSearchEmptyResultReporter emptyResultReporter;
+    private final NlSearchLogWriter logWriter;
 
     @Transactional(readOnly = true)
     public NlSearchResponse search(NlSearchRequest req, UserPrincipal principal) {
@@ -66,6 +67,15 @@ public class NlSearchService {
             long durationMs = (System.nanoTime() - startNanos) / 1_000_000L;
             recordBreadcrumb(req.query(), dsl, totalCount, durationMs, outcome);
             emptyResultReporter.reportIfEmpty(req.query(), totalCount);
+            // Skip-on-429 per grill Q12 — quota-rejected queries never ran the
+            // pipeline so they don't represent a "real" search attempt for H2
+            // analytics. All other outcomes (success, dsl_error, runtime_error,
+            // other 4xx) land in nl_search_log. Writer swallows its own
+            // exceptions; this finally block stays exception-safe.
+            if (!"business_error:429".equals(outcome)) {
+                int filterCount = dsl != null ? dsl.machineFilters().size() : 0;
+                logWriter.write(principal, req.query(), outcome, totalCount, durationMs, filterCount);
+            }
         }
     }
 
