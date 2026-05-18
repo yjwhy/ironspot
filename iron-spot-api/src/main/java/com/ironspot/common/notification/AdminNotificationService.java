@@ -67,6 +67,10 @@ public class AdminNotificationService {
             + "` re-opened by reporter `" + reporterId + "`");
     }
 
+    public void notifyModerationDigest(String body) {
+        post(body);
+    }
+
     private void post(String text) {
         if (webhookUrl == null || webhookUrl.isBlank()) {
             log.debug("Slack webhook not configured, skipping notification: {}", text);
