@@ -27,7 +27,7 @@ The Apple Developer Program enrolment is deliberately deferred until everything 
 - [x] **1.2 User-generated content moderation**: in-app reporting with admin disposition queue covers photo and `gym_machine` targets (Tasks 33, 34, 46). Auto-blind on `actioned_count >= 3` plus auto-ban on `dismissed_count >= 5` (Task 34). Per-target disposition cascade with re-template or delete (Task 46).
 - [x] **1.2 Method to report objectionable content**: `ReportReasonSheet` from photo detail and machine list entry points.
 - [x] **1.2 Method to block abusive users**: covered by reporter side via `reports_unique_reporter_target` constraint plus admin ban path. No user-facing block button (single-target moderation model, acceptable for Health and Fitness category at launch).
-- [ ] **1.2 Account deletion in-app** (Guideline 5.1.1(v) as well): `users.deleted_at` column exists in `init-test-db.sql` and `UserRepository.markDeleted` ships, but prod schema is missing the column (Phase 2 carry-over gap). Pre-submission hotfix: `ALTER TABLE users ADD COLUMN deleted_at TIMESTAMPTZ` plus user-facing delete entry point on Profile.
+- [x] **1.2 Account deletion in-app** (Guideline 5.1.1(v) as well): `DELETE /api/users/me` ships (`UserController.deleteMe` → `UserService.deleteAccount` does anonymise photos plus delete votes plus soft delete `users.deleted_at`). `AccountSettingsScreen.tsx` exposes the 계정 삭제 entry point reached from Profile → 계정 설정, with destructive Alert confirmation plus post-delete `supabase.auth.signOut()` plus `router.replace(AUTH_ROUTES.login)`. Prod schema `users.deleted_at` column verified present via Task 40 live trace (see `docs/plans/phase-3/PROGRESS.md` carry-over note).
 - [x] **1.5 Developer information**: support email `yyou017@gmail.com` (personal) ready for App Store Connect.
 
 ## 2. Guideline 2: Performance
@@ -61,7 +61,7 @@ The Apple Developer Program enrolment is deliberately deferred until everything 
   - Identifiers: user ID
   - Diagnostics: Sentry crash and performance (anonymised IDs)
   - Location: coarse and precise (search proximity)
-- [x] **5.1.1(v) Account deletion in-app**: tracked under Section 1 above. Submission blocker if not closed.
+- [x] **5.1.1(v) Account deletion in-app**: resolved under Section 1 above.
 - [x] **5.1.2 Data Use and Sharing**: no third-party data sharing beyond Sentry (diagnostics), Supabase (storage and auth), Naver Maps (location for tile rendering), Groq plus Gemini (NL search query text only, no PII). Itemised in privacy policy.
 - [ ] **5.1.5 Location Services**: confirm Info.plist `NSLocationWhenInUseUsageDescription` matches user-facing copy after EAS prebuild. App.json string in place but worth visual check post-build.
 - [x] **5.2.3 Sweepstakes, Contests**: N/A.
@@ -226,10 +226,13 @@ Contact: yyou017@gmail.com
 
 Items that are NOT yet resolved and need explicit decisions before submission:
 
-1. **Account deletion UI plus prod `users.deleted_at` hotfix** (Section 1). Blocker per 5.1.1(v).
-2. **Apple Developer enrolment timing** (Section 0). User-controlled, deferred per memory.
-3. **Test account credentials for App Review** (Section 9). Decide whether to create a dedicated `apple-review@ironspot.test` account with admin role pre-baked so the reviewer can exercise the admin queue, or keep reviewer as plain user.
-4. **Re-scope `SENTRY_AUTH_TOKEN`** (Section 7) if Phase 5 wants automated Sentry event verification.
+1. **Apple Developer enrolment timing** (Section 0). User-controlled, deferred per memory.
+2. **Test account credentials for App Review** (Section 9). Decide whether to create a dedicated `apple-review@ironspot.test` account with admin role pre-baked so the reviewer can exercise the admin queue, or keep reviewer as plain user.
+3. **Re-scope `SENTRY_AUTH_TOKEN`** (Section 7) if Phase 5 wants automated Sentry event verification.
+
+Items recently resolved during Phase 4 close audit:
+
+- **Account deletion UI** plus **prod `users.deleted_at` hotfix** (Section 1, originally tracked as a blocker per 5.1.1(v)). Closed 2026-05-18 after verifying that backend, frontend, routing, tests, and prod schema were all already in place. Trail in `docs/plans/phase-3/PROGRESS.md` carry-over note.
 
 ## Related documents
 
