@@ -39,6 +39,13 @@ export type GymBottomSheetMode =
        * the first registrant. */
       onUnregisteredPress?: (place: UnregisteredPlace) => void;
       /**
+       * Phase 5 item 14: naver place ID for which the optimistic
+       * `useCreateGym` mutation is currently in flight. The matching card
+       * renders a spinner + "등록 중..." copy and ignores taps. `null` /
+       * omitted means no creation is pending.
+       */
+      pendingUnregisteredPlaceId?: string | null;
+      /**
        * NL Search 0-result fallback. When present and BOTH `gyms` and
        * `unregisteredPlaces` are empty, the bottom sheet renders an
        * NL-specific empty state instead of the default "필터를 조정해보세요".

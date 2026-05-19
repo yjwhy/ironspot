@@ -45,4 +45,24 @@ describe('UnregisteredGymCard', () => {
       ),
     ).toBeTruthy();
   });
+
+  it('shows a pending indicator and switches the CTA copy when isPending is true', () => {
+    // Phase 5 item 14: while the optimistic createGym mutation is in flight
+    // we want the tapped card to feel "in progress" rather than dead. The
+    // pending copy + spinner is what the user sees during the network hop.
+    const { getByText, getByTestId } = render(
+      <UnregisteredGymCard {...baseProps} isPending testID="unreg" />,
+    );
+    expect(getByText('등록 중...')).toBeTruthy();
+    expect(getByTestId('unreg-pending-indicator')).toBeTruthy();
+  });
+
+  it('ignores taps while isPending is true to prevent double-submission', () => {
+    const onPress = jest.fn();
+    const { getByRole } = render(
+      <UnregisteredGymCard {...baseProps} isPending onPress={onPress} />,
+    );
+    fireEvent.press(getByRole('button', { name: /강남헬스클럽/ }));
+    expect(onPress).not.toHaveBeenCalled();
+  });
 });

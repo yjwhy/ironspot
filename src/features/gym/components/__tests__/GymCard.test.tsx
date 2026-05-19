@@ -51,9 +51,33 @@ describe('GymCard', () => {
     expect(getByText('1.2km')).toBeTruthy();
   });
 
-  it('renders machine count as a single chip', () => {
+  it('renders the registered-count copy with the "등록된 기구 N대" phrasing when N > 0', () => {
+    // Phase 5 item 19: clarify that the count is our registered set, not the
+    // gym's actual total. Avoids the "this gym only has 12 machines" misread.
     const { getByText } = renderCard();
-    expect(getByText('기구 12대')).toBeTruthy();
+    expect(getByText('등록된 기구 12대')).toBeTruthy();
+  });
+
+  it('renders the friendlier "아직 등록된 기구가 없어요" copy when machine_count is 0', () => {
+    // Phase 5 item 19: "등록된 기구 0대" is grammatically correct but reads
+    // coldly; the alternative invites contribution.
+    const { getByText, queryByText } = renderCard({
+      gym: { ...baseGym, machine_count: 0 },
+    });
+    expect(getByText('아직 등록된 기구가 없어요')).toBeTruthy();
+    expect(queryByText('등록된 기구 0대')).toBeNull();
+  });
+
+  it('does not render the matched-machines line', () => {
+    // Phase 5 item 19: the matched-machine name list is removed from the card
+    // to keep the bottom sheet dense; details live on GymDetail.
+    const { queryByTestId } = renderCard({
+      gym: {
+        ...baseGym,
+        matched_machine_names: ['Panatta High Row', 'Hammer Strength Chest Press'],
+      },
+    });
+    expect(queryByTestId('gym-card-matched-machines')).toBeNull();
   });
 
   it('renders the formatted last verified date when present', () => {
@@ -80,18 +104,27 @@ describe('GymCard', () => {
     expect(UNSAFE_queryAllByType(Image)).toHaveLength(0);
   });
 
-  it('exposes name, distance, machine count and verified date via accessibility label', () => {
+  it('exposes name, distance, registered-count and verified date via accessibility label', () => {
     const { getByRole } = renderCard();
     expect(
       getByRole('button', {
-        name: 'Fitness Factory, 0.3km, 기구 12대, 확인일 2026.03.15',
+        name: 'Fitness Factory, 0.3km, 등록된 기구 12대, 확인일 2026.03.15',
       }),
+    ).toBeTruthy();
+  });
+
+  it('uses the friendlier copy in the accessibility label when machine_count is 0', () => {
+    const { getByRole } = renderCard({
+      gym: { ...baseGym, machine_count: 0, last_verified_at: null },
+    });
+    expect(
+      getByRole('button', { name: 'Fitness Factory, 0.3km, 아직 등록된 기구가 없어요' }),
     ).toBeTruthy();
   });
 
   it('drops the verified segment from the accessibility label when last_verified_at is null', () => {
     const { getByRole } = renderCard({ gym: { ...baseGym, last_verified_at: null } });
-    expect(getByRole('button', { name: 'Fitness Factory, 0.3km, 기구 12대' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Fitness Factory, 0.3km, 등록된 기구 12대' })).toBeTruthy();
   });
 
   it('calls onPress when tapped', () => {
@@ -99,58 +132,5 @@ describe('GymCard', () => {
     const { getByTestId } = renderCard({ onPress });
     fireEvent.press(getByTestId('gym-card'));
     expect(onPress).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not render the matched-machines line when none matched', () => {
-    const { queryByTestId } = renderCard();
-    expect(queryByTestId('gym-card-matched-machines')).toBeNull();
-  });
-
-  it('handles undefined matched_machine_names without crashing', () => {
-    // BE 응답 drift 시뮬레이션: 타입은 readonly string[] 이지만 런타임에 undefined 도착하는 경우
-    // (필터 미적용 search 응답 / 옛 endpoint / jOOQ projection 누락 등). formatMatchedMachines 가
-    // defensive guard 로 처리해야 함.
-    const gymWithoutMatched = {
-      ...baseGym,
-      matched_machine_names: undefined,
-    } as unknown as GymWithMachineCount;
-    const { queryByTestId } = renderCard({ gym: gymWithoutMatched });
-    expect(queryByTestId('gym-card-matched-machines')).toBeNull();
-  });
-
-  it('handles null matched_machine_names without crashing', () => {
-    const gymWithNullMatched = {
-      ...baseGym,
-      matched_machine_names: null,
-    } as unknown as GymWithMachineCount;
-    const { queryByTestId } = renderCard({ gym: gymWithNullMatched });
-    expect(queryByTestId('gym-card-matched-machines')).toBeNull();
-  });
-
-  it('renders matched machine names inline when 3 or fewer matched', () => {
-    const { getByTestId, getByText } = renderCard({
-      gym: {
-        ...baseGym,
-        matched_machine_names: ['Panatta High Row', 'Hammer Strength Chest Press'],
-      },
-    });
-    expect(getByTestId('gym-card-matched-machines')).toBeTruthy();
-    expect(getByText('✓ Panatta High Row, Hammer Strength Chest Press')).toBeTruthy();
-  });
-
-  it('collapses tail into "외 +N" when more than 3 matched', () => {
-    const { getByText } = renderCard({
-      gym: {
-        ...baseGym,
-        matched_machine_names: [
-          'Panatta High Row',
-          'Panatta Low Row',
-          'Panatta Hex Squat',
-          'Hammer Chest Press',
-          'Cybex Squat',
-        ],
-      },
-    });
-    expect(getByText('✓ Panatta High Row, Panatta Low Row, Panatta Hex Squat 외 +2')).toBeTruthy();
   });
 });

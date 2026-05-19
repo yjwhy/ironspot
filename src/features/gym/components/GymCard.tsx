@@ -3,7 +3,6 @@ import { Image } from 'expo-image';
 import { View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
-import { AccentChip } from '@/shared/components/AccentChip';
 import { AppText } from '@/shared/components/AppText';
 import { Card } from '@/shared/components/Card';
 import { formatDistanceKm, formatVerifiedDate } from '@/shared/lib/format';
@@ -21,37 +20,32 @@ interface GymCardProps {
 
 // Shared with GymCardSkeleton so the loading footprint matches the loaded
 // card pixel-for-pixel. If you change layout slots (thumbnail, name, meta,
-// chip, verified-date) or their sizes, update GymCardSkeleton to match.
+// count, verified-date) or their sizes, update GymCardSkeleton to match.
 export const GYM_CARD_THUMBNAIL_SIZE = 80;
 
-// ADR 0022 / Slice 45i: top 3 matched machines shown inline; rest collapsed
-// into "외 +N". Card height stays bounded regardless of match count.
-const MATCHED_MACHINES_INLINE_LIMIT = 3;
+const EMPTY_COUNT_COPY = '아직 등록된 기구가 없어요';
 
-function formatMatchedMachines(names: readonly string[] | null | undefined): string | null {
-  if (!names || names.length === 0) return null;
-  if (names.length <= MATCHED_MACHINES_INLINE_LIMIT) return names.join(', ');
-  const head = names.slice(0, MATCHED_MACHINES_INLINE_LIMIT).join(', ');
-  const remainder = names.length - MATCHED_MACHINES_INLINE_LIMIT;
-  return `${head} 외 +${String(remainder)}`;
+function formatMachineCount(machineCount: number): string {
+  // Phase 5 item 19: explicit "등록된" prefix prevents the wrong mental model
+  // ("this gym only has N machines"). N=0 routes to a friendlier sentence
+  // that primes the contribution loop instead of reading coldly.
+  return machineCount === 0 ? EMPTY_COUNT_COPY : `등록된 기구 ${String(machineCount)}대`;
 }
 
 function buildAccessibilityLabel(
   name: string,
   distanceLabel: string,
   machineCount: number,
-  matchedPreview: string | null,
   verifiedLabel: string | null,
 ): string {
-  const parts = [name, distanceLabel, `기구 ${String(machineCount)}대`];
-  if (matchedPreview) parts.push(`매칭 머신 ${matchedPreview}`);
+  const parts = [name, distanceLabel, formatMachineCount(machineCount)];
   if (verifiedLabel) parts.push(verifiedLabel);
   return parts.join(', ');
 }
 
 export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID }: GymCardProps) {
   const distanceLabel = formatDistanceKm(distanceKm);
-  const matchedPreview = formatMatchedMachines(gym.matched_machine_names);
+  const machineCountCopy = formatMachineCount(gym.machine_count);
   const verifiedLabel = gym.last_verified_at
     ? `확인일 ${formatVerifiedDate(gym.last_verified_at)}`
     : null;
@@ -68,7 +62,6 @@ export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID 
           gym.name,
           distanceLabel,
           gym.machine_count,
-          matchedPreview,
           verifiedLabel,
         )}
       >
@@ -93,16 +86,7 @@ export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID 
                 <MaterialIcons name="place" size={14} color={colors.text.secondary} />
                 <AppText className="text-body-sm text-text-secondary">{distanceLabel}</AppText>
               </View>
-              <AccentChip>기구 {gym.machine_count}대</AccentChip>
-              {matchedPreview ? (
-                <AppText
-                  className="text-body-sm text-text-secondary"
-                  numberOfLines={1}
-                  testID="gym-card-matched-machines"
-                >
-                  ✓ {matchedPreview}
-                </AppText>
-              ) : null}
+              <AppText className="text-body-sm text-text-secondary">{machineCountCopy}</AppText>
             </View>
             {verifiedLabel ? (
               <AppText className="self-end text-body-sm text-text-tertiary">

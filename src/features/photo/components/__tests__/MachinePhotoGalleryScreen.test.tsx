@@ -131,10 +131,24 @@ describe('MachinePhotoGalleryScreen', () => {
     expect(getByTestId('photo-grid-best-cut')).toBeTruthy();
   });
 
-  it('navigates to the upload gym-select screen when the FAB is tapped by an authenticated user', () => {
+  it('navigates straight to the camera pre-bound to this gym+machine when the FAB is tapped by an authenticated user', () => {
+    // Phase 5 item 15b: skip the redundant gym-select step — both gym and
+    // machine are already known on this screen, so the camera should land
+    // pre-bound via gymMachineId.
     const { getByLabelText } = render(<MachinePhotoGalleryScreen gymId="g-1" machineId="gm-1" />);
     fireEvent.press(getByLabelText('사진 올리기'));
-    expect(router.push).toHaveBeenCalledWith('/(upload)/gym-select');
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/(upload)/photo',
+      params: { gymMachineId: 'gm-1' },
+    });
+  });
+
+  it('does not navigate to the camera when machineId is undefined (defensive)', () => {
+    const { getByLabelText } = render(
+      <MachinePhotoGalleryScreen gymId="g-1" machineId={undefined} />,
+    );
+    fireEvent.press(getByLabelText('사진 올리기'));
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it('redirects to login when the FAB is tapped by an unauthenticated user', () => {

@@ -1,11 +1,16 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { AccentChip } from '@/shared/components/AccentChip';
 import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Skeleton } from '@/shared/components/Skeleton';
 import { formatVerifiedDate } from '@/shared/lib/format';
+import { pressedOpacity } from '@/shared/lib/pressable';
+import { colors } from '@/shared/theme/tokens';
 import type { Gym, GymMachineWithDetails } from '@/shared/types/database';
 
 import { GymOwnerEntry } from './GymOwnerEntry';
@@ -21,15 +26,18 @@ export function GymDetail({ gym, onPressMachine }: GymDetailProps) {
   const { data, isPending, isError } = useGymMachines(gym.id);
 
   return (
-    <View className="flex-1 gap-4 bg-bg-base p-4">
-      <GymHeader gym={gym} />
-      <GymOwnerEntry gymId={gym.id} gymName={gym.name} />
-      <MachinesBody
-        data={data}
-        isPending={isPending}
-        isError={isError}
-        onPressMachine={onPressMachine}
-      />
+    <View className="flex-1 bg-bg-base">
+      <View className="flex-1 gap-4 p-4">
+        <GymHeader gym={gym} />
+        <GymOwnerEntry gymId={gym.id} gymName={gym.name} />
+        <MachinesBody
+          data={data}
+          isPending={isPending}
+          isError={isError}
+          onPressMachine={onPressMachine}
+        />
+      </View>
+      <AddPhotoFab gymId={gym.id} />
     </View>
   );
 }
@@ -89,4 +97,43 @@ function MachinesBody({ data, isPending, isError, onPressMachine }: MachinesBody
   }
 
   return <MachineList machines={data} onPressMachine={onPressMachine} />;
+}
+
+interface AddPhotoFabProps {
+  gymId: string;
+}
+
+function AddPhotoFab({ gymId }: AddPhotoFabProps) {
+  // Phase 5 item 15a (partial): item 11 backend (POST /api/gym-machines) is
+  // not merged yet, so the FAB routes to /(upload)/gym-select with the gym
+  // pre-selected as a placeholder for the gymId-aware camera. Once item 11
+  // ships, swap this to /(upload)/photo with a gymId-only param + OCR/
+  // template-match path so the user can register a new machine in-place.
+  // See `docs/plans/phase-5/README.md` items 11 + 15a.
+  const requireAuth = useRequireAuth();
+  function handlePress() {
+    requireAuth(function navigateToUpload() {
+      router.push({
+        pathname: '/(upload)/gym-select',
+        params: { selectedGymId: gymId },
+      });
+    });
+  }
+  return (
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel="사진 추가"
+      style={pressedOpacity}
+      className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-accent shadow-lg"
+    >
+      <MaterialIcons
+        name="add-a-photo"
+        size={24}
+        color={colors.text.inverse}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
+    </Pressable>
+  );
 }

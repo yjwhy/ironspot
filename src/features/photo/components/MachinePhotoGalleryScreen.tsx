@@ -49,8 +49,13 @@ export function MachinePhotoGalleryScreen({ gymId, machineId }: MachinePhotoGall
   }
 
   function handlePressUpload() {
+    // Phase 5 item 15b: skip the redundant gym-select hop — this gallery is
+    // already bound to a specific gym+machine, so route straight to the
+    // camera pre-bound via gymMachineId. The gym-select FAB was forcing
+    // the user to re-pick the gym they're already inside of.
+    if (!machineId) return;
     requireAuth(function navigateToUpload() {
-      router.push('/(upload)/gym-select');
+      router.push({ pathname: '/(upload)/photo', params: { gymMachineId: machineId } });
     });
   }
 
