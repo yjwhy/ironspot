@@ -6,12 +6,12 @@ import { Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
-import { Button } from '@/shared/components/Button';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { captureError } from '@/shared/lib/sentry';
 import { supabase } from '@/shared/lib/supabase';
 import { colors } from '@/shared/theme/tokens';
 
+import { OAuthButton } from './OAuthButton';
 import { AUTH_REDIRECT_URL, PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../constants';
 import { parseAuthCallback } from '../lib/parseAuthCallback';
 
@@ -88,30 +88,30 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
       <View className="gap-3">
         <PolicyDisclosure />
 
-        <Button
+        <OAuthButton
+          provider="google"
           label="Google로 계속하기"
           onPress={() => {
             void handleOAuthLogin('google');
           }}
           loading={loading === 'google'}
-          variant="primary"
         />
-        <Button
+        <OAuthButton
+          provider="kakao"
           label="Kakao로 계속하기"
           onPress={() => {
             void handleOAuthLogin('kakao');
           }}
           loading={loading === 'kakao'}
-          variant="secondary"
         />
         {Platform.OS === 'ios' ? (
-          <Button
+          <OAuthButton
+            provider="apple"
             label="Apple로 계속하기"
             onPress={() => {
               void handleOAuthLogin('apple');
             }}
             loading={loading === 'apple'}
-            variant="secondary"
           />
         ) : null}
         <Pressable
