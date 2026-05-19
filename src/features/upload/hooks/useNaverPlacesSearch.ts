@@ -24,7 +24,11 @@ export function useNaverPlacesSearch(query: string): UseNaverPlacesSearchResult 
   );
 
   return {
-    places: enabled && data ? data.data : [],
+    // Double optional-chain: Orval types `data` as a `{ data, status }` wrapper
+    // but apiClient returns the raw parsed body, so `data?.data` can be
+    // undefined at runtime. Same pattern as useOwnerPendingDot.
+
+    places: enabled ? (data?.data ?? []) : [],
     isFetching,
     isError: enabled && isError,
   };
