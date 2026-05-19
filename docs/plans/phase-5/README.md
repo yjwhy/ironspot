@@ -70,6 +70,29 @@ Reported by the user during the same 2026-05-19 device-testing session: capturin
 
 Pre-launch decision: triage now, ship a fix once we know the failure mode. If the root cause is a backend bug rather than a UX gap it pulls forward to a pre-launch hotfix branch. If it is a Vision API rate-limit or transient 5xx it folds into the same fail-open path as the existing OCR-fail flow plus item 11's persistence pipe and ships together.
 
+### 13. NL search camera animation drops zoom on long-distance jumps, ignores resolved radius
+
+**Current state**
+
+Reported by the user on a physical iPhone in New Zealand: searching "강남역 헬스장" panned the map toward Seoul but the zoom level ended up zoomed way out (Seoul-wide rather than Gangnam-block). Trace of the behaviour:
+
+- `MapScreen.tsx:32` sets `INITIAL_ZOOM = 14`. First camera anchors on the user's GPS (overseas testers see their current country, not Korea).
+- `MapScreen.tsx:168` calls `mapRef.current?.animateCameraTo({ latitude, longitude, duration: CAMERA_ANIMATE_MS })` without a `zoom` argument. The omission is intentional — a comment at `MapScreen.tsx:163` warns that zoom-changing camera animations race with marker mount in `@mj-studio/react-native-naver-map` and clear newly added overlays.
+- The Naver Maps SDK appears to apply a cinematic long-distance behaviour (zoom out → pan → zoom in) when the start and end points are thousands of kilometres apart, and the zoom does not return to the pre-animation level. Confirmed only by user report so far; no SDK doc citation yet.
+- Backend already ships `resolvedLocation.radiusKm` in the NL response (1 km, 3 km, etc.) but the frontend only uses it to render the "1km 이내" chip — it is not threaded into the camera zoom calculation.
+
+**To-do (groomed scope)**
+
+- [ ] Reproduce: dev-build the simulator with `pnpm dev:prod`, set the iOS simulator location to Auckland (`xcrun simctl location booted set -36.8485,174.7633`), search "강남역 헬스장", confirm the same zoomed-out finish. Compare against starting in Seoul.
+- [ ] Decide camera strategy. Three options to grill: (a) jump-then-animate (no-anim `setCamera` to a point near the destination then short `animateCameraTo` for the polish — bypasses the long-distance cinematic), (b) animate with explicit zoom (pass `zoom: derivedFromRadius` and accept a one-frame marker race that the existing `CAMERA_DEFER_MS` already partially mitigates), or (c) avoid animation for jumps over a threshold (e.g. > 500 km — instant snap + defer markers).
+- [ ] Thread `resolvedLocation.radiusKm` into the zoom calculation. Rough mapping: 1 km → 15, 3 km → 13, 5 km → 12 (Web Mercator approximation). Lock the curve via Naver SDK's `fitBounds` if it accepts a centre + radius, otherwise hand-roll.
+- [ ] Side concern: starting camera fallback for overseas testers. Today the first camera is the user's GPS; a Korean fallback centre (e.g. 서울시청 좌표) once NL search is the dominant entry path would shorten the long jump that triggers the SDK behaviour. Adds a Phase 5 i18n thread but the immediate fix is camera strategy, not entry-point.
+- [ ] Coverage: extend the existing MapScreen camera test (if present) with two cases — short-distance pan keeps zoom 14, long-distance jump lands on `derivedZoom = f(radiusKm)`.
+
+**Reason this sits in Phase 5**
+
+Direct workaround for the user (search inside Korea, or re-search from a closer start point) keeps this from being a launch blocker. The grill between options (a)/(b)/(c) needs SDK-level repro plus the existing marker-mount race to be re-checked, both of which are too speculative to PR pre-launch without device verification.
+
 ## Post-launch hypotheses (drive prioritisation)
 
 Each Phase 5 task ships only when the matching hypothesis is either confirmed or falsified by real data. Phase 4 closed without users so all of these are pre-decisions waiting on evidence.
