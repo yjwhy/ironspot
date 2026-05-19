@@ -132,7 +132,7 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
               />
             }
           />
-        ) : (
+        ) : mode.hasActiveFilters ? (
           <EmptyState
             icon="search-off"
             title="조건에 맞는 헬스장이 없어요"
@@ -140,6 +140,16 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
             action={
               <Button label="필터 초기화" variant="secondary" onPress={mode.onClearFilters} />
             }
+          />
+        ) : (
+          // Pre-search / area-empty state: user hasn't applied a filter and
+          // hasn't run NL search; the auto map-bound load just came back empty.
+          // Avoid the misleading "필터를 조정해보세요" copy — guide them to pan
+          // the map or use the search bar instead.
+          <EmptyState
+            icon="explore"
+            title="이 지역에 등록된 헬스장이 없어요"
+            description="지도를 옮기거나 검색해서 다른 지역을 찾아보세요"
           />
         )
       }

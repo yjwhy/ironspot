@@ -120,6 +120,37 @@ NL search SQL builder (and the general gym search hot path via `GymRepository`) 
 
 ---
 
+## F5 — Empty-state copy on auto map-bound load is misleading 🟡 fixed
+
+**Discovered**: 2026-05-19 device testing follow-up. User observation: "앱을 켜자마자 검색도 안 했는데 검색 결과가 없으니 필터를 조정해 보라는 안내가 나오는 것은 약간 미스리딩 같습니다."
+
+**Symptom**: on app open, the map's auto bound-search fires before the user has interacted. If the viewport bounds happen to contain no gyms (common pre-launch with sparse prod data), the bottom sheet shows **"조건에 맞는 헬스장이 없어요 / 필터를 조정해보세요 / 필터 초기화"** even though the user has set zero filters. The "필터 초기화" CTA is functionally a no-op since there are no filters to clear.
+
+**Fix shipped** (this PR):
+
+- `GymBottomSheetMode` list shape grew a `hasActiveFilters: boolean` field.
+- `GymBottomSheet` now renders 3 distinct empty states:
+  1. **NL search empty** (`nlEmpty !== undefined`): existing "이 조건의 헬스장이 없어요 / {interpretation 에 해당하는 곳이 없어요} / 조건 바꿔서 검색" — unchanged.
+  2. **Filtered empty** (`hasActiveFilters === true`): existing "조건에 맞는 헬스장이 없어요 / 필터를 조정해보세요 / 필터 초기화" — unchanged copy, now gated on user actually having filters.
+  3. **Pre-search / area empty** (`hasActiveFilters === false`, no nlEmpty): NEW copy "이 지역에 등록된 헬스장이 없어요 / 지도를 옮기거나 검색해서 다른 지역을 찾아보세요" with `explore` icon (not `search-off`). No CTA button — the guidance text directs the user to pan or search organically.
+- `useBottomSheetMode` propagates the field; `MapScreen` computes `hasActiveFilters: activeFilterCount > 0`.
+
+**Verification**: iOS Simulator, app relaunched + panned to 옥수/금호 area (no gym data). New empty-state copy renders correctly with the new icon. Existing tests updated (`GymBottomSheet.test.tsx` jest 18 tests including a new case for the pre-search variant, `useBottomSheetMode.test.ts` helper updated). Frontend trio: lint 0, tsc 0, jest 568/568.
+
+## F6 — `useOwnerPendingDot` runtime crash on auto map-bound success 🔴 fixed
+
+**Discovered**: 2026-05-19 same device testing session, post-schema-fix.
+
+**Symptom**: app relaunch produced a Red Box render error: `Cannot read property 'length' of undefined` at `useOwnerPendingDot.ts:27:52`.
+
+**Cause**: `queueQuery.data?.data.length ?? 0` only optional-chains the outer `data`. Orval types `queueResponse` as a wrapper `{ data, status, headers }` but `apiClient` returns the raw parsed body, so `queueQuery.data` can be a non-wrapper at runtime, making `.data` on it `undefined`. The non-optional `.length` then crashes. Other consumers (`OwnerHomeScreen`, `OwnerQueueScreen`) avoid this with `data?.data ?? []` (the `?? []` swallows the same path), but the dot-badge probe used `.length ?? 0` which leaves `.length` un-guarded.
+
+This was hidden before the F2/F4 schema fix because the underlying `/api/admin/queue` call returned 5xx, leaving `queueQuery.data` undefined and the outer optional-chain protective. After the schema fix, the endpoint returns 200 with an empty array body, exposing the missed-optional-chain bug.
+
+**Fix shipped** (this PR): `queueQuery.data?.data?.length ?? 0` with an inline eslint-disable + comment explaining the type-vs-runtime mismatch. Bigger orval response-type alignment is a follow-up.
+
+**Verification**: iOS Simulator reload, Red Box gone, app proceeds to map + gym cards correctly.
+
 ## F3 — `OwnerTimeoutEscalationJob` exception is silent to operators 🟡 open
 
 **Discovered**: Same Render Logs session as F2.

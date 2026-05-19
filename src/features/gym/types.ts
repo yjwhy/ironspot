@@ -13,6 +13,16 @@ export type GymBottomSheetMode =
       gyms: readonly GymWithMachineCount[];
       userLocation: Coordinate;
       isLoading: boolean;
+      /**
+       * `true` iff the user has explicitly selected at least one brand /
+       * category / template / loadingType filter. Distinguishes "filtered
+       * empty" (user-induced) from "no data in this area" (auto map-bound
+       * load on app open). The bottom sheet renders different empty-state
+       * copy + CTA for each case so the auto-load empty state doesn't
+       * misleadingly tell the user to "adjust filters" before they have set
+       * any.
+       */
+      hasActiveFilters: boolean;
       onSelectGym: (gymId: string) => void;
       onClearFilters: () => void;
       /**

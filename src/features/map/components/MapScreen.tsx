@@ -103,6 +103,8 @@ export function MapScreen() {
   const isNlZeroResult = source.kind === 'nl' && source.response.totalCount === 0;
 
   const { visibleMarkerIds } = useMarkerReveal(displayedGyms);
+  const activeFilterCount =
+    filters.brandIds.length + filters.categoryIds.length + filters.templateIds.length;
   const {
     mode: bottomSheetMode,
     selectedGymId,
@@ -111,6 +113,7 @@ export function MapScreen() {
     gyms: displayedGyms,
     isPending,
     userLocation,
+    hasActiveFilters: activeFilterCount > 0,
     clearFilters,
     onPressMachine: (gymId, machineId) => {
       router.push(`/gym/${gymId}/machine/${machineId}`);
@@ -123,9 +126,6 @@ export function MapScreen() {
           }
         : undefined,
   });
-
-  const activeFilterCount =
-    filters.brandIds.length + filters.categoryIds.length + filters.templateIds.length;
 
   function handleNlSubmit(query: string) {
     nlSearch.mutate(query, {

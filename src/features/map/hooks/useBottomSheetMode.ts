@@ -9,6 +9,9 @@ interface UseBottomSheetModeParams {
   gyms: readonly GymWithMachineCount[];
   isPending: boolean;
   userLocation: Coordinate;
+  /** Passed straight through to the list-mode object so the bottom sheet can
+   * pick the right empty-state copy. See {@link GymBottomSheetMode} docstring. */
+  hasActiveFilters: boolean;
   clearFilters: () => void;
   onPressMachine: (gymId: string, machineId: string) => void;
   /** Optional NL Search empty-state action wired through to the bottom sheet. */
@@ -28,6 +31,7 @@ export function useBottomSheetMode({
   gyms,
   isPending,
   userLocation,
+  hasActiveFilters,
   clearFilters,
   onPressMachine,
   nlEmpty,
@@ -66,6 +70,7 @@ export function useBottomSheetMode({
           gyms,
           userLocation,
           isLoading: isPending,
+          hasActiveFilters,
           onSelectGym: setSelectedGymId,
           onClearFilters: clearFilters,
           nlEmpty,

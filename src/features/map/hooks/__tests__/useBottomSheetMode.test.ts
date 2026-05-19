@@ -30,6 +30,7 @@ function makeParams(overrides: Partial<Parameters<typeof useBottomSheetMode>[0]>
     gyms: NO_GYMS,
     isPending: false,
     userLocation: USER_LOCATION,
+    hasActiveFilters: false,
     clearFilters: jest.fn(),
     onPressMachine: jest.fn(),
     ...overrides,

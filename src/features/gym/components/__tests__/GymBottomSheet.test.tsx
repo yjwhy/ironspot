@@ -112,6 +112,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [fitnessFactory, strengthGym],
           userLocation,
           isLoading: false,
+          hasActiveFilters: false,
           onSelectGym: () => undefined,
           onClearFilters: () => undefined,
         }}
@@ -129,6 +130,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [fitnessFactory],
           userLocation,
           isLoading: false,
+          hasActiveFilters: false,
           onSelectGym: () => undefined,
           onClearFilters: () => undefined,
         }}
@@ -147,6 +149,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [fitnessFactory, strengthGym],
           userLocation,
           isLoading: false,
+          hasActiveFilters: false,
           onSelectGym,
           onClearFilters: () => undefined,
         }}
@@ -156,7 +159,7 @@ describe('GymBottomSheet (list mode)', () => {
     expect(onSelectGym).toHaveBeenCalledWith('g-2');
   });
 
-  it('shows an empty state with filter-tuning copy when the gyms array is empty', () => {
+  it('shows an empty state with filter-tuning copy when the gyms array is empty AND filters are active', () => {
     const { getByText } = render(
       <GymBottomSheet
         mode={{
@@ -164,6 +167,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [],
           userLocation,
           isLoading: false,
+          hasActiveFilters: true,
           onSelectGym: () => undefined,
           onClearFilters: () => undefined,
         }}
@@ -173,7 +177,7 @@ describe('GymBottomSheet (list mode)', () => {
     expect(getByText('필터를 조정해보세요')).toBeTruthy();
   });
 
-  it('renders a "필터 초기화" button in the empty state', () => {
+  it('renders a "필터 초기화" button in the filtered-empty state', () => {
     const { getByRole } = render(
       <GymBottomSheet
         mode={{
@@ -181,6 +185,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [],
           userLocation,
           isLoading: false,
+          hasActiveFilters: true,
           onSelectGym: () => undefined,
           onClearFilters: () => undefined,
         }}
@@ -189,7 +194,7 @@ describe('GymBottomSheet (list mode)', () => {
     expect(getByRole('button', { name: '필터 초기화' })).toBeTruthy();
   });
 
-  it('invokes onClearFilters when the empty-state button is pressed', () => {
+  it('invokes onClearFilters when the filtered-empty button is pressed', () => {
     const onClearFilters = jest.fn();
     const { getByRole } = render(
       <GymBottomSheet
@@ -198,6 +203,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [],
           userLocation,
           isLoading: false,
+          hasActiveFilters: true,
           onSelectGym: () => undefined,
           onClearFilters,
         }}
@@ -205,6 +211,29 @@ describe('GymBottomSheet (list mode)', () => {
     );
     fireEvent.press(getByRole('button', { name: '필터 초기화' }));
     expect(onClearFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the pre-search guidance copy when the gyms array is empty AND no filters are active', () => {
+    // Auto map-bound load just returned 0 results before the user has done
+    // anything. The empty-state must NOT tell them to "adjust filters" —
+    // they have none — and should instead guide them to pan / search.
+    const { getByText, queryByRole, queryByText } = render(
+      <GymBottomSheet
+        mode={{
+          type: 'list',
+          gyms: [],
+          userLocation,
+          isLoading: false,
+          hasActiveFilters: false,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
+      />,
+    );
+    expect(getByText('이 지역에 등록된 헬스장이 없어요')).toBeTruthy();
+    expect(getByText('지도를 옮기거나 검색해서 다른 지역을 찾아보세요')).toBeTruthy();
+    expect(queryByText('필터를 조정해보세요')).toBeNull();
+    expect(queryByRole('button', { name: '필터 초기화' })).toBeNull();
   });
 
   it('renders three gym-card skeletons while isLoading is true', () => {
@@ -215,6 +244,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [],
           userLocation,
           isLoading: true,
+          hasActiveFilters: false,
           onSelectGym: () => undefined,
           onClearFilters: () => undefined,
         }}
@@ -224,6 +254,7 @@ describe('GymBottomSheet (list mode)', () => {
     // The empty-state copy must not show during loading — it would race with the
     // skeleton and double-message the user.
     expect(queryByText('조건에 맞는 헬스장이 없어요')).toBeNull();
+    expect(queryByText('이 지역에 등록된 헬스장이 없어요')).toBeNull();
   });
 
   it('does not render skeletons when isLoading is false and gyms exist', () => {
@@ -234,6 +265,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [fitnessFactory],
           userLocation,
           isLoading: false,
+          hasActiveFilters: false,
           onSelectGym: () => undefined,
           onClearFilters: () => undefined,
         }}

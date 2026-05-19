@@ -24,6 +24,14 @@ export function useOwnerPendingDot(): UseOwnerPendingDotResult {
   const enabled = isAuthenticated && isOwnerLike;
 
   const queueQuery = useQueue({ limit: QUEUE_PROBE_LIMIT }, { query: { enabled } });
-  const pendingCount = queueQuery.data?.data.length ?? 0;
+  // Double optional-chain: Orval types `queueResponse` as a wrapper but the
+  // apiClient returns the raw parsed body, so `queueQuery.data?.data` can be
+  // undefined at runtime even when `queueQuery.data` is truthy. The lint
+  // disable is required because the TS type incorrectly says `.data` is
+  // non-nullable; matches the `?.data ?? []` pattern used in OwnerHomeScreen
+  // / OwnerQueueScreen which suppresses the same warning structurally via the
+  // `?? []` fallback.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const pendingCount = queueQuery.data?.data?.length ?? 0;
   return { showDot: enabled && pendingCount > 0 };
 }
