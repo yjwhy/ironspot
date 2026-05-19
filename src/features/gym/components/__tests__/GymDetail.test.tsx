@@ -1,10 +1,23 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { router } from 'expo-router';
 
 import type { Gym, GymMachineWithDetails } from '@/shared/types/database';
 import { makeGymMachineWithDetails } from '@/test/utils/factories/gym-machine';
 
 import { useGymMachines } from '../../hooks/useGymMachines';
 import { GymDetail } from '../GymDetail';
+
+jest.mock('expo-router', () => ({
+  router: { push: jest.fn() },
+}));
+
+// Phase 5 item 15a: GymDetail FAB requires auth on tap to gate the upload
+// flow at the same point as the existing MachinePhotoGalleryScreen FAB.
+jest.mock('@/features/auth/hooks/useRequireAuth', () => ({
+  useRequireAuth: () => (action: () => void) => {
+    action();
+  },
+}));
 
 // ADR 0022 follow-up (Task 46): MachineList renders ReportReasonSheet which
 // transitively imports `burnt` (ESM, not parsed by Jest).
@@ -162,5 +175,25 @@ describe('GymDetail', () => {
   it('queries the hook with the gym id from the prop', () => {
     render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
     expect(mockUseGymMachines).toHaveBeenCalledWith('g-1');
+  });
+
+  it('renders the "사진 추가" FAB above the machine list', () => {
+    // Phase 5 item 15a: gives the user an entry point into the upload flow
+    // from inside the gym detail without backing out to map → search → pick.
+    const { getByLabelText } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
+    expect(getByLabelText('사진 추가')).toBeTruthy();
+  });
+
+  it('routes the FAB tap to the upload flow with the current gym pre-selected', () => {
+    // Phase 5 item 15a (partial): item 11 backend (POST /api/gym-machines)
+    // isn't merged yet, so the FAB routes to the gym-select screen with
+    // selectedGymId pre-set instead of directly to a gymId-aware camera. The
+    // user still skips the duplicate gym-pick step.
+    const { getByLabelText } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
+    fireEvent.press(getByLabelText('사진 추가'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/(upload)/gym-select',
+      params: { selectedGymId: 'g-1' },
+    });
   });
 });

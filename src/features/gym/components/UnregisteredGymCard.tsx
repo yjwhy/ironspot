@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import { AppText } from '@/shared/components/AppText';
@@ -22,11 +22,20 @@ interface UnregisteredGymCardProps {
   /** Tap routes the user to the upload flow with this place pre-filled so
    * the user can become the first registrant. */
   onPress: () => void;
+  /**
+   * Phase 5 item 14: when the optimistic `useCreateGym` mutation is in
+   * flight for THIS place, render a spinner overlay + "등록 중..." copy and
+   * disable taps. Other unregistered cards stay interactive so the user can
+   * cancel by tapping a different place (the in-flight one will resolve and
+   * route them).
+   */
+  isPending?: boolean;
   testID?: string;
 }
 
 const CTA_LABEL = '첫 등록자 되어 정보 추가하기';
 const UNREGISTERED_LABEL = '아직 등록되지 않은 헬스장';
+const PENDING_LABEL = '등록 중...';
 
 export function UnregisteredGymCard({
   name,
@@ -34,9 +43,12 @@ export function UnregisteredGymCard({
   distanceKm,
   index,
   onPress,
+  isPending = false,
   testID,
 }: UnregisteredGymCardProps) {
   const distanceLabel = formatDistanceKm(distanceKm);
+  const resolvedTestID = testID ?? 'unregistered-gym-card';
+  const ctaLabel = isPending ? PENDING_LABEL : CTA_LABEL;
 
   return (
     <Animated.View
@@ -47,10 +59,12 @@ export function UnregisteredGymCard({
       <Card>
         <Pressable
           onPress={onPress}
+          disabled={isPending}
           accessibilityRole="button"
-          accessibilityLabel={`${name}, ${distanceLabel}, ${UNREGISTERED_LABEL}, ${CTA_LABEL}`}
+          accessibilityState={{ disabled: isPending, busy: isPending }}
+          accessibilityLabel={`${name}, ${distanceLabel}, ${UNREGISTERED_LABEL}, ${ctaLabel}`}
           style={pressedOpacity}
-          testID={testID ?? 'unregistered-gym-card'}
+          testID={resolvedTestID}
           className="flex-row gap-3 p-3 bg-bg-base/40 rounded-xl"
         >
           <View
@@ -81,8 +95,18 @@ export function UnregisteredGymCard({
               <MaterialIcons name="info-outline" size={14} color={colors.text.tertiary} />
               <AppText className="text-body-xs text-text-tertiary">{UNREGISTERED_LABEL}</AppText>
             </View>
-            <View className="mt-2 self-start rounded-full bg-accent/10 px-3 py-1.5">
-              <AppText className="text-body-xs text-accent font-semibold">{CTA_LABEL} →</AppText>
+            <View className="mt-2 flex-row items-center gap-2">
+              <View className="self-start rounded-full bg-accent/10 px-3 py-1.5">
+                <AppText className="text-body-xs text-accent font-semibold">
+                  {isPending ? ctaLabel : `${ctaLabel} →`}
+                </AppText>
+              </View>
+              {isPending ? (
+                <ActivityIndicator
+                  testID={`${resolvedTestID}-pending-indicator`}
+                  color={colors.accent.DEFAULT}
+                />
+              ) : null}
             </View>
           </View>
         </Pressable>

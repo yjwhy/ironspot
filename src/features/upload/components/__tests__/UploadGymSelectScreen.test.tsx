@@ -530,4 +530,58 @@ describe('UploadGymSelectScreen', () => {
       },
     });
   });
+
+  // ─── Phase 5 items 14 + 15a: selectedGymId deep-link ─────────────────────
+
+  it('honours a selectedGymId route param by pre-expanding that gym (item 14 + 15a)', async () => {
+    // Hotfix flow: MapScreen (after optimistic createGym) and GymDetail FAB
+    // both deep-link in with ?selectedGymId=<id> so the user lands on the
+    // list with that gym already expanded — no duplicate gym-pick step.
+    setupReadyLocation();
+    mockUseGymMachines.mockReturnValue(
+      makeGymMachinesResult({
+        isPending: false,
+        isSuccess: true,
+        data: SAMPLE_MACHINES,
+        status: 'success',
+      }),
+    );
+    mockUseLocalSearchParams.mockReturnValue({ selectedGymId: 'gym-1' });
+
+    const { getByTestId } = renderScreen();
+
+    await waitFor(() => {
+      expect(getByTestId('machine-item-machine-1')).toBeTruthy();
+      expect(getByTestId('machine-item-machine-2')).toBeTruthy();
+    });
+  });
+
+  it('stays in list mode when selectedGymId is present (does not enter naver-search)', () => {
+    setupReadyLocation();
+    mockUseLocalSearchParams.mockReturnValue({ selectedGymId: 'gym-1' });
+
+    const { queryByText } = renderScreen();
+
+    expect(queryByText('새 헬스장 등록')).toBeNull();
+  });
+
+  it('ignores selectedGymId when openNewGym=1 is also present (precedence guard)', () => {
+    // Phase 5 item 14 + 15a: openNewGym wins over selectedGymId. If both
+    // params land on the same route (defensive: would never happen from
+    // first-party callers, but easy to hit via deep-link), the screen
+    // enters Naver-search mode without a stranded gym selection underneath.
+    setupReadyLocation();
+    mockUseLocalSearchParams.mockReturnValue({
+      openNewGym: '1',
+      selectedGymId: 'gym-1',
+    });
+
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    // Naver-search panel rendered.
+    expect(getByTestId('naver-search-input')).toBeTruthy();
+    // Machine sublist for gym-1 is NOT visible (would require list mode +
+    // selected gym).
+    expect(queryByTestId('machine-item-machine-1')).toBeNull();
+  });
 });

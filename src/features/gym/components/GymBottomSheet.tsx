@@ -178,6 +178,7 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
             address={item.place.address}
             distanceKm={item.distanceKm}
             index={index}
+            isPending={mode.pendingUnregisteredPlaceId === item.place.naverPlaceId}
             testID={`unregistered-gym-card-${toTestSlug(item.place.name)}`}
             onPress={() => {
               mode.onUnregisteredPress?.(item.place);

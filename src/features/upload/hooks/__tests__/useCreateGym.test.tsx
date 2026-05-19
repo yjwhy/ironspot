@@ -126,4 +126,48 @@ describe('useCreateGym', () => {
 
     expect(burnt.toast).toHaveBeenCalledWith(expect.objectContaining({ preset: 'error' }));
   });
+
+  it('calls the caller-supplied onError so MapScreen can clear its pending-id tracking (item 14)', () => {
+    // Phase 5 item 14: MapScreen tracks `lastPressedUnregisteredPlaceId` and
+    // wants symmetric cleanup on success + error rather than relying on the
+    // gated `isPending` derivation alone.
+    const onError = jest.fn();
+    const mutate = jest.fn();
+    let captured: CapturedOptions | undefined;
+    mockedUseCreateGym.mockImplementation((options: CapturedOptions) => {
+      captured = options;
+      return { mutate, isPending: false };
+    });
+    renderHook(() => useCreateGym({ onError }));
+
+    captured?.mutation?.onError?.(new Error('boom'));
+
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps UnregisteredPlace fields onto CreateGymRequest via handleCreateGymFromUnregisteredPlace', () => {
+    // Phase 5 item 14: MapScreen taps an UnregisteredGymCard and calls this
+    // helper to skip the duplicate Naver-search step. UnregisteredPlace
+    // carries a flat `address` (road-name with jibun fallback) so we map it
+    // straight onto CreateGymRequest.address without indirection.
+    const { result, mutate } = setupHook();
+
+    result.current.handleCreateGymFromUnregisteredPlace({
+      naverPlaceId: 'naver-77',
+      name: '미등록 헬스장',
+      address: '서울 강남구 역삼동 99',
+      latitude: 37.5,
+      longitude: 127.04,
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      data: {
+        name: '미등록 헬스장',
+        address: '서울 강남구 역삼동 99',
+        latitude: 37.5,
+        longitude: 127.04,
+        naverPlaceId: 'naver-77',
+      },
+    });
+  });
 });

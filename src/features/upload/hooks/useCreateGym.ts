@@ -6,9 +6,16 @@ import { useCreateGym as useCreateGymMutation } from '@/shared/generated/gyms/gy
 import type { CreateGymRequest } from '@/shared/generated/model/createGymRequest';
 import type { GymDetailResponse } from '@/shared/generated/model/gymDetailResponse';
 import type { NaverPlaceResult } from '@/shared/generated/model/naverPlaceResult';
+import type { UnregisteredPlace } from '@/shared/generated/model/unregisteredPlace';
 
 interface UseCreateGymOptions {
   onSuccess?: (gym: GymDetailResponse) => void;
+  /**
+   * Phase 5 item 14: lets the caller clear any local "in-flight place id"
+   * tracking on the error edge so the bottom-sheet spinner stops decisively
+   * rather than relying on the derived gating alone.
+   */
+  onError?: () => void;
 }
 
 /**
@@ -30,6 +37,7 @@ export function useCreateGym(options?: UseCreateGymOptions) {
       },
       onError: () => {
         burnt.toast({ title: GYM_CREATE_FAILED_TITLE, preset: 'error' });
+        options?.onError?.();
       },
     },
   });
@@ -46,7 +54,30 @@ export function useCreateGym(options?: UseCreateGymOptions) {
     mutation.mutate({ data });
   }
 
-  return { handleCreateGym, isPending: mutation.isPending };
+  /**
+   * Phase 5 item 14: MapScreen taps an UnregisteredGymCard and creates the
+   * gym directly, bypassing the duplicate Naver-search step. UnregisteredPlace
+   * carries a flat `address` (backend already falls back from road-name to
+   * jibun when needed) and has no `phone` field, so the request omits phone
+   * unconditionally — this is intentional asymmetry with `handleCreateGym`,
+   * not an oversight.
+   */
+  function handleCreateGymFromUnregisteredPlace(place: UnregisteredPlace) {
+    const data: CreateGymRequest = {
+      name: place.name,
+      address: place.address,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      naverPlaceId: place.naverPlaceId,
+    };
+    mutation.mutate({ data });
+  }
+
+  return {
+    handleCreateGym,
+    handleCreateGymFromUnregisteredPlace,
+    isPending: mutation.isPending,
+  };
 }
 
 const GYM_CREATED_TITLE = '헬스장을 등록했어요';

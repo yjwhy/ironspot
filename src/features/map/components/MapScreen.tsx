@@ -2,7 +2,7 @@ import { NaverMapView } from '@mj-studio/react-native-naver-map';
 import type { NaverMapViewRef } from '@mj-studio/react-native-naver-map';
 import * as burnt from 'burnt';
 import { useRouter } from 'expo-router';
-import { useReducer, useRef } from 'react';
+import { useReducer, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
@@ -10,7 +10,8 @@ import { InterpretationChip } from '@/features/search/components/InterpretationC
 import { PermissionDeniedBadge } from '@/features/search/components/PermissionDeniedBadge';
 import { TopSearchBar } from '@/features/search/components/TopSearchBar';
 import { useNlSearch } from '@/features/search/hooks/useNlSearch';
-import type { NlSearchResponse, ParsedFilters } from '@/shared/generated/model';
+import { useCreateGym } from '@/features/upload/hooks/useCreateGym';
+import type { NlSearchResponse, ParsedFilters, UnregisteredPlace } from '@/shared/generated/model';
 import { GANGNAM_STATION, useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
 import type { GymWithMachineCount } from '@/shared/types/database';
 
@@ -112,14 +113,50 @@ export function MapScreen() {
   // filter mode the backend doesn't run the Naver merge so the array is empty.
   const unregisteredPlaces = source.kind === 'nl' ? source.response.unregisteredPlaces : undefined;
 
-  function handleUnregisteredPress(place: { name: string }) {
-    // Deep-link to the upload flow with the Naver place pre-filled so the
-    // user can become the first registrant (F7 product flow). Shared by the
-    // bottom-sheet UnregisteredGymCard tap and the map UnregisteredMarker tap.
-    router.push({
-      pathname: '/(upload)/gym-select',
-      params: { openNewGym: '1', initialQuery: place.name },
-    });
+  // Phase 5 item 14: track which unregistered place is currently being
+  // optimistically registered so the matching bottom-sheet card renders its
+  // "등록 중..." pending state. We clear `lastPressedUnregisteredPlaceId` on
+  // both onSuccess and onError so the underlying state stays truthful, and
+  // ALSO gate the derived `pendingUnregisteredPlaceId` behind `isPending` as
+  // belt-and-braces (covers any race where React batches the clear after a
+  // re-render of the bottom sheet).
+  const [lastPressedUnregisteredPlaceId, setLastPressedUnregisteredPlaceId] = useState<
+    string | null
+  >(null);
+  const createGym = useCreateGym({
+    onSuccess: (gym) => {
+      // Skip the duplicate Naver-search step the legacy CTA flow forced. The
+      // user lands on /(upload)/gym-select with this gym already expanded so
+      // they can pick a machine. The full "land on camera with gymId" path
+      // depends on item 11 (POST /api/gym-machines) + item 14d (undo); both
+      // are still pending. See `docs/plans/phase-5/README.md` items 11 + 14d.
+      // TODO(docs/plans/phase-5/README.md item 14d): once DELETE
+      // /api/gyms/<id> lands, route to /(upload)/camera?gymId=<gym.id> and
+      // show the 5s undo toast.
+      setLastPressedUnregisteredPlaceId(null);
+      router.push({
+        pathname: '/(upload)/gym-select',
+        params: { selectedGymId: gym.id },
+      });
+    },
+    onError: () => {
+      setLastPressedUnregisteredPlaceId(null);
+    },
+  });
+  const isCreatingGymFromUnregisteredPlace = createGym.isPending;
+  const pendingUnregisteredPlaceId = isCreatingGymFromUnregisteredPlace
+    ? lastPressedUnregisteredPlaceId
+    : null;
+
+  function handleRegisterUnregisteredGym(place: UnregisteredPlace) {
+    // Phase 5 item 14: optimistic create + skip the duplicate Naver-search.
+    // Named for the action (mutation + navigate), not the event source —
+    // both the bottom-sheet UnregisteredGymCard tap and the map
+    // UnregisteredMarker tap route here. Ignore re-taps while a creation is
+    // in flight; `isPending` covers any other in-flight place too.
+    if (isCreatingGymFromUnregisteredPlace) return;
+    setLastPressedUnregisteredPlaceId(place.naverPlaceId);
+    createGym.handleCreateGymFromUnregisteredPlace(place);
   }
 
   const {
@@ -136,7 +173,8 @@ export function MapScreen() {
       router.push(`/gym/${gymId}/machine/${machineId}`);
     },
     unregisteredPlaces,
-    onUnregisteredPress: handleUnregisteredPress,
+    onUnregisteredPress: handleRegisterUnregisteredGym,
+    pendingUnregisteredPlaceId,
     nlEmpty:
       source.kind === 'nl' &&
       source.response.totalCount === 0 &&
@@ -236,7 +274,7 @@ export function MapScreen() {
             latitude={place.latitude}
             longitude={place.longitude}
             onPress={() => {
-              handleUnregisteredPress(place);
+              handleRegisterUnregisteredGym(place);
             }}
           />
         ))}

@@ -26,6 +26,8 @@ interface UseBottomSheetModeParams {
    * interleaves these with `gyms` ordered by distance. */
   unregisteredPlaces?: readonly UnregisteredPlace[];
   onUnregisteredPress?: (place: UnregisteredPlace) => void;
+  /** Phase 5 item 14: see `GymBottomSheetMode.list.pendingUnregisteredPlaceId`. */
+  pendingUnregisteredPlaceId?: string | null;
 }
 
 interface UseBottomSheetModeResult {
@@ -44,6 +46,7 @@ export function useBottomSheetMode({
   hasActiveFilters,
   unregisteredPlaces,
   onUnregisteredPress,
+  pendingUnregisteredPlaceId,
 }: UseBottomSheetModeParams): UseBottomSheetModeResult {
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
 
@@ -88,6 +91,7 @@ export function useBottomSheetMode({
           hasActiveFilters: hasActiveFilters ?? false,
           unregisteredPlaces,
           onUnregisteredPress,
+          pendingUnregisteredPlaceId,
           nlEmpty,
         };
 

@@ -118,4 +118,24 @@ describe('useBottomSheetMode', () => {
 
     expect(onPressMachine).toHaveBeenCalledWith('g1', 'm1');
   });
+
+  it('passes pendingUnregisteredPlaceId through to the list mode payload', () => {
+    // Phase 5 item 14: the in-flight optimistic createGym mutation is
+    // tracked by MapScreen; the bottom sheet renders the matching card
+    // with a spinner. The hook just plumbs the value through.
+    const { result } = renderHook(() =>
+      useBottomSheetMode(makeParams({ pendingUnregisteredPlaceId: 'naver-42' })),
+    );
+    expect(result.current.mode.type).toBe('list');
+    if (result.current.mode.type === 'list') {
+      expect(result.current.mode.pendingUnregisteredPlaceId).toBe('naver-42');
+    }
+  });
+
+  it('defaults pendingUnregisteredPlaceId to null when omitted', () => {
+    const { result } = renderHook(() => useBottomSheetMode(makeParams()));
+    if (result.current.mode.type === 'list') {
+      expect(result.current.mode.pendingUnregisteredPlaceId ?? null).toBeNull();
+    }
+  });
 });

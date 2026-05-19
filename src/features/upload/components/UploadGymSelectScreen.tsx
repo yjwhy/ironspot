@@ -32,10 +32,26 @@ export function UploadGymSelectScreen() {
   // route is opened with `?openNewGym=1&initialQuery=<name>` the screen lands
   // in Naver-search mode with the place name pre-filled, so the user can
   // confirm + tap the same place + continue.
-  const params = useLocalSearchParams<{ openNewGym?: string; initialQuery?: string }>();
-  const initialMode: ScreenMode = params.openNewGym === '1' ? 'naver-search' : 'list';
+  //
+  // Phase 5 items 14 + 15a deep-link: `?selectedGymId=<id>` lands on the
+  // list with that gym already expanded so the user skips the duplicate
+  // gym-pick step. Fired by MapScreen (after optimistic createGym) and by
+  // the GymDetail FAB. `openNewGym=1` wins when both are present — the
+  // Naver-search panel is the more invasive surface and the selectedGymId
+  // would be stranded next to it. The explicit guard below enforces this
+  // precedence at the seeding step too so neither mode nor selection gets
+  // mixed signals.
+  const params = useLocalSearchParams<{
+    openNewGym?: string;
+    initialQuery?: string;
+    selectedGymId?: string;
+  }>();
+  const isOpeningNewGym = params.openNewGym === '1';
+  const initialMode: ScreenMode = isOpeningNewGym ? 'naver-search' : 'list';
   const [searchText, setSearchText] = useState('');
-  const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
+  const [selectedGymId, setSelectedGymId] = useState<string | null>(
+    isOpeningNewGym ? null : (params.selectedGymId ?? null),
+  );
   const [mode, setMode] = useState<ScreenMode>(initialMode);
 
   const location = locationState.status === 'loading' ? null : locationState.location;
