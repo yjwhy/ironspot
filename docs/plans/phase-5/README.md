@@ -43,16 +43,28 @@ Surfaced by the user during device testing on the iOS simulator while reviewing 
 
 **To-do (groomed scope)**
 
-- [ ] Backend: add `POST /api/gym-machines` (or extend existing endpoint) that accepts `{ gymId, freeFormName, brandHint?, categoryHint? }` and persists into a new `unverified_machine_names` queue table (or `gym_machines` with `template_id = NULL` plus a `pending_review` flag, decision in grill).
+- [ ] Backend: add `POST /api/gym-machines` (or extend existing endpoint) that accepts `{ gymId, templateId? | freeFormName }` and persists into `gym_machines` with `template_id` filled when the user picked from the closed list, or `template_id = NULL` plus `pending_review = true` when the user fell back to direct input.
 - [ ] Backend: bind the orphaned photo to the new row inside the same request so the upload flow finishes with a real `gym_machine_id`.
 - [ ] Frontend: replace the `// TODO` in `UploadConfirmScreen.tsx:238` with a real call. Toast copy stays optimistic but reflects truth ("등록 요청을 보냈어요, 검토 후 반영돼요" or similar).
-- [ ] Admin: add a queue view that lists pending free-form names, lets the admin (a) promote to an existing template, (b) create a new template plus optionally a new brand, or (c) reject. Folds into the existing admin dashboard rather than a new screen if volume stays low.
-- [ ] Telemetry: count per-week `unverified_machine_names` inserts so we can falsify hypothesis H7 below.
+- [ ] **OCR-failure picker UI (3 closed-list steps + escape hatch)** — replaces today's `OcrFailView` plain text input. See `Closed-list autocomplete pattern` below.
+- [ ] Admin: add a queue view that lists `pending_review = true` rows, lets the admin (a) promote by mapping to an existing template, (b) create a new template plus optionally a new brand, or (c) reject. Folds into the existing admin dashboard rather than a new screen if volume stays low.
+- [ ] Telemetry: count per-week `pending_review = true` inserts so we can falsify hypothesis H7 below.
 - [ ] (Optional, larger) Bulk-seed the template catalog from a public gym-equipment dataset to raise OCR hit rate before launch instead of relying entirely on user direct-input. Decide at Phase 5 kickoff based on H7 volume signal.
+
+**Closed-list autocomplete pattern (2026-05-20 decision)**
+
+LLM-driven free-text brand/machine input is rejected — hallucination would create fake brands and ghost machines that look authoritative. The OCR-failure picker uses three closed-list steps backed by our own DB, plus a single escape hatch:
+
+1. **Brand** — autocomplete over `brands` rows (5 today). Korean/English alias matching once item 18 lands.
+2. **Category** — 5 fixed chips backed by `categories` rows (가슴 / 등 / 다리 / 어깨 / 팔).
+3. **Template** — autocomplete over `machine_templates`, filtered by the selected brand + category. Options narrow as steps 1-2 are filled.
+4. **Escape hatch** — "리스트에 없어요?" link below the template picker. Tapping reveals a free-text input that goes through the `pending_review = true` path and surfaces in the admin queue.
+
+LLM role is constrained to ranking inside the closed list — score user-typed text against existing rows for top-3 suggestions. No free-text generation, no template synthesis. Quick Reference §8 `progressive-disclosure` + `field-grouping` apply: the 3 steps reveal sequentially as each is filled rather than dumping all selectors at once.
 
 **Reason to defer past launch**
 
-The decision between "let the queue grow and curate" versus "bulk-seed first" is undecidable without real submission volume. Shipping the persistence path before launch is enough to stop losing user submissions; the admin promotion UI plus bulk-seed scope answer to H7 evidence.
+The decision between "let the queue grow and curate" versus "bulk-seed first" is undecidable without real submission volume. Shipping the persistence path before launch is enough to stop losing user submissions; the admin promotion UI plus bulk-seed scope answer to H7 evidence. The closed-list picker UI itself ships pre-launch alongside items 14/15 since it gates the OCR fallback that all of them depend on.
 
 ### 12. Photo upload / OCR error path needs reproduction and triage
 
@@ -200,6 +212,76 @@ Owner-only upload keeps every cover photo accountable to a verified business ide
 **Reason this sits in Phase 5**
 
 Depends on Task 47 owner workflow being merged + a measurable number of owners having gone through verification. Pre-launch there are zero verified owners so the feature would have no real data. Ships when owner verification volume hits double digits — until then the placeholder is the right state.
+
+### 18. Korean-first labelling for brands and machine templates
+
+**Current state**
+
+`brands` and `machine_templates` ship one English `name` column today. The launch cohort reads Korean, and while gym-goers recognise brand names in English (`Hammer Strength`, `Life Fitness`, `Technogym`, `Panatta`, `Hoist`), machine names compound across two English words (`Panatta Chest Press`, `Hammer Strength Lat Pull Down`) which slows card scanning and breaks NL search input — a user who types `해머스트렝스 풀다운` gets no match because `FuzzyMatchService` Jaccard-tokenises only `name_en`.
+
+**Locked decision (2026-05-20) — Option C**
+
+- **Brand**: English name retained. Domestic gym-goers already recognise the latin form; machine-body labels are also in English, so keeping brands in English preserves the 1:1 mapping between our card and the physical equipment the user is standing in front of.
+- **Machine template**: Korean primary, English secondary.
+  - Bottom sheet / list cards: render Korean only (e.g. `Panatta 체스트 프레스`).
+  - Machine detail screen: Korean primary line + English smaller secondary line below (`Panatta Chest Press`).
+- **Category**: already Korean-mapped via the filter sheet's "운동 부위" labels. No work.
+- **Search matching**: `FuzzyMatchService` tokenises both `name_ko` and `name_en` so both `해머스트렝스 풀다운` and `Hammer Strength Lat Pull Down` match the same row.
+
+**To-do (groomed scope)**
+
+- [ ] DB: rename `machine_templates.name` → `name_en`, add `name_ko TEXT NOT NULL` via a new Flyway migration. Backfill 11 existing rows by hand (small set, no script).
+- [ ] Backend: extend `MachineTemplate` DTO to surface both fields; extend `FuzzyMatchService.findMatches` and `findTemplateIds` to tokenise both columns when computing Jaccard similarity.
+- [ ] OpenAPI + Orval regen: TypeScript client picks up the two fields.
+- [ ] Frontend: render `nameKo` on `GymCard`, `MachineList`, NL search interpretation chip; render both on `MachineDetail`.
+- [ ] NL search prompt: extend the LLM prompt so it understands Korean machine-name aliases and emits canonical English when filling `parsedFilters.templateIds`.
+- [ ] Test coverage: `FuzzyMatchService` test cases for `해머스트렝스 랫 풀다운` matching `Hammer Strength Lat Pull Down`; frontend test that `GymCard` renders `nameKo` and `MachineDetail` renders both.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Option C is the right balance for the launch cohort. Brands stay English because gym-goers recognise them that way and machine bodies are labelled in English, so the card matches the physical world. Machine names compound poorly in English for native Korean speakers ("Panatta Chest Press" reads slower than "Panatta 체스트 프레스"), so Korean primary speeds card scanning. The English secondary line on detail preserves the precise reference for users who want to look up the exact model. Quick Reference §6 `text-styles-system` (clear hierarchy via weight/size between primary and secondary), §6 `letter-spacing` (respect Korean character spacing defaults), and §1 `dynamic-type` (both lines must survive system text scaling) apply.
+
+**Reason to ship pre-launch**
+
+NL search input today silently fails on Korean machine-name aliases — a domestic user typing 해머스트렝스 풀다운 gets zero results even though the gym has it. That's a core-flow regression for the launch cohort. Plus the catalogue is only 11 templates, so the translation work is one-time and trivially small.
+
+### 19. GymCard tidy-up — drop machine list, drop category chips, clarify count copy
+
+**Current state**
+
+The bottom-sheet `GymCard` today crowds in (a) every machine name as a comma-separated list ("✓ Panatta Chest Press, Panatta High Row, Panatta Lat Pull Down…"), making each card 4+ lines tall, and (b) labels the count "기구 N대" which a user could reasonably read as "this gym has N machines total" rather than "N machines are currently registered in our app". Both reduce the bottom sheet's density and create wrong mental models.
+
+**Locked decision (2026-05-20)**
+
+- Remove the machine name list from `GymCard`. Users who want machine detail tap into `GymDetail`.
+- Remove the category chip experiment that was floated in the original ui-ux-pro-max review (chips would re-introduce density we are trying to cut).
+- Change the count copy to "등록된 기구 N대" — explicit about the count being our registered set, not the gym's total.
+- When `machineCount === 0`, render "아직 등록된 기구가 없어요" instead of "등록된 기구 0대". The 0대 phrasing is grammatically correct but reads coldly; the alternative is friendlier and invites contribution.
+
+**Resulting layout**
+
+```
+┌──────────────────────────────────────┐
+│ 🏋  스트렝스 짐                       │
+│    📍 0.5km                           │
+│    등록된 기구 4대                     │
+│                  확인일 2026.03.10    │
+└──────────────────────────────────────┘
+```
+
+**To-do (groomed scope)**
+
+- [ ] Frontend: drop the machine-name list from `GymCard.tsx`. Replace with the single `등록된 기구 N대` line; render `아직 등록된 기구가 없어요` when N=0.
+- [ ] Test coverage: update existing `GymCard.test.tsx` snapshots / assertions to match the new layout; add a case for the `N=0` copy.
+- [ ] Side fix: confirm the same simplification is consistent across NL-search-result cards and filter-result cards (both render through `GymCard`).
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Stripping the machine list back to a count is the right call. Quick Reference §5 `visual-hierarchy` + §5 `content-priority` apply: the bottom sheet's job is "show me which gyms exist nearby"; "which machines does each one have" is the next click, not the first scan. The count copy fix also moves the card from "this gym has N machines" to "we know about N of this gym's machines" — that subtle reframe primes the contribution loop (item 11/15 ask the user to extend that count) and prevents the wrong assumption when the count is small.
+
+**Reason to ship pre-launch**
+
+Goes in with items 14/15 since they all touch `GymCard` and gym-detail wiring. Decoupling them creates merge churn on the same files.
 
 ## Post-launch hypotheses (drive prioritisation)
 
