@@ -155,7 +155,7 @@ function CameraScreenContent({
   return (
     <View className="flex-1 bg-black">
       <View className="flex-1">
-        <CameraView ref={cameraRef} className="flex-1" facing="back" />
+        <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
         {isCompressing ? <CompressingOverlay /> : null}
       </View>
 
