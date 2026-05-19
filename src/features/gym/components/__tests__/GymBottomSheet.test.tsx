@@ -156,6 +156,81 @@ describe('GymBottomSheet (list mode)', () => {
     expect(onSelectGym).toHaveBeenCalledWith('g-2');
   });
 
+  it('interleaves UnregisteredGymCard with GymCard in distance order (F7)', () => {
+    // Fitness Factory ≈ 0.1km (close) and Strength Gym is far. The Naver
+    // place sits between them at ~0.2km from the user.
+    const nearbyNaverPlace = {
+      naverPlaceId: 'naver-mid',
+      name: '강남 새 헬스장',
+      address: '서울 강남구 역삼동 200',
+      latitude: 37.4988,
+      longitude: 127.0298,
+    };
+    const onUnregisteredPress = jest.fn();
+    const { getByText, getByRole, queryAllByText } = render(
+      <GymBottomSheet
+        mode={{
+          type: 'list',
+          gyms: [fitnessFactory, strengthGym],
+          unregisteredPlaces: [nearbyNaverPlace],
+          userLocation,
+          isLoading: false,
+          onSelectGym: () => undefined,
+          onUnregisteredPress,
+          onClearFilters: () => undefined,
+        }}
+      />,
+    );
+    // All three rendered.
+    expect(getByText('Fitness Factory')).toBeTruthy();
+    expect(getByText('Strength Gym')).toBeTruthy();
+    expect(getByText('강남 새 헬스장')).toBeTruthy();
+    // CTA copy only on the unregistered card.
+    expect(queryAllByText(/첫 등록자 되어 정보 추가하기/)).toHaveLength(1);
+    // Tap unregistered card → callback called with the place.
+    fireEvent.press(getByRole('button', { name: /강남 새 헬스장/ }));
+    expect(onUnregisteredPress).toHaveBeenCalledWith(nearbyNaverPlace);
+  });
+
+  it('renders only UnregisteredGymCards when gyms is empty but Naver merge returns places', () => {
+    // Pre-launch / area-empty case: IronSpot DB empty in this area, Naver
+    // returned 2 candidates. The empty state must NOT show — the user sees
+    // CTA cards inviting them to become the first registrant.
+    const { getByText, queryByText } = render(
+      <GymBottomSheet
+        mode={{
+          type: 'list',
+          gyms: [],
+          unregisteredPlaces: [
+            {
+              naverPlaceId: 'naver-1',
+              name: '신규 헬스장 A',
+              address: '서울 강남구 역삼동 1',
+              latitude: 37.4985,
+              longitude: 127.0285,
+            },
+            {
+              naverPlaceId: 'naver-2',
+              name: '신규 헬스장 B',
+              address: '서울 강남구 역삼동 2',
+              latitude: 37.499,
+              longitude: 127.029,
+            },
+          ],
+          userLocation,
+          isLoading: false,
+          onSelectGym: () => undefined,
+          onUnregisteredPress: () => undefined,
+          onClearFilters: () => undefined,
+        }}
+      />,
+    );
+    expect(getByText('신규 헬스장 A')).toBeTruthy();
+    expect(getByText('신규 헬스장 B')).toBeTruthy();
+    expect(queryByText('조건에 맞는 헬스장이 없어요')).toBeNull();
+    expect(queryByText('필터를 조정해보세요')).toBeNull();
+  });
+
   it('shows an empty state with filter-tuning copy when the gyms array is empty', () => {
     const { getByText } = render(
       <GymBottomSheet
