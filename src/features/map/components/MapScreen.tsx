@@ -103,6 +103,9 @@ export function MapScreen() {
   const isNlZeroResult = source.kind === 'nl' && source.response.totalCount === 0;
 
   const { visibleMarkerIds } = useMarkerReveal(displayedGyms);
+  // F7 NL search Naver merge — unregisteredPlaces only flows in NL mode. In
+  // filter mode the backend doesn't run the Naver merge so the array is empty.
+  const unregisteredPlaces = source.kind === 'nl' ? source.response.unregisteredPlaces : undefined;
   const {
     mode: bottomSheetMode,
     selectedGymId,
@@ -115,8 +118,19 @@ export function MapScreen() {
     onPressMachine: (gymId, machineId) => {
       router.push(`/gym/${gymId}/machine/${machineId}`);
     },
+    unregisteredPlaces,
+    onUnregisteredPress: (place) => {
+      // Deep-link to the upload flow with the Naver place pre-filled so the
+      // user can become the first registrant (F7 product flow).
+      router.push({
+        pathname: '/(upload)/gym-select',
+        params: { openNewGym: '1', initialQuery: place.name },
+      });
+    },
     nlEmpty:
-      source.kind === 'nl' && source.response.totalCount === 0
+      source.kind === 'nl' &&
+      source.response.totalCount === 0 &&
+      source.response.unregisteredPlaces.length === 0
         ? {
             subtitle: `${source.response.interpretation}에 해당하는 곳이 없어요`,
             onRelaxFilters: handleRelaxFilters,

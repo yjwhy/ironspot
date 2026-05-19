@@ -8,6 +8,7 @@
 import type { GymWithMachineCountResponse } from './gymWithMachineCountResponse';
 import type { ParsedFilters } from './parsedFilters';
 import type { ResolvedLocation } from './resolvedLocation';
+import type { UnregisteredPlace } from './unregisteredPlace';
 
 export interface NlSearchResponse {
   gyms: GymWithMachineCountResponse[];
@@ -18,4 +19,6 @@ export interface NlSearchResponse {
   parsedFilters: ParsedFilters;
   /** Resolved search center + radius — used by the map to animate the camera to the NL query's location after a successful search. */
   resolvedLocation: ResolvedLocation;
+  /** Naver 지역검색 results for gyms not yet registered in IronSpot. Empty when the NL query carries any specific brand / category / machine filter (Naver has no machine metadata, so filtered queries can't match). Frontend renders these as separate cards with a 'first registrant' CTA linking to the upload flow. */
+  unregisteredPlaces: UnregisteredPlace[];
 }

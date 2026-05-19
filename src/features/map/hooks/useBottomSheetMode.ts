@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import type { UnregisteredPlace } from '@/shared/generated/model';
 import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
 import type { GymWithMachineCount } from '@/shared/types/database';
 
@@ -16,6 +17,10 @@ interface UseBottomSheetModeParams {
     subtitle: string;
     onRelaxFilters: () => void;
   };
+  /** F7 NL search Naver merge — passed through to the list mode. Bottom sheet
+   * interleaves these with `gyms` ordered by distance. */
+  unregisteredPlaces?: readonly UnregisteredPlace[];
+  onUnregisteredPress?: (place: UnregisteredPlace) => void;
 }
 
 interface UseBottomSheetModeResult {
@@ -31,6 +36,8 @@ export function useBottomSheetMode({
   clearFilters,
   onPressMachine,
   nlEmpty,
+  unregisteredPlaces,
+  onUnregisteredPress,
 }: UseBottomSheetModeParams): UseBottomSheetModeResult {
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
 
@@ -68,6 +75,8 @@ export function useBottomSheetMode({
           isLoading: isPending,
           onSelectGym: setSelectedGymId,
           onClearFilters: clearFilters,
+          unregisteredPlaces,
+          onUnregisteredPress,
           nlEmpty,
         };
 

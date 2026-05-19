@@ -19,5 +19,12 @@ public record NlSearchResponse(
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
             description = "Resolved search center + radius — used by the map to animate "
                 + "the camera to the NL query's location after a successful search.")
-    ResolvedLocation resolvedLocation
+    ResolvedLocation resolvedLocation,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+            description = "Naver 지역검색 results for gyms not yet registered in IronSpot. "
+                + "Empty when the NL query carries any specific brand / category / machine "
+                + "filter (Naver has no machine metadata, so filtered queries can't match). "
+                + "Frontend renders these as separate cards with a 'first registrant' CTA "
+                + "linking to the upload flow.")
+    List<UnregisteredPlace> unregisteredPlaces
 ) {}

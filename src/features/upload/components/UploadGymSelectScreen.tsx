@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { useGymMachines } from '@/features/gym/hooks/useGymMachines';
@@ -28,9 +28,15 @@ type ScreenMode = 'list' | 'naver-search';
 
 export function UploadGymSelectScreen() {
   const locationState = useCurrentLocation();
+  // F7 deep-link from UnregisteredGymCard ("첫 등록자 되기" CTA): when the
+  // route is opened with `?openNewGym=1&initialQuery=<name>` the screen lands
+  // in Naver-search mode with the place name pre-filled, so the user can
+  // confirm + tap the same place + continue.
+  const params = useLocalSearchParams<{ openNewGym?: string; initialQuery?: string }>();
+  const initialMode: ScreenMode = params.openNewGym === '1' ? 'naver-search' : 'list';
   const [searchText, setSearchText] = useState('');
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
-  const [mode, setMode] = useState<ScreenMode>('list');
+  const [mode, setMode] = useState<ScreenMode>(initialMode);
 
   const location = locationState.status === 'loading' ? null : locationState.location;
   const bounds =
@@ -63,7 +69,12 @@ export function UploadGymSelectScreen() {
   }
 
   if (mode === 'naver-search') {
-    return <NaverGymRegistrationPanel onClose={handleExitNaverSearch} />;
+    return (
+      <NaverGymRegistrationPanel
+        onClose={handleExitNaverSearch}
+        initialQuery={params.initialQuery}
+      />
+    );
   }
 
   const filteredGyms =
@@ -147,10 +158,24 @@ function GymSelectContent({
 
 interface NaverGymRegistrationPanelProps {
   onClose: () => void;
+  /** F7 deep-link from UnregisteredGymCard. When present, the Naver search
+   * input is pre-filled and a search auto-fires on mount. */
+  initialQuery?: string;
 }
 
-function NaverGymRegistrationPanel({ onClose }: NaverGymRegistrationPanelProps) {
-  const [query, setQuery] = useState('');
+function NaverGymRegistrationPanel({ onClose, initialQuery }: NaverGymRegistrationPanelProps) {
+  const [query, setQuery] = useState(initialQuery ?? '');
+  // When the screen is entered via the F7 deep-link with an `initialQuery`,
+  // sync the value once on mount so the Naver search auto-fires for the
+  // place the user tapped. Subsequent edits stay user-driven.
+  useEffect(
+    function syncInitialQueryOnce() {
+      if (initialQuery !== undefined && initialQuery !== '') {
+        setQuery(initialQuery);
+      }
+    },
+    [initialQuery],
+  );
   const { places, isFetching, isError } = useNaverPlacesSearch(query);
   const { handleCreateGym, isPending } = useCreateGym({ onSuccess: onClose });
 

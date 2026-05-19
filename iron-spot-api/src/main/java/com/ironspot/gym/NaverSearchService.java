@@ -6,6 +6,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -50,6 +51,13 @@ public class NaverSearchService {
         }
     }
 
+    /**
+     * Naver 지역검색 API proxy. Cached 60s per (normalised) query string via
+     * Caffeine — see application.yml `spring.cache.caffeine.spec`. The cache
+     * protects the Naver free-tier 25K/day quota from being burned by repeated
+     * identical search bar typings and by the NL search Naver merge path (F7).
+     */
+    @Cacheable("naverPlaces")
     public List<NaverPlaceResult> search(String query) {
         URI uri = UriComponentsBuilder.fromUriString(NAVER_LOCAL_URL)
             .queryParam("query", query)

@@ -13,6 +13,7 @@ import { Pressable, View } from 'react-native';
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
+import type { UnregisteredPlace } from '@/shared/generated/model';
 import { toTestSlug } from '@/shared/lib/format';
 import { haversineKm } from '@/shared/lib/geo';
 import { pressedOpacity } from '@/shared/lib/pressable';
@@ -23,6 +24,7 @@ import type { GymBottomSheetMode } from '../types';
 import { GymCard } from './GymCard';
 import { GymCardSkeleton } from './GymCardSkeleton';
 import { GymDetail } from './GymDetail';
+import { UnregisteredGymCard } from './UnregisteredGymCard';
 
 export type { GymBottomSheetMode };
 
@@ -99,6 +101,40 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
 
 type ListMode_Props = Extract<GymBottomSheetMode, { type: 'list' }>;
 
+// F7 NL search Naver merge — discriminated union so the list can interleave
+// registered IronSpot gyms with unregistered Naver places sorted by distance.
+type ListItem =
+  | { readonly kind: 'gym'; readonly gym: GymWithMachineCount; readonly distanceKm: number }
+  | {
+      readonly kind: 'unregistered';
+      readonly place: UnregisteredPlace;
+      readonly distanceKm: number;
+    };
+
+function buildSortedList(mode: ListMode_Props): readonly ListItem[] {
+  const gymItems: ListItem[] = mode.gyms.map((gym) => ({
+    kind: 'gym' as const,
+    gym,
+    distanceKm: haversineKm(mode.userLocation, {
+      latitude: gym.latitude,
+      longitude: gym.longitude,
+    }),
+  }));
+  const placeItems: ListItem[] = (mode.unregisteredPlaces ?? []).map((place) => ({
+    kind: 'unregistered' as const,
+    place,
+    distanceKm: haversineKm(mode.userLocation, {
+      latitude: place.latitude,
+      longitude: place.longitude,
+    }),
+  }));
+  return [...gymItems, ...placeItems].sort((a, b) => a.distanceKm - b.distanceKm);
+}
+
+function listItemKey(item: ListItem): string {
+  return item.kind === 'gym' ? `gym:${item.gym.id}` : `naver:${item.place.naverPlaceId}`;
+}
+
 function ListMode({ mode }: { mode: ListMode_Props }) {
   const renderScrollComponent = useBottomSheetScrollableCreator();
 
@@ -111,11 +147,12 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
       </View>
     );
   }
+  const items = buildSortedList(mode);
   return (
     <FlashList
       renderScrollComponent={renderScrollComponent}
-      data={mode.gyms}
-      keyExtractor={keyById}
+      data={items}
+      keyExtractor={listItemKey}
       contentContainerStyle={LIST_CONTENT_STYLE}
       ItemSeparatorComponent={ListSeparator}
       ListEmptyComponent={
@@ -143,20 +180,31 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
           />
         )
       }
-      renderItem={({ item, index }) => (
-        <GymCard
-          gym={item}
-          distanceKm={haversineKm(mode.userLocation, {
-            latitude: item.latitude,
-            longitude: item.longitude,
-          })}
-          index={index}
-          testID={`gym-card-${toTestSlug(item.name)}`}
-          onPress={() => {
-            mode.onSelectGym(item.id);
-          }}
-        />
-      )}
+      renderItem={({ item, index }) =>
+        item.kind === 'gym' ? (
+          <GymCard
+            gym={item.gym}
+            distanceKm={item.distanceKm}
+            index={index}
+            testID={`gym-card-${toTestSlug(item.gym.name)}`}
+            onPress={() => {
+              mode.onSelectGym(item.gym.id);
+            }}
+          />
+        ) : (
+          <UnregisteredGymCard
+            naverPlaceId={item.place.naverPlaceId}
+            name={item.place.name}
+            address={item.place.address}
+            distanceKm={item.distanceKm}
+            index={index}
+            testID={`unregistered-gym-card-${toTestSlug(item.place.name)}`}
+            onPress={() => {
+              mode.onUnregisteredPress?.(item.place);
+            }}
+          />
+        )
+      }
     />
   );
 }
@@ -189,8 +237,4 @@ function DetailMode({ mode }: { mode: DetailMode_Props }) {
 
 function ListSeparator() {
   return <View className="h-3" />;
-}
-
-function keyById(item: GymWithMachineCount): string {
-  return item.id;
 }

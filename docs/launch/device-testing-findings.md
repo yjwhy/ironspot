@@ -120,6 +120,41 @@ NL search SQL builder (and the general gym search hot path via `GymRepository`) 
 
 ---
 
+## F7 — NL search shows only IronSpot-registered gyms, not all Naver gyms 🟡 in-progress
+
+**Discovered**: 2026-05-19 product discussion during device testing.
+
+**Symptom**: when the user types a search like "강남역 헬스장" in the NL search bar, only gyms registered in IronSpot DB (with machine info) appear. Other gyms findable in Naver Maps are absent. User expectation, especially at launch when prod data is sparse: "searching '강남역 헬스장' should show all gyms in the area, Naver-findable included."
+
+**Cause** (by design): IronSpot's value prop is the machine info layer, so map viewport bound search and NL search both queried IronSpot DB only. Naver Search API integration existed only behind the upload flow (`UploadGymSelectScreen`) to help users register new gyms.
+
+**Fix decided** (Q1=B pivot from initial Q1=A, since Naver Local Search is text-only and viewport bound → text requires reverse-geocoding infra not yet present):
+
+- Apply Naver merge to **NL search path only** (text query is naturally Naver-compatible).
+- Map viewport auto bound search stays IronSpot-only (covered by F5 empty-state UX).
+- Merge logic: backend calls Naver iff parsedFilters has no specific brand/category/machine filter. Filtered queries like "강남역 파나타 머신" skip the merge because Naver has no machine metadata.
+- Dedup by `gyms.naver_place_id` (existing UNIQUE index).
+- 60s Caffeine cache on Naver call to protect free-tier 25K/day quota.
+- Naver-only results render as a separate `UnregisteredGymCard` variant with a "첫 등록자 되어 정보 추가하기 →" CTA that deep-links to the upload flow with the place pre-filled.
+- Card list interleaves both card types in distance order (Q5 mixing).
+
+**Slices shipped in this PR** (chore/feat/naver-merge-on-nl-search):
+
+- Slice 1 — backend: `NlSearchService` calls Naver, dedups via `GymRepository.findRegisteredNaverPlaceIdsAmong`, adds `unregisteredPlaces: List<UnregisteredPlace>` to `NlSearchResponse`. Caffeine cache (`spring-boot-starter-cache` + caffeine deps + `@EnableCaching` + `@Cacheable("naverPlaces")` on `NaverSearchService.search`). NL search controller IT +4 (generic merge, filtered skip, dedup, failure swallow).
+- Slice 2 — frontend: new `UnregisteredGymCard` component (gray placeholder + CTA chip). `UploadGymSelectScreen` accepts route params `openNewGym=1&initialQuery=<name>` so deep link from the card lands in Naver-search mode with the place pre-filled. Component test +4.
+- Slice 3 — list mixing: `GymBottomSheetMode` list gains `unregisteredPlaces` + `onUnregisteredPress`. `GymBottomSheet` builds a distance-sorted union list. `useBottomSheetMode` passes through. `MapScreen` wires the NL response's `unregisteredPlaces` + provides the upload deep-link callback. `nlEmpty` empty-state now triggers only when BOTH arrays are empty. `GymBottomSheet.test.tsx` +2 cases (mixed interleave, unregistered-only when gyms empty).
+
+**Verification (so far)**: pnpm trio (lint 0, tsc 0, jest 573/573). Backend IT +4 (slice 1). Live simulator verification pending — pending Slice 4 (Maestro flow) + Render redeploy on PR merge.
+
+**Risk**: low. All new fields/components are additive; existing call sites unchanged. Naver failure path swallowed — IronSpot results still ship cleanly on Naver outage. Type generation regenerated cleanly via Orval.
+
+**Follow-ups (not in this PR)**:
+
+- Map markers for unregistered Naver places (currently only IronSpot markers render). Likely Phase 5.
+- Reverse-geocoding infra to enable Q1=A (auto bound search Naver merge). Requires Naver Cloud Platform Maps API key — different env vars from current openapi 지역검색 credentials.
+
+---
+
 ## F3 — `OwnerTimeoutEscalationJob` exception is silent to operators 🟡 open
 
 **Discovered**: Same Render Logs session as F2.

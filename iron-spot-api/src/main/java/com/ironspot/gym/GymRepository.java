@@ -17,10 +17,13 @@ import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -146,6 +149,21 @@ public class GymRepository {
             .from(GYMS)
             .where(GYMS.NAVER_PLACE_ID.eq(naverPlaceId))
             .fetchOptional(r -> r.get(GYMS.ID));
+    }
+
+    /**
+     * F7 NL search Naver merge — given a candidate set of Naver place IDs
+     * returned by Naver 지역검색, find which subset is already registered as
+     * an IronSpot gym (by {@code gyms.naver_place_id}). Caller uses the result
+     * to filter the Naver list down to "unregistered places" for the
+     * "첫 등록자 되기" CTA cards.
+     */
+    public Set<String> findRegisteredNaverPlaceIdsAmong(Collection<String> naverPlaceIds) {
+        if (naverPlaceIds == null || naverPlaceIds.isEmpty()) return Set.of();
+        return new HashSet<>(dsl.select(GYMS.NAVER_PLACE_ID)
+            .from(GYMS)
+            .where(GYMS.NAVER_PLACE_ID.in(naverPlaceIds))
+            .fetch(GYMS.NAVER_PLACE_ID));
     }
 
     public void insertFromNaverPlaces(UUID id, CreateGymRequest req) {
