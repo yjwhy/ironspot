@@ -17,6 +17,14 @@ export function scopeToMachineFilterMode(scope: SearchScope | undefined): Machin
   return scope === 'combined' ? 'and' : 'or';
 }
 
+// Phase 5 item 20: single source of truth for "is at least one filter active".
+// Pure function over SearchFilters so consumers (useFilters, FilterSheet) can't
+// drift apart when a new filter dimension is added — every caller hits the
+// same predicate.
+export function hasActiveSearchFilters(filters: SearchFilters): boolean {
+  return filters.brandIds.length + filters.categoryIds.length + filters.templateIds.length > 0;
+}
+
 export type ActiveFilterKind = 'brand' | 'category' | 'machineTemplate';
 
 export interface ActiveFilter {

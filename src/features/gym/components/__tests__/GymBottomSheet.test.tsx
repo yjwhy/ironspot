@@ -156,7 +156,7 @@ describe('GymBottomSheet (list mode)', () => {
     expect(onSelectGym).toHaveBeenCalledWith('g-2');
   });
 
-  it('interleaves UnregisteredGymCard with GymCard in distance order (F7)', () => {
+  it('renders registered GymCards above UnregisteredGymCards when interleaved (F7 + item 21)', () => {
     // Fitness Factory ≈ 0.1km (close) and Strength Gym is far. The Naver
     // place sits between them at ~0.2km from the user.
     const nearbyNaverPlace = {
@@ -190,6 +190,78 @@ describe('GymBottomSheet (list mode)', () => {
     // Tap unregistered card → callback called with the place.
     fireEvent.press(getByRole('button', { name: /강남 새 헬스장/ }));
     expect(onUnregisteredPress).toHaveBeenCalledWith(nearbyNaverPlace);
+  });
+
+  // Phase 5 item 21: launch-initial protection. With far-away registered
+  // gyms and a nearby Naver place, the unregistered card would dominate
+  // the 25% snap and the user would conclude "this app knows nothing
+  // about Gangnam". Lock the registered ones above unregistered regardless
+  // of distance so the first impression carries our actual catalogue.
+  it('renders all registered gyms above unregistered places, even when registered are farther', () => {
+    const farRegisteredGym: GymWithMachineCount = {
+      ...fitnessFactory,
+      id: 'g-far',
+      name: 'Far Registered Gym',
+      // ~5km from userLocation (강남역) — clearly farther than the nearby Naver place
+      latitude: 37.5547,
+      longitude: 126.9707,
+    };
+    const nearbyNaverPlace = {
+      naverPlaceId: 'naver-near',
+      name: '강남 가까운 헬스장',
+      address: '서울 강남구 역삼동 200',
+      // ~0.1km from userLocation — much closer than the registered gym
+      latitude: 37.4985,
+      longitude: 127.028,
+    };
+    const { getAllByTestId } = render(
+      <GymBottomSheet
+        mode={{
+          type: 'list',
+          gyms: [farRegisteredGym],
+          unregisteredPlaces: [nearbyNaverPlace],
+          userLocation,
+          isLoading: false,
+          hasActiveFilters: false,
+          onSelectGym: () => undefined,
+          onUnregisteredPress: () => undefined,
+          onClearFilters: () => undefined,
+        }}
+      />,
+    );
+    const cards = getAllByTestId(/^(gym-card|unregistered-gym-card)-/);
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toHaveProp('testID', 'gym-card-far-registered-gym');
+    expect(cards[1]).toHaveProp('testID', 'unregistered-gym-card-강남-가까운-헬스장');
+  });
+
+  // Phase 5 item 21: within the registered group, distance still wins —
+  // option A is "registered first, then distance", not "registered first,
+  // unsorted within".
+  it('sorts registered gyms by distance among themselves', () => {
+    const farRegisteredGym: GymWithMachineCount = {
+      ...fitnessFactory,
+      id: 'g-far',
+      name: 'Far Registered Gym',
+      latitude: 37.5547,
+      longitude: 126.9707,
+    };
+    const { getAllByTestId } = render(
+      <GymBottomSheet
+        mode={{
+          type: 'list',
+          gyms: [farRegisteredGym, fitnessFactory], // intentionally far-first
+          userLocation,
+          isLoading: false,
+          hasActiveFilters: false,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
+      />,
+    );
+    const cards = getAllByTestId(/^gym-card-/);
+    expect(cards[0]).toHaveProp('testID', 'gym-card-fitness-factory'); // closer
+    expect(cards[1]).toHaveProp('testID', 'gym-card-far-registered-gym'); // farther
   });
 
   it('renders only UnregisteredGymCards when gyms is empty but Naver merge returns places', () => {
@@ -231,7 +303,7 @@ describe('GymBottomSheet (list mode)', () => {
     expect(queryByText('필터를 조정해보세요')).toBeNull();
   });
 
-  it('shows an empty state with filter-tuning copy when the gyms array is empty', () => {
+  it('shows an empty state with filter-tuning copy when the gyms array is empty AND filters are active', () => {
     const { getByText } = render(
       <GymBottomSheet
         mode={{
@@ -239,6 +311,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [],
           userLocation,
           isLoading: false,
+          hasActiveFilters: true,
           onSelectGym: () => undefined,
           onClearFilters: () => undefined,
         }}
@@ -248,8 +321,35 @@ describe('GymBottomSheet (list mode)', () => {
     expect(getByText('필터를 조정해보세요')).toBeTruthy();
   });
 
-  it('renders a "필터 초기화" button in the empty state', () => {
-    const { getByRole } = render(
+  // Phase 5 item 20: filter-tuning copy is misleading when the user hasn't
+  // touched any filters. Filter-inactive empty state must use neutral copy.
+  it('shows a "viewport empty" copy when the gyms array is empty AND no filters are active', () => {
+    const { getByText, queryByRole } = render(
+      <GymBottomSheet
+        mode={{
+          type: 'list',
+          gyms: [],
+          userLocation,
+          isLoading: false,
+          hasActiveFilters: false,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
+      />,
+    );
+    expect(getByText('이 주변엔 아직 등록된 헬스장이 없어요')).toBeTruthy();
+    expect(getByText('지도를 옮기거나 검색해보세요')).toBeTruthy();
+    // The "필터 초기화" button is misleading when there are no active filters.
+    expect(queryByRole('button', { name: '필터 초기화' })).toBeNull();
+    // Filter-tuning copy must NOT leak into this branch.
+    expect(queryByRole('button', { name: '조건 바꿔서 검색' })).toBeNull();
+  });
+
+  // Phase 5 item 20: defaulting to the "viewport empty" copy when
+  // hasActiveFilters is omitted is the safe fallback — misleading
+  // filter-tuning copy must not regress when callers forget the prop.
+  it('defaults to the "viewport empty" copy when hasActiveFilters is omitted', () => {
+    const { getByText, queryByRole } = render(
       <GymBottomSheet
         mode={{
           type: 'list',
@@ -261,10 +361,28 @@ describe('GymBottomSheet (list mode)', () => {
         }}
       />,
     );
+    expect(getByText('이 주변엔 아직 등록된 헬스장이 없어요')).toBeTruthy();
+    expect(queryByRole('button', { name: '필터 초기화' })).toBeNull();
+  });
+
+  it('renders a "필터 초기화" button in the filter-active empty state', () => {
+    const { getByRole } = render(
+      <GymBottomSheet
+        mode={{
+          type: 'list',
+          gyms: [],
+          userLocation,
+          isLoading: false,
+          hasActiveFilters: true,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
+      />,
+    );
     expect(getByRole('button', { name: '필터 초기화' })).toBeTruthy();
   });
 
-  it('invokes onClearFilters when the empty-state button is pressed', () => {
+  it('invokes onClearFilters when the filter-active empty-state button is pressed', () => {
     const onClearFilters = jest.fn();
     const { getByRole } = render(
       <GymBottomSheet
@@ -273,6 +391,7 @@ describe('GymBottomSheet (list mode)', () => {
           gyms: [],
           userLocation,
           isLoading: false,
+          hasActiveFilters: true,
           onSelectGym: () => undefined,
           onClearFilters,
         }}

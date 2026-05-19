@@ -13,13 +13,11 @@ import { Pressable, View } from 'react-native';
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
-import type { UnregisteredPlace } from '@/shared/generated/model';
 import { toTestSlug } from '@/shared/lib/format';
-import { haversineKm } from '@/shared/lib/geo';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
-import type { GymWithMachineCount } from '@/shared/types/database';
 
+import { bottomSheetListItemKey, buildBottomSheetList } from '../lib/sort-bottom-sheet-list';
 import type { GymBottomSheetMode } from '../types';
 import { GymCard } from './GymCard';
 import { GymCardSkeleton } from './GymCardSkeleton';
@@ -101,38 +99,44 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
 
 type ListMode_Props = Extract<GymBottomSheetMode, { type: 'list' }>;
 
-// F7 NL search Naver merge — discriminated union so the list can interleave
-// registered IronSpot gyms with unregistered Naver places sorted by distance.
-type ListItem =
-  | { readonly kind: 'gym'; readonly gym: GymWithMachineCount; readonly distanceKm: number }
-  | {
-      readonly kind: 'unregistered';
-      readonly place: UnregisteredPlace;
-      readonly distanceKm: number;
-    };
-
-function buildSortedList(mode: ListMode_Props): readonly ListItem[] {
-  const gymItems: ListItem[] = mode.gyms.map((gym) => ({
-    kind: 'gym' as const,
-    gym,
-    distanceKm: haversineKm(mode.userLocation, {
-      latitude: gym.latitude,
-      longitude: gym.longitude,
-    }),
-  }));
-  const placeItems: ListItem[] = (mode.unregisteredPlaces ?? []).map((place) => ({
-    kind: 'unregistered' as const,
-    place,
-    distanceKm: haversineKm(mode.userLocation, {
-      latitude: place.latitude,
-      longitude: place.longitude,
-    }),
-  }));
-  return [...gymItems, ...placeItems].sort((a, b) => a.distanceKm - b.distanceKm);
-}
-
-function listItemKey(item: ListItem): string {
-  return item.kind === 'gym' ? `gym:${item.gym.id}` : `naver:${item.place.naverPlaceId}`;
+// Phase 5 item 20: three-way empty-state copy.
+// Priority: NL search empty (user explicitly searched)
+//        → filter-tuning (user actively narrowed and got 0)
+//        → viewport-empty (default; data sparsity, not the user's fault).
+function renderEmptyState(mode: ListMode_Props) {
+  if (mode.nlEmpty !== undefined) {
+    return (
+      <EmptyState
+        icon="search-off"
+        title="이 조건의 헬스장이 없어요"
+        description={mode.nlEmpty.subtitle}
+        action={
+          <Button
+            label="조건 바꿔서 검색"
+            variant="primary"
+            onPress={mode.nlEmpty.onRelaxFilters}
+          />
+        }
+      />
+    );
+  }
+  if (mode.hasActiveFilters) {
+    return (
+      <EmptyState
+        icon="search-off"
+        title="조건에 맞는 헬스장이 없어요"
+        description="필터를 조정해보세요"
+        action={<Button label="필터 초기화" variant="secondary" onPress={mode.onClearFilters} />}
+      />
+    );
+  }
+  return (
+    <EmptyState
+      icon="search-off"
+      title="이 주변엔 아직 등록된 헬스장이 없어요"
+      description="지도를 옮기거나 검색해보세요"
+    />
+  );
 }
 
 function ListMode({ mode }: { mode: ListMode_Props }) {
@@ -147,39 +151,15 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
       </View>
     );
   }
-  const items = buildSortedList(mode);
+  const items = buildBottomSheetList(mode.userLocation, mode.gyms, mode.unregisteredPlaces);
   return (
     <FlashList
       renderScrollComponent={renderScrollComponent}
       data={items}
-      keyExtractor={listItemKey}
+      keyExtractor={bottomSheetListItemKey}
       contentContainerStyle={LIST_CONTENT_STYLE}
       ItemSeparatorComponent={ListSeparator}
-      ListEmptyComponent={
-        mode.nlEmpty !== undefined ? (
-          <EmptyState
-            icon="search-off"
-            title="이 조건의 헬스장이 없어요"
-            description={mode.nlEmpty.subtitle}
-            action={
-              <Button
-                label="조건 바꿔서 검색"
-                variant="primary"
-                onPress={mode.nlEmpty.onRelaxFilters}
-              />
-            }
-          />
-        ) : (
-          <EmptyState
-            icon="search-off"
-            title="조건에 맞는 헬스장이 없어요"
-            description="필터를 조정해보세요"
-            action={
-              <Button label="필터 초기화" variant="secondary" onPress={mode.onClearFilters} />
-            }
-          />
-        )
-      }
+      ListEmptyComponent={renderEmptyState(mode)}
       renderItem={({ item, index }) =>
         item.kind === 'gym' ? (
           <GymCard

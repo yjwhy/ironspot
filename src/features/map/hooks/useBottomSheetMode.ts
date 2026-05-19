@@ -17,6 +17,11 @@ interface UseBottomSheetModeParams {
     subtitle: string;
     onRelaxFilters: () => void;
   };
+  /**
+   * Phase 5 item 20: branches the empty-state copy when `gyms` is empty.
+   * See `GymBottomSheetMode.list.hasActiveFilters` for the policy.
+   */
+  hasActiveFilters?: boolean;
   /** F7 NL search Naver merge — passed through to the list mode. Bottom sheet
    * interleaves these with `gyms` ordered by distance. */
   unregisteredPlaces?: readonly UnregisteredPlace[];
@@ -36,6 +41,7 @@ export function useBottomSheetMode({
   clearFilters,
   onPressMachine,
   nlEmpty,
+  hasActiveFilters,
   unregisteredPlaces,
   onUnregisteredPress,
 }: UseBottomSheetModeParams): UseBottomSheetModeResult {
@@ -75,6 +81,11 @@ export function useBottomSheetMode({
           isLoading: isPending,
           onSelectGym: setSelectedGymId,
           onClearFilters: clearFilters,
+          // Normalise the optional → boolean at the only layer that owns
+          // the mode object. Downstream consumers (GymBottomSheet) can
+          // truthy-check without worrying about undefined slipping
+          // through if a future caller forgets the flag.
+          hasActiveFilters: hasActiveFilters ?? false,
           unregisteredPlaces,
           onUnregisteredPress,
           nlEmpty,

@@ -67,6 +67,7 @@ export function MapScreen() {
   const locationState = useCurrentLocation();
   const {
     filters,
+    hasActiveFilters,
     toggleBrand,
     toggleCategory,
     toggleTemplate,
@@ -130,6 +131,7 @@ export function MapScreen() {
     isPending,
     userLocation: searchAnchor,
     clearFilters,
+    hasActiveFilters,
     onPressMachine: (gymId, machineId) => {
       router.push(`/gym/${gymId}/machine/${machineId}`);
     },
@@ -145,9 +147,6 @@ export function MapScreen() {
           }
         : undefined,
   });
-
-  const activeFilterCount =
-    filters.brandIds.length + filters.categoryIds.length + filters.templateIds.length;
 
   function handleNlSubmit(query: string) {
     nlSearch.mutate(query, {
@@ -250,7 +249,9 @@ export function MapScreen() {
             <TopSearchBar onSubmit={handleNlSubmit} isPending={nlSearch.isPending} />
           </View>
           <FilterButton
-            activeCount={activeFilterCount}
+            activeCount={
+              filters.brandIds.length + filters.categoryIds.length + filters.templateIds.length
+            }
             onPress={() => {
               filterSheetRef.current?.present();
             }}
