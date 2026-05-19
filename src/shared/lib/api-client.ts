@@ -1,6 +1,6 @@
 import ky, { HTTPError, TimeoutError, type Options } from 'ky';
 
-import { env } from './env';
+import { API_URL } from './api-base-url';
 import { supabase } from './supabase';
 
 // Re-export so consumers share a single ky resolution path. Importing these
@@ -9,7 +9,7 @@ import { supabase } from './supabase';
 export { HTTPError, TimeoutError };
 
 const _ky = ky.create({
-  prefixUrl: env.EXPO_PUBLIC_API_URL,
+  prefixUrl: API_URL,
   timeout: 10_000,
 });
 
