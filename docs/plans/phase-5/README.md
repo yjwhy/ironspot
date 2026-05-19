@@ -283,6 +283,90 @@ Stripping the machine list back to a count is the right call. Quick Reference §
 
 Goes in with items 14/15 since they all touch `GymCard` and gym-detail wiring. Decoupling them creates merge churn on the same files.
 
+### 20. Empty bottom sheet 카피가 "필터 탓"으로만 읽힘 — 필터 비활성 분기 필요
+
+**Current state**
+
+`GymBottomSheet`의 `ListMode`에서 `mode.gyms.length === 0` 이면 `nlEmpty` 가 있을 때만 NL 분기를 타고, 그 외에는 무조건 동일 카피를 노출한다:
+
+```
+조건에 맞는 헬스장이 없어요
+필터를 조정해보세요
+[필터 초기화]
+```
+
+문제는 viewport 검색이 자동으로 한 번 도는 첫 페인트 시점이다. 사용자가 필터를 켠 적이 없는데도 결과가 0개면 같은 카피가 뜨고, "필터를 조정해보세요" 와 "필터 초기화" 버튼이 같이 노출돼 사용자는 "내가 필터를 잘못 켰나?" 라고 오해한다. 실제로는 (a) 우리 DB에 그 viewport 안에 등록된 헬스장이 없거나, (b) 사용자 GPS 위치 주변에 아직 데이터가 적은 상태일 뿐이다. Launch 직후 cohort 의 대부분이 이 상태를 자주 만난다 — seed 가 강남/홍대 중심이라 신림동·금천구·외곽 거주자는 첫 화면에서 바로 이 misleading 카피를 본다.
+
+**Locked decision (2026-05-20)**
+
+- `mode.type === 'list'` 에 optional 필드 `hasActiveFilters?: boolean` 추가 (default `false`). NL 모드 (`nlEmpty` 존재) 와 동일한 분기 패턴으로 GymBottomSheet 가 직접 분기. optional 이지만 MapScreen 호출처는 항상 명시적으로 전달한다. default `false` 가 안전한 fallback (= 새 카피 노출) 이라 누락돼도 misleading 카피로 회귀하지 않는다.
+- 필터 비활성 (`hasActiveFilters === false`) + 결과 0개:
+  ```
+  이 주변엔 아직 등록된 헬스장이 없어요
+  지도를 옮기거나 검색해보세요
+  ```
+  버튼 없음.
+- 필터 활성 (`hasActiveFilters === true`) + 결과 0개: 기존 카피 + `[필터 초기화]` 그대로 유지.
+- 백엔드 변경 없음. 글로벌 "DB 전체에 헬스장 N개" 카운트 API 도입은 풀 사이즈 옵션이었지만 launch 직후 어차피 0~소수 이므로 보류 — H7 (item 11) 신호가 모인 뒤 재검토.
+
+**To-do (groomed scope)**
+
+- [ ] `src/features/gym/types.ts`: `GymBottomSheetMode` list variant 에 `hasActiveFilters?: boolean` optional 필드 추가.
+- [ ] `src/features/map/hooks/useBottomSheetMode.ts`: `hasActiveFilters` 를 파라미터로 받아서 list mode 에 그대로 매핑.
+- [ ] `src/features/map/components/MapScreen.tsx`: 기존 `activeFilterCount` 계산을 `hasActiveFilters = activeFilterCount > 0` 로 파생해 훅에 주입.
+- [ ] `src/features/gym/components/GymBottomSheet.tsx` `ListMode`: `nlEmpty` 분기 다음에 `hasActiveFilters === false` 분기 추가. NL 모드는 그대로 우선.
+- [ ] 테스트: `GymBottomSheet.test.tsx` — 새 카피 + 버튼 비노출 케이스 2개 추가, 기존 "필터 활성 + 결과 0개" 케이스는 `hasActiveFilters: true` 로 명시. `useBottomSheetMode.test.ts` — `hasActiveFilters` 패스스루 케이스 1개 추가.
+- [ ] Korean natural language 준수 (memory `feedback_korean_natural_language`): "아직" 어휘는 contribution 유도 + 데이터 보완 중임을 정직하게 알리는 톤. 영문 템플릿 직역 금지.
+
+**Recommended solution (2026-05-20 grill-me)**
+
+Empty state 카피는 사실관계 + 다음 행동 안내 두 줄로 구성한다. 첫 줄은 "이 주변엔 아직 등록된 헬스장이 없어요" 처럼 viewport 한정임을 분명히 하고 (전체 앱 데이터가 없다는 오해 차단), 두 번째 줄은 "지도를 옮기거나 검색해보세요" 로 사용자의 두 가지 다음 행동 (지도 panning + NL search) 모두 직접 가리킨다. CTA 버튼은 일부러 빼는데, 사용자가 이미 지도와 검색바를 보고 있어서 추가 버튼은 시각 노이즈가 되고, 필터 비활성 상태에선 "필터 초기화" 가 의미 없는 행동이라서다. 필터 활성 케이스의 기존 카피와 버튼은 정확하므로 손대지 않는다.
+
+Quick Reference §1 `clear-language` (오해 가능한 문구 제거), §4 `primary-action` (이 화면의 1차 행동은 지도/검색이지 empty state CTA 아님), §8 `error-recovery` (empty 도 회복 가능한 상태로 안내) 적용.
+
+**Reason to ship pre-launch**
+
+오해를 부르는 카피가 launch 직후 가장 자주 노출되는 화면 중 하나다. 첫 인상에서 "이 앱은 필터를 켰을 때만 결과가 안 나오나 보다" 라는 잘못된 mental model 을 만들면 사용자는 (a) 필터를 안 켜고도 결과가 없는 경우를 우리 데이터 빈약 탓이 아니라 자기 조작 탓으로 돌리거나, (b) 곧장 이탈한다. App Store 리뷰가 쌓이기 전에 막을 가치가 있다. Item 13 (NL 카메라) 과 file 충돌이 없어 별도 hotfix branch 로 진행한다.
+
+### 21. BottomSheet 정렬 — 등록 헬스장이 미등록 뒤로 밀려 first impression 손상
+
+**Current state**
+
+`GymBottomSheet.buildSortedList` (`src/features/gym/components/GymBottomSheet.tsx:114-131`) 가 등록 헬스장 (`mode.gyms`) 과 미등록 Naver place (`mode.unregisteredPlaces`) 를 거리 한 가지 기준으로만 정렬한다:
+
+```ts
+return [...gymItems, ...placeItems].sort((a, b) => a.distanceKm - b.distanceKm);
+```
+
+2026-05-20 simulator 검증 시나리오: prod Render 에 등록 헬스장 1곳 (강남역 ~0.3km), Naver merge 결과 미등록 3곳 (0.1km / 0.2km / 0.2km). BottomSheet 25% snap 으로 보이는 위 3개 카드가 모두 미등록 → 사용자는 "이 앱은 강남역의 등록된 헬스장을 모르네" 잘못된 결론. 끝까지 스크롤해야 등록 카드가 나옴.
+
+지도 마커는 등록(사각형 + 머신 수) 과 미등록(원형 + "+") 시각적으로 명확히 구분되지만, BottomSheet 카드 정렬은 그 시각 신호와 어긋난다 — 마커는 보이는데 카드는 찾기 어려운 미스매치.
+
+**Locked decision (2026-05-20) — 옵션 A (등록 우선, 그 안에서 거리)**
+
+- 1차 키: `kind === 'gym'` (등록) 먼저, `kind === 'unregistered'` (미등록) 뒤.
+- 2차 키: 거리 (가까운 순) — 1차 키 동률 안에서만 적용.
+- 미등록은 등록 0개 viewport 일 때 contribution 유도용으로 노출되고, 등록이 1개라도 있으면 그 뒤로 밀린다.
+
+이 정책의 long-term 동작: 데이터가 풍부해져 Naver merge 가 매칭에서 제외하는 곳이 늘면 미등록 카드 자체가 거의 안 나옴 → 1차 키가 자동으로 무력화 → **단순 거리 정렬과 자연스럽게 수렴**. 즉 launch 초기 보호장치이며 시간이 흐를수록 fade out.
+
+후보 옵션 B (섹션 분리 헤더), C (정렬 그대로 + 카운터/톤 차이) 는 launch 데이터 신호 모인 뒤 재평가. 지금은 코드 변경 최소 + product 시그널 명확한 A 채택.
+
+**To-do (groomed scope)**
+
+- [ ] `src/features/gym/components/GymBottomSheet.tsx` `buildSortedList`: 2단 비교자 적용. `(a.kind === 'gym' ? 0 : 1) - (b.kind === 'gym' ? 0 : 1) || a.distanceKm - b.distanceKm`.
+- [ ] 테스트: `GymBottomSheet.test.tsx` — (a) 가까운 미등록 + 먼 등록 → 등록 먼저, (b) 등록만 → 거리 정렬, (c) 미등록만 → 거리 정렬, (d) 동거리 혼합 → 등록 먼저.
+- [ ] Item 20 와 같은 PR 에 묶음. 두 변경 모두 BottomSheet list mode 동작 + 같은 파일 라인 근접.
+- [ ] 코드 코멘트: 거리 기대 위반(먼 등록이 가까운 미등록 앞에) 의 trade-off 를 명시. launch 초기 정책임을 future 독자에게 알림.
+
+**Recommended solution (2026-05-20 grill-me)**
+
+옵션 A 가 launch timing 에 가장 강력하다. 등록 수가 극단적으로 적은 launch 직후엔 등록을 무조건 위로 노출해 "우리가 아는 헬스장이 있긴 있다" 시그널을 보호하고, 데이터가 풍부해진 뒤엔 1차 키가 자동으로 무력화돼 거리 정렬로 수렴하므로 future migration 비용 0. 옵션 B (섹션 분리) 는 BottomSheet 25% snap 의 카드 공간을 헤더가 차지해 시각 비용이 크고, 옵션 C (톤 차이) 는 정렬 정책 자체는 안 바꾸므로 본질 문제를 보조 신호로만 가림. Quick Reference §5 `content-priority` (등록이 product 의 1차 자원), §1 `clear-language` (미등록을 등록과 시각적으로 동등하게 두지 않기) 적용.
+
+**Reason to ship pre-launch**
+
+launch 직후 등록 헬스장이 viewport 안에 있어도 미등록이 더 가까우면 list 의 first impression 을 미등록이 차지함. 사용자는 "이 앱은 비어 있다" 결론을 내리고 이탈 가능성 ↑. Item 20 (empty-state 카피) 와 같은 BottomSheet list mode 의 사용자 신뢰성 문제군이라 같은 hotfix branch / 같은 PR 에서 묶어 처리한다.
+
 ## Post-launch hypotheses (drive prioritisation)
 
 Each Phase 5 task ships only when the matching hypothesis is either confirmed or falsified by real data. Phase 4 closed without users so all of these are pre-decisions waiting on evidence.

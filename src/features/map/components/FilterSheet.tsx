@@ -20,6 +20,7 @@ import { FilterSheetSection } from './FilterSheetSection';
 import {
   type ActiveFilter,
   formatMachineTemplateLabel,
+  hasActiveSearchFilters,
   toActiveFilters,
 } from '../lib/active-filters';
 
@@ -138,7 +139,7 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
   }
 
   const footerBottomPadding = Math.max(insets.bottom, MIN_FOOTER_BOTTOM_PADDING);
-  const hasActiveFilters = activeFilters.length > 0;
+  const hasActiveFilters = hasActiveSearchFilters(filters);
   const showAndToggle = filters.templateIds.length >= AND_TOGGLE_MIN_SELECTION;
 
   return (

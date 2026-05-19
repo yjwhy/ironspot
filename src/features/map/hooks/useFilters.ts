@@ -2,6 +2,8 @@ import { useState } from 'react';
 
 import type { SearchFilters } from '@/shared/types/database';
 
+import { hasActiveSearchFilters } from '../lib/active-filters';
+
 export const INITIAL_FILTERS: SearchFilters = {
   brandIds: [],
   categoryIds: [],
@@ -54,6 +56,7 @@ export function useFilters() {
 
   return {
     filters,
+    hasActiveFilters: hasActiveSearchFilters(filters),
     toggleBrand,
     toggleCategory,
     toggleTemplate,

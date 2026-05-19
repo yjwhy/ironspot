@@ -17,6 +17,17 @@ export type GymBottomSheetMode =
       onSelectGym: (gymId: string) => void;
       onClearFilters: () => void;
       /**
+       * Phase 5 item 20: branches the empty-state copy when `gyms` is empty.
+       * `true` (filters active) → "조건에 맞는 헬스장이 없어요 / 필터를 조정해보세요"
+       * + 필터 초기화 button (recovery via filter reset).
+       * `false`/omitted (default) → "이 주변엔 아직 등록된 헬스장이 없어요 /
+       * 지도를 옮기거나 검색해보세요" with no button (recovery via map / search).
+       * Optional + default `false` is the safe fallback so callers that
+       * forget to pass the flag never regress into the misleading
+       * filter-tuning copy.
+       */
+      hasActiveFilters?: boolean;
+      /**
        * F7 NL search Naver merge — Naver places not yet registered as IronSpot
        * gyms. Bottom sheet interleaves these with `gyms` ordered by distance
        * (Q5 mixing). Empty/undefined for filter-mode and for filtered NL
