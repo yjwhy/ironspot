@@ -44,20 +44,23 @@ We do not share your personal data with third parties, except:
 - with your prior consent;
 - where required by law or in response to a lawful request from a competent authority.
 
-## 5. Data Processors (Sub-processors)
+## 5. Data Processors (Sub-processors, Including Overseas Transfer)
 
-We engage the following third parties to process personal data on our behalf:
+We engage the following third parties to process personal data on our behalf. Per the Korean Personal Information Protection Act (PIPA) Articles 26 and 28-8, we disclose the processor name, transferred data items, processing location, purpose, and retention period below. Each processor handles personal data strictly for the disclosed function and may not use it for any other purpose.
 
-| Processor                          | Function                                                           | Location |
-| ---------------------------------- | ------------------------------------------------------------------ | -------- |
-| Supabase, Inc.                     | Authentication, database, photo storage                            | USA      |
-| Render Services, Inc.              | Backend API hosting                                                | USA      |
-| NAVER Cloud Corp.                  | Maps and routing                                                   | Korea    |
-| Functional Software, Inc. (Sentry) | Error and crash tracking                                           | USA      |
-| Google LLC (Cloud Vision API)      | Automatic detection of faces and unsafe content in uploaded photos | USA      |
-| Groq, Inc.                         | Semantic parsing of natural-language search queries (when used)    | USA      |
+| Processor                          | Function                                                                     | Data items transferred                                          | Location | Retention                           |
+| ---------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------- | -------- | ----------------------------------- |
+| Supabase, Inc.                     | Authentication, database, photo file storage                                 | Email, nickname, uploaded photos, search history, report logs   | USA      | Until account deletion              |
+| Render Services, Inc.              | Backend API hosting                                                          | API request/response logs (including error logs)                | USA      | 90 days (automatic log retention)   |
+| NAVER Cloud Corp.                  | Map tiles and routing                                                        | Location coordinates (only when the map view is loaded)         | Korea    | Not retained (per-request handling) |
+| Functional Software, Inc. (Sentry) | Error and crash tracking                                                     | Anonymised user identifier, error stack traces, device metadata | USA      | 90 days                             |
+| Google LLC (Cloud Vision API)      | Automatic detection of faces and unsafe content in uploaded photos           | Uploaded photo image binary                                     | USA      | Not retained (per-request handling) |
+| Groq, Inc.                         | Semantic parsing of natural-language search queries (NL search feature only) | Natural-language search query text                              | USA      | Not retained (per-request handling) |
+| Google LLC (Gemini API)            | Semantic parsing of NL search queries (used only as fallback for Groq)       | Natural-language search query text                              | USA      | Not retained (per-request handling) |
 
-If we add or change a processor we will update this policy in advance.
+Transfer timing and method: data is sent to processors via HTTPS-encrypted API calls at the moment the relevant feature is used.
+
+Objections to a processor or exercise of data subject rights against a processor can be raised via the contact channel in Section 6 (Your Rights). If we add or change a processor we will update this policy in advance.
 
 ## 6. Your Rights
 
