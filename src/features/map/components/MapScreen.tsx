@@ -18,6 +18,7 @@ import { FilterButton } from './FilterButton';
 import { FilterSheet, type FilterSheetRef } from './FilterSheet';
 import { GymMarker } from './GymMarker';
 import { SearchAreaButton } from './SearchAreaButton';
+import { UnregisteredMarker } from './UnregisteredMarker';
 import { useBottomSheetMode } from '../hooks/useBottomSheetMode';
 import { useBrands } from '../hooks/useBrands';
 import { useCategories } from '../hooks/useCategories';
@@ -106,6 +107,17 @@ export function MapScreen() {
   // F7 NL search Naver merge — unregisteredPlaces only flows in NL mode. In
   // filter mode the backend doesn't run the Naver merge so the array is empty.
   const unregisteredPlaces = source.kind === 'nl' ? source.response.unregisteredPlaces : undefined;
+
+  function handleUnregisteredPress(place: { name: string }) {
+    // Deep-link to the upload flow with the Naver place pre-filled so the
+    // user can become the first registrant (F7 product flow). Shared by the
+    // bottom-sheet UnregisteredGymCard tap and the map UnregisteredMarker tap.
+    router.push({
+      pathname: '/(upload)/gym-select',
+      params: { openNewGym: '1', initialQuery: place.name },
+    });
+  }
+
   const {
     mode: bottomSheetMode,
     selectedGymId,
@@ -119,14 +131,7 @@ export function MapScreen() {
       router.push(`/gym/${gymId}/machine/${machineId}`);
     },
     unregisteredPlaces,
-    onUnregisteredPress: (place) => {
-      // Deep-link to the upload flow with the Naver place pre-filled so the
-      // user can become the first registrant (F7 product flow).
-      router.push({
-        pathname: '/(upload)/gym-select',
-        params: { openNewGym: '1', initialQuery: place.name },
-      });
-    },
+    onUnregisteredPress: handleUnregisteredPress,
     nlEmpty:
       source.kind === 'nl' &&
       source.response.totalCount === 0 &&
@@ -226,6 +231,17 @@ export function MapScreen() {
             />
           );
         })}
+        {unregisteredPlaces?.map((place) => (
+          <UnregisteredMarker
+            key={`naver:${place.naverPlaceId}`}
+            naverPlaceId={place.naverPlaceId}
+            latitude={place.latitude}
+            longitude={place.longitude}
+            onPress={() => {
+              handleUnregisteredPress(place);
+            }}
+          />
+        ))}
       </NaverMapView>
 
       <View className="absolute top-safe-or-2 left-0 right-0 z-20 px-4 gap-2">
