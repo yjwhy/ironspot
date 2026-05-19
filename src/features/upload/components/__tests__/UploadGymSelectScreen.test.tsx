@@ -28,8 +28,10 @@ jest.mock('@/shared/generated/gyms/gyms', () => ({
 }));
 
 const mockPush = jest.fn();
+const mockUseLocalSearchParams = jest.fn(() => ({}));
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
+  useLocalSearchParams: () => mockUseLocalSearchParams(),
 }));
 
 const mockUseGymSearch = useGymSearch as jest.MockedFunction<typeof useGymSearch>;
