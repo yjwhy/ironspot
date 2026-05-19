@@ -10,6 +10,7 @@ import com.ironspot.search.dsl.MachineFilter;
 import com.ironspot.search.dsl.SearchDsl;
 import com.ironspot.search.dsl.SearchScope;
 import com.ironspot.search.dto.NlSearchResponse;
+import com.ironspot.search.dto.UnregisteredPlace;
 import com.ironspot.search.llm.LlmClient;
 import com.ironspot.search.llm.LlmException;
 import org.jooq.DSLContext;
@@ -57,6 +58,12 @@ class NlSearchControllerIT extends IntegrationTestBase {
         dsl.update(USERS)
             .set(USERS.NL_SEARCH_COUNT_MONTH, 0)
             .where(USERS.ID.eq(UUID.fromString(AUTHED_USER)))
+            .execute();
+        // F7 dedup test stamps gyms.naver_place_id — clear so it doesn't leak
+        // to subsequent tests (the column is UNIQUE WHERE NOT NULL).
+        dsl.update(com.ironspot.jooq.Tables.GYMS)
+            .setNull(com.ironspot.jooq.Tables.GYMS.NAVER_PLACE_ID)
+            .where(com.ironspot.jooq.Tables.GYMS.NAME.eq("테스트 헬스장"))
             .execute();
     }
 
@@ -242,6 +249,137 @@ class NlSearchControllerIT extends IntegrationTestBase {
             .as("seeded Yeoksam gym (with Panatta High Row) satisfies combined SUM>=1")
             .anyMatch(g -> g.name().equals("테스트 헬스장"));
         assertThat(resp.getBody().interpretation()).contains("또는");
+    }
+
+    // ----- F7 NL search Naver merge tests -----
+
+    @Test
+    void genericQueryMergesNaverPlacesAsUnregistered() {
+        mockAuth();
+        given(llmClient.parse(anyString())).willReturn(new SearchDsl(
+            new Location.Current(5.0),
+            List.of(),  // empty filters = generic query
+            null
+        ));
+        // Naver returns 2 places, neither registered in IronSpot.
+        given(naverSearchService.search(anyString())).willReturn(List.of(
+            new NaverPlaceResult("naver-id-101", "강남헬스클럽", "서울 강남구 역삼동 100",
+                "강남구 역삼동 100-1", 37.4990, 127.0290, null, "체육시설"),
+            new NaverPlaceResult("naver-id-102", "강남피트니스", "서울 강남구 역삼동 200",
+                "강남구 역삼동 200-1", 37.4995, 127.0310, "02-1234-5678", "체육시설")
+        ));
+
+        ResponseEntity<NlSearchResponse> resp = rest.exchange(
+            "/api/search/natural",
+            org.springframework.http.HttpMethod.POST,
+            jsonBody("""
+                { "query": "강남역 근처 헬스장", "userLat": %s, "userLng": %s }
+                """.formatted(SEED_LAT, SEED_LNG), "token"),
+            NlSearchResponse.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(resp.getBody()).isNotNull();
+        assertThat(resp.getBody().unregisteredPlaces())
+            .as("generic query without specific filter triggers Naver merge")
+            .hasSize(2)
+            .extracting(UnregisteredPlace::naverPlaceId)
+            .containsExactlyInAnyOrder("naver-id-101", "naver-id-102");
+    }
+
+    @Test
+    void filteredQuerySkipsNaverMerge() {
+        mockAuth();
+        // Brand-specific filter — Panatta has no Naver equivalent, so merge is suppressed.
+        given(llmClient.parse(anyString())).willReturn(new SearchDsl(
+            new Location.Current(5.0),
+            List.of(new MachineFilter("Panatta", null, null, 1, SearchScope.EACH)),
+            null
+        ));
+
+        ResponseEntity<NlSearchResponse> resp = rest.exchange(
+            "/api/search/natural",
+            org.springframework.http.HttpMethod.POST,
+            jsonBody("""
+                { "query": "강남역 파나타", "userLat": %s, "userLng": %s }
+                """.formatted(SEED_LAT, SEED_LNG), "token"),
+            NlSearchResponse.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(resp.getBody()).isNotNull();
+        assertThat(resp.getBody().unregisteredPlaces())
+            .as("specific brand filter must NOT trigger Naver merge")
+            .isEmpty();
+        // Naver service must not even be called when filter is present
+        verifyNoInteractions(naverSearchService);
+    }
+
+    @Test
+    void genericQueryDedupsAlreadyRegisteredNaverPlace() {
+        mockAuth();
+        // Stamp the seeded gym with a naver_place_id so Naver-side duplicate
+        // resolution has a target. init-test-db.sql leaves naver_place_id NULL
+        // for all seed rows.
+        dsl.update(com.ironspot.jooq.Tables.GYMS)
+            .set(com.ironspot.jooq.Tables.GYMS.NAVER_PLACE_ID, "12345678")
+            .where(com.ironspot.jooq.Tables.GYMS.NAME.eq("테스트 헬스장"))
+            .execute();
+        given(llmClient.parse(anyString())).willReturn(new SearchDsl(
+            new Location.Current(5.0),
+            List.of(),
+            null
+        ));
+        // Naver returns 2 places. One has naver-place-id matching the seeded gym
+        // (we stamped '12345678' above), the other is fresh.
+        given(naverSearchService.search(anyString())).willReturn(List.of(
+            new NaverPlaceResult("12345678", "강남역피트니스 dup", "서울 강남구 역삼동 dup",
+                "강남구 역삼동 dup", 37.4979, 127.0276, null, "체육시설"),
+            new NaverPlaceResult("naver-fresh-id", "신규 헬스장", "서울 강남구 역삼동 999",
+                "강남구 역삼동 999", 37.4985, 127.0285, null, "체육시설")
+        ));
+
+        ResponseEntity<NlSearchResponse> resp = rest.exchange(
+            "/api/search/natural",
+            org.springframework.http.HttpMethod.POST,
+            jsonBody("""
+                { "query": "강남역 헬스장", "userLat": %s, "userLng": %s }
+                """.formatted(SEED_LAT, SEED_LNG), "token"),
+            NlSearchResponse.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(resp.getBody()).isNotNull();
+        assertThat(resp.getBody().unregisteredPlaces())
+            .as("already-registered naver_place_id must be deduped out")
+            .hasSize(1)
+            .extracting(UnregisteredPlace::naverPlaceId)
+            .containsExactly("naver-fresh-id");
+    }
+
+    @Test
+    void genericQuerySwallowsNaverFailure() {
+        mockAuth();
+        given(llmClient.parse(anyString())).willReturn(new SearchDsl(
+            new Location.Current(5.0),
+            List.of(),
+            null
+        ));
+        given(naverSearchService.search(anyString()))
+            .willThrow(new RuntimeException("simulated Naver outage"));
+
+        ResponseEntity<NlSearchResponse> resp = rest.exchange(
+            "/api/search/natural",
+            org.springframework.http.HttpMethod.POST,
+            jsonBody("""
+                { "query": "강남역 헬스장", "userLat": %s, "userLng": %s }
+                """.formatted(SEED_LAT, SEED_LNG), "token"),
+            NlSearchResponse.class);
+
+        assertThat(resp.getStatusCode())
+            .as("Naver failure must not crash the NL search response")
+            .isEqualTo(HttpStatus.OK);
+        assertThat(resp.getBody().unregisteredPlaces()).isEmpty();
+        assertThat(resp.getBody().gyms())
+            .as("IronSpot results still served even when Naver fails")
+            .anyMatch(g -> g.name().equals("테스트 헬스장"));
     }
 
     private void mockAuth() {

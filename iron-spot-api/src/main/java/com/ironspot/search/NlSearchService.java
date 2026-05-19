@@ -2,23 +2,30 @@ package com.ironspot.search;
 
 import com.ironspot.auth.UserPrincipal;
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.gym.GymRepository;
+import com.ironspot.gym.NaverSearchService;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
+import com.ironspot.gym.dto.NaverPlaceResult;
 import com.ironspot.search.dsl.SearchDsl;
 import com.ironspot.search.dto.NlSearchRequest;
 import com.ironspot.search.dto.NlSearchResponse;
 import com.ironspot.search.dto.ParsedFilters;
+import com.ironspot.search.dto.UnregisteredPlace;
 import com.ironspot.search.llm.LlmClient;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 import io.sentry.SentryLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NlSearchService {
@@ -31,6 +38,8 @@ public class NlSearchService {
     private final NlSearchQuotaService quotaService;
     private final NlSearchEmptyResultReporter emptyResultReporter;
     private final NlSearchLogWriter logWriter;
+    private final NaverSearchService naverSearchService;
+    private final GymRepository gymRepository;
 
     @Transactional(readOnly = true)
     public NlSearchResponse search(NlSearchRequest req, UserPrincipal principal) {
@@ -56,7 +65,15 @@ public class NlSearchService {
             String interpretation = interpretationFormatter.format(dsl);
             totalCount = gyms.size();
             ParsedFilters parsedFilters = toParsedFilters(validated.filters());
-            return new NlSearchResponse(gyms, interpretation, totalCount, parsedFilters, location);
+            // F7 NL search Naver merge: only when the query has no specific
+            // brand/category/machine filter. Naver has no machine metadata so
+            // filtered queries can't meaningfully match Naver results — emitting
+            // them would dilute the "Panatta 머신" intent with random gyms.
+            List<UnregisteredPlace> unregistered = isGenericQuery(parsedFilters)
+                ? fetchUnregisteredNaverPlaces(req.query())
+                : List.of();
+            return new NlSearchResponse(
+                gyms, interpretation, totalCount, parsedFilters, location, unregistered);
         } catch (BusinessException e) {
             if ("success".equals(outcome)) outcome = "business_error:" + e.getStatus().value();
             throw e;
@@ -89,6 +106,44 @@ public class NlSearchService {
         Integer minCount = filters.stream().mapToInt(ResolvedFilter::minCount).max().stream().boxed().findFirst().orElse(null);
         String scope = filters.isEmpty() ? null : filters.get(0).scope().name().toLowerCase();
         return new ParsedFilters(brandIds, categoryIds, templateIds, minCount, scope);
+    }
+
+    private boolean isGenericQuery(ParsedFilters parsedFilters) {
+        // Generic = no brand, no category, no template selected. Location-only
+        // queries like "강남역 헬스장" qualify. Filtered queries like "강남역
+        // 파나타 머신" do not.
+        return parsedFilters.brandIds().isEmpty()
+            && parsedFilters.categoryIds().isEmpty()
+            && parsedFilters.templateIds().isEmpty();
+    }
+
+    private List<UnregisteredPlace> fetchUnregisteredNaverPlaces(String query) {
+        // Naver call is cached 60s per (normalised) query via Caffeine — see
+        // NaverSearchService.search @Cacheable + application.yml cache config.
+        // Any failure (Naver down, quota exhausted, transport) is swallowed so
+        // the NL search still returns IronSpot results successfully.
+        List<NaverPlaceResult> naverPlaces;
+        try {
+            naverPlaces = naverSearchService.search(query);
+        } catch (RuntimeException e) {
+            log.warn("Naver merge failed for query='{}': {} — returning IronSpot only",
+                query, e.getMessage());
+            return List.of();
+        }
+        if (naverPlaces.isEmpty()) return List.of();
+
+        List<String> candidateIds = naverPlaces.stream().map(NaverPlaceResult::id).toList();
+        Set<String> registeredIds = gymRepository.findRegisteredNaverPlaceIdsAmong(candidateIds);
+        return naverPlaces.stream()
+            .filter(p -> !registeredIds.contains(p.id()))
+            .map(p -> new UnregisteredPlace(
+                p.id(),
+                p.name(),
+                p.roadAddress() == null || p.roadAddress().isBlank() ? p.address() : p.roadAddress(),
+                p.latitude(),
+                p.longitude()
+            ))
+            .toList();
     }
 
     private String translateDslError(String code) {

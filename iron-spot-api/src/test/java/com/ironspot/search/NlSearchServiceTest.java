@@ -48,6 +48,10 @@ class NlSearchServiceTest {
     private NlSearchEmptyResultReporter emptyResultReporter;
     @Mock
     private NlSearchLogWriter logWriter;
+    @Mock
+    private com.ironspot.gym.NaverSearchService naverSearchService;
+    @Mock
+    private com.ironspot.gym.GymRepository gymRepository;
 
     @InjectMocks
     private NlSearchService service;

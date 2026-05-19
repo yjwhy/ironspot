@@ -12,6 +12,15 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${DATABASE_USERNAME:}
     password: ${DATABASE_PASSWORD:}
+  cache:
+    # Caffeine in-memory cache used for Naver 지역검색 results (F7 NL search
+    # Naver merge). 60s TTL plus 500 entry cap protects the 25K/day Naver
+    # free-tier quota from being burned by repeated identical search bar
+    # queries while still picking up new places within a minute.
+    type: caffeine
+    cache-names: naverPlaces
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=60s
   flyway:
     # Task 47 / ADR 0023 — DB schema migrations via Flyway Community.
     # Prod has been running with manual SQL migrations since Phase 1; baseline-on-migrate

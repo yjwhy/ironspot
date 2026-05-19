@@ -67,6 +67,7 @@ export * from './searchPlacesParams';
 export * from './searchScope';
 export * from './topQuery';
 export * from './topReporter';
+export * from './unregisteredPlace';
 export * from './updateUserRequest';
 export * from './uploadBody';
 export * from './uploadParams';

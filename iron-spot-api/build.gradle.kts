@@ -50,6 +50,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
 
+    // Caffeine — in-memory LRU cache for Naver 지역검색 results (F7 NL search
+    // Naver merge). Spring-boot-starter-cache adapts Caffeine to @Cacheable.
+    // 60s TTL protects the Naver free-tier quota (25K/day) from being burned
+    // by repeated identical queries when users iterate on the search bar.
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("com.github.ben-manes.caffeine:caffeine")
+
     // JOOQ — pin to match generated code version
     implementation("org.jooq:jooq:3.21.4")
 
