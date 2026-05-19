@@ -76,7 +76,7 @@ PIPA (개인정보보호법) overlaps with Guideline 5 but adds Korea-specific i
 
 - [x] Privacy Policy in Korean covers required PIPA disclosures (collection items, purpose, retention period, third-party recipients including overseas transfer for Supabase US plus Groq US plus Vision API).
 - [x] Face PII rejection at upload (Task 42).
-- [ ] Overseas transfer consent UI: privacy policy discloses but user-facing consent toggle is not present. PIPA Article 28-8 allows policy-only disclosure for "necessary to perform contract" path; document the legal basis in submission notes.
+- [x] **Overseas transfer disclosure (PIPA Article 26 + 28-8 path)**: `docs/legal/privacy-policy.{ko,en}.md` Section 5 expanded with 7 processors (Supabase, Render, Naver, Sentry, Google Vision, Groq, **Gemini added**), per-processor transferred data items, processing location, retention period, plus transfer timing/method footer. No UI consent toggle since all processors are "necessary for service provision" (PIPA Article 26 consignment, not Article 17 third-party provision). `LoginScreen.tsx` carries a policy-link disclosure ("회원가입 시 [개인정보처리방침]과 [이용약관]에 동의합니다") above the OAuth buttons; tapping the inline link opens the GitHub Pages hosted policy in an in-app browser via `expo-web-browser.openBrowserAsync`.
 - [x] ToS in Korean covers IronSpot's reporting and ban flow (community-conduct article).
 
 ## 7. Operational readiness (backend uptime, observability)
@@ -225,7 +225,7 @@ Contact: yyou017@gmail.com
 - [ ] Submit for Review.
 - [ ] Monitor Sentry plus Render dashboards during review period (typically 24 to 48 hours).
 
-## Open items as of 2026-05-18
+## Open items as of 2026-05-19
 
 Items that are NOT yet resolved and need explicit decisions before submission:
 
@@ -236,6 +236,7 @@ Items that are NOT yet resolved and need explicit decisions before submission:
 Items recently resolved during Phase 4 close audit:
 
 - **Account deletion UI** plus **prod `users.deleted_at` hotfix** (Section 1, originally tracked as a blocker per 5.1.1(v)). Closed 2026-05-18 after verifying that backend, frontend, routing, tests, and prod schema were all already in place. Trail in `docs/plans/phase-3/PROGRESS.md` carry-over note.
+- **Overseas transfer disclosure** (Section 6). Closed 2026-05-19 via PIPA Article 26 + 28-8 disclosure-only path. Privacy policy Section 5 expanded with full transfer items + retention per processor (+ Gemini added). LoginScreen carries inline policy-link disclosure. No UI consent toggle needed since all processors are "necessary for service provision" under Article 26 consignment, not Article 17 third-party provision.
 
 ## Related documents
 

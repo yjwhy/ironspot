@@ -12,7 +12,7 @@ import { captureError } from '@/shared/lib/sentry';
 import { supabase } from '@/shared/lib/supabase';
 import { colors } from '@/shared/theme/tokens';
 
-import { AUTH_REDIRECT_URL } from '../constants';
+import { AUTH_REDIRECT_URL, PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../constants';
 import { parseAuthCallback } from '../lib/parseAuthCallback';
 
 interface LoginScreenProps {
@@ -86,6 +86,8 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
       </View>
 
       <View className="gap-3">
+        <PolicyDisclosure />
+
         <Button
           label="Google로 계속하기"
           onPress={() => {
@@ -123,5 +125,41 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+function openPrivacyPolicy() {
+  void WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL);
+}
+
+function openTermsOfService() {
+  void WebBrowser.openBrowserAsync(TERMS_OF_SERVICE_URL);
+}
+
+function PolicyDisclosure() {
+  return (
+    <View className="items-center px-2 pb-1">
+      <AppText className="text-body-sm text-text-tertiary text-center">
+        회원가입 시{' '}
+        <AppText
+          className="underline text-text-secondary"
+          onPress={openPrivacyPolicy}
+          accessibilityRole="link"
+          accessibilityLabel="개인정보처리방침 열기"
+        >
+          개인정보처리방침
+        </AppText>
+        과{' '}
+        <AppText
+          className="underline text-text-secondary"
+          onPress={openTermsOfService}
+          accessibilityRole="link"
+          accessibilityLabel="이용약관 열기"
+        >
+          이용약관
+        </AppText>
+        에 동의합니다
+      </AppText>
+    </View>
   );
 }

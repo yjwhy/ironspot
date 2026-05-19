@@ -20,6 +20,7 @@ jest.mock('@/shared/lib/supabase', () => ({
 
 jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn(),
+  openBrowserAsync: jest.fn().mockResolvedValue({ type: 'opened' }),
 }));
 
 jest.mock('burnt', () => ({
@@ -51,7 +52,10 @@ function getSupabaseMock() {
 
 function getWebBrowserMock() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require('expo-web-browser') as { openAuthSessionAsync: jest.Mock };
+  return require('expo-web-browser') as {
+    openAuthSessionAsync: jest.Mock;
+    openBrowserAsync: jest.Mock;
+  };
 }
 
 function getBurntMock() {
@@ -120,6 +124,22 @@ describe('LoginScreen — rendering', () => {
     const { onBrowseAsGuest, getByRole } = renderLoginScreen();
     fireEvent.press(getByRole('button', { name: '로그인 없이 둘러보기' }));
     expect(onBrowseAsGuest).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the privacy policy URL in an in-app browser when 개인정보처리방침 link is pressed', () => {
+    const { getByLabelText } = renderLoginScreen();
+    fireEvent.press(getByLabelText('개인정보처리방침 열기'));
+    expect(getWebBrowserMock().openBrowserAsync).toHaveBeenCalledWith(
+      'https://yjwhy.github.io/ironspot/privacy-policy.ko.html',
+    );
+  });
+
+  it('opens the terms of service URL in an in-app browser when 이용약관 link is pressed', () => {
+    const { getByLabelText } = renderLoginScreen();
+    fireEvent.press(getByLabelText('이용약관 열기'));
+    expect(getWebBrowserMock().openBrowserAsync).toHaveBeenCalledWith(
+      'https://yjwhy.github.io/ironspot/terms-of-service.ko.html',
+    );
   });
 });
 
