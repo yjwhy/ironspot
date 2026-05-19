@@ -17,7 +17,11 @@ const QUEUE_PREVIEW_LIMIT = 1;
 // roles (the AuthenticatedProfile parent gates rendering on user.role).
 export function OwnerActivityWidget() {
   const queueQuery = useQueue({ limit: QUEUE_PREVIEW_LIMIT });
-  const pendingCount = queueQuery.data?.data.length ?? 0;
+  // Double optional-chain: Orval types `queueResponse` as a wrapper but the
+  // apiClient returns the raw parsed body, so `queueQuery.data?.data` can be
+  // undefined at runtime. Same pattern as useOwnerPendingDot.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const pendingCount = queueQuery.data?.data?.length ?? 0;
   const hasPending = pendingCount > 0;
 
   function handlePress() {
