@@ -27,14 +27,8 @@ import { useMachineTemplates } from '../hooks/useMachineTemplates';
 import { useMapSearch } from '../hooks/useMapSearch';
 import { useMarkerReveal } from '../hooks/useMarkerReveal';
 import { scopeToMachineFilterMode } from '../lib/active-filters';
+import { INITIAL_MAP_ZOOM, clampToKoreaBbox, planNlCamera } from '../lib/cameraUtils';
 import { toGymWithMachineCount } from '../services/gym-search';
-
-const INITIAL_ZOOM = 14;
-const CAMERA_ANIMATE_MS = 500;
-// Empirically, calling animateCameraTo right inside the mutation onSuccess
-// races marker insertion on iOS; a one-frame defer is enough to let React
-// commit the new overlays first.
-const CAMERA_DEFER_MS = 50;
 
 type GymsSource =
   | { readonly kind: 'filter' }
@@ -87,14 +81,23 @@ export function MapScreen() {
   const [source, dispatch] = useReducer(gymsSourceReducer, INITIAL_SOURCE);
   const mapRef = useRef<NaverMapViewRef>(null);
 
-  const initialLocation = locationState.status !== 'loading' ? locationState.location : null;
-  const userLocation = initialLocation ?? GANGNAM_STATION;
+  // Phase 5 item 13: clamp the first camera to Korea so the rare overseas
+  // tester (and any spoofed GPS) never lands the map outside the launch
+  // cohort's bbox. Subsequent NL searches then never cross a long-distance
+  // jump unless the user really is overseas (handled by planNlCamera's
+  // cinematic bypass).
+  const initialLocation =
+    locationState.status !== 'loading' ? clampToKoreaBbox(locationState.location) : null;
+  // NL search origin + cinematic-bypass anchor. Falls back to 강남역 while
+  // the GPS resolves so the search request always has a coordinate to bias
+  // results around.
+  const searchAnchor = initialLocation ?? GANGNAM_STATION;
   const isPermissionDenied =
     locationState.status === 'fallback' && locationState.reason === 'permission_denied';
 
   const nlSearch = useNlSearch({
-    userLat: userLocation.latitude,
-    userLng: userLocation.longitude,
+    userLat: searchAnchor.latitude,
+    userLng: searchAnchor.longitude,
   });
   const filterSearch = useMapSearch(filters);
 
@@ -125,7 +128,7 @@ export function MapScreen() {
   } = useBottomSheetMode({
     gyms: displayedGyms,
     isPending,
-    userLocation,
+    userLocation: searchAnchor,
     clearFilters,
     onPressMachine: (gymId, machineId) => {
       router.push(`/gym/${gymId}/machine/${machineId}`);
@@ -151,26 +154,22 @@ export function MapScreen() {
       onSuccess: (response) => {
         dispatch({ type: 'nl_result', query, response });
         filterSheetRef.current?.dismiss();
-        const { coordinates } = response.resolvedLocation;
-        const lat = coordinates?.lat;
-        const lng = coordinates?.lng;
-        if (lat === undefined || lng === undefined) return;
-        // Pan-only animation. Calling animateCameraTo right inside
-        // onSuccess races marker insertion in @mj-studio/react-native-naver-map
-        // on iOS — the new overlays end up never rendered. A one-frame
-        // setTimeout is enough to let React commit them first.
-        //
-        // Zoom is intentionally NOT changed: zoom-changing camera
-        // animations clear newly added marker overlays in the same
-        // library (the marker mount races with the zoom-level transition).
-        // The chip ("1km 이내") communicates the radius instead.
+        // Phase 5 item 13: planNlCamera threads `resolvedLocation.radiusKm`
+        // into the camera zoom and picks the instant-snap path for
+        // overseas → Korea jumps so the SDK's cinematic transition (which
+        // would otherwise drop the target zoom) never fires. The deferMs
+        // gives React one frame to commit the new markers before the
+        // animation races their mount.
+        const plan = planNlCamera(searchAnchor, response.resolvedLocation);
+        if (plan === null) return;
         setTimeout(() => {
           mapRef.current?.animateCameraTo({
-            latitude: lat,
-            longitude: lng,
-            duration: CAMERA_ANIMATE_MS,
+            latitude: plan.target.latitude,
+            longitude: plan.target.longitude,
+            zoom: plan.zoom,
+            duration: plan.duration,
           });
-        }, CAMERA_DEFER_MS);
+        }, plan.deferMs);
       },
     });
   }
@@ -208,7 +207,7 @@ export function MapScreen() {
             ? {
                 latitude: initialLocation.latitude,
                 longitude: initialLocation.longitude,
-                zoom: INITIAL_ZOOM,
+                zoom: INITIAL_MAP_ZOOM,
               }
             : undefined
         }
