@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as burnt from 'burnt';
+import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { Alert } from 'react-native';
 
+import { AUTH_ROUTES } from '@/features/auth/routes';
 import type { NlSearchResponse } from '@/shared/generated/model';
 import { searchNatural } from '@/shared/generated/search-controller/search-controller';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
@@ -89,6 +92,21 @@ export function useNlSearch({ userLat, userLng }: UseNlSearchParams) {
     },
     onError: async (err) => {
       const status = statusOf(err);
+      if (status === 401) {
+        // F1 (device-testing-findings): NL search needs auth (Task 37
+        // SecurityConfig). For guest users we surface a friendly login
+        // CTA dialog instead of the generic search-error toast.
+        Alert.alert('로그인이 필요해요', '자연어 검색은 회원가입 후 사용할 수 있어요.', [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '로그인하기',
+            onPress: () => {
+              router.push(AUTH_ROUTES.login);
+            },
+          },
+        ]);
+        return;
+      }
       if (status === 429) {
         burnt.toast({ title: '이번 달 검색 한도를 모두 사용했어요', preset: 'error' });
         return;
