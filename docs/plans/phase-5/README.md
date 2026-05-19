@@ -89,9 +89,78 @@ Reported by the user on a physical iPhone in New Zealand: searching "강남역 �
 - [ ] Side concern: starting camera fallback for overseas testers. Today the first camera is the user's GPS; a Korean fallback centre (e.g. 서울시청 좌표) once NL search is the dominant entry path would shorten the long jump that triggers the SDK behaviour. Adds a Phase 5 i18n thread but the immediate fix is camera strategy, not entry-point.
 - [ ] Coverage: extend the existing MapScreen camera test (if present) with two cases — short-distance pan keeps zoom 14, long-distance jump lands on `derivedZoom = f(radiusKm)`.
 
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Use NaverMap's `setBounds` / `fitBounds` if the SDK exposes it: centre = `resolvedLocation.coordinates`, padding derived from `radiusKm × 1.3` so all markers sit inside the visible viewport. If the SDK only accepts a zoom integer, derive it from radius via Web Mercator approximation `zoom = round(15 − log2(radiusKm))` (1 km → 15, 3 km → 13, 5 km → 12). For long-distance jumps (start↔end > 500 km), bypass the cinematic animation entirely — call `setCamera` (instant, no transition phase) so the SDK's auto zoom-out never fires, then trigger the existing marker reveal pipeline after a slightly longer `CAMERA_DEFER_MS` (~150 ms) to absorb settle time. Quick Reference §7 `layout-shift-avoid` + `interruptible` + `motion-meaning` apply: the cinematic loses meaning when the start point is in a different country; a clean instant snap reads as "search jumped" while an animated zoom-out reads as confused intent.
+
 **Reason this sits in Phase 5**
 
 Direct workaround for the user (search inside Korea, or re-search from a closer start point) keeps this from being a launch blocker. The grill between options (a)/(b)/(c) needs SDK-level repro plus the existing marker-mount race to be re-checked, both of which are too speculative to PR pre-launch without device verification.
+
+### 14. Unregistered gym card tap routes the user to a duplicate search step
+
+**Current state**
+
+Reported by the user during the same 2026-05-20 review on a physical iPhone. The NL search bottom sheet's `UnregisteredGymCard` advertises "첫 등록자 되어 정보 추가하기" but tapping it routes to `/(upload)/gym-select?openNewGym=1&initialQuery=<name>` — the "새 헬스장 등록" screen — and the user has to **Naver-search the same name again and pick the same place** before getting to the camera. The `UnregisteredPlace` object already carries `naverPlaceId`, `name`, `address`, `latitude`, `longitude`, so the search-then-select step is pure friction.
+
+**To-do (groomed scope)**
+
+- [ ] Frontend: replace the `router.push('/(upload)/gym-select', ...)` in `MapScreen.handleUnregisteredPress` with a direct `useCreateGym(place)` call (Naver place fed straight into the existing mutation).
+- [ ] On mutation success, route to `/(upload)/camera?gymId=<newGymId>` so the user lands on the camera with the new gym pre-bound.
+- [ ] Add an "undo" toast on the camera screen for ~5 s ("○○를 등록했어요 · 취소") that rolls back the gym row if tapped. Persisted state hand-over via expo-router params, not a global store.
+- [ ] Telemetry: count gym-row rollbacks per week — if > 5 % we re-add a confirmation modal.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+CTA copy already promises registration, so showing a second confirmation modal would feel like the app distrusts the user's tap. Optimistic flow + undo is the better pattern (Quick Reference §8 `undo-support`): trust the tap, fire `useCreateGym(place)` immediately with an optimistic loading state on the bottom sheet card (spinner overlay, "등록 중..."), then push to the camera screen with the new `gymId`. The camera screen shows a 5-second dismissible "○○를 등록했어요 · 취소" toast at the top; tapping 취소 fires a delete mutation against the gym row plus pops back to map. Quick Reference §4 `primary-action` + §9 `back-stack-integrity` apply: the bottom-sheet card is the screen's only primary CTA, and the back stack stays clean (map → camera, not map → search → select → camera).
+
+**Reason to ship pre-launch**
+
+Current UX violates the CTA copy — the screen labels the action "register me as the first contributor" but actually requires the user to do the same task twice. Fixing this before launch is cheaper than apologising in App Store reviews. Pre-launch hotfix branch, not Phase 5 holding pen.
+
+### 15. Gym detail has no entry point to register a new machine
+
+**Current state**
+
+`GymDetail` → `MachineList` only renders the gym's already-registered `gym_machines`. Each card taps into `MachinePhotoGalleryScreen` which only allows adding photos to that existing machine. A user who walks into a gym and notices a brand-new piece of equipment (not yet in our DB) has no way to add a photo of it from inside the gym detail — they would have to back out, go to upload, choose the gym again, and start over. Independently, `MachinePhotoGalleryScreen.handlePressUpload` pushes to `/(upload)/gym-select` without the current `gymId`, forcing the user to re-pick the gym they are already inside of.
+
+**To-do (groomed scope)**
+
+- [ ] Add a Material FAB ("+", label "사진 추가") floating bottom-right in `GymDetail`, above `MachineList`.
+- [ ] FAB tap routes to `/(upload)/camera?gymId=<id>` with no machine pre-selected; the camera screen runs OCR, matches against `machine_templates`, and either re-uses an existing `gym_machines` row for this gym or creates a new one bound to the matched template.
+- [ ] OCR no-match path folds into item 11's direct-input persistence (carry `gymId` so the orphaned-photo bug item 11 fixes does not regress here).
+- [ ] Fix `MachinePhotoGalleryScreen.handlePressUpload` to push `/(upload)/camera?gymId=<id>&prefMachineId=<machineId>` so the camera lands pre-bound to both gym + machine.
+- [ ] Test coverage: `GymDetail` renders FAB above `MachineList`; FAB tap calls `router.push` with the gym ID; `MachinePhotoGalleryScreen.handlePressUpload` carries gymId.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+A Material FAB is the right pattern here — both iOS HIG and Material Design treat FAB as the "primary action of this screen" anchor, and it sits above scroll content without competing with the machine cards. Quick Reference §4 `primary-action` (one primary CTA per screen) + §9 `nav-hierarchy` apply: machine-card taps stay secondary (go into existing machine gallery), FAB stays primary (add new). Secondary actions like "신고하기" stay inside each `MachineCard` as before. Avoid a sticky bottom bar with two CTAs — it steals vertical space and weakens the primary action visually.
+
+**Reason to ship pre-launch**
+
+This is the app's core value loop: gym → "I see a new machine" → photo → contribution. Without an entry point the loop never starts and the gym's data stays stale. Pre-launch hotfix branch.
+
+### 16. No directions affordance — NL search dead-ends at the gym detail
+
+**Current state**
+
+The NL search funnel ends at the gym card or detail screen — there is no way to actually navigate to the gym. Users have to copy the address, switch to Naver Maps, paste, and start a route. This breaks the "search → go there" flow that any map-search product is expected to close. `gyms.naver_place_id` is already persisted in prod (the F7 Naver merge guarantees it for registered gyms), and the Korean default routing app is Naver Maps, so a deep link path is short.
+
+**To-do (groomed scope)**
+
+- [ ] Add a "길찾기" chip on `GymCard` (bottom sheet, next to the address line) and a header-right "길찾기" button on `GymDetail`. Both wired to a shared `openDirections(gym)` handler.
+- [ ] Handler: `Linking.canOpenURL('nmap://')` → if true and `naver_place_id` exists, open `nmap://place?id=<id>&appname=com.ironspot.app`; if true with no place id, open `nmap://route/public?slat=<userLat>&slng=<userLng>&dlat=<gymLat>&dlng=<gymLng>&dname=<encodedName>&appname=...`; if false, fall back to `https://map.naver.com/v5/search/<encoded>` via WebBrowser.
+- [ ] Origin policy: default to current GPS. When the NL response carried a `resolvedLocation` reference point (e.g. "강남역"), surface a one-time ActionSheet "현재 위치 / 강남역에서" on first tap of the session and remember the choice. Skip the sheet for "내 주변" / no-reference searches.
+- [ ] Native config: add `LSApplicationQueriesSchemes: ["nmap"]` to `app.config.ts` under `ios.infoPlist`. **Native rebuild required** — batch with other native changes if any.
+- [ ] Telemetry: count taps per session to validate the affordance is being discovered. If <10 % conversion from gym detail to directions tap after 4 weeks, move the entry point to a more visible slot.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Two entry points, both secondary. The bottom-sheet `GymCard` chip is the one-tap path for the most common case (user has shortlisted from search, hasn't entered detail). The header-right `GymDetail` button is for users who entered detail first to check photos / equipment. Both buttons are visually subordinate to the screen's primary CTA (item 15 FAB on detail, gym selection on bottom sheet) — Quick Reference §4 `primary-action` keeps the hierarchy. The dual-origin ActionSheet would create noise if shown on every search, so gate it on the NL `resolvedLocation` reference point existing (typically "X역" / "X대학교" / "X구"). For "내 주변" or no-reference, current GPS is always right. Quick Reference §9 `escape-routes` + §8 `error-recovery` cover the web-fallback chain.
+
+**Reason this sits in Phase 5**
+
+Requires a native rebuild for `LSApplicationQueriesSchemes`, so it cannot land via OTA. Bundle with the next native change to amortise the rebuild cost. Not a launch blocker — manual "copy address, paste in Naver Maps" is annoying but tolerable for the first cohort, and gives us H4-like volume signal on whether this affordance is even valued.
 
 ## Post-launch hypotheses (drive prioritisation)
 
