@@ -162,6 +162,38 @@ Two entry points, both secondary. The bottom-sheet `GymCard` chip is the one-tap
 
 Requires a native rebuild for `LSApplicationQueriesSchemes`, so it cannot land via OTA. Bundle with the next native change to amortise the rebuild cost. Not a launch blocker — manual "copy address, paste in Naver Maps" is annoying but tolerable for the first cohort, and gives us H4-like volume signal on whether this affordance is even valued.
 
+### 17. Gym cover photo — owner-only upload, placeholder otherwise
+
+**Current state**
+
+Bottom-sheet `GymCard` already accepts a `thumbnailUrl` prop (`src/features/gym/components/GymCard.tsx:17`) but nothing threads a real value into it — every card renders the placeholder. The user asked whether we could pull the cover image Naver shows on its own search results (e.g. the red 짐박스 톡톡 image visible in the 2026-05-20 review screenshot). Audit findings:
+
+- Naver Local Search API response has no image field (`title, link, category, telephone, address, roadAddress, mapx, mapy` only).
+- No public Naver API exposes Place cover photos; `map.naver.com` HTML scraping violates Naver's terms and robots.txt.
+- Naver Image Search API can be queried by gym name but matches are unreliable (same-name different branches, unrelated blog images) and the results carry third-party copyright. App Store guidelines 5.2.2 / 5.2.3 reject apps that surface third-party content without explicit consent.
+
+**Locked decision (2026-05-20)**
+
+- Only gym owners (the Task 47 owner-verification path) can upload the cover photo for their gym.
+- Photos uploaded by regular users through the normal contribution flow stay machine-bound — they never get promoted to the gym's cover.
+- When no owner has uploaded yet, the bottom-sheet card keeps the placeholder. No automatic fallback to user-submitted photos, Naver search, or image-search APIs.
+
+**To-do (groomed scope)**
+
+- [ ] DB: add `gyms.cover_photo_url TEXT NULL` via a new Flyway migration. Nullable — most gyms will not have one for a long time.
+- [ ] Backend: extend `GymResponse` / NL search response to surface `coverPhotoUrl`. Existing repository methods filter by `owner_id` already so the upload endpoint check is one line.
+- [ ] Owner upload screen: in the Task 47 "내 매장 관리하기" surface, add a "대표 사진" section — upload, preview, remove. Reuse the existing photo upload pipeline (Vision SafeSearch + PII check) but skip the OCR + machine-binding steps.
+- [ ] Frontend: thread `coverPhotoUrl` through `useMapSearch`, `useNlSearch`, and gym detail into `GymCard`'s existing `thumbnailUrl` prop. Placeholder stays when null.
+- [ ] Test coverage: backend IT for owner-only upload (403 for non-owner), frontend test that `GymCard` renders the placeholder when `thumbnailUrl` is null and the image when set.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Owner-only upload keeps every cover photo accountable to a verified business identity, sidesteps the third-party copyright problem entirely, and gives Task 47 owners a tangible reward for completing verification (their photo, not anonymous user-submitted content, represents their gym). Quick Reference §4 `style-match` (cover photo is a brand expression, belongs to whoever owns the brand) and §1 `color-not-only` apply: when no cover is set the placeholder must still convey hierarchy via the gym name + distance metadata, not visually collapse to "broken card". Keep the placeholder neutral and consistent across cards so the visual rhythm of the bottom sheet stays stable as cover photos populate gradually.
+
+**Reason this sits in Phase 5**
+
+Depends on Task 47 owner workflow being merged + a measurable number of owners having gone through verification. Pre-launch there are zero verified owners so the feature would have no real data. Ships when owner verification volume hits double digits — until then the placeholder is the right state.
+
 ## Post-launch hypotheses (drive prioritisation)
 
 Each Phase 5 task ships only when the matching hypothesis is either confirmed or falsified by real data. Phase 4 closed without users so all of these are pre-decisions waiting on evidence.
