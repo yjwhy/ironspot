@@ -26,6 +26,32 @@ Migrated verbatim from `docs/plans/phase-4/implementation.md` `Future Tasks` Tie
 9. **Multi-platform push routing** — once item 4 lands on iOS, extend to Android once Play Store presence exists.
 10. **ML reranking on NL search results** — current ordering is PostGIS distance plus filter match. Reranking based on user click-through plus dwell time only becomes possible with logged user interactions, which item 7 (PostHog) unlocks.
 
+## Open questions raised during launch-readiness review (2026-05-19)
+
+Surfaced by the user during device testing on the iOS simulator while reviewing the OCR pipeline and filter catalog. Both questions point at the same workflow gap: the closed-set template DB cannot grow from real-user submissions today, and the manual-input fallback that the UI promises is currently a no-op.
+
+### 11. Machine template catalog growth plus OCR direct-input persistence
+
+**Current state**
+
+- `brands`, `categories`, `machine_templates` are seeded manually into Supabase prod (Flyway `V1__baseline.sql:21` explicitly excludes seeds). At launch the catalog is 5 brands + 5 categories + 11 templates.
+- `OcrService` plus `FuzzyMatchService` only suggest templates that already exist in `machine_templates` (Jaccard threshold 0.25). OCR cannot self-register an unknown brand or machine.
+- `UploadConfirmScreen.tsx:238` collects the user's free-text fallback name but `handleRegister` carries a `// TODO: call registerMachine(...)` and just shows a "사진이 등록됐어요!" toast plus `router.back()`. The text is **discarded**; only the photo lands in Storage plus `photos`, never bound to a `gym_machines` row. The user reads it as success but the photo becomes an orphan.
+- Same gap applies when OCR succeeds but the suggested templates are all wrong and the user picks the "직접 입력" radio.
+
+**To-do (groomed scope)**
+
+- [ ] Backend: add `POST /api/gym-machines` (or extend existing endpoint) that accepts `{ gymId, freeFormName, brandHint?, categoryHint? }` and persists into a new `unverified_machine_names` queue table (or `gym_machines` with `template_id = NULL` plus a `pending_review` flag, decision in grill).
+- [ ] Backend: bind the orphaned photo to the new row inside the same request so the upload flow finishes with a real `gym_machine_id`.
+- [ ] Frontend: replace the `// TODO` in `UploadConfirmScreen.tsx:238` with a real call. Toast copy stays optimistic but reflects truth ("등록 요청을 보냈어요, 검토 후 반영돼요" or similar).
+- [ ] Admin: add a queue view that lists pending free-form names, lets the admin (a) promote to an existing template, (b) create a new template plus optionally a new brand, or (c) reject. Folds into the existing admin dashboard rather than a new screen if volume stays low.
+- [ ] Telemetry: count per-week `unverified_machine_names` inserts so we can falsify hypothesis H7 below.
+- [ ] (Optional, larger) Bulk-seed the template catalog from a public gym-equipment dataset to raise OCR hit rate before launch instead of relying entirely on user direct-input. Decide at Phase 5 kickoff based on H7 volume signal.
+
+**Reason to defer past launch**
+
+The decision between "let the queue grow and curate" versus "bulk-seed first" is undecidable without real submission volume. Shipping the persistence path before launch is enough to stop losing user submissions; the admin promotion UI plus bulk-seed scope answer to H7 evidence.
+
 ## Post-launch hypotheses (drive prioritisation)
 
 Each Phase 5 task ships only when the matching hypothesis is either confirmed or falsified by real data. Phase 4 closed without users so all of these are pre-decisions waiting on evidence.
@@ -38,6 +64,7 @@ Each Phase 5 task ships only when the matching hypothesis is either confirmed or
 | H4  | Daily active users exceed 50 within the first month.                                                                                                                | Sentry sessions, Supabase auth `last_sign_in_at`.                                                                                                       | Whether to build item 7 (PostHog) before item 4 (push).                      |
 | H5  | Photo PII rejection (Task 42) catches the bulk of face uploads without users complaining about false rejections.                                                    | Sentry breadcrumbs from `PhotoService.upload` plus user-support email volume to `yyou017@gmail.com`.                                                    | Whether to relax the B3 threshold or add mosaic fallback (Task 42 option A). |
 | H6  | Korean-only at launch is acceptable for the first cohort.                                                                                                           | App Store reviews mentioning English.                                                                                                                   | i18n scope decision (currently out of Phase 5).                              |
+| H7  | Real users submit machine names absent from the 11-template launch seed at a rate that justifies an admin promotion queue rather than a one-off bulk seed.          | `unverified_machine_names` inserts per week once item 11 ships the persistence path. Compare distinct-name volume to admin curation throughput.         | Item 11 admin queue UI and the optional bulk-seed decision.                  |
 
 ## Measurement plan
 
