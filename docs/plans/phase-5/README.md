@@ -52,6 +52,24 @@ Surfaced by the user during device testing on the iOS simulator while reviewing 
 
 The decision between "let the queue grow and curate" versus "bulk-seed first" is undecidable without real submission volume. Shipping the persistence path before launch is enough to stop losing user submissions; the admin promotion UI plus bulk-seed scope answer to H7 evidence.
 
+### 12. Photo upload / OCR error path needs reproduction and triage
+
+**Current state**
+
+Reported by the user during the same 2026-05-19 device-testing session: capturing a photo and submitting it surfaces an error rather than reaching the OCR success / fail confirm screens (`UploadConfirmScreen`'s `OcrFailView` already covers the empty-suggestion path — this error is upstream of that). Exact error text, the failing screen, and whether it is reproducible across machines plus gym types are not captured yet, and `xcrun simctl spawn booted log show ... grep ocr|photo|upload` returned no matches in the 2-minute window after the report so the error is not fresh in device logs either.
+
+**To-do (groomed scope)**
+
+- [ ] Reproduce on the simulator with `pnpm dev:prod`: pick a gym → 사진 업로드 → capture an image → record the exact error copy plus screen and attach a Maestro-driven repro flow under `.maestro/flows/`.
+- [ ] Pull the failing request from device logs (`xcrun simctl spawn booted log show --predicate 'process == "IronSpot"' --last 5m --style compact | grep -iE 'photo|vision|ocr|/api/'`) plus the corresponding Render log entry, plus the Sentry event if one was emitted.
+- [ ] Classify the failure: Vision API 5xx, Supabase Storage upload failure, multipart parsing, response shape mismatch, or pre-OCR image compression. The branch decides whether the fix lives in `PhotoService.upload`, `OcrService.analyzeImage`, `StorageService.upload`, or the frontend `usePhotoUpload` hook.
+- [ ] Decide whether to fail-open to `OcrFailView` (graceful degrade to the existing manual-input path) versus showing a user-actionable error toast. Same trade-off as the `vision = VisionAnalysisResult.EMPTY` fallback already in `PhotoService.upload:60` for Vision failures.
+- [ ] Add the error path to the test suite — Photo upload IT covering the failing branch, frontend test covering the toast / fallback copy.
+
+**Reason this sits in Phase 5**
+
+Pre-launch decision: triage now, ship a fix once we know the failure mode. If the root cause is a backend bug rather than a UX gap it pulls forward to a pre-launch hotfix branch. If it is a Vision API rate-limit or transient 5xx it folds into the same fail-open path as the existing OCR-fail flow plus item 11's persistence pipe and ships together.
+
 ## Post-launch hypotheses (drive prioritisation)
 
 Each Phase 5 task ships only when the matching hypothesis is either confirmed or falsified by real data. Phase 4 closed without users so all of these are pre-decisions waiting on evidence.
