@@ -30,6 +30,8 @@ Migrated verbatim from `docs/plans/phase-4/implementation.md` `Future Tasks` Tie
 
 Surfaced by the user during device testing on the iOS simulator while reviewing the OCR pipeline and filter catalog. Both questions point at the same workflow gap: the closed-set template DB cannot grow from real-user submissions today, and the manual-input fallback that the UI promises is currently a no-op.
 
+**Locked scope decision (2026-05-20)** — Korean users only. The launch cohort, the product surface, and every UX decision below assume the user is in Korea and reads Korean. Overseas usage is explicitly out of scope: any item that previously read "this is an overseas-tester edge case" is re-classified as a domestic concern (the developer's NZ testing surfaced item 13's symptom, but the underlying bug hits domestic users too). H6 ("Korean-only at launch is acceptable") is treated as confirmed pre-launch rather than waiting on App Store review evidence.
+
 ### 11. Machine template catalog growth plus OCR direct-input persistence
 
 **Current state**
@@ -41,16 +43,28 @@ Surfaced by the user during device testing on the iOS simulator while reviewing 
 
 **To-do (groomed scope)**
 
-- [ ] Backend: add `POST /api/gym-machines` (or extend existing endpoint) that accepts `{ gymId, freeFormName, brandHint?, categoryHint? }` and persists into a new `unverified_machine_names` queue table (or `gym_machines` with `template_id = NULL` plus a `pending_review` flag, decision in grill).
+- [ ] Backend: add `POST /api/gym-machines` (or extend existing endpoint) that accepts `{ gymId, templateId? | freeFormName }` and persists into `gym_machines` with `template_id` filled when the user picked from the closed list, or `template_id = NULL` plus `pending_review = true` when the user fell back to direct input.
 - [ ] Backend: bind the orphaned photo to the new row inside the same request so the upload flow finishes with a real `gym_machine_id`.
 - [ ] Frontend: replace the `// TODO` in `UploadConfirmScreen.tsx:238` with a real call. Toast copy stays optimistic but reflects truth ("등록 요청을 보냈어요, 검토 후 반영돼요" or similar).
-- [ ] Admin: add a queue view that lists pending free-form names, lets the admin (a) promote to an existing template, (b) create a new template plus optionally a new brand, or (c) reject. Folds into the existing admin dashboard rather than a new screen if volume stays low.
-- [ ] Telemetry: count per-week `unverified_machine_names` inserts so we can falsify hypothesis H7 below.
+- [ ] **OCR-failure picker UI (3 closed-list steps + escape hatch)** — replaces today's `OcrFailView` plain text input. See `Closed-list autocomplete pattern` below.
+- [ ] Admin: add a queue view that lists `pending_review = true` rows, lets the admin (a) promote by mapping to an existing template, (b) create a new template plus optionally a new brand, or (c) reject. Folds into the existing admin dashboard rather than a new screen if volume stays low.
+- [ ] Telemetry: count per-week `pending_review = true` inserts so we can falsify hypothesis H7 below.
 - [ ] (Optional, larger) Bulk-seed the template catalog from a public gym-equipment dataset to raise OCR hit rate before launch instead of relying entirely on user direct-input. Decide at Phase 5 kickoff based on H7 volume signal.
+
+**Closed-list autocomplete pattern (2026-05-20 decision)**
+
+LLM-driven free-text brand/machine input is rejected — hallucination would create fake brands and ghost machines that look authoritative. The OCR-failure picker uses three closed-list steps backed by our own DB, plus a single escape hatch:
+
+1. **Brand** — autocomplete over `brands` rows (5 today). Korean/English alias matching once item 18 lands.
+2. **Category** — 5 fixed chips backed by `categories` rows (가슴 / 등 / 다리 / 어깨 / 팔).
+3. **Template** — autocomplete over `machine_templates`, filtered by the selected brand + category. Options narrow as steps 1-2 are filled.
+4. **Escape hatch** — "리스트에 없어요?" link below the template picker. Tapping reveals a free-text input that goes through the `pending_review = true` path and surfaces in the admin queue.
+
+LLM role is constrained to ranking inside the closed list — score user-typed text against existing rows for top-3 suggestions. No free-text generation, no template synthesis. Quick Reference §8 `progressive-disclosure` + `field-grouping` apply: the 3 steps reveal sequentially as each is filled rather than dumping all selectors at once.
 
 **Reason to defer past launch**
 
-The decision between "let the queue grow and curate" versus "bulk-seed first" is undecidable without real submission volume. Shipping the persistence path before launch is enough to stop losing user submissions; the admin promotion UI plus bulk-seed scope answer to H7 evidence.
+The decision between "let the queue grow and curate" versus "bulk-seed first" is undecidable without real submission volume. Shipping the persistence path before launch is enough to stop losing user submissions; the admin promotion UI plus bulk-seed scope answer to H7 evidence. The closed-list picker UI itself ships pre-launch alongside items 14/15 since it gates the OCR fallback that all of them depend on.
 
 ### 12. Photo upload / OCR error path needs reproduction and triage
 
@@ -70,19 +84,218 @@ Reported by the user during the same 2026-05-19 device-testing session: capturin
 
 Pre-launch decision: triage now, ship a fix once we know the failure mode. If the root cause is a backend bug rather than a UX gap it pulls forward to a pre-launch hotfix branch. If it is a Vision API rate-limit or transient 5xx it folds into the same fail-open path as the existing OCR-fail flow plus item 11's persistence pipe and ships together.
 
+### 13. NL search camera animation drops zoom on long-distance jumps, ignores resolved radius
+
+**Current state**
+
+Reported by the user on a physical iPhone in New Zealand: searching "강남역 헬스장" panned the map toward Seoul but the zoom level ended up zoomed way out (Seoul-wide rather than Gangnam-block). Trace of the behaviour:
+
+- `MapScreen.tsx:32` sets `INITIAL_ZOOM = 14`. First camera anchors on the user's GPS (overseas testers see their current country, not Korea).
+- `MapScreen.tsx:168` calls `mapRef.current?.animateCameraTo({ latitude, longitude, duration: CAMERA_ANIMATE_MS })` without a `zoom` argument. The omission is intentional — a comment at `MapScreen.tsx:163` warns that zoom-changing camera animations race with marker mount in `@mj-studio/react-native-naver-map` and clear newly added overlays.
+- The Naver Maps SDK appears to apply a cinematic long-distance behaviour (zoom out → pan → zoom in) when the start and end points are thousands of kilometres apart, and the zoom does not return to the pre-animation level. Confirmed only by user report so far; no SDK doc citation yet.
+- Backend already ships `resolvedLocation.radiusKm` in the NL response (1 km, 3 km, etc.) but the frontend only uses it to render the "1km 이내" chip — it is not threaded into the camera zoom calculation.
+
+**To-do (groomed scope)**
+
+- [ ] Reproduce: dev-build the simulator with `pnpm dev:prod`, set the iOS simulator location to Auckland (`xcrun simctl location booted set -36.8485,174.7633`), search "강남역 헬스장", confirm the same zoomed-out finish. Compare against starting in Seoul.
+- [ ] Decide camera strategy. Three options to grill: (a) jump-then-animate (no-anim `setCamera` to a point near the destination then short `animateCameraTo` for the polish — bypasses the long-distance cinematic), (b) animate with explicit zoom (pass `zoom: derivedFromRadius` and accept a one-frame marker race that the existing `CAMERA_DEFER_MS` already partially mitigates), or (c) avoid animation for jumps over a threshold (e.g. > 500 km — instant snap + defer markers).
+- [ ] Thread `resolvedLocation.radiusKm` into the zoom calculation. Rough mapping: 1 km → 15, 3 km → 13, 5 km → 12 (Web Mercator approximation). Lock the curve via Naver SDK's `fitBounds` if it accepts a centre + radius, otherwise hand-roll.
+- [ ] Side concern: starting camera fallback when GPS resolves outside Korea. Today the first camera is the user's GPS, which means the rare overseas tester (e.g. the developer) sees their current country before the first NL search. Per the locked "Korean users only" scope decision (see end of section), we do not need to support overseas usage — the fix here is a clamp: if `initialLocation` falls outside the Korea bounding box (roughly lat 33–39, lng 124–132), fall back to a fixed Korean centre (서울시청 좌표) at zoom 14 so the first camera always lands on Korea and the subsequent NL search never has to cross a long-distance jump.
+- [ ] Coverage: extend the existing MapScreen camera test (if present) with two cases — short-distance pan keeps zoom 14, long-distance jump lands on `derivedZoom = f(radiusKm)`.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Use NaverMap's `setBounds` / `fitBounds` if the SDK exposes it: centre = `resolvedLocation.coordinates`, padding derived from `radiusKm × 1.3` so all markers sit inside the visible viewport. If the SDK only accepts a zoom integer, derive it from radius via Web Mercator approximation `zoom = round(15 − log2(radiusKm))` (1 km → 15, 3 km → 13, 5 km → 12). For long-distance jumps (start↔end > 500 km), bypass the cinematic animation entirely — call `setCamera` (instant, no transition phase) so the SDK's auto zoom-out never fires, then trigger the existing marker reveal pipeline after a slightly longer `CAMERA_DEFER_MS` (~150 ms) to absorb settle time. Quick Reference §7 `layout-shift-avoid` + `interruptible` + `motion-meaning` apply: the cinematic loses meaning when the start point is in a different country; a clean instant snap reads as "search jumped" while an animated zoom-out reads as confused intent.
+
+**Reason to ship pre-launch (re-classified 2026-05-20)**
+
+Originally filed as a Phase 5 holding-pen item under the assumption it only hit overseas testers. That was wrong on two counts:
+
+1. The missing zoom argument is distance-independent. Every NL search where the user-supplied radius differs from the current camera zoom produces an off-spec viewport. Domestic example: 강남에서 "성수역 2km 반경 헬스장" 검색 → 카메라는 성수역으로 이동하지만 zoom 14 유지 → 2 km 반경이 화면에 안 들어옴. The product spec ("radius is what the user asked for") is silently violated on every multi-radius query.
+2. Long-distance cinematic still triggers inside Korea — 서울 ↔ 부산 ~325 km, 서울 ↔ 제주 ~450 km. Both are realistic travel scenarios for a launch cohort. The Naver SDK's exact threshold is unverified, so even shorter intra-Korea jumps may trigger it.
+
+Treat as pre-launch hotfix: thread `radiusKm` into the zoom calculation first (closes the spec violation), then layer the long-distance `setCamera` bypass once SDK repro pins down the threshold.
+
+### 14. Unregistered gym card tap routes the user to a duplicate search step
+
+**Current state**
+
+Reported by the user during the same 2026-05-20 review on a physical iPhone. The NL search bottom sheet's `UnregisteredGymCard` advertises "첫 등록자 되어 정보 추가하기" but tapping it routes to `/(upload)/gym-select?openNewGym=1&initialQuery=<name>` — the "새 헬스장 등록" screen — and the user has to **Naver-search the same name again and pick the same place** before getting to the camera. The `UnregisteredPlace` object already carries `naverPlaceId`, `name`, `address`, `latitude`, `longitude`, so the search-then-select step is pure friction.
+
+**To-do (groomed scope)**
+
+- [ ] Frontend: replace the `router.push('/(upload)/gym-select', ...)` in `MapScreen.handleUnregisteredPress` with a direct `useCreateGym(place)` call (Naver place fed straight into the existing mutation).
+- [ ] On mutation success, route to `/(upload)/camera?gymId=<newGymId>` so the user lands on the camera with the new gym pre-bound.
+- [ ] Add an "undo" toast on the camera screen for ~5 s ("○○를 등록했어요 · 취소") that rolls back the gym row if tapped. Persisted state hand-over via expo-router params, not a global store.
+- [ ] Telemetry: count gym-row rollbacks per week — if > 5 % we re-add a confirmation modal.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+CTA copy already promises registration, so showing a second confirmation modal would feel like the app distrusts the user's tap. Optimistic flow + undo is the better pattern (Quick Reference §8 `undo-support`): trust the tap, fire `useCreateGym(place)` immediately with an optimistic loading state on the bottom sheet card (spinner overlay, "등록 중..."), then push to the camera screen with the new `gymId`. The camera screen shows a 5-second dismissible "○○를 등록했어요 · 취소" toast at the top; tapping 취소 fires a delete mutation against the gym row plus pops back to map. Quick Reference §4 `primary-action` + §9 `back-stack-integrity` apply: the bottom-sheet card is the screen's only primary CTA, and the back stack stays clean (map → camera, not map → search → select → camera).
+
+**Reason to ship pre-launch**
+
+Current UX violates the CTA copy — the screen labels the action "register me as the first contributor" but actually requires the user to do the same task twice. Fixing this before launch is cheaper than apologising in App Store reviews. Pre-launch hotfix branch, not Phase 5 holding pen.
+
+### 15. Gym detail has no entry point to register a new machine
+
+**Current state**
+
+`GymDetail` → `MachineList` only renders the gym's already-registered `gym_machines`. Each card taps into `MachinePhotoGalleryScreen` which only allows adding photos to that existing machine. A user who walks into a gym and notices a brand-new piece of equipment (not yet in our DB) has no way to add a photo of it from inside the gym detail — they would have to back out, go to upload, choose the gym again, and start over. Independently, `MachinePhotoGalleryScreen.handlePressUpload` pushes to `/(upload)/gym-select` without the current `gymId`, forcing the user to re-pick the gym they are already inside of.
+
+**To-do (groomed scope)**
+
+- [ ] Add a Material FAB ("+", label "사진 추가") floating bottom-right in `GymDetail`, above `MachineList`.
+- [ ] FAB tap routes to `/(upload)/camera?gymId=<id>` with no machine pre-selected; the camera screen runs OCR, matches against `machine_templates`, and either re-uses an existing `gym_machines` row for this gym or creates a new one bound to the matched template.
+- [ ] OCR no-match path folds into item 11's direct-input persistence (carry `gymId` so the orphaned-photo bug item 11 fixes does not regress here).
+- [ ] Fix `MachinePhotoGalleryScreen.handlePressUpload` to push `/(upload)/camera?gymId=<id>&prefMachineId=<machineId>` so the camera lands pre-bound to both gym + machine.
+- [ ] Test coverage: `GymDetail` renders FAB above `MachineList`; FAB tap calls `router.push` with the gym ID; `MachinePhotoGalleryScreen.handlePressUpload` carries gymId.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+A Material FAB is the right pattern here — both iOS HIG and Material Design treat FAB as the "primary action of this screen" anchor, and it sits above scroll content without competing with the machine cards. Quick Reference §4 `primary-action` (one primary CTA per screen) + §9 `nav-hierarchy` apply: machine-card taps stay secondary (go into existing machine gallery), FAB stays primary (add new). Secondary actions like "신고하기" stay inside each `MachineCard` as before. Avoid a sticky bottom bar with two CTAs — it steals vertical space and weakens the primary action visually.
+
+**Reason to ship pre-launch**
+
+This is the app's core value loop: gym → "I see a new machine" → photo → contribution. Without an entry point the loop never starts and the gym's data stays stale. Pre-launch hotfix branch.
+
+### 16. No directions affordance — NL search dead-ends at the gym detail
+
+**Current state**
+
+The NL search funnel ends at the gym card or detail screen — there is no way to actually navigate to the gym. Users have to copy the address, switch to Naver Maps, paste, and start a route. This breaks the "search → go there" flow that any map-search product is expected to close. `gyms.naver_place_id` is already persisted in prod (the F7 Naver merge guarantees it for registered gyms), and the Korean default routing app is Naver Maps, so a deep link path is short.
+
+**To-do (groomed scope)**
+
+- [ ] Add a "길찾기" chip on `GymCard` (bottom sheet, next to the address line) and a header-right "길찾기" button on `GymDetail`. Both wired to a shared `openDirections(gym)` handler.
+- [ ] Handler: `Linking.canOpenURL('nmap://')` → if true and `naver_place_id` exists, open `nmap://place?id=<id>&appname=com.ironspot.app`; if true with no place id, open `nmap://route/public?slat=<userLat>&slng=<userLng>&dlat=<gymLat>&dlng=<gymLng>&dname=<encodedName>&appname=...`; if false, fall back to `https://map.naver.com/v5/search/<encoded>` via WebBrowser.
+- [ ] Origin policy: default to current GPS. When the NL response carried a `resolvedLocation` reference point (e.g. "강남역"), surface a one-time ActionSheet "현재 위치 / 강남역에서" on first tap of the session and remember the choice. Skip the sheet for "내 주변" / no-reference searches.
+- [ ] Native config: add `LSApplicationQueriesSchemes: ["nmap"]` to `app.config.ts` under `ios.infoPlist`. **Native rebuild required** — batch with other native changes if any.
+- [ ] Telemetry: count taps per session to validate the affordance is being discovered. If <10 % conversion from gym detail to directions tap after 4 weeks, move the entry point to a more visible slot.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Two entry points, both secondary. The bottom-sheet `GymCard` chip is the one-tap path for the most common case (user has shortlisted from search, hasn't entered detail). The header-right `GymDetail` button is for users who entered detail first to check photos / equipment. Both buttons are visually subordinate to the screen's primary CTA (item 15 FAB on detail, gym selection on bottom sheet) — Quick Reference §4 `primary-action` keeps the hierarchy. The dual-origin ActionSheet would create noise if shown on every search, so gate it on the NL `resolvedLocation` reference point existing (typically "X역" / "X대학교" / "X구"). For "내 주변" or no-reference, current GPS is always right. Quick Reference §9 `escape-routes` + §8 `error-recovery` cover the web-fallback chain.
+
+**Reason this sits in Phase 5**
+
+Requires a native rebuild for `LSApplicationQueriesSchemes`, so it cannot land via OTA. Bundle with the next native change to amortise the rebuild cost. Not a launch blocker — manual "copy address, paste in Naver Maps" is annoying but tolerable for the first cohort, and gives us H4-like volume signal on whether this affordance is even valued.
+
+### 17. Gym cover photo — owner-only upload, placeholder otherwise
+
+**Current state**
+
+Bottom-sheet `GymCard` already accepts a `thumbnailUrl` prop (`src/features/gym/components/GymCard.tsx:17`) but nothing threads a real value into it — every card renders the placeholder. The user asked whether we could pull the cover image Naver shows on its own search results (e.g. the red 짐박스 톡톡 image visible in the 2026-05-20 review screenshot). Audit findings:
+
+- Naver Local Search API response has no image field (`title, link, category, telephone, address, roadAddress, mapx, mapy` only).
+- No public Naver API exposes Place cover photos; `map.naver.com` HTML scraping violates Naver's terms and robots.txt.
+- Naver Image Search API can be queried by gym name but matches are unreliable (same-name different branches, unrelated blog images) and the results carry third-party copyright. App Store guidelines 5.2.2 / 5.2.3 reject apps that surface third-party content without explicit consent.
+
+**Locked decision (2026-05-20)**
+
+- Only gym owners (the Task 47 owner-verification path) can upload the cover photo for their gym.
+- Photos uploaded by regular users through the normal contribution flow stay machine-bound — they never get promoted to the gym's cover.
+- When no owner has uploaded yet, the bottom-sheet card keeps the placeholder. No automatic fallback to user-submitted photos, Naver search, or image-search APIs.
+
+**To-do (groomed scope)**
+
+- [ ] DB: add `gyms.cover_photo_url TEXT NULL` via a new Flyway migration. Nullable — most gyms will not have one for a long time.
+- [ ] Backend: extend `GymResponse` / NL search response to surface `coverPhotoUrl`. Existing repository methods filter by `owner_id` already so the upload endpoint check is one line.
+- [ ] Owner upload screen: in the Task 47 "내 매장 관리하기" surface, add a "대표 사진" section — upload, preview, remove. Reuse the existing photo upload pipeline (Vision SafeSearch + PII check) but skip the OCR + machine-binding steps.
+- [ ] Frontend: thread `coverPhotoUrl` through `useMapSearch`, `useNlSearch`, and gym detail into `GymCard`'s existing `thumbnailUrl` prop. Placeholder stays when null.
+- [ ] Test coverage: backend IT for owner-only upload (403 for non-owner), frontend test that `GymCard` renders the placeholder when `thumbnailUrl` is null and the image when set.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Owner-only upload keeps every cover photo accountable to a verified business identity, sidesteps the third-party copyright problem entirely, and gives Task 47 owners a tangible reward for completing verification (their photo, not anonymous user-submitted content, represents their gym). Quick Reference §4 `style-match` (cover photo is a brand expression, belongs to whoever owns the brand) and §1 `color-not-only` apply: when no cover is set the placeholder must still convey hierarchy via the gym name + distance metadata, not visually collapse to "broken card". Keep the placeholder neutral and consistent across cards so the visual rhythm of the bottom sheet stays stable as cover photos populate gradually.
+
+**Reason this sits in Phase 5**
+
+Depends on Task 47 owner workflow being merged + a measurable number of owners having gone through verification. Pre-launch there are zero verified owners so the feature would have no real data. Ships when owner verification volume hits double digits — until then the placeholder is the right state.
+
+### 18. Korean-first labelling for brands and machine templates
+
+**Current state**
+
+`brands` and `machine_templates` ship one English `name` column today. The launch cohort reads Korean, and while gym-goers recognise brand names in English (`Hammer Strength`, `Life Fitness`, `Technogym`, `Panatta`, `Hoist`), machine names compound across two English words (`Panatta Chest Press`, `Hammer Strength Lat Pull Down`) which slows card scanning and breaks NL search input — a user who types `해머스트렝스 풀다운` gets no match because `FuzzyMatchService` Jaccard-tokenises only `name_en`.
+
+**Locked decision (2026-05-20) — Option C**
+
+- **Brand**: English name retained. Domestic gym-goers already recognise the latin form; machine-body labels are also in English, so keeping brands in English preserves the 1:1 mapping between our card and the physical equipment the user is standing in front of.
+- **Machine template**: Korean primary, English secondary.
+  - Bottom sheet / list cards: render Korean only (e.g. `Panatta 체스트 프레스`).
+  - Machine detail screen: Korean primary line + English smaller secondary line below (`Panatta Chest Press`).
+- **Category**: already Korean-mapped via the filter sheet's "운동 부위" labels. No work.
+- **Search matching**: `FuzzyMatchService` tokenises both `name_ko` and `name_en` so both `해머스트렝스 풀다운` and `Hammer Strength Lat Pull Down` match the same row.
+
+**To-do (groomed scope)**
+
+- [ ] DB: rename `machine_templates.name` → `name_en`, add `name_ko TEXT NOT NULL` via a new Flyway migration. Backfill 11 existing rows by hand (small set, no script).
+- [ ] Backend: extend `MachineTemplate` DTO to surface both fields; extend `FuzzyMatchService.findMatches` and `findTemplateIds` to tokenise both columns when computing Jaccard similarity.
+- [ ] OpenAPI + Orval regen: TypeScript client picks up the two fields.
+- [ ] Frontend: render `nameKo` on `GymCard`, `MachineList`, NL search interpretation chip; render both on `MachineDetail`.
+- [ ] NL search prompt: extend the LLM prompt so it understands Korean machine-name aliases and emits canonical English when filling `parsedFilters.templateIds`.
+- [ ] Test coverage: `FuzzyMatchService` test cases for `해머스트렝스 랫 풀다운` matching `Hammer Strength Lat Pull Down`; frontend test that `GymCard` renders `nameKo` and `MachineDetail` renders both.
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Option C is the right balance for the launch cohort. Brands stay English because gym-goers recognise them that way and machine bodies are labelled in English, so the card matches the physical world. Machine names compound poorly in English for native Korean speakers ("Panatta Chest Press" reads slower than "Panatta 체스트 프레스"), so Korean primary speeds card scanning. The English secondary line on detail preserves the precise reference for users who want to look up the exact model. Quick Reference §6 `text-styles-system` (clear hierarchy via weight/size between primary and secondary), §6 `letter-spacing` (respect Korean character spacing defaults), and §1 `dynamic-type` (both lines must survive system text scaling) apply.
+
+**Reason to ship pre-launch**
+
+NL search input today silently fails on Korean machine-name aliases — a domestic user typing 해머스트렝스 풀다운 gets zero results even though the gym has it. That's a core-flow regression for the launch cohort. Plus the catalogue is only 11 templates, so the translation work is one-time and trivially small.
+
+### 19. GymCard tidy-up — drop machine list, drop category chips, clarify count copy
+
+**Current state**
+
+The bottom-sheet `GymCard` today crowds in (a) every machine name as a comma-separated list ("✓ Panatta Chest Press, Panatta High Row, Panatta Lat Pull Down…"), making each card 4+ lines tall, and (b) labels the count "기구 N대" which a user could reasonably read as "this gym has N machines total" rather than "N machines are currently registered in our app". Both reduce the bottom sheet's density and create wrong mental models.
+
+**Locked decision (2026-05-20)**
+
+- Remove the machine name list from `GymCard`. Users who want machine detail tap into `GymDetail`.
+- Remove the category chip experiment that was floated in the original ui-ux-pro-max review (chips would re-introduce density we are trying to cut).
+- Change the count copy to "등록된 기구 N대" — explicit about the count being our registered set, not the gym's total.
+- When `machineCount === 0`, render "아직 등록된 기구가 없어요" instead of "등록된 기구 0대". The 0대 phrasing is grammatically correct but reads coldly; the alternative is friendlier and invites contribution.
+
+**Resulting layout**
+
+```
+┌──────────────────────────────────────┐
+│ 🏋  스트렝스 짐                       │
+│    📍 0.5km                           │
+│    등록된 기구 4대                     │
+│                  확인일 2026.03.10    │
+└──────────────────────────────────────┘
+```
+
+**To-do (groomed scope)**
+
+- [ ] Frontend: drop the machine-name list from `GymCard.tsx`. Replace with the single `등록된 기구 N대` line; render `아직 등록된 기구가 없어요` when N=0.
+- [ ] Test coverage: update existing `GymCard.test.tsx` snapshots / assertions to match the new layout; add a case for the `N=0` copy.
+- [ ] Side fix: confirm the same simplification is consistent across NL-search-result cards and filter-result cards (both render through `GymCard`).
+
+**Recommended solution (ui-ux-pro-max review, 2026-05-20)**
+
+Stripping the machine list back to a count is the right call. Quick Reference §5 `visual-hierarchy` + §5 `content-priority` apply: the bottom sheet's job is "show me which gyms exist nearby"; "which machines does each one have" is the next click, not the first scan. The count copy fix also moves the card from "this gym has N machines" to "we know about N of this gym's machines" — that subtle reframe primes the contribution loop (item 11/15 ask the user to extend that count) and prevents the wrong assumption when the count is small.
+
+**Reason to ship pre-launch**
+
+Goes in with items 14/15 since they all touch `GymCard` and gym-detail wiring. Decoupling them creates merge churn on the same files.
+
 ## Post-launch hypotheses (drive prioritisation)
 
 Each Phase 5 task ships only when the matching hypothesis is either confirmed or falsified by real data. Phase 4 closed without users so all of these are pre-decisions waiting on evidence.
 
-| H   | Hypothesis                                                                                                                                                          | Falsifiable by                                                                                                                                          | Drives                                                                       |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| H1  | Auto-ban thresholds (3 actioned / 5 dismissed) catch real bad actors without false-banning newcomers.                                                               | Logged ban events with `disposition_count >= 1 plus banned_at within 7 days of first contribution` versus per-user dismissed-but-not-banned histograms. | Items 1, 2                                                                   |
-| H2  | NL search has enough query repetition to make caching worth the eviction complexity.                                                                                | Hash of normalised query text shows top decile accounting for greater than 30 percent of monthly volume.                                                | Item 5                                                                       |
-| H3  | Owner workflow (Task 47) actually distributes load — owners action greater than 50 percent of their gym's reports within 24 hours before the escalation cron fires. | `admin_queue_items.dispositioned_by_owner_count / total_owner_targeted` per gym.                                                                        | Sequencing of item 1 (delays it further)                                     |
-| H4  | Daily active users exceed 50 within the first month.                                                                                                                | Sentry sessions, Supabase auth `last_sign_in_at`.                                                                                                       | Whether to build item 7 (PostHog) before item 4 (push).                      |
-| H5  | Photo PII rejection (Task 42) catches the bulk of face uploads without users complaining about false rejections.                                                    | Sentry breadcrumbs from `PhotoService.upload` plus user-support email volume to `yyou017@gmail.com`.                                                    | Whether to relax the B3 threshold or add mosaic fallback (Task 42 option A). |
-| H6  | Korean-only at launch is acceptable for the first cohort.                                                                                                           | App Store reviews mentioning English.                                                                                                                   | i18n scope decision (currently out of Phase 5).                              |
-| H7  | Real users submit machine names absent from the 11-template launch seed at a rate that justifies an admin promotion queue rather than a one-off bulk seed.          | `unverified_machine_names` inserts per week once item 11 ships the persistence path. Compare distinct-name volume to admin curation throughput.         | Item 11 admin queue UI and the optional bulk-seed decision.                  |
+| H   | Hypothesis                                                                                                                                                                  | Falsifiable by                                                                                                                                          | Drives                                                                       |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| H1  | Auto-ban thresholds (3 actioned / 5 dismissed) catch real bad actors without false-banning newcomers.                                                                       | Logged ban events with `disposition_count >= 1 plus banned_at within 7 days of first contribution` versus per-user dismissed-but-not-banned histograms. | Items 1, 2                                                                   |
+| H2  | NL search has enough query repetition to make caching worth the eviction complexity.                                                                                        | Hash of normalised query text shows top decile accounting for greater than 30 percent of monthly volume.                                                | Item 5                                                                       |
+| H3  | Owner workflow (Task 47) actually distributes load — owners action greater than 50 percent of their gym's reports within 24 hours before the escalation cron fires.         | `admin_queue_items.dispositioned_by_owner_count / total_owner_targeted` per gym.                                                                        | Sequencing of item 1 (delays it further)                                     |
+| H4  | Daily active users exceed 50 within the first month.                                                                                                                        | Sentry sessions, Supabase auth `last_sign_in_at`.                                                                                                       | Whether to build item 7 (PostHog) before item 4 (push).                      |
+| H5  | Photo PII rejection (Task 42) catches the bulk of face uploads without users complaining about false rejections.                                                            | Sentry breadcrumbs from `PhotoService.upload` plus user-support email volume to `yyou017@gmail.com`.                                                    | Whether to relax the B3 threshold or add mosaic fallback (Task 42 option A). |
+| H6  | Korean-only at launch is acceptable for the first cohort. **Locked as confirmed pre-launch (2026-05-20)** — overseas usage out of scope, i18n beyond Korean out of Phase 5. | n/a (locked).                                                                                                                                           | i18n scope decision (out of Phase 5).                                        |
+| H7  | Real users submit machine names absent from the 11-template launch seed at a rate that justifies an admin promotion queue rather than a one-off bulk seed.                  | `unverified_machine_names` inserts per week once item 11 ships the persistence path. Compare distinct-name volume to admin curation throughput.         | Item 11 admin queue UI and the optional bulk-seed decision.                  |
 
 ## Measurement plan
 
