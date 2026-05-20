@@ -239,6 +239,79 @@ export function useGetById<TData = Awaited<ReturnType<typeof getById>>, TError =
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+export type deleteGymResponse204 = {
+  data: void;
+  status: 204;
+};
+
+export type deleteGymResponseSuccess = deleteGymResponse204 & {
+  headers: Headers;
+};
+export type deleteGymResponse = deleteGymResponseSuccess;
+
+export const getDeleteGymUrl = (id: string) => {
+  return `/api/gyms/${id}`;
+};
+
+/**
+ * Auth required. Allowed for the gym's original creator (V9 created_by_user_id match) or admins. Refuses to delete a gym that still has active gym_machines — other users' contributions take precedence over the creator's undo right.
+ * @summary Delete a user-registered gym (undo / cleanup path)
+ */
+export const deleteGym = async (id: string, options?: RequestInit): Promise<deleteGymResponse> => {
+  return apiClient<deleteGymResponse>(getDeleteGymUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDeleteGymMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteGym>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<Awaited<ReturnType<typeof deleteGym>>, TError, { id: string }, TContext> => {
+  const mutationKey = ['deleteGym'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteGym>>, { id: string }> = (
+    props,
+  ) => {
+    const { id } = props ?? {};
+
+    return deleteGym(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteGymMutationResult = NonNullable<Awaited<ReturnType<typeof deleteGym>>>;
+
+export type DeleteGymMutationError = unknown;
+
+/**
+ * @summary Delete a user-registered gym (undo / cleanup path)
+ */
+export const useDeleteGym = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteGym>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof deleteGym>>, TError, { id: string }, TContext> => {
+  return useMutation(getDeleteGymMutationOptions(options), queryClient);
+};
 export type searchResponse200 = {
   data: GymWithMachineCountResponse[];
   status: 200;

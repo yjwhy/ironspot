@@ -207,6 +207,18 @@ public class Users extends TableImpl<Record> {
         return _gymOwners;
     }
 
+    private transient GymsPath _gyms;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.gyms</code> table
+     */
+    public GymsPath gyms() {
+        if (_gyms == null)
+            _gyms = new GymsPath(this, null, Keys.GYMS__GYMS_CREATED_BY_USER_ID_FKEY.getInverseKey());
+
+        return _gyms;
+    }
+
     private transient MachinePhotosPath _machinePhotos;
 
     /**
@@ -283,14 +295,6 @@ public class Users extends TableImpl<Record> {
             _reportsUserIdFkey = new ReportsPath(this, null, Keys.REPORTS__REPORTS_USER_ID_FKEY.getInverseKey());
 
         return _reportsUserIdFkey;
-    }
-
-    /**
-     * Get the implicit many-to-many join path to the <code>public.gyms</code>
-     * table
-     */
-    public GymsPath gyms() {
-        return gymOwners().gyms();
     }
 
     @Override

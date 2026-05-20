@@ -14,6 +14,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 class GymCreateFromNaverTest extends IntegrationTestBase {
 
+    // Seeded by init-test-db.sql.
+    private static final UUID TEST_USER_ID =
+        UUID.fromString("d0000001-0000-0000-0000-000000000001");
+
     @Autowired private GymService gymService;
     @Autowired private GymRepository gymRepository;
 
@@ -29,7 +33,7 @@ class GymCreateFromNaverTest extends IntegrationTestBase {
             uniquePlaceId
         );
 
-        GymDetailResponse created = gymService.createFromNaverPlaces(req);
+        GymDetailResponse created = gymService.createFromNaverPlaces(req, TEST_USER_ID);
 
         assertThat(created.id()).isNotNull();
         assertThat(created.name()).isEqualTo("에어짐 강남");
@@ -51,7 +55,7 @@ class GymCreateFromNaverTest extends IntegrationTestBase {
             null,
             reusedPlaceId
         );
-        GymDetailResponse firstResult = gymService.createFromNaverPlaces(first);
+        GymDetailResponse firstResult = gymService.createFromNaverPlaces(first, TEST_USER_ID);
 
         // Same place id, slightly different name (e.g. user typed differently) — must dedup,
         // never insert a second row, and never override the originally stored name.
@@ -63,7 +67,7 @@ class GymCreateFromNaverTest extends IntegrationTestBase {
             null,
             reusedPlaceId
         );
-        GymDetailResponse secondResult = gymService.createFromNaverPlaces(second);
+        GymDetailResponse secondResult = gymService.createFromNaverPlaces(second, TEST_USER_ID);
 
         assertThat(secondResult.id()).isEqualTo(firstResult.id());
         assertThat(secondResult.name()).isEqualTo("동네짐");
