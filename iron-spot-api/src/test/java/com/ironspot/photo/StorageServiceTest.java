@@ -48,11 +48,27 @@ class StorageServiceTest {
     @Test
     void uploadReturnsPublicUrl() {
         UUID gymMachineId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         String filename = "photo.webp";
 
-        String result = storageService.upload("fake-image".getBytes(), gymMachineId, filename);
+        String result = storageService.upload("fake-image".getBytes(), gymMachineId, userId, filename);
 
         String expectedUrl = SUPABASE_URL + "/storage/v1/object/public/machine-photos/" + gymMachineId + "/" + filename;
+        assertThat(result).isEqualTo(expectedUrl);
+    }
+
+    @Test
+    void uploadWithNullGymMachineIdGroupsUnderOrphanByUser() {
+        // Phase 5 item 11 slice 2: OCR confirm screen uploads without a
+        // gym_machine_id and the contribution endpoint binds the photo
+        // afterwards. Orphans land under orphan/<userId>/ so the cleanup
+        // job can purge unfinalised contributions by uploader.
+        UUID userId = UUID.randomUUID();
+        String filename = "photo.webp";
+
+        String result = storageService.upload("fake-image".getBytes(), null, userId, filename);
+
+        String expectedUrl = SUPABASE_URL + "/storage/v1/object/public/machine-photos/orphan/" + userId + "/" + filename;
         assertThat(result).isEqualTo(expectedUrl);
     }
 }

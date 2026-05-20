@@ -43,7 +43,12 @@ public class PhotoController {
     public PhotoUploadResponse upload(
         @AuthenticationPrincipal UserPrincipal principal,
         @RequestParam("image") MultipartFile image,
-        @RequestParam("gymMachineId") UUID gymMachineId
+        // Phase 5 item 11 slice 2: gymMachineId is optional. When omitted the
+        // photo lands as an orphan (machine_photos.gym_machine_id = NULL) and
+        // the OCR confirm screen's POST /api/gym-machines binds it via the
+        // bindOrphanGymMachineId NULL-guard. Bound uploads (machine photo
+        // gallery, owner workflow) keep passing the id.
+        @RequestParam(value = "gymMachineId", required = false) UUID gymMachineId
     ) {
         return photoService.upload(principal.getUserId(), image, gymMachineId);
     }
