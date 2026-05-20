@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -111,6 +113,42 @@ public class GymController {
         @AuthenticationPrincipal UserPrincipal principal,
         @Valid @RequestBody CreateGymRequest request
     ) {
-        return gymService.createFromNaverPlaces(request);
+        UUID creatorUserId = UUID.fromString(principal.getUserId());
+        return gymService.createFromNaverPlaces(request, creatorUserId);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+        summary = "Delete a user-registered gym (undo / cleanup path)",
+        description = "Auth required. Allowed for the gym's original creator (V9 "
+            + "created_by_user_id match) or admins. Refuses to delete a gym that "
+            + "still has active gym_machines — other users' contributions take "
+            + "precedence over the creator's undo right.",
+        tags = {"gyms"}
+    )
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "204", description = "Gym deleted"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "401", description = "Missing or invalid JWT"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403", description = "Caller is neither the creator nor an admin",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "404", description = "Gym not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "409", description = "Gym has registered machines",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public void deleteGym(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable UUID id
+    ) {
+        UUID callerUserId = UUID.fromString(principal.getUserId());
+        boolean callerIsAdmin = principal.getAuthorities().stream()
+            .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        gymService.deleteGym(id, callerUserId, callerIsAdmin);
     }
 }
