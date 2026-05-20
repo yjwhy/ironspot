@@ -462,7 +462,7 @@ Trade-offs vs ADR 0022:
 
 **To-do**
 
-- [ ] Author ADR documenting the supersede + decision rationale (link to item 23 in the README).
+- [x] Author ADR documenting the supersede + decision rationale (link to item 23 in the README). → Shipped as `docs/adrs/0024-accordion-filter-supersedes-0022.md` (Draft, 2026-05-21). 0022 marked Superseded; index updated. Implementation slices spelled out in the ADR's Consequences → Migration section.
 - [ ] Refactor `FilterSheet.tsx` to accordion layout. `useFilters` state shape unchanged (filterIds in / chip render out); ADR 0022 결정 5 (loading_type drop) + 결정 6 (브랜드 직교) preserved.
 - [ ] FlashList with sticky brand headers for virtualization (ADR 0022 envelope was 200-400; item 22 lands 281).
 - [ ] Reanimated layout animation for accordion expand/collapse (~250ms ease-out enter / ease-in exit).
