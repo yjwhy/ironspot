@@ -103,9 +103,9 @@ function buildOcrSuccessState(overrides = {}) {
       photoUrl: 'https://example.com/photo.webp',
       ocrSucceeded: true,
       suggestions: [
-        { id: 'sug-1', brandName: 'Life Fitness', name: '트레드밀' },
-        { id: 'sug-2', brandName: 'Technogym', name: '런닝머신' },
-        { id: 'sug-3', brandName: 'Matrix', name: '사이클' },
+        { id: 'sug-1', brandName: 'Life Fitness', nameEn: 'Treadmill', nameKo: '트레드밀' },
+        { id: 'sug-2', brandName: 'Technogym', nameEn: 'Running Machine', nameKo: '런닝머신' },
+        { id: 'sug-3', brandName: 'Matrix', nameEn: 'Cycle', nameKo: '사이클' },
       ],
     },
     ...overrides,

@@ -18,7 +18,7 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { MachineTemplateResponse } from '../model';
+import type { ListTemplatesParams, MachineTemplateResponse } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
@@ -34,37 +34,55 @@ export type listTemplatesResponseSuccess = listTemplatesResponse200 & {
 };
 export type listTemplatesResponse = listTemplatesResponseSuccess;
 
-export const getListTemplatesUrl = () => {
-  return `/api/machine-templates`;
+export const getListTemplatesUrl = (params?: ListTemplatesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/machine-templates?${stringifiedParams}`
+    : `/api/machine-templates`;
 };
 
 /**
- * @summary List approved machine templates for filter UI
+ * @summary List approved machine templates for filter UI + picker
  */
-export const listTemplates = async (options?: RequestInit): Promise<listTemplatesResponse> => {
-  return apiClient<listTemplatesResponse>(getListTemplatesUrl(), {
+export const listTemplates = async (
+  params?: ListTemplatesParams,
+  options?: RequestInit,
+): Promise<listTemplatesResponse> => {
+  return apiClient<listTemplatesResponse>(getListTemplatesUrl(params), {
     ...options,
     method: 'GET',
   });
 };
 
-export const getListTemplatesQueryKey = () => {
-  return [`/api/machine-templates`] as const;
+export const getListTemplatesQueryKey = (params?: ListTemplatesParams) => {
+  return [`/api/machine-templates`, ...(params ? [params] : [])] as const;
 };
 
 export const getListTemplatesQueryOptions = <
   TData = Awaited<ReturnType<typeof listTemplates>>,
   TError = unknown,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listTemplates>>, TError, TData>>;
-  request?: SecondParameter<typeof apiClient>;
-}) => {
+>(
+  params?: ListTemplatesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listTemplates>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListTemplatesQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListTemplatesQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listTemplates>>> = ({ signal }) =>
-    listTemplates({ signal, ...requestOptions });
+    listTemplates(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listTemplates>>,
@@ -80,6 +98,7 @@ export function useListTemplates<
   TData = Awaited<ReturnType<typeof listTemplates>>,
   TError = unknown,
 >(
+  params: undefined | ListTemplatesParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listTemplates>>, TError, TData>> &
       Pick<
@@ -98,6 +117,7 @@ export function useListTemplates<
   TData = Awaited<ReturnType<typeof listTemplates>>,
   TError = unknown,
 >(
+  params?: ListTemplatesParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listTemplates>>, TError, TData>> &
       Pick<
@@ -116,6 +136,7 @@ export function useListTemplates<
   TData = Awaited<ReturnType<typeof listTemplates>>,
   TError = unknown,
 >(
+  params?: ListTemplatesParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listTemplates>>, TError, TData>>;
     request?: SecondParameter<typeof apiClient>;
@@ -123,20 +144,21 @@ export function useListTemplates<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary List approved machine templates for filter UI
+ * @summary List approved machine templates for filter UI + picker
  */
 
 export function useListTemplates<
   TData = Awaited<ReturnType<typeof listTemplates>>,
   TError = unknown,
 >(
+  params?: ListTemplatesParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listTemplates>>, TError, TData>>;
     request?: SecondParameter<typeof apiClient>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getListTemplatesQueryOptions(options);
+  const queryOptions = getListTemplatesQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

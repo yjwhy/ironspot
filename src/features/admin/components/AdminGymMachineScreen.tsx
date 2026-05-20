@@ -211,14 +211,14 @@ function TemplatePicker({ onPick, onClose }: TemplatePickerProps) {
           <Pressable
             key={template.id}
             accessibilityRole="button"
-            accessibilityLabel={`${template.brandName} ${template.name} 선택`}
+            accessibilityLabel={`${template.brandName} ${template.nameKo || template.nameEn} 선택`}
             onPress={() => {
               onPick(template.id);
             }}
             className="border-b border-border-subtle px-2 py-2 active:bg-bg-elevated"
           >
             <Text className="text-sm text-text-primary">
-              {template.brandName} {template.name} ·{' '}
+              {template.brandName} {template.nameKo || template.nameEn} ·{' '}
               {template.loadingType === 'pin' ? '핀' : '플레이트'}
             </Text>
           </Pressable>

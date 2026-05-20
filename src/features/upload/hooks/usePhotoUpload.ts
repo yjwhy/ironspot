@@ -6,7 +6,10 @@ import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 
 import { PHOTO_FILENAME, PHOTO_MIME_TYPE } from '../constants';
 
-export type SuggestionPreview = Pick<MachineTemplateSuggestion, 'id' | 'brandName' | 'name'>;
+export type SuggestionPreview = Pick<
+  MachineTemplateSuggestion,
+  'id' | 'brandName' | 'nameEn' | 'nameKo'
+>;
 
 const UPLOAD_STARTED_PROGRESS = 0.5;
 
@@ -38,7 +41,12 @@ function toRnMultipartFile(uri: string): { uri: string; name: string; type: stri
 }
 
 function stripScore(suggestion: MachineTemplateSuggestion): SuggestionPreview {
-  return { id: suggestion.id, brandName: suggestion.brandName, name: suggestion.name };
+  return {
+    id: suggestion.id,
+    brandName: suggestion.brandName,
+    nameEn: suggestion.nameEn,
+    nameKo: suggestion.nameKo,
+  };
 }
 
 function toUploadResult(data: PhotoUploadResponse): UploadResult {

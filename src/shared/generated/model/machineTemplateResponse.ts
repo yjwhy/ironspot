@@ -11,6 +11,7 @@ export interface MachineTemplateResponse {
   brandId: string;
   brandName: string;
   categoryId: string;
-  name: string;
+  nameEn: string;
+  nameKo: string;
   loadingType: string;
 }

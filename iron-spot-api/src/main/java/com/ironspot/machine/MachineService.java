@@ -32,7 +32,7 @@ public class MachineService {
         return machines.stream()
             .map(m -> new GymMachineResponse(
                 m.id(), m.quantity(), m.isCustom(), m.customName(), m.lastVerifiedAt(),
-                m.templateId(), m.machineName(), m.loadingType(),
+                m.templateId(), m.machineNameEn(), m.machineNameKo(), m.loadingType(),
                 m.brandId(), m.brandName(), m.categoryId(), m.categoryName(),
                 photoMap.getOrDefault(m.id(), List.of())
             ))

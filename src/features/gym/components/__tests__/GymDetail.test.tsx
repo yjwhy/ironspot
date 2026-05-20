@@ -150,7 +150,7 @@ describe('GymDetail', () => {
       data: [
         makeGymMachineWithDetails({
           machine: { id: 'gm-1' },
-          template: { name: 'High Row' },
+          template: { name_en: 'High Row', name_ko: 'High Row' },
         }),
       ],
     });
@@ -164,7 +164,7 @@ describe('GymDetail', () => {
       data: [
         makeGymMachineWithDetails({
           machine: { id: 'gm-1' },
-          template: { name: 'High Row' },
+          template: { name_en: 'High Row', name_ko: 'High Row' },
         }),
       ],
     });

@@ -43,10 +43,16 @@ export function MachinePicker({ value, onChange }: MachinePickerProps) {
 
   const { data: brands } = useBrands();
   const { data: categories } = useCategories();
-  const { data: templates } = useMachineTemplates();
-
+  // Phase 5 item 18: TemplateStep filter pushdown. Hook only fires after both
+  // axes are picked so we don't burn a request before the picker has anything
+  // to render anyway. staleTime: Infinity per (brandId, categoryId) tuple in
+  // the hook's queryKey keeps re-visits hot.
   const isBrandPicked = brandId !== '';
   const isCategoryPicked = categoryId !== '';
+  const { data: templates } = useMachineTemplates(
+    isBrandPicked && isCategoryPicked ? { brandId, categoryId } : undefined,
+  );
+
   const selectedTemplateId = value.kind === 'template' ? value.templateId : '';
   const freeFormText = value.kind === 'freeForm' ? value.text : '';
 
@@ -107,9 +113,7 @@ export function MachinePicker({ value, onChange }: MachinePickerProps) {
 
       {isBrandPicked && isCategoryPicked && !isEscapeHatchOpen ? (
         <TemplateStep
-          templates={(templates ?? []).filter(
-            (t) => t.brandId === brandId && t.categoryId === categoryId,
-          )}
+          templates={templates ?? []}
           selectedTemplateId={selectedTemplateId}
           query={templateQuery}
           onChangeQuery={setTemplateQuery}
@@ -146,7 +150,7 @@ function BrandStep({
   onSelect,
   isDisabled,
 }: BrandStepProps) {
-  const filteredBrands = filterByName(brands, query);
+  const filteredBrands = filterByText(brands, query, (b) => b.name);
 
   return (
     <View className="gap-2">
@@ -215,7 +219,7 @@ function CategoryStep({ categories, selectedCategoryId, onSelect }: CategoryStep
 // ─── Template step ──────────────────────────────────────────────────────────
 
 interface TemplateStepProps {
-  templates: readonly { id: string; brandName: string; name: string }[];
+  templates: readonly { id: string; brandName: string; nameEn: string; nameKo: string }[];
   selectedTemplateId: string;
   query: string;
   onChangeQuery: (text: string) => void;
@@ -229,7 +233,15 @@ function TemplateStep({
   onChangeQuery,
   onSelect,
 }: TemplateStepProps) {
-  const filteredTemplates = filterByName(templates, query);
+  // Phase 5 item 18: query matches Korean primary, English fallback, AND
+  // brand name so a user typing "Hammer" hits a row whose card reads in
+  // Korean — addresses the "I know the brand in English, the machine in
+  // Korean" mixed-input pattern common in domestic gyms.
+  const filteredTemplates = filterByText(
+    templates,
+    query,
+    (t) => `${t.brandName} ${t.nameKo} ${t.nameEn}`,
+  );
 
   return (
     <View className="gap-2">
@@ -248,6 +260,7 @@ function TemplateStep({
         ) : (
           filteredTemplates.map(function renderTemplate(template) {
             const isSelected = template.id === selectedTemplateId;
+            const displayName = template.nameKo || template.nameEn;
             return (
               <Pressable
                 key={template.id}
@@ -261,7 +274,7 @@ function TemplateStep({
                 className={selectedRowClass(isSelected)}
               >
                 <AppText className="text-body text-text-primary">
-                  {`${template.brandName} ${template.name}`}
+                  {`${template.brandName} ${displayName}`}
                 </AppText>
               </Pressable>
             );
@@ -354,8 +367,8 @@ function SearchInput({ testID, placeholder, value, onChangeText }: SearchInputPr
   );
 }
 
-function filterByName<T extends { name: string }>(items: readonly T[], query: string): T[] {
+function filterByText<T>(items: readonly T[], query: string, getText: (item: T) => string): T[] {
   const needle = query.trim().toLowerCase();
   if (needle === '') return [...items];
-  return items.filter((item) => item.name.toLowerCase().includes(needle));
+  return items.filter((item) => getText(item).toLowerCase().includes(needle));
 }

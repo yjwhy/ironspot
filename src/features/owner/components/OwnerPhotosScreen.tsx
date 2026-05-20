@@ -50,7 +50,7 @@ export function OwnerPhotosScreen() {
         renderItem={({ item }) => (
           <MachinePhotoGroup
             gymMachineId={item.id}
-            label={`${item.brandName ?? ''} ${item.machineName ?? item.customName ?? '머신'}`}
+            label={`${item.brandName ?? ''} ${item.machineNameKo ?? item.machineNameEn ?? item.customName ?? '머신'}`}
           />
         )}
         ListEmptyComponent={

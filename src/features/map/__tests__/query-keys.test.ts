@@ -15,8 +15,17 @@ describe('mapKeys factory', () => {
     expect(mapKeys.categories()).toEqual(['map', 'categories']);
   });
 
-  it('nests machine templates under root', () => {
-    expect(mapKeys.machineTemplates()).toEqual(['map', 'machine-templates']);
+  it('nests machine templates under root (no filter)', () => {
+    expect(mapKeys.machineTemplates()).toEqual(['map', 'machine-templates', null, null]);
+  });
+
+  it('encodes brandId / categoryId in machine template key for picker pushdown', () => {
+    expect(mapKeys.machineTemplates({ brandId: 'b1', categoryId: 'c1' })).toEqual([
+      'map',
+      'machine-templates',
+      'b1',
+      'c1',
+    ]);
   });
 
   it('encodes bounds + filters in gym search key', () => {

@@ -14,7 +14,8 @@ export interface GymMachineResponse {
   customName?: string;
   lastVerifiedAt?: string;
   templateId?: string;
-  machineName?: string;
+  machineNameEn?: string;
+  machineNameKo?: string;
   loadingType?: string;
   brandId?: string;
   brandName?: string;

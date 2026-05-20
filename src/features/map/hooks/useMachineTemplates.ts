@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import type { MachineTemplateResponse } from '@/shared/generated/model';
+import type { ListTemplatesParams, MachineTemplateResponse } from '@/shared/generated/model';
 
 import { mapKeys } from '../query-keys';
 import { fetchMachineTemplates } from '../services/machine-templates';
@@ -13,14 +13,22 @@ function sortByBrandThenName(items: readonly MachineTemplateResponse[]): Machine
   return [...items].sort((a, b) => {
     const brand = a.brandName.localeCompare(b.brandName, 'ko');
     if (brand !== 0) return brand;
-    return a.name.localeCompare(b.name, 'ko');
+    // Phase 5 item 18: sort by Korean primary so the picker / filter UI reads
+    // in 가나다 order. Fall back to English when Korean is empty so legacy rows
+    // still slot somewhere deterministic.
+    const aKey = a.nameKo || a.nameEn;
+    const bKey = b.nameKo || b.nameEn;
+    return aKey.localeCompare(bKey, 'ko');
   });
 }
 
-export function useMachineTemplates() {
+export function useMachineTemplates(params?: ListTemplatesParams) {
   return useQuery({
-    queryKey: mapKeys.machineTemplates(),
-    queryFn: fetchMachineTemplates,
+    queryKey: mapKeys.machineTemplates({
+      brandId: params?.brandId,
+      categoryId: params?.categoryId,
+    }),
+    queryFn: () => fetchMachineTemplates(params),
     staleTime: Infinity,
     select: sortByBrandThenName,
   });

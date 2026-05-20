@@ -84,7 +84,7 @@ export function OwnerMachineForm({ gymId, initial, onDone }: OwnerMachineFormPro
           {templates.slice(0, 30).map((template) => (
             <Button
               key={template.id}
-              label={`${template.brandName} ${template.name}`}
+              label={`${template.brandName} ${template.nameKo || template.nameEn}`}
               variant={templateId === template.id ? 'primary' : 'secondary'}
               onPress={() => {
                 setTemplateId(template.id);
@@ -94,7 +94,8 @@ export function OwnerMachineForm({ gymId, initial, onDone }: OwnerMachineFormPro
         </View>
         {selectedTemplate ? (
           <AppText className="text-caption text-text-tertiary">
-            선택됨: {selectedTemplate.brandName} {selectedTemplate.name}
+            선택됨: {selectedTemplate.brandName}{' '}
+            {selectedTemplate.nameKo || selectedTemplate.nameEn}
           </AppText>
         ) : null}
       </View>

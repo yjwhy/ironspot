@@ -19,7 +19,8 @@ const machineTemplates: MachineTemplateResponse[] = [
     brandId: 'b1',
     brandName: 'Panatta',
     categoryId: 'c1',
-    name: 'High Row',
+    nameEn: 'High Row',
+    nameKo: 'High Row',
     loadingType: 'pin',
   },
   {
@@ -27,7 +28,8 @@ const machineTemplates: MachineTemplateResponse[] = [
     brandId: 'b2',
     brandName: 'Hammer Strength',
     categoryId: 'c2',
-    name: 'Chest Press',
+    nameEn: 'Chest Press',
+    nameKo: 'Chest Press',
     loadingType: 'plate',
   },
 ];

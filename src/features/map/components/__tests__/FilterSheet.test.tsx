@@ -44,7 +44,8 @@ const machineTemplates: MachineTemplateResponse[] = [
     brandId: 'b1',
     brandName: 'Panatta',
     categoryId: 'c1',
-    name: 'High Row',
+    nameEn: 'High Row',
+    nameKo: '하이로우',
     loadingType: 'pin',
   },
   {
@@ -52,7 +53,8 @@ const machineTemplates: MachineTemplateResponse[] = [
     brandId: 'b2',
     brandName: 'Hammer Strength',
     categoryId: 'c2',
-    name: 'Chest Press',
+    nameEn: 'Chest Press',
+    nameKo: '체스트 프레스',
     loadingType: 'plate',
   },
 ];
@@ -119,14 +121,14 @@ describe('FilterSheet', () => {
 
   it('renders machine chips with brand prefix and loading suffix', () => {
     const { getByText } = renderSheet();
-    expect(getByText('Panatta High Row · 핀')).toBeTruthy();
-    expect(getByText('Hammer Strength Chest Press · 플레이트')).toBeTruthy();
+    expect(getByText('Panatta 하이로우 · 핀')).toBeTruthy();
+    expect(getByText('Hammer Strength 체스트 프레스 · 플레이트')).toBeTruthy();
   });
 
   it('invokes onToggleTemplate with the template id when chip is pressed', () => {
     const onToggleTemplate = jest.fn();
     const { getByText } = renderSheet({ onToggleTemplate });
-    fireEvent.press(getByText('Panatta High Row · 핀'));
+    fireEvent.press(getByText('Panatta 하이로우 · 핀'));
     expect(onToggleTemplate).toHaveBeenCalledWith('t1');
   });
 
@@ -186,7 +188,7 @@ describe('FilterSheet', () => {
     expect(onToggleBrand).toHaveBeenCalledWith('b1');
     fireEvent.press(getByLabelText('운동 부위 등 필터 제거'));
     expect(onToggleCategory).toHaveBeenCalledWith('c1');
-    fireEvent.press(getByLabelText('머신 Panatta High Row · 핀 필터 제거'));
+    fireEvent.press(getByLabelText('머신 Panatta 하이로우 · 핀 필터 제거'));
     expect(onToggleTemplate).toHaveBeenCalledWith('t1');
   });
 

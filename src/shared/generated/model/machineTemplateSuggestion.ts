@@ -9,7 +9,8 @@
 export interface MachineTemplateSuggestion {
   id: string;
   brandName: string;
-  name: string;
+  nameEn: string;
+  nameKo: string;
   /** Jaccard similarity score 0.0–1.0, threshold 0.25 */
   score: number;
 }

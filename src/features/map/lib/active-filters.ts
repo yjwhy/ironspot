@@ -72,7 +72,7 @@ function loadingTypeSuffix(loadingType: string): string {
  * 정확히 어떤 (브랜드, 머신) 짝을 선택했는지 한눈에 파악 가능.
  */
 export function formatMachineTemplateLabel(template: MachineTemplateResponse): string {
-  return `${template.brandName} ${template.name} · ${loadingTypeSuffix(template.loadingType)}`;
+  return `${template.brandName} ${template.nameKo || template.nameEn} · ${loadingTypeSuffix(template.loadingType)}`;
 }
 
 export function toActiveFilters({

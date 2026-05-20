@@ -9,7 +9,9 @@ export function machineDisplayName(machine: GymMachineWithDetails): string {
   if (machine.is_custom && machine.custom_name) {
     return machine.custom_name;
   }
-  return machine.template.name;
+  // Phase 5 item 18: Korean primary on every card surface; fall back to English
+  // when the Korean column is empty (legacy rows during item 22 backfill).
+  return machine.template.name_ko || machine.template.name_en;
 }
 
 export function groupMachinesByBrand(machines: readonly GymMachineWithDetails[]): BrandGroup[] {

@@ -4,7 +4,13 @@ export const mapKeys = {
   all: ['map'] as const,
   brands: () => [...mapKeys.all, 'brands'] as const,
   categories: () => [...mapKeys.all, 'categories'] as const,
-  machineTemplates: () => [...mapKeys.all, 'machine-templates'] as const,
+  machineTemplates: (params?: { brandId?: string; categoryId?: string }) =>
+    [
+      ...mapKeys.all,
+      'machine-templates',
+      params?.brandId ?? null,
+      params?.categoryId ?? null,
+    ] as const,
   gymSearch: (bounds: MapBounds | null, filters: SearchFilters) =>
     [...mapKeys.all, 'search', bounds, filters] as const,
 };

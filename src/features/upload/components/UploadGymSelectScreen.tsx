@@ -471,7 +471,7 @@ interface MachineItemProps {
 }
 
 function MachineItem({ machine, onPress }: MachineItemProps) {
-  const displayName = machine.custom_name ?? machine.template.name;
+  const displayName = machine.custom_name ?? (machine.template.name_ko || machine.template.name_en);
 
   return (
     <Pressable

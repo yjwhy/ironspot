@@ -88,7 +88,7 @@ function OcrSuccessView({
       <AppText className="text-body font-semibold text-text-primary">어떤 기구인가요?</AppText>
       <View className="gap-2">
         {suggestions.slice(0, MAX_OCR_SUGGESTIONS).map(function renderSuggestion(suggestion) {
-          const label = `${suggestion.brandName} ${suggestion.name}`;
+          const label = `${suggestion.brandName} ${suggestion.nameKo || suggestion.nameEn}`;
           const isSelected = selectedSuggestionId === suggestion.id;
           return (
             <Pressable
