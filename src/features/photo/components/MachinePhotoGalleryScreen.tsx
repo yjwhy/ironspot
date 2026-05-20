@@ -7,6 +7,7 @@ import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { useGymDetail } from '@/features/gym/hooks/useGymDetail';
 import { useGymMachines } from '@/features/gym/hooks/useGymMachines';
 import { machineDisplayName } from '@/features/gym/lib/group-machines';
+import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
 import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Skeleton } from '@/shared/components/Skeleton';
@@ -58,7 +59,7 @@ export function MachinePhotoGalleryScreen({ gymId, machineId }: MachinePhotoGall
     if (!machineId) return;
     requireAuth(function navigateToUpload() {
       router.push({
-        pathname: '/(upload)/photo',
+        pathname: UPLOAD_PHOTO_PATHNAME,
         params: { gymId, gymMachineId: machineId },
       });
     });

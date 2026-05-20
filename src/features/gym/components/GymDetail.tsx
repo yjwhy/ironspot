@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
+import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
 import { AccentChip } from '@/shared/components/AccentChip';
 import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -108,7 +109,7 @@ function AddPhotoFab({ gymId }: AddPhotoFabProps) {
   function handlePress() {
     requireAuth(function navigateToUpload() {
       router.push({
-        pathname: '/(upload)/photo',
+        pathname: UPLOAD_PHOTO_PATHNAME,
         params: { gymId },
       });
     });

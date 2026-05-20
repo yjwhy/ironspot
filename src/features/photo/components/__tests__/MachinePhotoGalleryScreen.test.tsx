@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { useGymDetail } from '@/features/gym/hooks/useGymDetail';
 import { useGymMachines } from '@/features/gym/hooks/useGymMachines';
+import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
 import type { Gym, GymMachineWithDetails, MachinePhoto } from '@/shared/types/database';
 import { makeGymMachineWithDetails, makeMachinePhoto } from '@/test/utils/factories/gym-machine';
 
@@ -141,7 +142,7 @@ describe('MachinePhotoGalleryScreen', () => {
     const { getByLabelText } = render(<MachinePhotoGalleryScreen gymId="g-1" machineId="gm-1" />);
     fireEvent.press(getByLabelText('사진 올리기'));
     expect(router.push).toHaveBeenCalledWith({
-      pathname: '/(upload)/photo',
+      pathname: UPLOAD_PHOTO_PATHNAME,
       params: { gymId: 'g-1', gymMachineId: 'gm-1' },
     });
   });
