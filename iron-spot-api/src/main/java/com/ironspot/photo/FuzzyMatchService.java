@@ -29,9 +29,9 @@ public class FuzzyMatchService {
 
         return templateRepository.findAllApproved().stream()
             .map(t -> {
-                String target = (t.brandName() + " " + t.name()).toLowerCase(Locale.ROOT);
+                String target = (t.brandName() + " " + t.nameEn()).toLowerCase(Locale.ROOT);
                 double score = jaccardSimilarity(inputTokens, tokenize(target));
-                return new MachineTemplateSuggestion(t.id(), t.brandName(), t.name(), score);
+                return new MachineTemplateSuggestion(t.id(), t.brandName(), t.nameEn(), score);
             })
             .filter(s -> s.score() > THRESHOLD)
             .sorted(Comparator.comparing(MachineTemplateSuggestion::score).reversed())
@@ -45,7 +45,7 @@ public class FuzzyMatchService {
         Set<String> input = tokenize(machineName.toLowerCase(Locale.ROOT));
 
         return templateRepository.findApprovedByOptionalFilters(brandId, categoryId).stream()
-            .filter(t -> jaccardSimilarity(input, tokenize(t.name().toLowerCase(Locale.ROOT))) > THRESHOLD)
+            .filter(t -> jaccardSimilarity(input, tokenize(t.nameEn().toLowerCase(Locale.ROOT))) > THRESHOLD)
             .map(t -> t.id())
             .toList();
     }

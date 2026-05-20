@@ -286,7 +286,7 @@ public class ReportRepository {
         // since gym_machines.template_id is nullable in principle (custom rows).
         Field<String> labelField = DSL.field(
             "COALESCE({0} || ' ' || {1}, '머신')",
-            String.class, BRANDS.NAME, MACHINE_TEMPLATES.NAME
+            String.class, BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN
         ).as("label");
 
         return dsl.select(GYM_MACHINES.ID, labelField,
@@ -298,7 +298,7 @@ public class ReportRepository {
             .where(REPORTS.STATUS.eq(STATUS_PENDING))
             .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_GYM_MACHINE))
             .and(notInOwnerWindow())
-            .groupBy(GYM_MACHINES.ID, BRANDS.NAME, MACHINE_TEMPLATES.NAME)
+            .groupBy(GYM_MACHINES.ID, BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN)
             .orderBy(oldestReportAt.asc())
             .limit(limit)
             .fetch(r -> new AdminQueueItem(
@@ -536,7 +536,7 @@ public class ReportRepository {
     private List<OwnerQueueItem> ownerQueueGymMachines(List<UUID> gymIds, int limit) {
         Field<String> labelField = DSL.field(
             "COALESCE({0} || ' ' || {1}, '머신')",
-            String.class, BRANDS.NAME, MACHINE_TEMPLATES.NAME
+            String.class, BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN
         ).as("label");
         return dsl.select(
                 REPORTS.ID, REPORTS.TARGET_ID, REPORTS.REASON, REPORTS.DETAIL,

@@ -32,7 +32,7 @@ public class MachineRepository {
         Categories c = CATEGORIES.as("c");
 
         Field<UUID> templateIdField = mt.ID.as("template_id");
-        Field<String> machineNameField = mt.NAME.as("machine_name");
+        Field<String> machineNameField = mt.NAME_EN.as("machine_name");
         Field<UUID> brandIdField = b.ID.as("brand_id");
         Field<String> brandNameField = b.NAME.as("brand_name");
         Field<UUID> categoryIdField = c.ID.as("category_id");
@@ -48,7 +48,7 @@ public class MachineRepository {
             .join(c).on(c.ID.eq(mt.CATEGORY_ID))
             .where(gm.GYM_ID.eq(gymId))
             .and(gm.DELETED_AT.isNull())
-            .orderBy(b.NAME, c.NAME, mt.NAME)
+            .orderBy(b.NAME, c.NAME, mt.NAME_EN)
             .fetch(r -> {
                 OffsetDateTime lastVerified = r.get(gm.LAST_VERIFIED_AT);
                 LoadingType lt = r.get(mt.LOADING_TYPE);
@@ -83,7 +83,7 @@ public class MachineRepository {
                 com.ironspot.jooq.Tables.GYMS.NAME.as("gym_name"),
                 GYM_MACHINES.TEMPLATE_ID,
                 BRANDS.NAME.as("brand_name"),
-                MACHINE_TEMPLATES.NAME.as("template_name"),
+                MACHINE_TEMPLATES.NAME_EN.as("template_name"),
                 MACHINE_TEMPLATES.LOADING_TYPE,
                 GYM_MACHINES.QUANTITY)
             .from(GYM_MACHINES)

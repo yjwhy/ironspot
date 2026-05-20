@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS machine_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   brand_id UUID REFERENCES brands(id),
   category_id UUID REFERENCES categories(id),
-  name TEXT NOT NULL,
+  name_en TEXT NOT NULL,
+  name_ko TEXT NOT NULL,
   loading_type loading_type NOT NULL,
   is_approved BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -251,20 +252,22 @@ INSERT INTO gyms(id, name, address, location, is_verified)
     ST_GeographyFromText('SRID=4326;POINT(127.0276 37.4979)'),
     TRUE
   );
-INSERT INTO machine_templates(id, brand_id, category_id, name, loading_type)
+INSERT INTO machine_templates(id, brand_id, category_id, name_en, name_ko, loading_type)
   VALUES (
     'e0000001-0000-0000-0000-000000000001',
     'b0000001-0000-0000-0000-000000000001',
     'c0000001-0000-0000-0000-000000000001',
     'High Row',
+    '하이로우',
     'pin'
   );
-INSERT INTO machine_templates(id, brand_id, category_id, name, loading_type)
+INSERT INTO machine_templates(id, brand_id, category_id, name_en, name_ko, loading_type)
   VALUES (
     'e0000002-0000-0000-0000-000000000002',
     'b0000002-0000-0000-0000-000000000002',
     'c0000002-0000-0000-0000-000000000002',
     'Chest Press',
+    '체스트 프레스',
     'plate'
   );
 INSERT INTO users(id, email, nickname)

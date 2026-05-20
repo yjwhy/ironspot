@@ -77,9 +77,14 @@ public class MachineTemplates extends TableImpl<Record> {
     public final TableField<Record, UUID> CATEGORY_ID = createField(DSL.name("category_id"), SQLDataType.UUID, this, "");
 
     /**
-     * The column <code>public.machine_templates.name</code>.
+     * The column <code>public.machine_templates.name_en</code>.
      */
-    public final TableField<Record, String> NAME = createField(DSL.name("name"), SQLDataType.CLOB.nullable(false), this, "");
+    public final TableField<Record, String> NAME_EN = createField(DSL.name("name_en"), SQLDataType.CLOB.nullable(false), this, "");
+
+    /**
+     * The column <code>public.machine_templates.name_ko</code>.
+     */
+    public final TableField<Record, String> NAME_KO = createField(DSL.name("name_ko"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
      * The column <code>public.machine_templates.loading_type</code>.

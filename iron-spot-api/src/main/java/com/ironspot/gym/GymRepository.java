@@ -58,7 +58,7 @@ public class GymRepository {
         Field<String[]> matchedNamesField = DSL.field(
             "array_agg(DISTINCT {0} || ' ' || {1})",
             String[].class,
-            b.NAME, mt.NAME
+            b.NAME, mt.NAME_EN
         ).as("matched_names");
 
         Condition spatialCond = DSL.condition(
