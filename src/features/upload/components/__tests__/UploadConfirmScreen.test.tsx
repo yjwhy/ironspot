@@ -14,6 +14,40 @@ jest.mock('@/shared/generated/machines/machines', () => ({
   useCreateGymMachine: jest.fn(),
 }));
 
+// MachinePicker pulls the brand / category / template catalog via TanStack
+// Query. Mock the hooks so the picker renders without a QueryClient and so
+// tests can drive a deterministic catalog when exercising the escape hatch.
+jest.mock('@/features/map/hooks/useBrands', () => ({
+  useBrands: () => ({
+    data: [
+      { id: 'brand-hammer', name: 'Hammer Strength' },
+      { id: 'brand-life', name: 'Life Fitness' },
+    ],
+  }),
+}));
+jest.mock('@/features/map/hooks/useCategories', () => ({
+  useCategories: () => ({
+    data: [
+      { id: 'cat-chest', name: '가슴' },
+      { id: 'cat-back', name: '등' },
+    ],
+  }),
+}));
+jest.mock('@/features/map/hooks/useMachineTemplates', () => ({
+  useMachineTemplates: () => ({
+    data: [
+      {
+        id: 'tpl-hammer-chest',
+        brandId: 'brand-hammer',
+        brandName: 'Hammer Strength',
+        categoryId: 'cat-chest',
+        name: 'Iso Chest Press',
+        loadingType: 'plate',
+      },
+    ],
+  }),
+}));
+
 const mockBack = jest.fn();
 interface MockParams {
   gymId: string;
@@ -151,14 +185,15 @@ describe('UploadConfirmScreen', () => {
     expect(getByTestId('upload-register-btn')).toBeTruthy();
   });
 
-  it('shows "다시 시도" when ocrSucceeded is false', () => {
+  it('OcrFail mounts the closed-list picker + retry button + persistent escape hatch', () => {
     mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
 
     const { getByTestId, getByText } = render(<UploadConfirmScreen />);
 
     expect(getByText('기구를 인식하지 못했어요')).toBeTruthy();
     expect(getByTestId('upload-retry-btn')).toBeTruthy();
-    expect(getByTestId('upload-direct-input')).toBeTruthy();
+    expect(getByTestId('machine-picker')).toBeTruthy();
+    expect(getByTestId('machine-picker-escape-link')).toBeTruthy();
   });
 
   it('shows error view when uploadError is set', () => {
@@ -182,7 +217,7 @@ describe('UploadConfirmScreen', () => {
     expect(upload).toHaveBeenCalledTimes(2);
   });
 
-  it('direct-input registration calls createGymMachine with freeFormName + no photoId on bound flow', async () => {
+  it('OcrFail escape-hatch free-text registration calls createGymMachine with freeFormName + no photoId on bound flow', async () => {
     mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
     const mutateAsync = jest
       .fn()
@@ -191,7 +226,8 @@ describe('UploadConfirmScreen', () => {
 
     const { getByTestId } = render(<UploadConfirmScreen />);
 
-    fireEvent.changeText(getByTestId('upload-direct-input'), '  Leg Press  ');
+    fireEvent.press(getByTestId('machine-picker-escape-link'));
+    fireEvent.changeText(getByTestId('machine-picker-freeform-input'), '  Leg Press  ');
     fireEvent.press(getByTestId('upload-register-btn'));
 
     await waitFor(() => {
@@ -206,6 +242,30 @@ describe('UploadConfirmScreen', () => {
         }),
       );
       expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('OcrFail closed-list template pick calls createGymMachine with templateId', async () => {
+    mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
+    const mutateAsync = jest
+      .fn()
+      .mockResolvedValue({ gymMachineId: 'new-gm-7', pendingReview: false });
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
+
+    const { getByTestId } = render(<UploadConfirmScreen />);
+
+    fireEvent.press(getByTestId('machine-picker-brand-option-brand-hammer'));
+    fireEvent.press(getByTestId('machine-picker-category-chip-cat-chest'));
+    fireEvent.press(getByTestId('machine-picker-template-option-tpl-hammer-chest'));
+    fireEvent.press(getByTestId('upload-register-btn'));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        data: { gymId: 'gym-123', templateId: 'tpl-hammer-chest' },
+      });
+      expect(burnt.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: '등록됐어요', preset: 'done' }),
+      );
     });
   });
 
@@ -256,7 +316,7 @@ describe('UploadConfirmScreen', () => {
     });
   });
 
-  it('orphan upload + OcrFail direct input sends freeFormName + photoId', async () => {
+  it('orphan upload + OcrFail escape-hatch free-text sends freeFormName + photoId', async () => {
     mockUseLocalSearchParams.mockReturnValue({
       gymId: 'gym-123',
       gymMachineId: undefined,
@@ -270,7 +330,8 @@ describe('UploadConfirmScreen', () => {
 
     const { getByTestId } = render(<UploadConfirmScreen />);
 
-    fireEvent.changeText(getByTestId('upload-direct-input'), 'Hammer Strength MTS Row');
+    fireEvent.press(getByTestId('machine-picker-escape-link'));
+    fireEvent.changeText(getByTestId('machine-picker-freeform-input'), 'Hammer Strength MTS Row');
     fireEvent.press(getByTestId('upload-register-btn'));
 
     await waitFor(() => {
@@ -344,5 +405,73 @@ describe('UploadConfirmScreen', () => {
       );
       expect(mockBack).not.toHaveBeenCalled();
     });
+  });
+
+  it('orphan upload + OcrFail closed-list template pick sends templateId + photoId', async () => {
+    mockUseLocalSearchParams.mockReturnValue({
+      gymId: 'gym-123',
+      gymMachineId: undefined,
+      compressedUri: 'file:///compressed.webp',
+    });
+    mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
+    const mutateAsync = jest
+      .fn()
+      .mockResolvedValue({ gymMachineId: 'new-gm-6', pendingReview: false });
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
+
+    const { getByTestId } = render(<UploadConfirmScreen />);
+
+    fireEvent.press(getByTestId('machine-picker-brand-option-brand-hammer'));
+    fireEvent.press(getByTestId('machine-picker-category-chip-cat-chest'));
+    fireEvent.press(getByTestId('machine-picker-template-option-tpl-hammer-chest'));
+    fireEvent.press(getByTestId('upload-register-btn'));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        data: {
+          gymId: 'gym-123',
+          templateId: 'tpl-hammer-chest',
+          photoId: 'photo-1',
+        },
+      });
+    });
+  });
+
+  it('OcrSuccess: tapping an OCR radio after browsing the picker discards in-progress freeform text', async () => {
+    mockUsePhotoUpload.mockReturnValue(buildOcrSuccessState());
+    const mutateAsync = jest
+      .fn()
+      .mockResolvedValue({ gymMachineId: 'new-gm-8', pendingReview: false });
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
+
+    const { getByTestId } = render(<UploadConfirmScreen />);
+
+    fireEvent.press(getByTestId('upload-direct-input'));
+    fireEvent.press(getByTestId('machine-picker-escape-link'));
+    fireEvent.changeText(getByTestId('machine-picker-freeform-input'), 'mid-typing draft');
+    fireEvent.press(getByTestId('upload-ocr-suggestion-sug-1'));
+    fireEvent.press(getByTestId('upload-register-btn'));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        data: { gymId: 'gym-123', templateId: 'sug-1' },
+      });
+    });
+  });
+
+  it('OcrFail: whitespace-only freeform input keeps the register button disabled', () => {
+    mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
+    const mutateAsync = jest.fn();
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
+
+    const { getByTestId, queryByTestId } = render(<UploadConfirmScreen />);
+
+    fireEvent.press(getByTestId('machine-picker-escape-link'));
+    fireEvent.changeText(getByTestId('machine-picker-freeform-input'), '   ');
+
+    // Register button is conditionally rendered on OcrFail — absence is the
+    // disabled state we ship.
+    expect(queryByTestId('upload-register-btn')).toBeNull();
+    expect(mutateAsync).not.toHaveBeenCalled();
   });
 });

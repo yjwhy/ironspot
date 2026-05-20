@@ -1,7 +1,7 @@
 import { toast } from 'burnt';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Image, Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
@@ -10,11 +10,12 @@ import type { CreateGymMachineRequest } from '@/shared/generated/model';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import { pressedOpacity } from '@/shared/lib/pressable';
 
+import { MachinePicker, type MachinePickerSelection } from './MachinePicker';
 import { OcrScanAnimation } from './OcrScanAnimation';
+import { selectedRowClass } from './selectedRowClass';
 import { UploadProgressBar } from './UploadProgressBar';
+import { MAX_OCR_SUGGESTIONS } from '../constants';
 import { type SuggestionPreview, usePhotoUpload } from '../hooks/usePhotoUpload';
-
-const DIRECT_INPUT_VALUE = '__direct__';
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -50,29 +51,32 @@ function UploadingView({ compressedUri, uploadProgress }: UploadingViewProps) {
 interface OcrSuccessViewProps {
   compressedUri: string;
   suggestions: SuggestionPreview[];
-  selectedValue: string;
-  directInputText: string;
-  isRegistering: boolean;
-  onSelectSuggestion: (value: string) => void;
-  onChangeDirectInput: (text: string) => void;
+  // Narrow props (FF coupling): the parent computes which suggestion is the
+  // checked one and whether the picker mount slot is open / can register.
+  // OcrSuccessView no longer touches the raw selection union nor relays
+  // picker onChange — that wiring stays at the screen level. The picker
+  // itself is passed in via `children` so OcrSuccessView is purely a layout
+  // for "OCR radios + picker mount slot + register button".
+  selectedSuggestionId: string | null;
+  isPickerOpen: boolean;
+  canRegister: boolean;
+  onSelectSuggestion: (templateId: string) => void;
+  onOpenPicker: () => void;
   onRegister: () => void;
+  children?: ReactNode;
 }
 
 function OcrSuccessView({
   compressedUri,
   suggestions,
-  selectedValue,
-  directInputText,
-  isRegistering,
+  selectedSuggestionId,
+  isPickerOpen,
+  canRegister,
   onSelectSuggestion,
-  onChangeDirectInput,
+  onOpenPicker,
   onRegister,
+  children,
 }: OcrSuccessViewProps) {
-  const isDirectInputSelected = selectedValue === DIRECT_INPUT_VALUE;
-  const hasSuggestionSelected = selectedValue !== '' && !isDirectInputSelected;
-  const hasDirectInputFilled = isDirectInputSelected && directInputText.trim().length > 0;
-  const canRegister = hasSuggestionSelected || hasDirectInputFilled;
-
   return (
     <View className="flex-1 gap-4 p-4">
       <Image
@@ -83,9 +87,9 @@ function OcrSuccessView({
       />
       <AppText className="text-body font-semibold text-text-primary">어떤 기구인가요?</AppText>
       <View className="gap-2">
-        {suggestions.slice(0, 3).map(function renderSuggestion(suggestion) {
+        {suggestions.slice(0, MAX_OCR_SUGGESTIONS).map(function renderSuggestion(suggestion) {
           const label = `${suggestion.brandName} ${suggestion.name}`;
-          const isSelected = selectedValue === suggestion.id;
+          const isSelected = selectedSuggestionId === suggestion.id;
           return (
             <Pressable
               key={suggestion.id}
@@ -96,10 +100,7 @@ function OcrSuccessView({
                 onSelectSuggestion(suggestion.id);
               }}
               style={pressedOpacity}
-              className={[
-                'flex-row items-center gap-3 rounded-xl border p-4',
-                isSelected ? 'border-accent bg-accent/10' : 'border-border bg-bg-muted',
-              ].join(' ')}
+              className={selectedRowClass(isSelected)}
             >
               <RadioDot selected={isSelected} />
               <AppText className="flex-1 text-body text-text-primary">{label}</AppText>
@@ -109,34 +110,21 @@ function OcrSuccessView({
         <Pressable
           testID="upload-direct-input"
           accessibilityRole="radio"
-          accessibilityState={{ checked: isDirectInputSelected }}
-          onPress={function handlePressDirectInput() {
-            onSelectSuggestion(DIRECT_INPUT_VALUE);
-          }}
+          accessibilityState={{ checked: isPickerOpen }}
+          onPress={onOpenPicker}
           style={pressedOpacity}
-          className={[
-            'flex-row items-center gap-3 rounded-xl border p-4',
-            isDirectInputSelected ? 'border-accent bg-accent/10' : 'border-border bg-bg-muted',
-          ].join(' ')}
+          className={selectedRowClass(isPickerOpen)}
         >
-          <RadioDot selected={isDirectInputSelected} />
-          <AppText className="flex-1 text-body text-text-primary">직접 입력</AppText>
+          <RadioDot selected={isPickerOpen} />
+          <AppText className="flex-1 text-body text-text-primary">다른 기구로 등록</AppText>
         </Pressable>
-        {isDirectInputSelected ? (
-          <TextInput
-            className="rounded-xl border border-border bg-bg-muted px-4 py-3 text-body text-text-primary"
-            placeholder="기구 이름을 입력하세요"
-            value={directInputText}
-            onChangeText={onChangeDirectInput}
-            autoFocus
-          />
-        ) : null}
+        {children}
       </View>
       <Button
         testID="upload-register-btn"
         label="등록하기"
         onPress={onRegister}
-        disabled={!canRegister || isRegistering}
+        disabled={!canRegister}
       />
     </View>
   );
@@ -144,18 +132,18 @@ function OcrSuccessView({
 
 interface OcrFailViewProps {
   compressedUri: string;
-  directInputText: string;
-  isRegistering: boolean;
-  onChangeDirectInput: (text: string) => void;
+  selection: MachinePickerSelection;
+  canRegister: boolean;
+  onPickerChange: (selection: MachinePickerSelection) => void;
   onRetry: () => void;
   onRegister: () => void;
 }
 
 function OcrFailView({
   compressedUri,
-  directInputText,
-  isRegistering,
-  onChangeDirectInput,
+  selection,
+  canRegister,
+  onPickerChange,
   onRetry,
   onRegister,
 }: OcrFailViewProps) {
@@ -170,21 +158,10 @@ function OcrFailView({
       <AppText className="text-center text-body text-text-secondary">
         기구를 인식하지 못했어요
       </AppText>
-      <TextInput
-        testID="upload-direct-input"
-        className="rounded-xl border border-border bg-bg-muted px-4 py-3 text-body text-text-primary"
-        placeholder="기구 이름을 직접 입력해 주세요"
-        value={directInputText}
-        onChangeText={onChangeDirectInput}
-      />
+      <MachinePicker value={selection} onChange={onPickerChange} />
       <View className="gap-2">
-        {directInputText.trim().length > 0 ? (
-          <Button
-            testID="upload-register-btn"
-            label="등록하기"
-            onPress={onRegister}
-            disabled={isRegistering}
-          />
+        {canRegister ? (
+          <Button testID="upload-register-btn" label="등록하기" onPress={onRegister} />
         ) : null}
         <Button testID="upload-retry-btn" label="다시 시도" variant="secondary" onPress={onRetry} />
       </View>
@@ -224,6 +201,40 @@ function RadioDot({ selected }: RadioDotProps) {
   );
 }
 
+// A submission is valid when the user has either picked a template from the
+// closed list (OCR suggestion radio OR picker) or typed a non-empty free-form
+// name via the picker's escape hatch.
+function canRegisterSelection(selection: MachinePickerSelection): boolean {
+  if (selection.kind === 'template') return true;
+  if (selection.kind === 'freeForm') return selection.text.trim() !== '';
+  return false;
+}
+
+// Returns the OCR-suggestion id that should render as checked, or null when
+// the user is browsing the picker or has no pick yet. Centralises the
+// "selection refers to one of the OCR top-3" check so the JSX stays declarative.
+function pickedSuggestionId(
+  selection: MachinePickerSelection,
+  suggestions: readonly SuggestionPreview[],
+  isPickerOpen: boolean,
+): string | null {
+  if (isPickerOpen || selection.kind !== 'template') return null;
+  const match = suggestions.find((s) => s.id === selection.templateId);
+  return match?.id ?? null;
+}
+
+// Builds the request payload for the closed-list-vs-direct-input branches.
+// Splitting it out lets TypeScript narrow inside this helper rather than
+// inside handleRegister's else branch (where the unreachable 'none' case
+// trips no-unsafe-member-access).
+function selectionFields(
+  selection: MachinePickerSelection,
+): Pick<CreateGymMachineRequest, 'templateId' | 'freeFormName'> | null {
+  if (selection.kind === 'template') return { templateId: selection.templateId };
+  if (selection.kind === 'freeForm') return { freeFormName: selection.text.trim() };
+  return null;
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export function UploadConfirmScreen() {
@@ -249,8 +260,14 @@ export function UploadConfirmScreen() {
   );
   const { mutateAsync: createGymMachine, isPending: isRegistering } = useCreateGymMachine();
 
-  const [selectedValue, setSelectedValue] = useState('');
-  const [directInputText, setDirectInputText] = useState('');
+  // Phase 5 item 11 slice 3: selection covers both branches of the OCR-result
+  // tree. 'template' is emitted by the OcrSuccess radios AND by the
+  // MachinePicker closed-list pick. 'freeForm' is the picker escape hatch.
+  // isPickerOpen is only meaningful on the OcrSuccess path — the "다른 기구로
+  // 등록" radio toggles it. OcrFail always renders the picker so the boolean
+  // is unused there.
+  const [selection, setSelection] = useState<MachinePickerSelection>({ kind: 'none' });
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const uploadRef = useRef(upload);
   useEffect(function triggerUpload() {
@@ -273,25 +290,17 @@ export function UploadConfirmScreen() {
       return;
     }
 
-    // OcrFailView has no suggestion list, so the text input is always a
-    // direct-input contribution regardless of selectedValue (which stays '').
-    // OcrSuccessView discriminates closed-list vs direct-input by selectedValue.
-    const isOcrFailFreeForm = result !== null && !result.ocrSucceeded;
-    const isDirectInput = isOcrFailFreeForm || selectedValue === DIRECT_INPUT_VALUE;
-    const trimmedDirectInput = directInputText.trim();
-    if (!isDirectInput && selectedValue === '') return;
-    if (isDirectInput && trimmedDirectInput === '') return;
+    const fields = selectionFields(selection);
+    if (fields === null) return;
 
     // Only send photoId on the orphan path. If the photo was already bound to
     // an existing gymMachineId during upload the backend's NULL-guard would
     // reject the rebind with 400.
     const photoIdForOrphanBind = gymMachineId === undefined ? result?.photoId : undefined;
 
-    const selectionFields: Pick<CreateGymMachineRequest, 'templateId' | 'freeFormName'> =
-      isDirectInput ? { freeFormName: trimmedDirectInput } : { templateId: selectedValue };
     const requestBody: CreateGymMachineRequest = {
       gymId,
-      ...selectionFields,
+      ...fields,
       ...(photoIdForOrphanBind !== undefined ? { photoId: photoIdForOrphanBind } : {}),
     };
 
@@ -311,9 +320,23 @@ export function UploadConfirmScreen() {
     }
   }
 
+  function handleRegisterPress() {
+    void handleRegister();
+  }
+
+  function handleSelectSuggestion(templateId: string) {
+    setSelection({ kind: 'template', templateId });
+    setIsPickerOpen(false);
+  }
+
+  function handleOpenPicker() {
+    setSelection({ kind: 'none' });
+    setIsPickerOpen(true);
+  }
+
   function handleRetry() {
-    setSelectedValue('');
-    setDirectInputText('');
+    setSelection({ kind: 'none' });
+    setIsPickerOpen(false);
     void upload();
   }
 
@@ -326,33 +349,35 @@ export function UploadConfirmScreen() {
     return <UploadingView compressedUri={compressedUri} uploadProgress={uploadProgress} />;
   }
 
-  function handleRegisterPress() {
-    void handleRegister();
-  }
+  const canRegister = canRegisterSelection(selection) && !isRegistering;
 
   if (!result.ocrSucceeded) {
     return (
       <OcrFailView
         compressedUri={compressedUri}
-        directInputText={directInputText}
-        isRegistering={isRegistering}
-        onChangeDirectInput={setDirectInputText}
+        selection={selection}
+        canRegister={canRegister}
+        onPickerChange={setSelection}
         onRetry={handleRetry}
         onRegister={handleRegisterPress}
       />
     );
   }
 
+  const selectedSuggestionId = pickedSuggestionId(selection, result.suggestions, isPickerOpen);
+
   return (
     <OcrSuccessView
       compressedUri={compressedUri}
       suggestions={result.suggestions}
-      selectedValue={selectedValue}
-      directInputText={directInputText}
-      isRegistering={isRegistering}
-      onSelectSuggestion={setSelectedValue}
-      onChangeDirectInput={setDirectInputText}
+      selectedSuggestionId={selectedSuggestionId}
+      isPickerOpen={isPickerOpen}
+      canRegister={canRegister}
+      onSelectSuggestion={handleSelectSuggestion}
+      onOpenPicker={handleOpenPicker}
       onRegister={handleRegisterPress}
-    />
+    >
+      {isPickerOpen ? <MachinePicker value={selection} onChange={setSelection} /> : null}
+    </OcrSuccessView>
   );
 }
