@@ -417,13 +417,13 @@ Item 18 shipped the schema + code for bilingual machine templates but deliberate
 
 **To-do (groomed scope)**
 
-- [ ] **Brand list confirmation**: lock the final brand list (Korean brands need verification — HASS / SP&CO / K-Sport are placeholders; user has the ground truth on which Korean manufacturers are most visible domestically).
-- [ ] **Per-brand catalog research**: for each brand, Claude WebFetches the public model catalog page (brand site or distributor reference page where the brand site is sparse — Korean brands often need the latter). Output: a per-brand `{ model_en, model_ko, category, loading_type }` table for user review.
-- [ ] **Korean transliteration proposal**: Claude generates Korean primary names per the conventions established in item 18 (e.g. Lat Pull Down → 랫 풀다운, Chest Press → 체스트 프레스). User flags any awkward 표기 in a single review pass.
-- [ ] **V8 migration**: hand-written `INSERT INTO machine_templates(id, brand_id, category_id, name_en, name_ko, loading_type) VALUES ...` for the curated set. UUIDs deterministic (or `gen_random_uuid()` — TBD on first commit). Also extend the `brands` table if any new brands need adding.
-- [ ] **Test fixture refresh**: `init-test-db.sql` may need a wider sample if downstream ITs start to depend on richer catalog shape; default position is "keep the 2-row test fixture and add a separate `seed-bulk-catalog.sql` for migration-replay tests."
-- [ ] **Picker UX validation**: with N≈100-200 templates the TemplateStep search is the primary entry point — verify the search-by-prefix on `brandName + nameKo + nameEn` gives sensible top results in the picker. May surface a need for ranked search / fuzzy match on the picker side too (currently exact substring).
-- [ ] **NL search prompt few-shot expansion**: if the catalog brings in significantly more brands than the 11 the prompt currently lists (rule 3), add 2-3 more few-shot examples covering common new brands (e.g. 사이베스 → Cybex, 매트릭스 → Matrix). Eval suite +1-2 cases accordingly, watching TPD budget (still well within 100K).
+- [x] **Brand list confirmation**: 24 brands locked (2026-05-20). Foreign 20 (Hammer Strength, Life Fitness, Technogym, Panatta, Hoist, Cybex, Matrix, Nautilus, Prime, Citadel, gym80, Booty Builder, Atlantis, Gymleco, Telju, Precor, Icarian, Star Trac, Watson, Freemotion) + Korean 4 (뉴텍, DRAX, Ultra Strength, LEXCO). HASS / SP&CO / K-Sport placeholders replaced — 뉴텍 (newtechworldwide.com) is the dominant domestic manufacturer with Advance pin + M-Torture plate lines; DRAX (draxfit.com), Ultra Strength (ultrastrength.co.kr), LEXCO (lexco.kr) cover the rest of the visibility curve. Eleiko + Rogue dropped (free-weight specialists, in-scope template count would be 0~5 each). Chinese OEM explicitly excluded.
+- [x] **Per-brand catalog research**: WebFetch ✓ (Hammer Strength 18, Life Fitness Insignia 15, Technogym Selection 12, Citadel 8, Booty Builder 10, Gymleco 13, Telju 17, 뉴텍 25 from machine.assistfit.io, LEXCO 12 from ptsports.co.kr dealer, Ultra Strength 14). ◐ (Cybex 10, Atlantis 8, Star Trac 13, Watson 12 — WebSearch + dealer aggregator). ○ (Matrix 10, Hoist 12, Panatta 10, Prime 7, Nautilus 6, gym80 8, Freemotion 10, DRAX 8, Icarian 6, Precor 12, Technogym Pure Strength 6 — training knowledge, admin queue absorbs gaps per item 11). Total 281 templates.
+- [x] **Korean transliteration proposal**: D5 띄어쓰기 표준형 적용 ("체스트 프레스", "랫 풀다운", "아이소 래터럴 로우"). D6 sub-line marketing names dropped from name_en/name_ko (Versa, Magnum, Eagle NX, ROC-IT, Sygnum, Hyper, V8, Discovery, Advance, On Him, MTS, Inspiration, Instinct, Leverage, EPIC, Animal, Single Stack, Diamond, SEC Plus, Master Pro, Falcon, Nautilus One, Welliv Pro, Pure Plate, Pure Kraft); movement descriptors retained (Incline / Decline / Seated / Iso-Lateral / Linear / Pendulum / Belt / 45° / Converging / Diverging).
+- [x] **V8 migration**: `iron-spot-api/src/main/resources/db/migration/V8__catalog_bulk_seed.sql` — 24 brands + 6 categories + 281 templates via `WITH catalog AS (VALUES …) JOIN brands + categories ON name`. brand/category UUIDs deterministic (Panatta b0000001 + Life Fitness b0000002 + 등 c0000001 + 가슴 c0000002 reuse legacy test-fixture UUIDs; rest b1000003..b1000024 / c1000003..c1000006); templates use `gen_random_uuid()`. `ON CONFLICT (name) DO NOTHING` for brand/category re-run safety. Verified via psql replay (V1..V8 on fresh postgis/postgis:17-3.5): 24 + 6 + 281 INSERTs apply cleanly. → Shipped slice (a) `5737b02`.
+- [x] **Test fixture impact**: none. `flyway.enabled: false` in `iron-spot-api/src/test/resources/application.yml` means V8 only applies in prod; tests use `init-test-db.sql` exclusively. Full API test suite passes unchanged with V8 in migrations dir.
+- [ ] **Picker UX validation**: with N=281 templates the TemplateStep search box is the primary entry point. ADR 0022 already designed for 200-400 envelope (`MACHINE_SECTION_ALWAYS_SHOW_SEARCH = 0` in `FilterSheet.tsx`). Carried forward as **item 23 (brand-first accordion filter UI)** because the 3-section orthogonal layout doesn't surface brand hierarchy well at N=281 — user mental model is brand-first when standing in a gym.
+- [x] **NL search prompt few-shot expansion**: `prompts/search-dsl.md` rule 2 split into English-canonical / Korean-canonical lists. 15 brands added (Citadel, gym80, Booty Builder, Atlantis, Gymleco, Telju, Precor, Icarian, Star Trac, Watson, Freemotion, DRAX, Ultra Strength, LEXCO English; 뉴텍 Korean). Eleiko / Rogue removed. New few-shot pins 뉴텍 → 뉴텍 (no translation). Eval suite +1 case (8 total, 20K tokens ≈ 20% of Groq TPD). → Shipped slice (b) `8ba24cd`.
 
 **Out of scope (post-launch / Phase 6)**
 
@@ -434,6 +434,51 @@ Item 18 shipped the schema + code for bilingual machine templates but deliberate
 **Reason to ship pre-launch**
 
 Without a populated catalog, item 18's code lights up no value: picker shows zero brands, OCR finds zero matches, NL search has no template_id to hit. Item 18 plus item 22 are the matched pair that lets the contribution loop and the search loop both close. The data work is a one-time effort and ships ahead of launch so the first cohort sees a catalog that already covers the gyms they walk into.
+
+### 23. Brand-first accordion filter UI (refactor ADR 0022)
+
+**Current state**
+
+ADR 0022 (`docs/adrs/0022-machine-template-filter.md`) shipped a 3-section orthogonal `FilterSheet` (운동 부위 → 브랜드 → 머신) sized for 200-400 templates with an always-on search box. Item 22 lands 281 templates × 24 brands and the design envelope holds, but the mental model is wrong: standing in a gym, the user thinks brand-first ("Hammer Strength 있는 곳") not dimension-first. The 3-section layout surfaces brand as one of three equal-weight chip clusters, burying the natural hierarchy.
+
+**Locked decision (2026-05-21)**
+
+Refactor `FilterSheet` to a hybrid layout:
+
+- Top: global search bar (always visible, searches across `nameKo` + `nameEn` + `brandName`).
+- Middle: 운동 부위 chips (6, always visible, optional sub-filter).
+- Body: 24 brand cards in an accordion. Tap brand row → expands inline → machines grouped by body part inside.
+- Selected chips collapse to a footer "선택 N" strip with AND/OR toggle (preserves ADR 0022 결정 4).
+- Multiple brands can expand simultaneously.
+
+Trade-offs vs ADR 0022:
+
+- ✓ Idle cognitive load 281 chips → 24 brand rows.
+- ✓ Brand-only quick filter still 1-tap (brand row).
+- ✓ Body-part quick filter preserved as top chip row (cross-filters accordion contents).
+- ✓ Cross-brand search preserved via top search bar.
+- ⚠ Compound queries (Panatta A + Hammer B) cost more clicks (expand both brands) but more discoverable.
+- ⚠ Implementation cost: `FilterSheet.tsx` 242 → ~450 lines; new ADR (0023? 0024?) documenting supersede.
+
+**To-do**
+
+- [ ] Author ADR documenting the supersede + decision rationale (link to item 23 in the README).
+- [ ] Refactor `FilterSheet.tsx` to accordion layout. `useFilters` state shape unchanged (filterIds in / chip render out); ADR 0022 결정 5 (loading_type drop) + 결정 6 (브랜드 직교) preserved.
+- [ ] FlashList with sticky brand headers for virtualization (ADR 0022 envelope was 200-400; item 22 lands 281).
+- [ ] Reanimated layout animation for accordion expand/collapse (~250ms ease-out enter / ease-in exit).
+- [ ] Cross-filter behaviour: 운동 부위 chip selection narrows the accordion's machine sub-sections; brand expand state preserved across category filter changes.
+- [ ] Empty state per brand when 운동 부위 filter active but brand has 0 machines in that part.
+- [ ] Maestro update: existing filter flows reference 3-section structure; accordion taps need new selectors.
+
+**Out of scope**
+
+- "See also" cross-brand suggestions inside expanded brand view (e.g. "유사: Tech Iso Row")
+- Drag-to-reorder favourite brands
+- Brand-aware OCR weighting (separate item; ranks closest-match by gym's known inventory)
+
+**Reason to ship pre-launch**
+
+ADR 0022 envelope holds at 281 mechanically, but new-user onboarding sees the wrong primary axis. The first-cohort UX value is highest when the filter matches how users actually think about gym equipment. Refactor is contained to one component + one ADR; no backend / DTO / schema changes.
 
 ## Post-launch hypotheses (drive prioritisation)
 
