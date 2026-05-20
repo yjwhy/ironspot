@@ -1,8 +1,11 @@
 ---
-Status: Accepted
+Status: Superseded by 0024 (Draft, 2026-05-21)
 Date: 2026-05-17
 Implements: 0020-filter-panel-over-scrollbar.md (deferred Phase 2/3 wishlist scope)
+Superseded-by: 0024-accordion-filter-supersedes-0022.md
 ---
+
+> **Status note (2026-05-21)** — The 3-section orthogonal layout below shipped against an empty post-V7 catalog. Phase 5 item 22 (PR #141) seeded 24 brands × 281 templates, surfacing a mental-model mismatch (user thinks brand-first, the 3-section layout buries brand). ADR 0024 supersedes the _layout_ decisions (sections, chip placement, search-bar location) while preserving the data model + wire format + all 7 core decisions of this ADR — only the UI shell changes. Keep reading this ADR for the decision-rationale history; the live design lives in 0024.
 
 # 0022 — 머신 템플릿 필터 + 브랜드 prefix chip + AND 검색 모드
 
