@@ -275,7 +275,7 @@ describe('UploadGymSelectScreen', () => {
     });
   });
 
-  it('tapping a machine calls router.push with correct gymMachineId', async () => {
+  it('tapping a machine calls router.push with gymMachineId + gymId', async () => {
     mockUseCurrentLocation.mockReturnValue({
       status: 'ready',
       location: { latitude: 37.4979, longitude: 127.0276 },
@@ -313,7 +313,7 @@ describe('UploadGymSelectScreen', () => {
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/(upload)/photo',
-      params: { gymMachineId: 'machine-1' },
+      params: { gymMachineId: 'machine-1', gymId: 'gym-1' },
     });
   });
 

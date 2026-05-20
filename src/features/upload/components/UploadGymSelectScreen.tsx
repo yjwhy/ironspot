@@ -449,7 +449,10 @@ function GymMachineSubList({ gymId }: GymMachineSubListProps) {
   }
 
   function handleMachinePress(gymMachineId: string) {
-    router.push({ pathname: '/(upload)/photo', params: { gymMachineId } });
+    // Pass gymId alongside gymMachineId so UploadConfirmScreen can call
+    // POST /api/gym-machines when the user contributes a different template
+    // via the OCR confirm view (Phase 5 item 11 slice 2).
+    router.push({ pathname: '/(upload)/photo', params: { gymMachineId, gymId } });
   }
 
   return (

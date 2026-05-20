@@ -35,7 +35,16 @@ async function compressImage(uri: string): Promise<string> {
 }
 
 export function UploadPhotoScreen() {
-  const { gymMachineId } = useLocalSearchParams<{ gymMachineId: string }>();
+  // Both params are optional at the type level: the existing entry point
+  // (UploadGymSelect → tap machine) supplies both, but a future "register new
+  // machine" entry point (Phase 5 item 15 FAB) may push without gymMachineId.
+  // gymId is threaded through so UploadConfirmScreen can call
+  // POST /api/gym-machines on contribution flows; gymMachineId stays the
+  // existing photo-to-machine binding hint.
+  const { gymMachineId, gymId } = useLocalSearchParams<{
+    gymMachineId?: string;
+    gymId?: string;
+  }>();
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [isCompressing, setIsCompressing] = useState(false);
@@ -53,7 +62,7 @@ export function UploadPhotoScreen() {
       }
       router.push({
         pathname: '/(upload)/confirm',
-        params: { gymMachineId, compressedUri },
+        params: { gymMachineId, gymId, compressedUri },
       });
     } catch {
       toast({ title: '사진 처리 중 오류가 발생했어요', preset: 'error' });

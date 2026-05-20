@@ -50,7 +50,15 @@ function toUploadResult(data: PhotoUploadResponse): UploadResult {
   };
 }
 
-export function usePhotoUpload(gymMachineId: string, compressedUri: string): UsePhotoUploadReturn {
+// Phase 5 item 11 slice 2: gymMachineId is optional. When omitted the photo
+// lands as an orphan (machine_photos.gym_machine_id = NULL) and the OCR
+// confirm screen's POST /api/gym-machines binds it to the new contribution
+// row. Existing flows (machine photo gallery, owner workflow) keep passing
+// gymMachineId and bypass the contribution path.
+export function usePhotoUpload(
+  gymMachineId: string | undefined,
+  compressedUri: string,
+): UsePhotoUploadReturn {
   const { mutateAsync } = useUpload();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -65,7 +73,10 @@ export function usePhotoUpload(gymMachineId: string, compressedUri: string): Use
 
     try {
       const uploadResponse = await mutateAsync({
-        params: { gymMachineId },
+        // Orval's UploadParams treats gymMachineId as optional; the generated
+        // URL builder skips undefined entries so the orphan path emits
+        // `/api/photos/upload` with no query string.
+        params: gymMachineId !== undefined ? { gymMachineId } : {},
         data: { image: toRnMultipartFile(compressedUri) as unknown as Blob },
       });
 
