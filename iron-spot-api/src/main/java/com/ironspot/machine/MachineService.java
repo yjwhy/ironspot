@@ -1,10 +1,15 @@
 package com.ironspot.machine;
 
+import com.ironspot.common.exception.BusinessException;
+import com.ironspot.machine.dto.CreateGymMachineRequest;
+import com.ironspot.machine.dto.CreateGymMachineResponse;
 import com.ironspot.machine.dto.GymMachineResponse;
 import com.ironspot.photo.PhotoRepository;
 import com.ironspot.photo.dto.PhotoResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -32,5 +37,52 @@ public class MachineService {
                 photoMap.getOrDefault(m.id(), List.of())
             ))
             .toList();
+    }
+
+    /**
+     * Phase 5 item 11 slice 1: persist a user contribution from the OCR
+     * confirm screen. Closed-list picks store template_id and stay out of
+     * the admin queue; direct-input rows land with template_id NULL and
+     * pending_review TRUE for admin promotion or rejection. Optionally
+     * re-binds the freshly uploaded photo to the new row so the contribution
+     * loop closes in one round trip.
+     */
+    @Transactional
+    public CreateGymMachineResponse createContribution(UUID userId, CreateGymMachineRequest request) {
+        if (!machineRepository.gymExists(request.gymId())) {
+            throw new BusinessException("헬스장을 찾을 수 없습니다", HttpStatus.NOT_FOUND);
+        }
+
+        boolean isDirectInput = request.templateId() == null;
+        if (!isDirectInput && !machineRepository.templateExistsAndApproved(request.templateId())) {
+            throw new BusinessException("유효하지 않은 기구 템플릿입니다", HttpStatus.BAD_REQUEST);
+        }
+
+        if (request.photoId() != null) {
+            UUID uploader = photoRepository.findUploader(request.photoId())
+                .orElseThrow(() -> new BusinessException("사진을 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+            if (!uploader.equals(userId)) {
+                throw new BusinessException("본인이 업로드한 사진만 연결할 수 있습니다", HttpStatus.FORBIDDEN);
+            }
+        }
+
+        UUID newGymMachineId = machineRepository.insertContribution(
+            request.gymId(),
+            request.templateId(),
+            isDirectInput,
+            isDirectInput ? request.freeFormName().trim() : null,
+            isDirectInput
+        );
+
+        if (request.photoId() != null) {
+            int updated = photoRepository.bindOrphanGymMachineId(request.photoId(), newGymMachineId);
+            if (updated == 0) {
+                // Photo is already bound to another gym_machine — refuse the
+                // rebind so prior contributions stay intact.
+                throw new BusinessException("이미 다른 기구에 연결된 사진입니다", HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        return new CreateGymMachineResponse(newGymMachineId, isDirectInput);
     }
 }

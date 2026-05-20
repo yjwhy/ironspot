@@ -5,25 +5,122 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { GymMachineResponse } from '../model';
+import type {
+  CreateGymMachineRequest,
+  CreateGymMachineResponse,
+  GymMachineResponse,
+} from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+export type createGymMachineResponse201 = {
+  data: CreateGymMachineResponse;
+  status: 201;
+};
+
+export type createGymMachineResponseSuccess = createGymMachineResponse201 & {
+  headers: Headers;
+};
+export type createGymMachineResponse = createGymMachineResponseSuccess;
+
+export const getCreateGymMachineUrl = () => {
+  return `/api/gym-machines`;
+};
+
+/**
+ * @summary Contribute a gym_machine row
+ */
+export const createGymMachine = async (
+  createGymMachineRequest: CreateGymMachineRequest,
+  options?: RequestInit,
+): Promise<createGymMachineResponse> => {
+  return apiClient<createGymMachineResponse>(getCreateGymMachineUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createGymMachineRequest),
+  });
+};
+
+export const getCreateGymMachineMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createGymMachine>>,
+    TError,
+    { data: CreateGymMachineRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createGymMachine>>,
+  TError,
+  { data: CreateGymMachineRequest },
+  TContext
+> => {
+  const mutationKey = ['createGymMachine'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createGymMachine>>,
+    { data: CreateGymMachineRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createGymMachine(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateGymMachineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createGymMachine>>
+>;
+export type CreateGymMachineMutationBody = CreateGymMachineRequest;
+export type CreateGymMachineMutationError = unknown;
+
+/**
+ * @summary Contribute a gym_machine row
+ */
+export const useCreateGymMachine = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createGymMachine>>,
+      TError,
+      { data: CreateGymMachineRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createGymMachine>>,
+  TError,
+  { data: CreateGymMachineRequest },
+  TContext
+> => {
+  return useMutation(getCreateGymMachineMutationOptions(options), queryClient);
+};
 export type listMachinesResponse200 = {
   data: GymMachineResponse[];
   status: 200;

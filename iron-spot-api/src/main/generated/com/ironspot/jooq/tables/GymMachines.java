@@ -107,6 +107,11 @@ public class GymMachines extends TableImpl<Record> {
      */
     public final TableField<Record, OffsetDateTime> DELETED_AT = createField(DSL.name("deleted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
 
+    /**
+     * The column <code>public.gym_machines.pending_review</code>.
+     */
+    public final TableField<Record, Boolean> PENDING_REVIEW = createField(DSL.name("pending_review"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "");
+
     private GymMachines(Name alias, Table<Record> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -176,7 +181,7 @@ public class GymMachines extends TableImpl<Record> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IDX_GYM_MACHINES_ACTIVE);
+        return Arrays.asList(Indexes.IDX_GYM_MACHINES_ACTIVE, Indexes.IDX_GYM_MACHINES_PENDING_REVIEW);
     }
 
     @Override
