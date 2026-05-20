@@ -8,6 +8,7 @@ import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
 import { AppText } from '@/shared/components/AppText';
 import { Chip } from '@/shared/components/Chip';
 import { pressedOpacity } from '@/shared/lib/pressable';
+import { templateDisplayName } from '@/shared/lib/template-display-name';
 import { colors } from '@/shared/theme/tokens';
 
 import { selectedRowClass } from './selectedRowClass';
@@ -113,7 +114,15 @@ export function MachinePicker({ value, onChange }: MachinePickerProps) {
 
       {isBrandPicked && isCategoryPicked && !isEscapeHatchOpen ? (
         <TemplateStep
-          templates={templates ?? []}
+          // Project to a view-only shape so TemplateStep doesn't leak DB
+          // column names. `searchText` includes both languages so a user
+          // typing English brand + Korean machine name still matches.
+          templates={(templates ?? []).map((t) => ({
+            id: t.id,
+            brandName: t.brandName,
+            displayName: templateDisplayName(t),
+            searchText: `${t.brandName} ${t.nameKo} ${t.nameEn}`,
+          }))}
           selectedTemplateId={selectedTemplateId}
           query={templateQuery}
           onChangeQuery={setTemplateQuery}
@@ -218,8 +227,20 @@ function CategoryStep({ categories, selectedCategoryId, onSelect }: CategoryStep
 
 // ─── Template step ──────────────────────────────────────────────────────────
 
+// TemplateStep is a UI-only consumer — it takes a view shape that the
+// parent (MachinePicker) projects from MachineTemplateResponse so a future
+// DTO column rename only touches one site rather than this child's props.
+interface TemplateStepItem {
+  id: string;
+  brandName: string;
+  /** Korean primary with English fallback per item 18. */
+  displayName: string;
+  /** Concatenated brand + both languages so the search box matches mixed input. */
+  searchText: string;
+}
+
 interface TemplateStepProps {
-  templates: readonly { id: string; brandName: string; nameEn: string; nameKo: string }[];
+  templates: readonly TemplateStepItem[];
   selectedTemplateId: string;
   query: string;
   onChangeQuery: (text: string) => void;
@@ -233,15 +254,7 @@ function TemplateStep({
   onChangeQuery,
   onSelect,
 }: TemplateStepProps) {
-  // Phase 5 item 18: query matches Korean primary, English fallback, AND
-  // brand name so a user typing "Hammer" hits a row whose card reads in
-  // Korean — addresses the "I know the brand in English, the machine in
-  // Korean" mixed-input pattern common in domestic gyms.
-  const filteredTemplates = filterByText(
-    templates,
-    query,
-    (t) => `${t.brandName} ${t.nameKo} ${t.nameEn}`,
-  );
+  const filteredTemplates = filterByText(templates, query, (t) => t.searchText);
 
   return (
     <View className="gap-2">
@@ -260,7 +273,7 @@ function TemplateStep({
         ) : (
           filteredTemplates.map(function renderTemplate(template) {
             const isSelected = template.id === selectedTemplateId;
-            const displayName = template.nameKo || template.nameEn;
+            const displayName = template.displayName;
             return (
               <Pressable
                 key={template.id}

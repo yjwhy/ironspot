@@ -12,6 +12,7 @@ import { useVerify } from '@/shared/generated/owner/owner';
 import { getListPhotosQueryKey, useListPhotos } from '@/shared/generated/photos/photos';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { captureError } from '@/shared/lib/sentry';
+import { gymMachineDisplayName } from '@/shared/lib/template-display-name';
 
 export function OwnerPhotosScreen() {
   const params = useLocalSearchParams<{ gym: string }>();
@@ -50,7 +51,7 @@ export function OwnerPhotosScreen() {
         renderItem={({ item }) => (
           <MachinePhotoGroup
             gymMachineId={item.id}
-            label={`${item.brandName ?? ''} ${item.machineNameKo ?? item.machineNameEn ?? item.customName ?? '머신'}`}
+            label={`${item.brandName ?? ''} ${gymMachineDisplayName(item) || '머신'}`}
           />
         )}
         ListEmptyComponent={

@@ -9,6 +9,7 @@ import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import type { AdminReportResponse } from '@/shared/generated/model';
 import { formatRelativeKo } from '@/shared/lib/format';
+import { templateDisplayName } from '@/shared/lib/template-display-name';
 
 import { useAdminGymMachineDetail } from '../hooks/useAdminGymMachineDetail';
 import { useDisposeReport } from '../hooks/useDisposeReport';
@@ -211,14 +212,14 @@ function TemplatePicker({ onPick, onClose }: TemplatePickerProps) {
           <Pressable
             key={template.id}
             accessibilityRole="button"
-            accessibilityLabel={`${template.brandName} ${template.nameKo || template.nameEn} 선택`}
+            accessibilityLabel={`${template.brandName} ${templateDisplayName(template)} 선택`}
             onPress={() => {
               onPick(template.id);
             }}
             className="border-b border-border-subtle px-2 py-2 active:bg-bg-elevated"
           >
             <Text className="text-sm text-text-primary">
-              {template.brandName} {template.nameKo || template.nameEn} ·{' '}
+              {template.brandName} {templateDisplayName(template)} ·{' '}
               {template.loadingType === 'pin' ? '핀' : '플레이트'}
             </Text>
           </Pressable>

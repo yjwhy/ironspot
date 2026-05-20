@@ -10,6 +10,7 @@ import { Button } from '@/shared/components/Button';
 import { getListMachinesQueryKey } from '@/shared/generated/machines/machines';
 import { useCreate, useUpdate } from '@/shared/generated/owner/owner';
 import { captureError } from '@/shared/lib/sentry';
+import { templateDisplayName } from '@/shared/lib/template-display-name';
 
 interface OwnerMachineFormProps {
   gymId: string;
@@ -84,7 +85,7 @@ export function OwnerMachineForm({ gymId, initial, onDone }: OwnerMachineFormPro
           {templates.slice(0, 30).map((template) => (
             <Button
               key={template.id}
-              label={`${template.brandName} ${template.nameKo || template.nameEn}`}
+              label={`${template.brandName} ${templateDisplayName(template)}`}
               variant={templateId === template.id ? 'primary' : 'secondary'}
               onPress={() => {
                 setTemplateId(template.id);

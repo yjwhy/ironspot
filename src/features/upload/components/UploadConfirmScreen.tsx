@@ -9,6 +9,7 @@ import { useCreateGymMachine } from '@/shared/generated/machines/machines';
 import type { CreateGymMachineRequest } from '@/shared/generated/model';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import { pressedOpacity } from '@/shared/lib/pressable';
+import { templateDisplayName } from '@/shared/lib/template-display-name';
 
 import { MachinePicker, type MachinePickerSelection } from './MachinePicker';
 import { OcrScanAnimation } from './OcrScanAnimation';
@@ -88,7 +89,7 @@ function OcrSuccessView({
       <AppText className="text-body font-semibold text-text-primary">어떤 기구인가요?</AppText>
       <View className="gap-2">
         {suggestions.slice(0, MAX_OCR_SUGGESTIONS).map(function renderSuggestion(suggestion) {
-          const label = `${suggestion.brandName} ${suggestion.nameKo || suggestion.nameEn}`;
+          const label = `${suggestion.brandName} ${templateDisplayName(suggestion)}`;
           const isSelected = selectedSuggestionId === suggestion.id;
           return (
             <Pressable

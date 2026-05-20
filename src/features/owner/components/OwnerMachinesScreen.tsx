@@ -11,6 +11,7 @@ import { useListMachines, getListMachinesQueryKey } from '@/shared/generated/mac
 import { useDelete } from '@/shared/generated/owner/owner';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { captureError } from '@/shared/lib/sentry';
+import { gymMachineDisplayName } from '@/shared/lib/template-display-name';
 
 export function OwnerMachinesScreen() {
   const params = useLocalSearchParams<{ gym: string }>();
@@ -73,8 +74,7 @@ export function OwnerMachinesScreen() {
         renderItem={({ item }) => (
           <View className="rounded-lg bg-bg-elevated p-4 gap-2">
             <AppText className="text-body font-semibold text-text-primary">
-              {item.brandName ?? ''}{' '}
-              {item.machineNameKo ?? item.machineNameEn ?? item.customName ?? '머신'}
+              {`${item.brandName ?? ''} ${gymMachineDisplayName(item) || '머신'}`}
             </AppText>
             <AppText className="text-body-sm text-text-secondary">수량 {item.quantity}대</AppText>
             <View className="flex-row gap-2 pt-1">

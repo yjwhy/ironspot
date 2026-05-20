@@ -1,3 +1,4 @@
+import { snakeCaseTemplateDisplayName } from '@/shared/lib/template-display-name';
 import type { Brand, GymMachineWithDetails } from '@/shared/types/database';
 
 export interface BrandGroup {
@@ -9,9 +10,7 @@ export function machineDisplayName(machine: GymMachineWithDetails): string {
   if (machine.is_custom && machine.custom_name) {
     return machine.custom_name;
   }
-  // Phase 5 item 18: Korean primary on every card surface; fall back to English
-  // when the Korean column is empty (legacy rows during item 22 backfill).
-  return machine.template.name_ko || machine.template.name_en;
+  return snakeCaseTemplateDisplayName(machine.template);
 }
 
 export function groupMachinesByBrand(machines: readonly GymMachineWithDetails[]): BrandGroup[] {

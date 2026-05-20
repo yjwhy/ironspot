@@ -9,6 +9,7 @@ import type { NaverPlaceResult } from '@/shared/generated/model/naverPlaceResult
 import { useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
 import { toBounds } from '@/shared/lib/geo';
 import { pressedOpacity } from '@/shared/lib/pressable';
+import { snakeCaseTemplateDisplayName } from '@/shared/lib/template-display-name';
 import { colors } from '@/shared/theme/tokens';
 import type { GymMachineWithDetails, GymWithMachineCount } from '@/shared/types/database';
 
@@ -471,7 +472,7 @@ interface MachineItemProps {
 }
 
 function MachineItem({ machine, onPress }: MachineItemProps) {
-  const displayName = machine.custom_name ?? (machine.template.name_ko || machine.template.name_en);
+  const displayName = machine.custom_name ?? snakeCaseTemplateDisplayName(machine.template);
 
   return (
     <Pressable
