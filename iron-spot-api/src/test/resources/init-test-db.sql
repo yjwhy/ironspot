@@ -59,6 +59,15 @@ CREATE TABLE IF NOT EXISTS gym_machines (
 CREATE INDEX IF NOT EXISTS idx_gym_machines_active
   ON gym_machines (gym_id) WHERE deleted_at IS NULL;
 
+-- Phase 5 item 11 slice 1: contributions from the OCR confirm screen split
+-- into closed-list picks (template_id set, pending_review FALSE) and direct
+-- input (template_id NULL, pending_review TRUE → admin queue). Mirrors V6.
+ALTER TABLE gym_machines
+  ADD COLUMN IF NOT EXISTS pending_review BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_gym_machines_pending_review
+  ON gym_machines (created_at DESC) WHERE pending_review = TRUE;
+
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
   email TEXT NOT NULL,
