@@ -156,11 +156,11 @@ Current UX violates the CTA copy — the screen labels the action "register me a
 
 **To-do (groomed scope)**
 
-- [ ] Add a Material FAB ("+", label "사진 추가") floating bottom-right in `GymDetail`, above `MachineList`.
-- [ ] FAB tap routes to `/(upload)/camera?gymId=<id>` with no machine pre-selected; the camera screen runs OCR, matches against `machine_templates`, and either re-uses an existing `gym_machines` row for this gym or creates a new one bound to the matched template.
-- [ ] OCR no-match path folds into item 11's direct-input persistence (carry `gymId` so the orphaned-photo bug item 11 fixes does not regress here).
-- [ ] Fix `MachinePhotoGalleryScreen.handlePressUpload` to push `/(upload)/camera?gymId=<id>&prefMachineId=<machineId>` so the camera lands pre-bound to both gym + machine.
-- [ ] Test coverage: `GymDetail` renders FAB above `MachineList`; FAB tap calls `router.push` with the gym ID; `MachinePhotoGalleryScreen.handlePressUpload` carries gymId.
+- [x] Add a Material FAB ("+", label "사진 추가") floating bottom-right in `GymDetail`, above `MachineList`. → Shipped earlier as a placeholder; this PR completes the wire-up.
+- [x] FAB tap routes to `/(upload)/photo?gymId=<id>` with no machine pre-selected; the camera screen runs OCR, matches against `machine_templates`, and either re-uses an existing `gym_machines` row for this gym or creates a new one bound to the matched template. → Shipped via PR #137 on `hotfix/phase-5-item-15-gym-detail-fab` (route name is `/(upload)/photo`, not `/(upload)/camera` as originally drafted — actual `app/(upload)/photo.tsx` was the existing route). `AddPhotoFab.handlePress` now pushes `{ pathname: UPLOAD_PHOTO_PATHNAME, params: { gymId } }`; OCR + template-match path lives in `UploadConfirmScreen` and was already wired by item 11 slice 2 (#136).
+- [x] OCR no-match path folds into item 11's direct-input persistence (carry `gymId` so the orphaned-photo bug item 11 fixes does not regress here). → Inherited from item 11 slice 2: when `templateId` is null on the confirm screen, `useCreateGymMachine` posts `{ gymId, freeFormName }` with `pending_review = true`, and the orphan photo (no `gymMachineId`) is bound via `PhotoRepository.bindOrphanGymMachineId` inside the same request. No new code required from item 15.
+- [x] Fix `MachinePhotoGalleryScreen.handlePressUpload` to push `/(upload)/photo?gymId=<id>&gymMachineId=<machineId>` so the camera lands pre-bound to both gym + machine. → Shipped in PR #137 (param name is `gymMachineId`, matching `UploadPhotoScreen.useLocalSearchParams`, not `prefMachineId` as originally drafted). Guard tightened to `if (!gymId || !machineId) return;` so the function's gym+machine pair semantics are enforced symmetrically.
+- [x] Test coverage: `GymDetail` renders FAB above `MachineList`; FAB tap calls `router.push` with the gym ID; `MachinePhotoGalleryScreen.handlePressUpload` carries gymId. → All three covered. Bonus: symmetric "skip when gymId undefined" regression-pin added on the gallery FAB. Pre-PR FF review (🔴 cohesion / 🟡 predictability) also produced an `UPLOAD_PHOTO_PATHNAME` constant shared by all three callers + test assertions (slice 3).
 
 **Recommended solution (ui-ux-pro-max review, 2026-05-20)**
 

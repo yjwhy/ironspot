@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
+import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
 import type { Gym, GymMachineWithDetails } from '@/shared/types/database';
 import { makeGymMachineWithDetails } from '@/test/utils/factories/gym-machine';
 
@@ -184,16 +185,16 @@ describe('GymDetail', () => {
     expect(getByLabelText('사진 추가')).toBeTruthy();
   });
 
-  it('routes the FAB tap to the upload flow with the current gym pre-selected', () => {
-    // Phase 5 item 15a (partial): item 11 backend (POST /api/gym-machines)
-    // isn't merged yet, so the FAB routes to the gym-select screen with
-    // selectedGymId pre-set instead of directly to a gymId-aware camera. The
-    // user still skips the duplicate gym-pick step.
+  it('routes the FAB tap to the gymId-bound camera so a new machine can be registered in place', () => {
+    // Phase 5 item 15a: item 11 backend (POST /api/gym-machines) shipped, so
+    // the FAB now lands directly on the camera with the current gym pre-bound
+    // and no machine pre-selected — OCR + template match (or direct-input
+    // fallback) create a new gym_machines row for this gym.
     const { getByLabelText } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
     fireEvent.press(getByLabelText('사진 추가'));
     expect(router.push).toHaveBeenCalledWith({
-      pathname: '/(upload)/gym-select',
-      params: { selectedGymId: 'g-1' },
+      pathname: UPLOAD_PHOTO_PATHNAME,
+      params: { gymId: 'g-1' },
     });
   });
 });

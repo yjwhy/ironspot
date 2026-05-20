@@ -7,6 +7,7 @@ import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { useGymDetail } from '@/features/gym/hooks/useGymDetail';
 import { useGymMachines } from '@/features/gym/hooks/useGymMachines';
 import { machineDisplayName } from '@/features/gym/lib/group-machines';
+import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
 import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Skeleton } from '@/shared/components/Skeleton';
@@ -49,13 +50,15 @@ export function MachinePhotoGalleryScreen({ gymId, machineId }: MachinePhotoGall
   }
 
   function handlePressUpload() {
-    // Phase 5 item 15b: skip the redundant gym-select hop — this gallery is
-    // already bound to a specific gym+machine, so route straight to the
-    // camera pre-bound via gymMachineId. The gym-select FAB was forcing
-    // the user to re-pick the gym they're already inside of.
-    if (!machineId) return;
+    // Skip the gym-select hop: this gallery is already bound to a specific
+    // gym+machine pair, so push both onto the camera so UploadConfirmScreen
+    // can fall back to the gymId-only contribution path on OCR mismatch.
+    if (!gymId || !machineId) return;
     requireAuth(function navigateToUpload() {
-      router.push({ pathname: '/(upload)/photo', params: { gymMachineId: machineId } });
+      router.push({
+        pathname: UPLOAD_PHOTO_PATHNAME,
+        params: { gymId, gymMachineId: machineId },
+      });
     });
   }
 

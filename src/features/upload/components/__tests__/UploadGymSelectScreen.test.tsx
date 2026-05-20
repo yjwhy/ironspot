@@ -6,6 +6,7 @@ import { useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
 import type { GymMachineWithDetails, GymWithMachineCount } from '@/shared/types/database';
 import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
+import { UPLOAD_PHOTO_PATHNAME } from '../../constants';
 import { UploadGymSelectScreen } from '../UploadGymSelectScreen';
 
 jest.mock('@/features/map/hooks/useGymSearch', () => ({
@@ -312,7 +313,7 @@ describe('UploadGymSelectScreen', () => {
     fireEvent.press(getByTestId('machine-item-machine-1'));
 
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/(upload)/photo',
+      pathname: UPLOAD_PHOTO_PATHNAME,
       params: { gymMachineId: 'machine-1', gymId: 'gym-1' },
     });
   });

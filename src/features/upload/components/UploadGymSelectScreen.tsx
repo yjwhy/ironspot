@@ -12,6 +12,7 @@ import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { GymMachineWithDetails, GymWithMachineCount } from '@/shared/types/database';
 
+import { UPLOAD_PHOTO_PATHNAME } from '../constants';
 import { useCreateGym } from '../hooks/useCreateGym';
 import { useNaverPlacesSearch } from '../hooks/useNaverPlacesSearch';
 
@@ -452,7 +453,7 @@ function GymMachineSubList({ gymId }: GymMachineSubListProps) {
     // Pass gymId alongside gymMachineId so UploadConfirmScreen can call
     // POST /api/gym-machines when the user contributes a different template
     // via the OCR confirm view (Phase 5 item 11 slice 2).
-    router.push({ pathname: '/(upload)/photo', params: { gymMachineId, gymId } });
+    router.push({ pathname: UPLOAD_PHOTO_PATHNAME, params: { gymMachineId, gymId } });
   }
 
   return (

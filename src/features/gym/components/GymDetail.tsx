@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
+import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
 import { AccentChip } from '@/shared/components/AccentChip';
 import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -104,18 +105,12 @@ interface AddPhotoFabProps {
 }
 
 function AddPhotoFab({ gymId }: AddPhotoFabProps) {
-  // Phase 5 item 15a (partial): item 11 backend (POST /api/gym-machines) is
-  // not merged yet, so the FAB routes to /(upload)/gym-select with the gym
-  // pre-selected as a placeholder for the gymId-aware camera. Once item 11
-  // ships, swap this to /(upload)/photo with a gymId-only param + OCR/
-  // template-match path so the user can register a new machine in-place.
-  // See `docs/plans/phase-5/README.md` items 11 + 15a.
   const requireAuth = useRequireAuth();
   function handlePress() {
     requireAuth(function navigateToUpload() {
       router.push({
-        pathname: '/(upload)/gym-select',
-        params: { selectedGymId: gymId },
+        pathname: UPLOAD_PHOTO_PATHNAME,
+        params: { gymId },
       });
     });
   }
