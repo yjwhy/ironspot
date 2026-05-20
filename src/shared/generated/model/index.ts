@@ -21,6 +21,8 @@ export * from './claimBody';
 export * from './claimParams';
 export * from './coordinates';
 export * from './create200';
+export * from './createGymMachineRequest';
+export * from './createGymMachineResponse';
 export * from './createGymRequest';
 export * from './createReportRequest';
 export * from './createReportRequestReason';
