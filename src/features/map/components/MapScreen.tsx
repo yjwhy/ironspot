@@ -133,16 +133,19 @@ export function MapScreen() {
       // useful while POST /api/gym-machines was still pending — now that
       // item 11 has shipped, that step is pure friction.
       //
-      // TODO(docs/plans/phase-5/README.md item 14b): once DELETE
-      // /api/gyms/<id> lands, surface a 5s "○○를 등록했어요 · 취소" undo
-      // toast on the camera screen that rolls back this gym row. The
-      // mutation already fires immediately on tap (same as before this
-      // commit) so the footgun surface is unchanged — landing on the
-      // camera does not enlarge it.
+      // Phase 5 item 14b: thread the just-registered gym's id + name
+      // into the camera route so UploadPhotoScreen can surface a 5s undo
+      // toast (DELETE /api/gyms/{id} from item 14a). Other entry points
+      // (FAB, gym-detail) push without these params so the toast stays
+      // scoped to the unregistered-card-tap path where the footgun lives.
       setLastPressedUnregisteredPlaceId(null);
       router.push({
         pathname: UPLOAD_PHOTO_PATHNAME,
-        params: { gymId: gym.id },
+        params: {
+          gymId: gym.id,
+          justRegisteredGymId: gym.id,
+          justRegisteredGymName: gym.name,
+        },
       });
     },
     onError: () => {
