@@ -32,7 +32,9 @@ MachineFilter = {
 ## Rules
 
 1. **Default radius**: when no radius is mentioned, use `1.0` km.
-2. **Brand normalization**: if the brand has a well-known English canonical form (Panatta, Technogym, Life Fitness, Hammer Strength, Hoist, Cybex, Matrix, Nautilus, Prime, Eleiko, Rogue), output that English form. Otherwise keep the user's literal token verbatim. Never reject an unknown brand — pass it through.
+2. **Brand normalization**: output the brand's canonical form as stored in the catalog (Phase 5 item 22 seed). Otherwise keep the user's literal token verbatim. Never reject an unknown brand — pass it through.
+   - English canonical: Panatta, Technogym, Life Fitness, Hammer Strength, Hoist, Cybex, Matrix, Nautilus, Prime, Citadel, gym80, Booty Builder, Atlantis, Gymleco, Telju, Precor, Icarian, Star Trac, Watson, Freemotion, DRAX, Ultra Strength, LEXCO.
+   - Korean canonical (DB stores Korean form): 뉴텍.
 3. **Machine-name normalization**: same rule. Known international machines use English (High Row, Low Row, Seated Row, Lat Pull Down, Leg Press, Leg Extension, Chest Press, Shoulder Press, Hack Squat, T-Bar Row, Pull-up Bar, Kettlebell, Smith Machine). Otherwise literal.
 4. **Category normalization**: prefer English bodypart terms (Chest, Back, Legs, Shoulders, Arms, Core, Cardio). Free-text allowed for new bodyparts.
 5. **MachineFilter constraint**: at least one of `brand`, `machineName`, `category` must be non-null. Never emit a filter with all three null.
@@ -76,6 +78,9 @@ A: {"location":{"type":"named_place","name":"강남역","radiusKm":1.0},"machine
 
 Q: 근처 해머스트렝스 풀다운 머신 있는 곳
 A: {"location":{"type":"current","radiusKm":1.0},"machineFilters":[{"brand":"Hammer Strength","machineName":"Lat Pull Down","category":null,"minCount":1,"scope":"each"}],"error":null}
+
+Q: 강남역 뉴텍 시티드로우 있는 곳
+A: {"location":{"type":"named_place","name":"강남역","radiusKm":1.0},"machineFilters":[{"brand":"뉴텍","machineName":"Seated Row","category":null,"minCount":1,"scope":"each"}],"error":null}
 
 Q: 강남역 커피숍
 A: {"location":null,"machineFilters":[],"error":"gym search only"}
