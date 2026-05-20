@@ -42,11 +42,19 @@ export interface Category {
   name: string;
 }
 
+/**
+ * Phase 5 item 18: `name_en` + `name_ko` carry the canonical English form
+ * and Korean primary respectively. Empty string is treated as "not set"
+ * (item 22 will backfill `name_ko` for legacy rows); `templateDisplayName`
+ * + `snakeCaseTemplateDisplayName` in `src/shared/lib/template-display-name`
+ * encode that policy so no consumer has to special-case the empty case.
+ */
 export interface MachineTemplate {
   id: string;
   brand_id: string;
   category_id: string;
-  name: string;
+  name_en: string;
+  name_ko: string;
   loading_type: LoadingType;
   is_approved: boolean;
   created_at: string;

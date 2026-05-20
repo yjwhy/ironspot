@@ -1,4 +1,5 @@
 import type { MachineTemplateResponse, SearchScope } from '@/shared/generated/model';
+import { templateDisplayName } from '@/shared/lib/template-display-name';
 import type { Brand, Category, LoadingType, SearchFilters } from '@/shared/types/database';
 
 type MachineFilterMode = SearchFilters['machineFilterMode'];
@@ -72,7 +73,7 @@ function loadingTypeSuffix(loadingType: string): string {
  * 정확히 어떤 (브랜드, 머신) 짝을 선택했는지 한눈에 파악 가능.
  */
 export function formatMachineTemplateLabel(template: MachineTemplateResponse): string {
-  return `${template.brandName} ${template.name} · ${loadingTypeSuffix(template.loadingType)}`;
+  return `${template.brandName} ${templateDisplayName(template)} · ${loadingTypeSuffix(template.loadingType)}`;
 }
 
 export function toActiveFilters({

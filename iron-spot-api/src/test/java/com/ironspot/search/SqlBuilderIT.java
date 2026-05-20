@@ -46,10 +46,10 @@ class SqlBuilderIT extends IntegrationTestBase {
         dsl.execute("INSERT INTO brands(id, name) VALUES (?, 'Cybex'), (?, 'Technogym'), (?, 'Prime')",
             brandCybex, brandTechnogym, brandPrime);
         dsl.execute("INSERT INTO categories(id, name) VALUES (?, 'Chest')", categoryChest);
-        dsl.execute("INSERT INTO machine_templates(id, brand_id, category_id, name, loading_type) VALUES " +
-                "(?, ?, ?, 'High Row', 'pin'::loading_type), " +
-                "(?, ?, ?, 'Chest Press', 'plate'::loading_type), " +
-                "(?, ?, ?, 'Hack Squat', 'plate'::loading_type)",
+        dsl.execute("INSERT INTO machine_templates(id, brand_id, category_id, name_en, name_ko, loading_type) VALUES " +
+                "(?, ?, ?, 'High Row', '하이로우', 'pin'::loading_type), " +
+                "(?, ?, ?, 'Chest Press', '체스트 프레스', 'plate'::loading_type), " +
+                "(?, ?, ?, 'Hack Squat', '핵스쿼트', 'plate'::loading_type)",
             templateCybexHighRow, brandCybex, categoryChest,
             templateTechnogymChestPress, brandTechnogym, categoryChest,
             templatePrimeHackSquat, brandPrime, categoryChest);

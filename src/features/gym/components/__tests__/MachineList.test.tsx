@@ -24,7 +24,7 @@ const panattaHighRow = makeGymMachineWithDetails({
   machine: { id: 'gm-1', quantity: 1 },
   brand: panatta,
   category: back,
-  template: makeMachineTemplate({ id: 't-1', name: 'High Row' }),
+  template: makeMachineTemplate({ id: 't-1', name_en: 'High Row', name_ko: 'High Row' }),
   photos: [makeMachinePhoto({ id: 'p-1' }), makeMachinePhoto({ id: 'p-2' })],
 });
 
@@ -32,7 +32,7 @@ const panattaLowRow = makeGymMachineWithDetails({
   machine: { id: 'gm-2', quantity: 3 },
   brand: panatta,
   category: back,
-  template: makeMachineTemplate({ id: 't-2', name: 'Low Row' }),
+  template: makeMachineTemplate({ id: 't-2', name_en: 'Low Row', name_ko: 'Low Row' }),
   photos: [],
 });
 
@@ -40,7 +40,7 @@ const hammerLatPullDown = makeGymMachineWithDetails({
   machine: { id: 'gm-3', quantity: 1 },
   brand: hammer,
   category: back,
-  template: makeMachineTemplate({ id: 't-3', name: 'Lat Pull Down' }),
+  template: makeMachineTemplate({ id: 't-3', name_en: 'Lat Pull Down', name_ko: 'Lat Pull Down' }),
   photos: [makeMachinePhoto({ id: 'p-3' })],
 });
 

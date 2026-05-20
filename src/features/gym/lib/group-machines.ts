@@ -1,3 +1,4 @@
+import { snakeCaseTemplateDisplayName } from '@/shared/lib/template-display-name';
 import type { Brand, GymMachineWithDetails } from '@/shared/types/database';
 
 export interface BrandGroup {
@@ -9,7 +10,7 @@ export function machineDisplayName(machine: GymMachineWithDetails): string {
   if (machine.is_custom && machine.custom_name) {
     return machine.custom_name;
   }
-  return machine.template.name;
+  return snakeCaseTemplateDisplayName(machine.template);
 }
 
 export function groupMachinesByBrand(machines: readonly GymMachineWithDetails[]): BrandGroup[] {

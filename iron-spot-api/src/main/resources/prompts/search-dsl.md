@@ -74,6 +74,9 @@ A: {"location":{"type":"current","radiusKm":1.0},"machineFilters":[{"brand":"Pan
 Q: 강남역 시티드로우나 하이로우 합쳐서 4개 이상
 A: {"location":{"type":"named_place","name":"강남역","radiusKm":1.0},"machineFilters":[{"brand":null,"machineName":"Seated Row","category":null,"minCount":4,"scope":"combined"},{"brand":null,"machineName":"High Row","category":null,"minCount":4,"scope":"combined"}],"error":null}
 
+Q: 근처 해머스트렝스 풀다운 머신 있는 곳
+A: {"location":{"type":"current","radiusKm":1.0},"machineFilters":[{"brand":"Hammer Strength","machineName":"Lat Pull Down","category":null,"minCount":1,"scope":"each"}],"error":null}
+
 Q: 강남역 커피숍
 A: {"location":null,"machineFilters":[],"error":"gym search only"}
 

@@ -33,8 +33,20 @@ const mockUploadResponse: PhotoUploadResponse = {
   photoUrl: 'https://cdn.example.com/photo-123.jpg',
   ocrSucceeded: true,
   suggestions: [
-    { id: 'tmpl-1', brandName: 'TechnoGym', name: 'Lat Pulldown', score: 0.87 },
-    { id: 'tmpl-2', brandName: 'Life Fitness', name: 'Cable Row', score: 0.55 },
+    {
+      id: 'tmpl-1',
+      brandName: 'TechnoGym',
+      nameEn: 'Lat Pulldown',
+      nameKo: '랫 풀다운',
+      score: 0.87,
+    },
+    {
+      id: 'tmpl-2',
+      brandName: 'Life Fitness',
+      nameEn: 'Cable Row',
+      nameKo: '케이블 로우',
+      score: 0.55,
+    },
   ],
 };
 
@@ -106,7 +118,8 @@ describe('usePhotoUpload', () => {
       expect(s).not.toHaveProperty('score');
       expect(s).toHaveProperty('id');
       expect(s).toHaveProperty('brandName');
-      expect(s).toHaveProperty('name');
+      expect(s).toHaveProperty('nameEn');
+      expect(s).toHaveProperty('nameKo');
     });
   });
 

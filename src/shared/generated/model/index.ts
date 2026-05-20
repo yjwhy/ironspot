@@ -41,6 +41,7 @@ export * from './listMineParams';
 export * from './listPendingPhotosParams';
 export * from './listPendingQueueParams';
 export * from './listReportsParams';
+export * from './listTemplatesParams';
 export * from './machineTemplateResponse';
 export * from './machineTemplateSuggestion';
 export * from './moderationAnalyticsResponse';

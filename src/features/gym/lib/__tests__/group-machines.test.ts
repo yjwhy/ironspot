@@ -12,17 +12,17 @@ describe('groupMachinesByBrand', () => {
     const panattaA = makeGymMachineWithDetails({
       machine: { id: 'gm-1' },
       brand: { id: 'b-pan', name: 'Panatta' },
-      template: { name: 'High Row' },
+      template: { name_en: 'High Row', name_ko: 'High Row' },
     });
     const panattaB = makeGymMachineWithDetails({
       machine: { id: 'gm-2' },
       brand: { id: 'b-pan', name: 'Panatta' },
-      template: { name: 'Low Row' },
+      template: { name_en: 'Low Row', name_ko: 'Low Row' },
     });
     const hammer = makeGymMachineWithDetails({
       machine: { id: 'gm-3' },
       brand: { id: 'b-ham', name: 'Hammer Strength' },
-      template: { name: 'Lat Pull Down' },
+      template: { name_en: 'Lat Pull Down', name_ko: 'Lat Pull Down' },
     });
 
     const groups = groupMachinesByBrand([panattaA, hammer, panattaB]);
@@ -54,19 +54,23 @@ describe('groupMachinesByBrand', () => {
         machine: { id: 'gm-2' },
         brand,
         category: chest,
-        template: makeMachineTemplate({ id: 't-2', name: 'Chest Press' }),
+        template: makeMachineTemplate({
+          id: 't-2',
+          name_en: 'Chest Press',
+          name_ko: 'Chest Press',
+        }),
       }),
       makeGymMachineWithDetails({
         machine: { id: 'gm-1' },
         brand,
         category: back,
-        template: makeMachineTemplate({ id: 't-1', name: 'Low Row' }),
+        template: makeMachineTemplate({ id: 't-1', name_en: 'Low Row', name_ko: 'Low Row' }),
       }),
       makeGymMachineWithDetails({
         machine: { id: 'gm-3' },
         brand,
         category: back,
-        template: makeMachineTemplate({ id: 't-3', name: 'High Row' }),
+        template: makeMachineTemplate({ id: 't-3', name_en: 'High Row', name_ko: 'High Row' }),
       }),
     ];
 
@@ -85,7 +89,7 @@ describe('machineDisplayName', () => {
 
   it('returns template.name when not custom', () => {
     const machine = makeGymMachineWithDetails({
-      template: { name: 'High Row' },
+      template: { name_en: 'High Row', name_ko: 'High Row' },
     });
     expect(machineDisplayName(machine)).toBe('High Row');
   });
@@ -93,7 +97,7 @@ describe('machineDisplayName', () => {
   it('falls back to template.name when is_custom is true but custom_name is empty', () => {
     const machine = makeGymMachineWithDetails({
       machine: { is_custom: true, custom_name: null },
-      template: { name: 'High Row' },
+      template: { name_en: 'High Row', name_ko: 'High Row' },
     });
     expect(machineDisplayName(machine)).toBe('High Row');
   });

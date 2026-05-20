@@ -1,8 +1,9 @@
 # NL Search LLM eval suite.
 #
 # Trimmed from the original 30-case snapshot baseline (Task 35) to 6
-# product-value cases (Task 41). Each case exercises a distinct code path that
-# differentiates IronSpot from generic gym search (Naver Maps):
+# product-value cases (Task 41), extended to 7 in Phase 5 item 18. Each case
+# exercises a distinct code path that differentiates IronSpot from generic
+# gym search (Naver Maps):
 #
 #   1. brand only + default location/radius/minCount/scope=EACH
 #   2. machineName only (FuzzyMatchService template lookup)
@@ -10,12 +11,15 @@
 #   4. multi-filter EACH + explicit radius extraction
 #   5. COMBINED scope (HAVING SUM(quantity) >= threshold across OR-merged filters)
 #   6. error response shape + SQL-injection rejection
+#   7. Korean machine-name alias normalisation to canonical English (item 18)
 #
 # Cases that only exercise location/radius/category extraction were dropped:
 # generic "근처 헬스장" queries are better served by Naver Maps and do not
 # justify a custom LLM eval slot.
 #
-# Run cost: 6 cases × ~2.5K tokens ≈ 15K tokens (~15% of Groq free-tier TPD).
+# Run cost: 7 cases × ~2.5K tokens ≈ 17.5K tokens (~18% of Groq free-tier
+# TPD 100K). One added case (item 18) is well within the daily bucket; even
+# at 4 force-pushes/day cumulative spend stays under 70K.
 # See iron-spot-api/src/test/java/com/ironspot/search/eval/EvalSuiteTest.java
 # header comment for the full TPD/TPM math.
 cases:
@@ -90,3 +94,21 @@ cases:
       location: null
       machineFilters: []
       error: 'invalid input'
+
+  # Phase 5 item 18: Korean machine-name aliases. The user types verbatim
+  # Korean (풀다운) but FuzzyMatchService still keys on canonical English in
+  # the catalog, so the LLM has to normalise 풀다운 → "Lat Pull Down". The
+  # prompt's rule 3 already lists Lat Pull Down as a canonical form; this
+  # case + the matching few-shot in search-dsl.md pin the normalisation so
+  # a regression on Korean aliases shows up here, not in production.
+  - input: '근처 해머스트렝스 풀다운 머신 있는 곳'
+    expected:
+      location:
+        type: current
+        radiusKm: 1.0
+      machineFilters:
+        - brand: 'Hammer Strength'
+          machineName: 'Lat Pull Down'
+          minCount: 1
+          scope: 'each'
+      error: null

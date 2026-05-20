@@ -24,7 +24,8 @@ describe('useMachineTemplates', () => {
         brandId: 'b1',
         brandName: 'Panatta',
         categoryId: 'c1',
-        name: 'High Row',
+        nameEn: 'High Row',
+        nameKo: 'High Row',
         loadingType: 'pin',
       },
     ];
@@ -48,7 +49,8 @@ describe('useMachineTemplates', () => {
         brandId: 'b1',
         brandName: 'Panatta',
         categoryId: 'c1',
-        name: 'Low Row',
+        nameEn: 'Low Row',
+        nameKo: 'Low Row',
         loadingType: 'plate',
       },
       {
@@ -56,7 +58,8 @@ describe('useMachineTemplates', () => {
         brandId: 'b2',
         brandName: 'Hammer Strength',
         categoryId: 'c2',
-        name: 'MTS Chest Press',
+        nameEn: 'MTS Chest Press',
+        nameKo: 'MTS Chest Press',
         loadingType: 'pin',
       },
       {
@@ -64,7 +67,8 @@ describe('useMachineTemplates', () => {
         brandId: 'b1',
         brandName: 'Panatta',
         categoryId: 'c1',
-        name: 'High Row',
+        nameEn: 'High Row',
+        nameKo: 'High Row',
         loadingType: 'pin',
       },
       {
@@ -72,7 +76,8 @@ describe('useMachineTemplates', () => {
         brandId: 'b3',
         brandName: '하이짐',
         categoryId: 'c3',
-        name: 'Squat',
+        nameEn: 'Squat',
+        nameKo: 'Squat',
         loadingType: 'plate',
       },
     ];
@@ -87,7 +92,7 @@ describe('useMachineTemplates', () => {
 
     // Korean locale: Hangul (하이짐) comes before Latin (Hammer, Panatta).
     // Within same brand: alphabetical by template name (Panatta: High Row < Low Row).
-    expect(result.current.data?.map((t) => `${t.brandName} ${t.name}`)).toEqual([
+    expect(result.current.data?.map((t) => `${t.brandName} ${t.nameEn}`)).toEqual([
       '하이짐 Squat',
       'Hammer Strength MTS Chest Press',
       'Panatta High Row',

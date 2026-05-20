@@ -1,6 +1,7 @@
 package com.ironspot.photo;
 
 import com.ironspot.machine.MachineTemplateRepository;
+import com.ironspot.machine.MachineTemplateSummary;
 import com.ironspot.photo.dto.MachineTemplateSuggestion;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,9 +30,13 @@ public class FuzzyMatchService {
 
         return templateRepository.findAllApproved().stream()
             .map(t -> {
-                String target = (t.brandName() + " " + t.name()).toLowerCase(Locale.ROOT);
-                double score = jaccardSimilarity(inputTokens, tokenize(target));
-                return new MachineTemplateSuggestion(t.id(), t.brandName(), t.name(), score);
+                // Phase 5 item 18: tokenise brandName + nameEn + nameKo together
+                // so OCR text in either language can hit the same row. Brand
+                // names stay English per the locked Korean labelling decision.
+                Set<String> targetTokens = bilingualTokens(t);
+                double score = jaccardSimilarity(inputTokens, targetTokens);
+                return new MachineTemplateSuggestion(
+                    t.id(), t.brandName(), t.nameEn(), t.nameKo(), score);
             })
             .filter(s -> s.score() > THRESHOLD)
             .sorted(Comparator.comparing(MachineTemplateSuggestion::score).reversed())
@@ -45,9 +50,32 @@ public class FuzzyMatchService {
         Set<String> input = tokenize(machineName.toLowerCase(Locale.ROOT));
 
         return templateRepository.findApprovedByOptionalFilters(brandId, categoryId).stream()
-            .filter(t -> jaccardSimilarity(input, tokenize(t.name().toLowerCase(Locale.ROOT))) > THRESHOLD)
-            .map(t -> t.id())
+            // Phase 5 item 18: a query token set passes when it overlaps EITHER
+            // the English or the Korean column above THRESHOLD. We score the
+            // two columns independently rather than unioning their tokens so a
+            // partial English match isn't diluted by an unrelated Korean form
+            // (and vice versa). The richer the catalog, the more divergent the
+            // two forms can be — keeping them separate preserves precision.
+            .filter(t -> bestMonolingualScore(input, t) > THRESHOLD)
+            .map(MachineTemplateSummary::id)
             .toList();
+    }
+
+    private Set<String> bilingualTokens(MachineTemplateSummary t) {
+        // Concatenate brand + both name columns into one lowercase token set.
+        // Used by findMatches (OCR target) where brand is part of the user's
+        // visual context and adding it to the target boosts whole-row matches
+        // ("HAMMER STRENGTH LAT PULL DOWN") without hurting partial ones.
+        String concat = (t.brandName() + " " + t.nameEn() + " " + t.nameKo())
+            .toLowerCase(Locale.ROOT);
+        return tokenize(concat);
+    }
+
+    private double bestMonolingualScore(Set<String> input, MachineTemplateSummary t) {
+        double enScore = jaccardSimilarity(input, tokenize(t.nameEn().toLowerCase(Locale.ROOT)));
+        if (t.nameKo() == null || t.nameKo().isBlank()) return enScore;
+        double koScore = jaccardSimilarity(input, tokenize(t.nameKo().toLowerCase(Locale.ROOT)));
+        return Math.max(enScore, koScore);
     }
 
     private Set<String> tokenize(String text) {

@@ -47,7 +47,7 @@ const sampleGym: Gym = {
 
 const sampleMachine: GymMachineWithDetails = makeGymMachineWithDetails({
   machine: { id: 'gm-1', gym_id: 'g-1' },
-  template: { name: 'High Row' },
+  template: { name_en: 'High Row', name_ko: 'High Row' },
 });
 
 const samplePhoto: MachinePhoto = makeMachinePhoto({

@@ -96,12 +96,22 @@ interface HeaderProps {
 }
 
 function Header({ gym, machine }: HeaderProps) {
+  // Phase 5 item 18: detail-surface treatment — Korean primary heading +
+  // smaller English secondary line so users who recognise the brand+model
+  // in English can still confirm the exact reference.
   const title = machine ? machineDisplayName(machine) : '머신 사진';
+  const showEnglishSubtitle = machine != null && !machine.is_custom && !!machine.template.name_ko;
+  const englishSubtitle = showEnglishSubtitle
+    ? `${machine.template.brand.name} ${machine.template.name_en}`
+    : null;
   return (
     <View className="mb-4 gap-1">
       <AppText accessibilityRole="header" className="text-heading-lg text-text-primary">
         {title}
       </AppText>
+      {englishSubtitle ? (
+        <AppText className="text-body-sm text-text-tertiary">{englishSubtitle}</AppText>
+      ) : null}
       {gym ? <AppText className="text-body-sm text-text-secondary">{gym.name}</AppText> : null}
     </View>
   );

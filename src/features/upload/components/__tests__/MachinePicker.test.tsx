@@ -14,17 +14,20 @@ const mockUseBrands = useBrands as jest.Mock;
 const mockUseCategories = useCategories as jest.Mock;
 const mockUseMachineTemplates = useMachineTemplates as jest.Mock;
 
+interface TemplateFixture {
+  id: string;
+  brandId: string;
+  brandName: string;
+  categoryId: string;
+  nameEn: string;
+  nameKo: string;
+  loadingType: string;
+}
+
 interface SetupOverrides {
   brands?: { id: string; name: string }[];
   categories?: { id: string; name: string }[];
-  templates?: {
-    id: string;
-    brandId: string;
-    brandName: string;
-    categoryId: string;
-    name: string;
-    loadingType: string;
-  }[];
+  templates?: TemplateFixture[];
 }
 
 function setupQueries(overrides: SetupOverrides = {}) {
@@ -38,13 +41,14 @@ function setupQueries(overrides: SetupOverrides = {}) {
     { id: 'cat-back', name: '등' },
     { id: 'cat-legs', name: '다리' },
   ];
-  const templates = overrides.templates ?? [
+  const templates: TemplateFixture[] = overrides.templates ?? [
     {
       id: 'tpl-hammer-chest',
       brandId: 'brand-hammer',
       brandName: 'Hammer Strength',
       categoryId: 'cat-chest',
-      name: 'Iso Chest Press',
+      nameEn: 'Iso Chest Press',
+      nameKo: '아이소 체스트 프레스',
       loadingType: 'plate',
     },
     {
@@ -52,7 +56,8 @@ function setupQueries(overrides: SetupOverrides = {}) {
       brandId: 'brand-hammer',
       brandName: 'Hammer Strength',
       categoryId: 'cat-back',
-      name: 'Lat Pull Down',
+      nameEn: 'Lat Pull Down',
+      nameKo: '랫 풀다운',
       loadingType: 'plate',
     },
     {
@@ -60,13 +65,27 @@ function setupQueries(overrides: SetupOverrides = {}) {
       brandId: 'brand-panatta',
       brandName: 'Panatta',
       categoryId: 'cat-chest',
-      name: 'Chest Press',
+      nameEn: 'Chest Press',
+      nameKo: '체스트 프레스',
       loadingType: 'plate',
     },
   ];
   mockUseBrands.mockReturnValue({ data: brands, isLoading: false, isError: false });
   mockUseCategories.mockReturnValue({ data: categories, isLoading: false, isError: false });
-  mockUseMachineTemplates.mockReturnValue({ data: templates, isLoading: false, isError: false });
+  // Phase 5 item 18 pushdown: the hook only fetches once both brandId and
+  // categoryId are passed, and the server filters the catalog. Mock that
+  // behaviour so the test still asserts "only matching templates render".
+  mockUseMachineTemplates.mockImplementation(
+    (params?: { brandId?: string; categoryId?: string }) => {
+      if (!params?.brandId || !params.categoryId) {
+        return { data: undefined, isLoading: false, isError: false };
+      }
+      const filtered = templates.filter(
+        (t) => t.brandId === params.brandId && t.categoryId === params.categoryId,
+      );
+      return { data: filtered, isLoading: false, isError: false };
+    },
+  );
 }
 
 const NONE: MachinePickerSelection = { kind: 'none' };
@@ -126,7 +145,8 @@ describe('MachinePicker', () => {
           brandId: 'brand-hammer',
           brandName: 'Hammer Strength',
           categoryId: 'cat-chest',
-          name: 'Iso Chest Press',
+          nameEn: 'Iso Chest Press',
+          nameKo: '아이소 체스트 프레스',
           loadingType: 'plate',
         },
         {
@@ -134,7 +154,8 @@ describe('MachinePicker', () => {
           brandId: 'brand-hammer',
           brandName: 'Hammer Strength',
           categoryId: 'cat-chest',
-          name: 'Incline Press',
+          nameEn: 'Incline Press',
+          nameKo: '인클라인 프레스',
           loadingType: 'plate',
         },
       ],
