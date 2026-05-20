@@ -1,9 +1,9 @@
 # NL Search LLM eval suite.
 #
 # Trimmed from the original 30-case snapshot baseline (Task 35) to 6
-# product-value cases (Task 41), extended to 7 in Phase 5 item 18. Each case
-# exercises a distinct code path that differentiates IronSpot from generic
-# gym search (Naver Maps):
+# product-value cases (Task 41), extended to 7 in Phase 5 item 18 and to 8
+# in item 22. Each case exercises a distinct code path that differentiates
+# IronSpot from generic gym search (Naver Maps):
 #
 #   1. brand only + default location/radius/minCount/scope=EACH
 #   2. machineName only (FuzzyMatchService template lookup)
@@ -12,14 +12,15 @@
 #   5. COMBINED scope (HAVING SUM(quantity) >= threshold across OR-merged filters)
 #   6. error response shape + SQL-injection rejection
 #   7. Korean machine-name alias normalisation to canonical English (item 18)
+#   8. Korean brand canonical = Korean form (item 22, 뉴텍 stays Korean since
+#      the V8 catalog stores it that way; rule 2 split English / Korean lists)
 #
 # Cases that only exercise location/radius/category extraction were dropped:
 # generic "근처 헬스장" queries are better served by Naver Maps and do not
 # justify a custom LLM eval slot.
 #
-# Run cost: 7 cases × ~2.5K tokens ≈ 17.5K tokens (~18% of Groq free-tier
-# TPD 100K). One added case (item 18) is well within the daily bucket; even
-# at 4 force-pushes/day cumulative spend stays under 70K.
+# Run cost: 8 cases × ~2.5K tokens ≈ 20K tokens (~20% of Groq free-tier TPD
+# 100K). Even at 4 force-pushes/day cumulative spend stays under 80K.
 # See iron-spot-api/src/test/java/com/ironspot/search/eval/EvalSuiteTest.java
 # header comment for the full TPD/TPM math.
 cases:
@@ -109,6 +110,25 @@ cases:
       machineFilters:
         - brand: 'Hammer Strength'
           machineName: 'Lat Pull Down'
+          minCount: 1
+          scope: 'each'
+      error: null
+
+  # Phase 5 item 22: Korean-canonical brand passthrough. The V8 catalog
+  # stores 뉴텍 in Korean (Newtech worldwide site uses both forms but the
+  # domestic catalog uses the Korean form), so the LLM has to keep 뉴텍 as
+  # 뉴텍 — not translate to 'Newtech' or 'NewTech'. Rule 2 split the
+  # canonical lists into English vs Korean to pin this; this case + the
+  # matching few-shot in search-dsl.md guard against regression.
+  - input: '강남역 뉴텍 시티드로우 있는 곳'
+    expected:
+      location:
+        type: named_place
+        name: '강남역'
+        radiusKm: 1.0
+      machineFilters:
+        - brand: '뉴텍'
+          machineName: 'Seated Row'
           minCount: 1
           scope: 'each'
       error: null
