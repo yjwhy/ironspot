@@ -15,6 +15,12 @@ const _ky = ky.create({
 
 // Accept RequestInit so Orval-generated callers (which use SecondParameter<typeof apiClient>)
 // receive a compatible type. Ky accepts RequestInit-compatible objects internally.
+//
+// apiClient returns the bare response body at runtime, even though Orval generates
+// envelope types `{ data: T, status, headers }`. Consumers reconcile the gap with
+// `unwrapOrvalResponse` (identity at runtime, type cast away the envelope). Phase 5
+// item 12 follow-up: photo upload was the first hook to expose this convention —
+// usePhotoUpload now goes through `unwrapOrvalResponse` like every other consumer.
 export async function apiClient<T>(url: string, options?: RequestInit): Promise<T> {
   const sanitisedUrl = url.startsWith('/') ? url.slice(1) : url;
 

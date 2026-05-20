@@ -40,16 +40,16 @@ public class PhotoService {
     // a DB rollback cannot undo a file already uploaded to Supabase Storage.
     // Orphaned files are removed by a periodic cleanup job (Phase 2 tradeoff).
     public PhotoUploadResponse upload(String userId, MultipartFile file, UUID gymMachineId) {
-        validateImage(file);
-
-        UUID photoId = UUID.randomUUID();
-        String filename = photoId + ".webp";
         final byte[] imageBytes;
         try {
             imageBytes = file.getBytes();
         } catch (IOException e) {
             throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
         }
+        validateImage(file, imageBytes);
+
+        UUID photoId = UUID.randomUUID();
+        String filename = photoId + ".webp";
 
         // Layer 1: Vision SafeSearch + OCR. Run before storage upload so a REJECT
         // verdict aborts before producing an orphan file. Failures fail-open
@@ -106,16 +106,61 @@ public class PhotoService {
         photoRepository.delete(photoId);
     }
 
-    private void validateImage(MultipartFile file) {
+    private void validateImage(MultipartFile file, byte[] bytes) {
         if (file.isEmpty()) {
             throw new BusinessException("이미지가 비어 있습니다", HttpStatus.BAD_REQUEST);
         }
         if (file.getSize() > 2 * 1024 * 1024) {
             throw new BusinessException("이미지는 2MB 이하여야 합니다", HttpStatus.BAD_REQUEST);
         }
+        // Trust image/* content-type when the client provided one. When it's missing or
+        // application/octet-stream — which is what React Native sends because
+        // fetch(file://).blob() loses the MIME type — fall back to magic-byte sniffing
+        // so well-formed image uploads from RN reach the OCR pipeline instead of
+        // bouncing at this validator and surfacing as "업로드 중 오류가 발생했어요".
         String ct = file.getContentType();
-        if (ct == null || !ct.startsWith("image/")) {
+        boolean hasImageContentType = ct != null && ct.startsWith("image/");
+        if (!hasImageContentType && !isKnownImageMagic(bytes)) {
             throw new BusinessException("이미지 파일만 업로드할 수 있습니다", HttpStatus.BAD_REQUEST);
         }
+    }
+
+    private static boolean isKnownImageMagic(byte[] bytes) {
+        return isJpeg(bytes) || isPng(bytes) || isWebp(bytes) || isHeic(bytes);
+    }
+
+    private static boolean isJpeg(byte[] b) {
+        return b.length >= 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF;
+    }
+
+    private static boolean isPng(byte[] b) {
+        return b.length >= 8
+            && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G'
+            && (b[4] & 0xFF) == 0x0D && (b[5] & 0xFF) == 0x0A && (b[6] & 0xFF) == 0x1A && (b[7] & 0xFF) == 0x0A;
+    }
+
+    private static boolean isWebp(byte[] b) {
+        // RIFF....WEBP
+        return b.length >= 12
+            && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F'
+            && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P';
+    }
+
+    private static boolean isHeic(byte[] b) {
+        // ISO BMFF box: 4-byte size, then 'ftyp', then 4-byte brand.
+        // iOS captures land as 'heic'/'heix'/'mif1'/'msf1'/'hevc'/'hevx' brands.
+        if (b.length < 12) return false;
+        if (b[4] != 'f' || b[5] != 't' || b[6] != 'y' || b[7] != 'p') return false;
+        return matchesBrand(b, 8, "heic") || matchesBrand(b, 8, "heix")
+            || matchesBrand(b, 8, "mif1") || matchesBrand(b, 8, "msf1")
+            || matchesBrand(b, 8, "hevc") || matchesBrand(b, 8, "hevx");
+    }
+
+    private static boolean matchesBrand(byte[] b, int offset, String brand) {
+        if (b.length < offset + 4) return false;
+        return b[offset] == brand.charAt(0)
+            && b[offset + 1] == brand.charAt(1)
+            && b[offset + 2] == brand.charAt(2)
+            && b[offset + 3] == brand.charAt(3);
     }
 }

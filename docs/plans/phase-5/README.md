@@ -72,17 +72,27 @@ The decision between "let the queue grow and curate" versus "bulk-seed first" is
 
 Reported by the user during the same 2026-05-19 device-testing session: capturing a photo and submitting it surfaces an error rather than reaching the OCR success / fail confirm screens (`UploadConfirmScreen`'s `OcrFailView` already covers the empty-suggestion path — this error is upstream of that). Exact error text, the failing screen, and whether it is reproducible across machines plus gym types are not captured yet, and `xcrun simctl spawn booted log show ... grep ocr|photo|upload` returned no matches in the 2-minute window after the report so the error is not fresh in device logs either.
 
+**Triage (2026-05-20)**
+
+Reproduced statically with a new backend IT (`PhotoUploadTest.uploadAcceptsOctetStreamWithImageMagicBytes`) that builds the production RN multipart shape (image part `Content-Type: application/octet-stream`). The IT failed with `400 BAD_REQUEST` from `PhotoService.validateImage` before OCR ran, matching the user's "OcrFailView 도 못 가고 에러" report exactly.
+
+**Root cause**: React Native's `fetch(file://...webp).then(r => r.blob())` produces a `Blob` with empty `type` on iOS (RN doesn't infer MIME from file extension). The Orval-generated `FormData.append('image', blob)` then writes a multipart part with no Content-Type header, which Spring exposes to `MultipartFile.getContentType()` as `application/octet-stream`. `PhotoService.validateImage`'s `ct.startsWith("image/")` guard rejected it before OCR. Pre-OCR image compression at frontend, not Vision API, Storage, or response-shape mismatch.
+
 **To-do (groomed scope)**
 
-- [ ] Reproduce on the simulator with `pnpm dev:prod`: pick a gym → 사진 업로드 → capture an image → record the exact error copy plus screen and attach a Maestro-driven repro flow under `.maestro/flows/`.
-- [ ] Pull the failing request from device logs (`xcrun simctl spawn booted log show --predicate 'process == "IronSpot"' --last 5m --style compact | grep -iE 'photo|vision|ocr|/api/'`) plus the corresponding Render log entry, plus the Sentry event if one was emitted.
-- [ ] Classify the failure: Vision API 5xx, Supabase Storage upload failure, multipart parsing, response shape mismatch, or pre-OCR image compression. The branch decides whether the fix lives in `PhotoService.upload`, `OcrService.analyzeImage`, `StorageService.upload`, or the frontend `usePhotoUpload` hook.
-- [ ] Decide whether to fail-open to `OcrFailView` (graceful degrade to the existing manual-input path) versus showing a user-actionable error toast. Same trade-off as the `vision = VisionAnalysisResult.EMPTY` fallback already in `PhotoService.upload:60` for Vision failures.
-- [ ] Add the error path to the test suite — Photo upload IT covering the failing branch, frontend test covering the toast / fallback copy.
+- [x] Reproduce on the simulator with `pnpm dev:prod`: pick a gym → 사진 업로드 → capture an image → record the exact error copy plus screen and attach a Maestro-driven repro flow under `.maestro/flows/`. → Substituted with a deterministic backend IT (`uploadAcceptsOctetStreamWithImageMagicBytes`) that exercises the exact production multipart shape. Simulator/Maestro repro skipped because (a) iOS simulator has no real camera, the gallery-pick path runs identical code, and the gallery-pick path is already covered by the IT, and (b) the IT pins the contract against any future regression — Maestro would assert UI state but not the failing HTTP exchange.
+- [x] Pull the failing request from device logs (`xcrun simctl spawn booted log show ... grep -iE 'photo|vision|ocr|/api/'`) plus the corresponding Render log entry, plus the Sentry event if one was emitted. → Device logs in the 30 minute window were empty (the user had not retried recently). Static trace through `usePhotoUpload.runUpload` → Orval `upload` → `PhotoService.validateImage` was sufficient given the IT reproduces deterministically.
+- [x] Classify the failure: Vision API 5xx, Supabase Storage upload failure, multipart parsing, response shape mismatch, or pre-OCR image compression. → **Multipart parsing / Content-Type validation**. Fix lives in both `usePhotoUpload` (root cause) and `PhotoService.validateImage` (defense-in-depth for any client that omits the part Content-Type).
+- [x] Decide whether to fail-open to `OcrFailView` (graceful degrade to the existing manual-input path) versus showing a user-actionable error toast. → Neither: the request was a valid image upload that the API incorrectly rejected. Fix is "make it succeed", not "make the failure prettier". The existing `usePhotoUpload` catch + `UploadErrorView` is retained for genuine network / 5xx failures.
+- [x] Add the error path to the test suite — Photo upload IT covering the failing branch, frontend test covering the toast / fallback copy. → Backend IT `uploadAcceptsOctetStreamWithImageMagicBytes` (success path) + `uploadRejectsOctetStreamWithoutImageMagicBytes` (rejects non-image bytes even when Content-Type is missing). Frontend test `sends RN file descriptor (uri + name + type) instead of a typeless Blob` pins the hook's multipart shape so a future Orval regen or fetch+blob revert is caught.
 
-**Reason this sits in Phase 5**
+**Resolution (2026-05-20)**
 
-Pre-launch decision: triage now, ship a fix once we know the failure mode. If the root cause is a backend bug rather than a UX gap it pulls forward to a pre-launch hotfix branch. If it is a Vision API rate-limit or transient 5xx it folds into the same fail-open path as the existing OCR-fail flow plus item 11's persistence pipe and ships together.
+Shipped via PR on the `hotfix/phase-5-item-12-photo-upload-content-type` branch. Two-layer fix:
+
+1. **Frontend** (`src/features/upload/hooks/usePhotoUpload.ts`): replaced `fetch(file://).blob()` with the RN file descriptor `{ uri, name: 'photo.webp', type: 'image/webp' }` passed directly to `FormData.append`. RN's native multipart writer reads these fields and emits the correct `Content-Type: image/webp` and `filename="photo.webp"` per-part headers.
+2. **Backend** (`iron-spot-api/.../PhotoService.java`): when the part `Content-Type` is missing or non-`image/*`, fall back to magic-byte sniffing for JPEG / PNG / WebP / HEIC signatures. Robust against any client (curl, web, future RN behaviour shifts) that doesn't set the part Content-Type.
+3. Format constants centralised in `src/features/upload/constants.ts` (UPLOAD_IMAGE_FORMAT / PHOTO_FILENAME / PHOTO_MIME_TYPE) so the compression step, multipart writer, and tests derive the format choice from one source.
 
 ### 13. NL search camera animation drops zoom on long-distance jumps, ignores resolved radius
 

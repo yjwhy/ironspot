@@ -93,6 +93,51 @@ class PhotoUploadTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    // --- 2b. Production RN multipart shape: image part Content-Type=application/octet-stream ---
+    //
+    // React Native's `fetch(file://...webp).blob()` produces a Blob with empty `type`,
+    // and RN's FormData multipart writer then sends the image part with no Content-Type
+    // header (Spring defaults that to application/octet-stream). The previous
+    // `getContentType().startsWith("image/")` check rejected this with a 400 before OCR ran,
+    // sending real-user uploads to UploadErrorView instead of the normal OCR flow.
+    // This test pins the magic-byte fallback: if the bytes start with a known image
+    // signature (JPEG/PNG/WebP/HEIC), the upload proceeds even without an image/* content-type.
+
+    @Test
+    void uploadAcceptsOctetStreamWithImageMagicBytes() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of(), SafeSearchVerdict.ALLOW, false));
+        given(storageService.upload(any(), any(), anyString()))
+            .willReturn("https://example.com/octet.webp");
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", octetStreamPart(minimalJpegBytes(), "photo.webp"));
+        body.add("gymMachineId", GYM_MACHINE_ID.toString());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    void uploadRejectsOctetStreamWithoutImageMagicBytes() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+
+        byte[] notAnImage = new byte[]{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09};
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", octetStreamPart(notAnImage, "blob.bin"));
+        body.add("gymMachineId", GYM_MACHINE_ID.toString());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).contains("이미지");
+    }
+
     // --- 3. Upload succeeds with OCR suggestions ---
 
     @Test
@@ -293,10 +338,29 @@ class PhotoUploadTest extends IntegrationTestBase {
         return new HttpEntity<>(body, headers);
     }
 
+    /**
+     * Builds a multipart part with explicit Content-Type=application/octet-stream, matching the
+     * production RN multipart shape (RN's fetch(file://).blob() loses the MIME type).
+     */
+    private HttpEntity<ByteArrayResource> octetStreamPart(byte[] bytes, String filename) {
+        ByteArrayResource resource = new ByteArrayResource(bytes) {
+            @Override public String getFilename() { return filename; }
+        };
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        return new HttpEntity<>(resource, headers);
+    }
+
     /** Minimal valid JPEG (1x1 pixel, ~631 bytes). */
     private ByteArrayResource minimalJpegResource() {
+        return new ByteArrayResource(minimalJpegBytes()) {
+            @Override public String getFilename() { return "test.jpg"; }
+        };
+    }
+
+    private byte[] minimalJpegBytes() {
         // Minimal 1x1 white JPEG bytes
-        byte[] jpeg = new byte[]{
+        return new byte[]{
             (byte)0xFF, (byte)0xD8, (byte)0xFF, (byte)0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
             0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, (byte)0xFF, (byte)0xDB, 0x00, 0x43, 0x00, 0x08,
             0x06, 0x06, 0x07, 0x06, 0x05, 0x08, 0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D,
@@ -325,9 +389,6 @@ class PhotoUploadTest extends IntegrationTestBase {
             (byte)0xF3, (byte)0xF4, (byte)0xF5, (byte)0xF6, (byte)0xF7, (byte)0xF8, (byte)0xF9, (byte)0xFA,
             (byte)0xFF, (byte)0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, (byte)0xFB, (byte)0xD2,
             (byte)0x8A, 0x00, 0x3F, (byte)0xFF, (byte)0xD9
-        };
-        return new ByteArrayResource(jpeg) {
-            @Override public String getFilename() { return "test.jpg"; }
         };
     }
 }
