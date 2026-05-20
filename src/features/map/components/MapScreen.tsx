@@ -10,6 +10,7 @@ import { InterpretationChip } from '@/features/search/components/InterpretationC
 import { PermissionDeniedBadge } from '@/features/search/components/PermissionDeniedBadge';
 import { TopSearchBar } from '@/features/search/components/TopSearchBar';
 import { useNlSearch } from '@/features/search/hooks/useNlSearch';
+import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
 import { useCreateGym } from '@/features/upload/hooks/useCreateGym';
 import type { NlSearchResponse, ParsedFilters, UnregisteredPlace } from '@/shared/generated/model';
 import { GANGNAM_STATION, useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
@@ -125,18 +126,23 @@ export function MapScreen() {
   >(null);
   const createGym = useCreateGym({
     onSuccess: (gym) => {
-      // Skip the duplicate Naver-search step the legacy CTA flow forced. The
-      // user lands on /(upload)/gym-select with this gym already expanded so
-      // they can pick a machine. The full "land on camera with gymId" path
-      // depends on item 11 (POST /api/gym-machines) + item 14d (undo); both
-      // are still pending. See `docs/plans/phase-5/README.md` items 11 + 14d.
-      // TODO(docs/plans/phase-5/README.md item 14d): once DELETE
-      // /api/gyms/<id> lands, route to /(upload)/camera?gymId=<gym.id> and
-      // show the 5s undo toast.
+      // Phase 5 item 14a: land the user directly on the camera so the gym
+      // they just registered as the first contributor flows straight into
+      // the photo-upload + machine-pick path (item 11 slice 3 picker takes
+      // it from there). The previous gym-select intermediate step was only
+      // useful while POST /api/gym-machines was still pending — now that
+      // item 11 has shipped, that step is pure friction.
+      //
+      // TODO(docs/plans/phase-5/README.md item 14b): once DELETE
+      // /api/gyms/<id> lands, surface a 5s "○○를 등록했어요 · 취소" undo
+      // toast on the camera screen that rolls back this gym row. The
+      // mutation already fires immediately on tap (same as before this
+      // commit) so the footgun surface is unchanged — landing on the
+      // camera does not enlarge it.
       setLastPressedUnregisteredPlaceId(null);
       router.push({
-        pathname: '/(upload)/gym-select',
-        params: { selectedGymId: gym.id },
+        pathname: UPLOAD_PHOTO_PATHNAME,
+        params: { gymId: gym.id },
       });
     },
     onError: () => {
