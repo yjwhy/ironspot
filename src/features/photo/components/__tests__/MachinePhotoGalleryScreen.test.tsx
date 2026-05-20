@@ -155,6 +155,18 @@ describe('MachinePhotoGalleryScreen', () => {
     expect(router.push).not.toHaveBeenCalled();
   });
 
+  it('does not navigate to the camera when gymId is undefined (defensive — gym+machine guard is symmetric)', () => {
+    // The function comment treats gym+machine as a pair, so the guard must
+    // reject either half being undefined. Asymmetric guarding (machineId only)
+    // would let `{ gymId: undefined, gymMachineId: 'gm-1' }` reach the camera
+    // and silently lose the gymId-fallback contribution path.
+    const { getByLabelText } = render(
+      <MachinePhotoGalleryScreen gymId={undefined} machineId="gm-1" />,
+    );
+    fireEvent.press(getByLabelText('사진 올리기'));
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
   it('redirects to login when the FAB is tapped by an unauthenticated user', () => {
     (useRequireAuth as jest.Mock).mockReturnValue((_action: () => void) => {
       router.push('/(auth)/login');
