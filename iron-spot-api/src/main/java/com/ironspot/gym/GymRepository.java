@@ -166,16 +166,18 @@ public class GymRepository {
             .fetch(GYMS.NAVER_PLACE_ID));
     }
 
-    public void insertFromNaverPlaces(UUID id, CreateGymRequest req) {
+    public void insertFromNaverPlaces(UUID id, CreateGymRequest req, UUID createdByUserId) {
         // Raw SQL for the PostGIS cast: JOOQ's typed insert can't disambiguate the
         // geography Field<Object> overloads, and CLOB-typing the column would lose the
         // GEOGRAPHY(POINT) constraint. is_verified=false marks user-registered gyms so
-        // verified Phase 1 seed gyms remain visually distinct.
+        // verified Phase 1 seed gyms remain visually distinct. created_by_user_id
+        // (V9 / Phase 5 item 14) records the principal so DELETE /api/gyms/{id} can
+        // authorise the original creator (in addition to admins).
         dsl.execute(
             """
-            INSERT INTO gyms (id, name, address, phone, naver_place_id, is_verified, location)
+            INSERT INTO gyms (id, name, address, phone, naver_place_id, is_verified, location, created_by_user_id)
             VALUES ({0}, {1}, {2}, {3}, {4}, FALSE,
-                    ST_SetSRID(ST_MakePoint({5}, {6}), 4326)::geography)
+                    ST_SetSRID(ST_MakePoint({5}, {6}), 4326)::geography, {7})
             """,
             DSL.val(id),
             DSL.val(req.name()),
@@ -183,9 +185,41 @@ public class GymRepository {
             DSL.val(req.phone()),
             DSL.val(req.naverPlaceId()),
             DSL.val(req.longitude()),
-            DSL.val(req.latitude())
+            DSL.val(req.latitude()),
+            DSL.val(createdByUserId)
         );
     }
+
+    /**
+     * Returns the creator UUID (nullable for pre-V9 rows) and whether any
+     * gym_machines reference this gym. Single round-trip so the DELETE
+     * authorisation check + machine-count guard share the same snapshot.
+     */
+    public Optional<DeleteAuthInfo> findDeleteAuthInfoById(UUID id) {
+        return dsl.select(
+                GYMS.CREATED_BY_USER_ID,
+                DSL.field(
+                    "EXISTS (SELECT 1 FROM gym_machines WHERE gym_id = {0} AND deleted_at IS NULL)",
+                    Boolean.class,
+                    DSL.val(id)
+                )
+            )
+            .from(GYMS)
+            .where(GYMS.ID.eq(id))
+            .fetchOptional()
+            .map(r -> new DeleteAuthInfo(r.value1(), Boolean.TRUE.equals(r.value2())));
+    }
+
+    /** Returns the number of rows deleted (0 if the row was concurrently removed). */
+    public int deleteById(UUID id) {
+        return dsl.deleteFrom(GYMS).where(GYMS.ID.eq(id)).execute();
+    }
+
+    /**
+     * Authorisation snapshot for DELETE /api/gyms/{id}. {@code createdByUserId}
+     * is null for pre-V9 rows (creator unknown → admin-only delete).
+     */
+    public record DeleteAuthInfo(UUID createdByUserId, boolean hasActiveMachines) {}
 
     public Optional<GymDetailResponse> findById(UUID id) {
         Gyms g = GYMS.as("g");

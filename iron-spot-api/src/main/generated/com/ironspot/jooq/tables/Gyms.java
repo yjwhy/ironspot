@@ -120,6 +120,11 @@ public class Gyms extends TableImpl<Record> {
     public final TableField<Record, String> NAVER_PLACE_ID = createField(DSL.name("naver_place_id"), SQLDataType.CLOB, this, "");
 
     /**
+     * The column <code>public.gyms.created_by_user_id</code>.
+     */
+    public final TableField<Record, UUID> CREATED_BY_USER_ID = createField(DSL.name("created_by_user_id"), SQLDataType.UUID, this, "");
+
+    /**
      * The column <code>public.gyms.created_at</code>.
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
@@ -198,12 +203,29 @@ public class Gyms extends TableImpl<Record> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.GYMS_NAVER_PLACE_ID_KEY);
+        return Arrays.asList(Indexes.GYMS_NAVER_PLACE_ID_KEY, Indexes.IDX_GYMS_CREATED_BY_USER_ID);
     }
 
     @Override
     public UniqueKey<Record> getPrimaryKey() {
         return Keys.GYMS_PKEY;
+    }
+
+    @Override
+    public List<ForeignKey<Record, ?>> getReferences() {
+        return Arrays.asList(Keys.GYMS__GYMS_CREATED_BY_USER_ID_FKEY);
+    }
+
+    private transient UsersPath _users;
+
+    /**
+     * Get the implicit join path to the <code>public.users</code> table.
+     */
+    public UsersPath users() {
+        if (_users == null)
+            _users = new UsersPath(this, Keys.GYMS__GYMS_CREATED_BY_USER_ID_FKEY, null);
+
+        return _users;
     }
 
     private transient GymMachinesPath _gymMachines;
@@ -230,14 +252,6 @@ public class Gyms extends TableImpl<Record> {
             _gymOwners = new GymOwnersPath(this, null, Keys.GYM_OWNERS__GYM_OWNERS_GYM_ID_FKEY.getInverseKey());
 
         return _gymOwners;
-    }
-
-    /**
-     * Get the implicit many-to-many join path to the <code>public.users</code>
-     * table
-     */
-    public UsersPath users() {
-        return gymOwners().users();
     }
 
     @Override

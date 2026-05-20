@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS gyms (
   is_verified BOOLEAN DEFAULT FALSE,
   last_verified_at TIMESTAMPTZ,
   naver_place_id TEXT,
+  -- Phase 5 item 14 / V9: track creator for undo + delete authorisation.
+  -- FK to users(id) added via ALTER TABLE after the users table exists below
+  -- (init-test-db.sql creates gyms before users — forward FK ref disallowed).
+  created_by_user_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -86,6 +90,16 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role) WHERE role = 'admin';
+
+-- Phase 5 item 14 / V9: gyms.created_by_user_id FK (mirror of V9 migration
+-- — declared via ALTER because gyms is created before users above).
+ALTER TABLE gyms
+  ADD CONSTRAINT gyms_created_by_user_id_fkey
+  FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_gyms_created_by_user_id
+  ON gyms (created_by_user_id)
+  WHERE created_by_user_id IS NOT NULL;
 
 -- Task 47 / ADR 0023: gym_owners join table. N:N cardinality (single-owner,
 -- chain, co-owner). business_number_hash = SHA-256 of 사업자등록번호; same hash
