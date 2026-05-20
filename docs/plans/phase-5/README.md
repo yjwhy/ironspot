@@ -239,14 +239,25 @@ Depends on Task 47 owner workflow being merged + a measurable number of owners h
 - **Category**: already Korean-mapped via the filter sheet's "운동 부위" labels. No work.
 - **Search matching**: `FuzzyMatchService` tokenises both `name_ko` and `name_en` so both `해머스트렝스 풀다운` and `Hammer Strength Lat Pull Down` match the same row.
 
+**Scope refinement (2026-05-20)**
+
+Original to-do bullets covered both schema + code (item 18 proper) and the data work of hand-backfilling Korean names for the 11 prod template rows. User feedback (2026-05-20) re-scoped this: pre-launch data is all temporary and gets wiped, the curated catalog (plate-load / pin-load brands across US / Italy / Korea) is broader than 11 templates, and the data step deserves its own iteration with web research. Item 18 here ships **code only**; item 22 below carries the catalog bulk-seed.
+
 **To-do (groomed scope)**
 
-- [ ] DB: rename `machine_templates.name` → `name_en`, add `name_ko TEXT NOT NULL` via a new Flyway migration. Backfill 11 existing rows by hand (small set, no script).
-- [ ] Backend: extend `MachineTemplate` DTO to surface both fields; extend `FuzzyMatchService.findMatches` and `findTemplateIds` to tokenise both columns when computing Jaccard similarity.
-- [ ] OpenAPI + Orval regen: TypeScript client picks up the two fields.
-- [ ] Frontend: render `nameKo` on `GymCard`, `MachineList`, NL search interpretation chip; render both on `MachineDetail`.
-- [ ] NL search prompt: extend the LLM prompt so it understands Korean machine-name aliases and emits canonical English when filling `parsedFilters.templateIds`.
-- [ ] Test coverage: `FuzzyMatchService` test cases for `해머스트렝스 랫 풀다운` matching `Hammer Strength Lat Pull Down`; frontend test that `GymCard` renders `nameKo` and `MachineDetail` renders both.
+- [x] DB: V7 migration renames `machine_templates.name` → `name_en`, adds `name_ko TEXT NOT NULL`. Wipe-first (DELETE chain through reports → machine_photos → gym_machines → machine_templates) so NOT NULL applies against an empty table — pre-launch data is dev/smoke only, user OK'd the cascading wipe + Storage orphans. → Shipped slice (a) in `b529c2a`.
+- [x] Backend: `MachineTemplateSummary` carries both `nameEn` + `nameKo`. `MachineTemplateResponse` + `MachineTemplateSuggestion` DTOs split `name` → `nameEn` + add `nameKo`. `GymMachineResponse` symmetrically splits `machineName` → `machineNameEn` + `machineNameKo` so per-gym instance surfaces also surface Korean. → Slices (a) + (b) + (c).
+- [x] `FuzzyMatchService.findMatches` (OCR path) concatenates `brandName + nameEn + nameKo` into one token set so OCR text in either language matches the same row. `findTemplateIds` (NL search path) scores English and Korean columns independently and takes `max(en, ko)` so unrelated tokens in the off-language column don't dilute precision. → Slice (b) in `e77e636`.
+- [x] OpenAPI + Orval regen: TypeScript client picks up `nameEn` / `nameKo` on both DTOs + `machineNameEn` / `machineNameKo` on `GymMachineResponse` + the new `brandId` / `categoryId` query params on `GET /api/machine-templates`. → Slices (b) + (c).
+- [x] Frontend: `MachineList` rows render Korean primary via `machineDisplayName()`. `MachinePhotoGalleryScreen` header renders Korean primary heading + smaller English secondary line. `MachinePicker` TemplateStep renders Korean primary in each row and search matches across `brandName + nameKo + nameEn`. `FilterSheet`'s active-filter chip uses Korean (e.g. "Panatta 하이로우 · 핀"). `GymCard` was no-op (item 19 already removed machine name list before item 18 landed). Admin / Owner surfaces prefer Korean too (`nameKo ?? nameEn`). → Slice (c) in `52485bf`.
+- [x] MachinePicker slice-3 follow-up: TemplateStep's in-JS `.filter(t => t.brandId === brandId && t.categoryId === categoryId)` swapped for `useMachineTemplates({ brandId, categoryId })` server pushdown. Hook only fetches once both axes are picked; queryKey embeds the tuple so `staleTime: Infinity` per-combination keeps re-visits hot. → Slice (c).
+- [x] NL search prompt: `search-dsl.md` gains a `근처 해머스트렝스 풀다운 머신 있는 곳` → `Hammer Strength Lat Pull Down` few-shot. `queries.yaml` gains a matching 7th eval case (~17.5K TPD, ~18% of Groq free-tier daily budget). → Slice (e) in `95dd482`.
+- [x] Test coverage: `FuzzyMatchServiceTest` +3 cases (Korean alias `랫 풀다운` → English row, English `Chest Press` → Korean primary row, OCR bilingual concat). `MachineTemplateControllerTest` +3 cases (brandId narrow, categoryId narrow, both AND). `MachinePicker.test.tsx` mocks `useMachineTemplates` to respect the params arg so the "only matching rows render" assertions survive the JS-filter removal. Frontend factories + 12 fixture files updated to carry both name variants. → Across all slices.
+
+**Out of slice (deferred / non-regression)**
+
+- **Interpretation chip (`InterpretationChip`) Korean rendering**: the chip displays `text` formatted server-side by `InterpretationFormatter` from the canonical-English DSL. Surfacing Korean here requires the formatter to look up `nameKo` by `templateId` (an extra catalog read or a denormalised join). The chip stayed English before item 18 — no regression — and the bigger surfaces (cards, picker, detail) now read Korean, so this minor surface defers to a follow-up. Folds into item 22 timing or whichever NL-polish item comes next.
+- **Korean morpheme tokenisation**: current `tokenize` splits on whitespace. A user typing "해머스트렝스랫풀다운" without spaces wouldn't match. Out of scope here; the picker's free-form escape hatch + admin queue path absorbs such inputs via `pending_review = true`.
 
 **Recommended solution (ui-ux-pro-max review, 2026-05-20)**
 
@@ -254,7 +265,19 @@ Option C is the right balance for the launch cohort. Brands stay English because
 
 **Reason to ship pre-launch**
 
-NL search input today silently fails on Korean machine-name aliases — a domestic user typing 해머스트렝스 풀다운 gets zero results even though the gym has it. That's a core-flow regression for the launch cohort. Plus the catalogue is only 11 templates, so the translation work is one-time and trivially small.
+NL search input today silently fails on Korean machine-name aliases — a domestic user typing 해머스트렝스 풀다운 gets zero results even though the gym has it. That's a core-flow regression for the launch cohort. With code-only scope (item 22 carries the data), the patch is contained and ships ahead of catalog curation timing.
+
+**Resolution (2026-05-20)**
+
+Shipped on `hotfix/phase-5-item-18-korean-labelling`. Six commits, all backend-and-frontend self-contained:
+
+| Slice | Commit    | Scope                                                                                                                                                                                   |
+| ----- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (a)   | `b529c2a` | V7 migration (wipe + rename + add `name_ko NOT NULL`), JOOQ regen, `MachineTemplateSummary` + Repository + FuzzyMatch callsite rename.                                                  |
+| (b)   | `e77e636` | `MachineTemplateResponse` + `Suggestion` DTOs split, `FuzzyMatchService` bilingual scoring, `MachineTemplateController` brandId/categoryId query params, IT coverage.                   |
+| (c)   | `52485bf` | Orval regen + every FE consumer (MachineList, Picker pushdown, Gallery dual-line header, admin/owner surfaces) + 12 fixture files. `GymMachineResponse` machineName split bundled here. |
+| (e)   | `95dd482` | NL prompt few-shot + eval suite 7th case for Korean alias.                                                                                                                              |
+| (f)   | this PR   | README scope refinement + item 22 new section.                                                                                                                                          |
 
 ### 19. GymCard tidy-up — drop machine list, drop category chips, clarify count copy
 
@@ -377,6 +400,40 @@ return [...gymItems, ...placeItems].sort((a, b) => a.distanceKm - b.distanceKm);
 **Reason to ship pre-launch**
 
 launch 직후 등록 헬스장이 viewport 안에 있어도 미등록이 더 가까우면 list 의 first impression 을 미등록이 차지함. 사용자는 "이 앱은 비어 있다" 결론을 내리고 이탈 가능성 ↑. Item 20 (empty-state 카피) 와 같은 BottomSheet list mode 의 사용자 신뢰성 문제군이라 같은 hotfix branch / 같은 PR 에서 묶어 처리한다.
+
+### 22. Plate-load / pin-load machine catalog bulk-seed
+
+**Current state**
+
+Item 18 shipped the schema + code for bilingual machine templates but deliberately left `machine_templates` empty (V7 wiped the prod table since every pre-launch row was temporary dev/smoke data per user decision 2026-05-20). The picker, OCR fuzzy match, and NL search filter pushdown all work, but with an empty catalog they have nothing to match against — meaning a user who taps "사진 추가" lands on the picker and sees no brand options at all. The closed-list path is empty until item 22 lands.
+
+**Locked decision (2026-05-20)**
+
+- **Brand scope**: US + Italy + Korea brands only. Concretely: Hammer Strength, Life Fitness, Technogym, Panatta, Hoist, Cybex, Matrix, Nautilus, Prime, Eleiko, Rogue (US / Italy / international) + Korean brands (e.g. HASS, SP&CO, K-Sport). Chinese OEM brands explicitly excluded.
+- **Equipment scope**: plate-load + pin-load strength machines only. Cardio (treadmill, bike, rower) and free-weight / no-mechanism equipment (barbell rack, dumbbell rack, smith machine) excluded — they don't differentiate gyms enough to justify catalog slots, and free-weight rooms are already implicitly covered by brand alone.
+- **Catalog size target**: 100~200 templates. Above 200 the picker UX (3-step closed list) starts to break down; below 50 OCR / NL search hit rate stays low.
+- **Source workflow**: Claude does web search across brand catalog pages → extracts English model lists → proposes standard Korean transliterations from Korean fitness-community conventions (e.g. "Lat Pull Down" → "랫 풀다운"). User confirms / corrects in a single review pass before V8 migration writes the INSERT block. For Korean brands whose sites are weak in English or have inconsistent listings, user provides the model list directly.
+- **Catalog growth post-launch**: item 11's admin queue + `pending_review = true` path absorbs user contributions for templates absent from this seed. No automated catalog-sync infrastructure in scope.
+
+**To-do (groomed scope)**
+
+- [ ] **Brand list confirmation**: lock the final brand list (Korean brands need verification — HASS / SP&CO / K-Sport are placeholders; user has the ground truth on which Korean manufacturers are most visible domestically).
+- [ ] **Per-brand catalog research**: for each brand, Claude WebFetches the public model catalog page (brand site or distributor reference page where the brand site is sparse — Korean brands often need the latter). Output: a per-brand `{ model_en, model_ko, category, loading_type }` table for user review.
+- [ ] **Korean transliteration proposal**: Claude generates Korean primary names per the conventions established in item 18 (e.g. Lat Pull Down → 랫 풀다운, Chest Press → 체스트 프레스). User flags any awkward 표기 in a single review pass.
+- [ ] **V8 migration**: hand-written `INSERT INTO machine_templates(id, brand_id, category_id, name_en, name_ko, loading_type) VALUES ...` for the curated set. UUIDs deterministic (or `gen_random_uuid()` — TBD on first commit). Also extend the `brands` table if any new brands need adding.
+- [ ] **Test fixture refresh**: `init-test-db.sql` may need a wider sample if downstream ITs start to depend on richer catalog shape; default position is "keep the 2-row test fixture and add a separate `seed-bulk-catalog.sql` for migration-replay tests."
+- [ ] **Picker UX validation**: with N≈100-200 templates the TemplateStep search is the primary entry point — verify the search-by-prefix on `brandName + nameKo + nameEn` gives sensible top results in the picker. May surface a need for ranked search / fuzzy match on the picker side too (currently exact substring).
+- [ ] **NL search prompt few-shot expansion**: if the catalog brings in significantly more brands than the 11 the prompt currently lists (rule 3), add 2-3 more few-shot examples covering common new brands (e.g. 사이베스 → Cybex, 매트릭스 → Matrix). Eval suite +1-2 cases accordingly, watching TPD budget (still well within 100K).
+
+**Out of scope (post-launch / Phase 6)**
+
+- Automated brand-catalog sync (cron pulling brand sites). Item 11's admin queue + per-week `pending_review` histogram (H7) is the canonical post-launch growth path. Bulk sync vs. user-contribution-driven growth is decidable after launch data lands.
+- Free-weight equipment (barbells, dumbbells, racks, smith machines). Folded back into a separate post-launch decision once the gym-equipment data model knows whether free-weight rooms need their own surface.
+- Cardio equipment. Same reasoning — needs its own product framing (filtering / discovery) that isn't worth designing pre-launch.
+
+**Reason to ship pre-launch**
+
+Without a populated catalog, item 18's code lights up no value: picker shows zero brands, OCR finds zero matches, NL search has no template_id to hit. Item 18 plus item 22 are the matched pair that lets the contribution loop and the search loop both close. The data work is a one-time effort and ships ahead of launch so the first cohort sees a catalog that already covers the gyms they walk into.
 
 ## Post-launch hypotheses (drive prioritisation)
 
