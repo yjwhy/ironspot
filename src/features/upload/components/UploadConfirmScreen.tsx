@@ -5,6 +5,9 @@ import { Image, Pressable, TextInput, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
+import { useCreateGymMachine } from '@/shared/generated/machines/machines';
+import type { CreateGymMachineRequest } from '@/shared/generated/model';
+import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import { pressedOpacity } from '@/shared/lib/pressable';
 
 import { OcrScanAnimation } from './OcrScanAnimation';
@@ -49,6 +52,7 @@ interface OcrSuccessViewProps {
   suggestions: SuggestionPreview[];
   selectedValue: string;
   directInputText: string;
+  isRegistering: boolean;
   onSelectSuggestion: (value: string) => void;
   onChangeDirectInput: (text: string) => void;
   onRegister: () => void;
@@ -59,6 +63,7 @@ function OcrSuccessView({
   suggestions,
   selectedValue,
   directInputText,
+  isRegistering,
   onSelectSuggestion,
   onChangeDirectInput,
   onRegister,
@@ -131,7 +136,7 @@ function OcrSuccessView({
         testID="upload-register-btn"
         label="등록하기"
         onPress={onRegister}
-        disabled={!canRegister}
+        disabled={!canRegister || isRegistering}
       />
     </View>
   );
@@ -140,6 +145,7 @@ function OcrSuccessView({
 interface OcrFailViewProps {
   compressedUri: string;
   directInputText: string;
+  isRegistering: boolean;
   onChangeDirectInput: (text: string) => void;
   onRetry: () => void;
   onRegister: () => void;
@@ -148,6 +154,7 @@ interface OcrFailViewProps {
 function OcrFailView({
   compressedUri,
   directInputText,
+  isRegistering,
   onChangeDirectInput,
   onRetry,
   onRegister,
@@ -172,7 +179,12 @@ function OcrFailView({
       />
       <View className="gap-2">
         {directInputText.trim().length > 0 ? (
-          <Button testID="upload-register-btn" label="등록하기" onPress={onRegister} />
+          <Button
+            testID="upload-register-btn"
+            label="등록하기"
+            onPress={onRegister}
+            disabled={isRegistering}
+          />
         ) : null}
         <Button testID="upload-retry-btn" label="다시 시도" variant="secondary" onPress={onRetry} />
       </View>
@@ -215,8 +227,18 @@ function RadioDot({ selected }: RadioDotProps) {
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export function UploadConfirmScreen() {
-  const { gymMachineId, compressedUri } = useLocalSearchParams<{
-    gymMachineId: string;
+  // Phase 5 item 11 slice 2: gymMachineId stays optional. When present the
+  // photo is already bound to that machine (existing photo-add flow) and the
+  // contribution POST only sends template/freeFormName. When absent (orphan
+  // upload from a "register new machine" entry point) the photo's photoId is
+  // passed so the backend binds the orphan to the new gym_machine row.
+  // gymId is optional at the type level for the same reason: legacy entry
+  // points may push without it, and handleRegister guards against the
+  // missing-gymId case explicitly rather than letting an undefined leak into
+  // the request body.
+  const { gymId, gymMachineId, compressedUri } = useLocalSearchParams<{
+    gymId?: string;
+    gymMachineId?: string;
     compressedUri: string;
   }>();
   const router = useRouter();
@@ -225,6 +247,7 @@ export function UploadConfirmScreen() {
     gymMachineId,
     compressedUri,
   );
+  const { mutateAsync: createGymMachine, isPending: isRegistering } = useCreateGymMachine();
 
   const [selectedValue, setSelectedValue] = useState('');
   const [directInputText, setDirectInputText] = useState('');
@@ -234,10 +257,58 @@ export function UploadConfirmScreen() {
     void uploadRef.current();
   }, []);
 
-  function handleRegister() {
-    // TODO: call registerMachine({ gymMachineId, selectedValue, directInputText })
-    toast({ title: '사진이 등록됐어요!', preset: 'done' });
-    router.back();
+  // Synchronous double-tap guard: isRegistering (React state) only flips on
+  // the next render after mutateAsync is invoked, so two synchronous taps
+  // could both reach mutateAsync before useMutation propagates the in-flight
+  // state. A ref flips in the same microtask so the second tap returns early.
+  const isSubmittingRef = useRef(false);
+
+  async function handleRegister() {
+    if (isSubmittingRef.current || isRegistering) return;
+
+    if (gymId === undefined) {
+      // Legacy entry point pushed without gymId — surfaces as user-visible
+      // error rather than a silent 400 from the backend.
+      toast({ title: '등록할 헬스장 정보가 없어요', preset: 'error' });
+      return;
+    }
+
+    // OcrFailView has no suggestion list, so the text input is always a
+    // direct-input contribution regardless of selectedValue (which stays '').
+    // OcrSuccessView discriminates closed-list vs direct-input by selectedValue.
+    const isOcrFailFreeForm = result !== null && !result.ocrSucceeded;
+    const isDirectInput = isOcrFailFreeForm || selectedValue === DIRECT_INPUT_VALUE;
+    const trimmedDirectInput = directInputText.trim();
+    if (!isDirectInput && selectedValue === '') return;
+    if (isDirectInput && trimmedDirectInput === '') return;
+
+    // Only send photoId on the orphan path. If the photo was already bound to
+    // an existing gymMachineId during upload the backend's NULL-guard would
+    // reject the rebind with 400.
+    const photoIdForOrphanBind = gymMachineId === undefined ? result?.photoId : undefined;
+
+    const selectionFields: Pick<CreateGymMachineRequest, 'templateId' | 'freeFormName'> =
+      isDirectInput ? { freeFormName: trimmedDirectInput } : { templateId: selectedValue };
+    const requestBody: CreateGymMachineRequest = {
+      gymId,
+      ...selectionFields,
+      ...(photoIdForOrphanBind !== undefined ? { photoId: photoIdForOrphanBind } : {}),
+    };
+
+    isSubmittingRef.current = true;
+    try {
+      const created = unwrapOrvalResponse(await createGymMachine({ data: requestBody }));
+      toast(
+        created.pendingReview
+          ? { title: '등록 요청을 보냈어요', message: '검토 후 반영될 거예요', preset: 'done' }
+          : { title: '등록됐어요', preset: 'done' },
+      );
+      router.back();
+    } catch {
+      toast({ title: '등록에 실패했어요', message: '잠시 후 다시 시도해 주세요', preset: 'error' });
+    } finally {
+      isSubmittingRef.current = false;
+    }
   }
 
   function handleRetry() {
@@ -255,14 +326,19 @@ export function UploadConfirmScreen() {
     return <UploadingView compressedUri={compressedUri} uploadProgress={uploadProgress} />;
   }
 
+  function handleRegisterPress() {
+    void handleRegister();
+  }
+
   if (!result.ocrSucceeded) {
     return (
       <OcrFailView
         compressedUri={compressedUri}
         directInputText={directInputText}
+        isRegistering={isRegistering}
         onChangeDirectInput={setDirectInputText}
         onRetry={handleRetry}
-        onRegister={handleRegister}
+        onRegister={handleRegisterPress}
       />
     );
   }
@@ -273,9 +349,10 @@ export function UploadConfirmScreen() {
       suggestions={result.suggestions}
       selectedValue={selectedValue}
       directInputText={directInputText}
+      isRegistering={isRegistering}
       onSelectSuggestion={setSelectedValue}
       onChangeDirectInput={setDirectInputText}
-      onRegister={handleRegister}
+      onRegister={handleRegisterPress}
     />
   );
 }
