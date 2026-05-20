@@ -24,18 +24,18 @@ const makeMockUpload = (overrides?: Partial<ReturnType<typeof useUpload>>) => ({
 const GYM_MACHINE_ID = 'gm-test-1';
 const COMPRESSED_URI = 'file:///tmp/compressed.webp';
 
-const mockUploadResponse: { data: PhotoUploadResponse; status: 201; headers: Headers } = {
-  data: {
-    photoId: 'photo-123',
-    photoUrl: 'https://cdn.example.com/photo-123.jpg',
-    ocrSucceeded: true,
-    suggestions: [
-      { id: 'tmpl-1', brandName: 'TechnoGym', name: 'Lat Pulldown', score: 0.87 },
-      { id: 'tmpl-2', brandName: 'Life Fitness', name: 'Cable Row', score: 0.55 },
-    ],
-  },
-  status: 201,
-  headers: new Headers(),
+// apiClient returns the bare response body at runtime (see src/shared/lib/orval-response.ts);
+// the Orval envelope type `{ data, status, headers }` is a compile-time fiction. The mock
+// here matches the real runtime shape so the hook + unwrapOrvalResponse pipeline is
+// exercised against what production actually returns.
+const mockUploadResponse: PhotoUploadResponse = {
+  photoId: 'photo-123',
+  photoUrl: 'https://cdn.example.com/photo-123.jpg',
+  ocrSucceeded: true,
+  suggestions: [
+    { id: 'tmpl-1', brandName: 'TechnoGym', name: 'Lat Pulldown', score: 0.87 },
+    { id: 'tmpl-2', brandName: 'Life Fitness', name: 'Cable Row', score: 0.55 },
+  ],
 };
 
 describe('usePhotoUpload', () => {

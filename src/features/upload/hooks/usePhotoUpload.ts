@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import type { MachineTemplateSuggestion, PhotoUploadResponse } from '@/shared/generated/model';
 import { useUpload } from '@/shared/generated/photos/photos';
+import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 
 import { PHOTO_FILENAME, PHOTO_MIME_TYPE } from '../constants';
 
@@ -68,7 +69,7 @@ export function usePhotoUpload(gymMachineId: string, compressedUri: string): Use
         data: { image: toRnMultipartFile(compressedUri) as unknown as Blob },
       });
 
-      setResult(toUploadResult(uploadResponse.data));
+      setResult(toUploadResult(unwrapOrvalResponse(uploadResponse)));
       setUploadProgress(1);
     } catch (error) {
       setUploadError(error instanceof Error ? error : new Error('Upload failed'));
