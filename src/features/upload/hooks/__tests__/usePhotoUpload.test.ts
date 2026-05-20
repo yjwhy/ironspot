@@ -247,6 +247,32 @@ describe('usePhotoUpload', () => {
     expect(calls[0]?.[0].data.image.name).toBe(PHOTO_FILENAME);
   });
 
+  it('omits gymMachineId from params when undefined (orphan upload)', async () => {
+    // Phase 5 item 11 slice 2: OCR confirm screen uploads without a
+    // gym_machine_id; the contribution endpoint binds the photo afterwards.
+    // The mutation params object must not carry gymMachineId so Orval's URL
+    // builder skips it and the request lands as `/api/photos/upload`.
+    mockMutateAsync.mockResolvedValue(mockUploadResponse);
+    (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => usePhotoUpload(undefined, COMPRESSED_URI), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.upload();
+    });
+
+    expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    interface UploadCallArg {
+      params: { gymMachineId?: string };
+    }
+    const calls = mockMutateAsync.mock.calls as [UploadCallArg][];
+    expect(calls[0]?.[0].params.gymMachineId).toBeUndefined();
+    expect(Object.keys(calls[0]?.[0].params ?? {})).not.toContain('gymMachineId');
+  });
+
   it('upload() clears uploadError before re-attempting', async () => {
     const networkError = new Error('Network failure');
     mockMutateAsync.mockRejectedValueOnce(networkError).mockResolvedValueOnce(mockUploadResponse);

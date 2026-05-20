@@ -39,6 +39,19 @@ public class PhotoService {
     // Storage upload is intentionally not wrapped in @Transactional:
     // a DB rollback cannot undo a file already uploaded to Supabase Storage.
     // Orphaned files are removed by a periodic cleanup job (Phase 2 tradeoff).
+    //
+    // TODO(phase-5 item 11 slice 4): the cleanup job must purge
+    // `<bucket>/orphan/<userId>/` entries whose corresponding machine_photos
+    // row stays orphan (gym_machine_id IS NULL) past N hours. See
+    // StorageService.ORPHAN_PREFIX. Open question tracked in
+    // docs/plans/phase-5/README.md item 11 "Orphan upload rate limit + reaper".
+    //
+    // Phase 5 item 11 slice 2: gymMachineId is now nullable. The OCR confirm
+    // screen uploads first (gym_machine unknown yet) and then calls
+    // POST /api/gym-machines which binds the orphan photo via the new
+    // PhotoRepository.bindOrphanGymMachineId NULL-guard. Existing flows
+    // that already know the gym_machine (e.g. machine photo gallery) keep
+    // passing the id and bypass the contribution path.
     public PhotoUploadResponse upload(String userId, MultipartFile file, UUID gymMachineId) {
         final byte[] imageBytes;
         try {
@@ -75,7 +88,7 @@ public class PhotoService {
 
         String photoUrl;
         try {
-            photoUrl = storageService.upload(imageBytes, gymMachineId, filename);
+            photoUrl = storageService.upload(imageBytes, gymMachineId, UUID.fromString(userId), filename);
         } catch (Exception e) {
             log.error("Storage upload failed for photo {}: {}", photoId, e.getMessage());
             throw new BusinessException("사진 업로드에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -86,6 +99,9 @@ public class PhotoService {
         try {
             photoRepository.insert(photoId, gymMachineId, userId, photoUrl, queueForAdmin);
         } catch (DataIntegrityViolationException e) {
+            // Bound upload pointed at a non-existent gym_machine_id. Orphan
+            // uploads (gymMachineId == null) cannot hit this branch because
+            // machine_photos.gym_machine_id is nullable.
             throw new BusinessException("유효하지 않은 헬스장 기구 ID입니다", HttpStatus.BAD_REQUEST);
         }
 

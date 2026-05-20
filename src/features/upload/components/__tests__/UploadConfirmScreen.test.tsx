@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import * as burnt from 'burnt';
 
 import { usePhotoUpload } from '@/features/upload/hooks/usePhotoUpload';
+import { useCreateGymMachine } from '@/shared/generated/machines/machines';
 
 import { UploadConfirmScreen } from '../UploadConfirmScreen';
 
@@ -9,12 +10,19 @@ jest.mock('@/features/upload/hooks/usePhotoUpload', () => ({
   usePhotoUpload: jest.fn(),
 }));
 
+jest.mock('@/shared/generated/machines/machines', () => ({
+  useCreateGymMachine: jest.fn(),
+}));
+
 const mockBack = jest.fn();
+interface MockParams {
+  gymId: string;
+  gymMachineId?: string;
+  compressedUri: string;
+}
+const mockUseLocalSearchParams = jest.fn<MockParams, []>();
 jest.mock('expo-router', () => ({
-  useLocalSearchParams: () => ({
-    gymMachineId: 'gm-123',
-    compressedUri: 'file:///compressed.webp',
-  }),
+  useLocalSearchParams: () => mockUseLocalSearchParams(),
   useRouter: () => ({ back: mockBack }),
 }));
 
@@ -37,6 +45,7 @@ jest.mock('@/features/upload/components/UploadProgressBar', () => {
 jest.mock('burnt', () => ({ toast: jest.fn() }));
 
 const mockUsePhotoUpload = usePhotoUpload as jest.Mock;
+const mockUseCreateGymMachine = useCreateGymMachine as jest.Mock;
 
 function buildUploadingState(overrides = {}) {
   return {
@@ -96,9 +105,27 @@ function buildErrorState(overrides = {}) {
   };
 }
 
+function buildCreateMutation(overrides: { mutateAsync?: jest.Mock; isPending?: boolean } = {}) {
+  return {
+    mutateAsync:
+      overrides.mutateAsync ??
+      // apiClient returns the bare response body at runtime — unwrapOrvalResponse
+      // is identity. Mock resolves with the unwrapped shape so handleRegister's
+      // toast branch reads pendingReview correctly.
+      jest.fn().mockResolvedValue({ gymMachineId: 'new-gm-1', pendingReview: false }),
+    isPending: overrides.isPending ?? false,
+  };
+}
+
 describe('UploadConfirmScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseLocalSearchParams.mockReturnValue({
+      gymId: 'gym-123',
+      gymMachineId: 'gm-123',
+      compressedUri: 'file:///compressed.webp',
+    });
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation());
   });
 
   it('shows UploadingView (OcrScanAnimation + UploadProgressBar) while uploading', () => {
@@ -155,37 +182,167 @@ describe('UploadConfirmScreen', () => {
     expect(upload).toHaveBeenCalledTimes(2);
   });
 
-  it('registers with direct input text when ocrSucceeded=false', async () => {
+  it('direct-input registration calls createGymMachine with freeFormName + no photoId on bound flow', async () => {
     mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
+    const mutateAsync = jest
+      .fn()
+      .mockResolvedValue({ gymMachineId: 'new-gm-1', pendingReview: true });
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
 
     const { getByTestId } = render(<UploadConfirmScreen />);
 
-    fireEvent.changeText(getByTestId('upload-direct-input'), 'Leg Press');
-
+    fireEvent.changeText(getByTestId('upload-direct-input'), '  Leg Press  ');
     fireEvent.press(getByTestId('upload-register-btn'));
 
     await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        data: { gymId: 'gym-123', freeFormName: 'Leg Press' },
+      });
       expect(burnt.toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: '사진이 등록됐어요!', preset: 'done' }),
+        expect.objectContaining({
+          title: '등록 요청을 보냈어요',
+          message: '검토 후 반영될 거예요',
+          preset: 'done',
+        }),
       );
       expect(mockBack).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('"등록하기" shows success toast and navigates back', async () => {
+  it('closed-list pick on bound upload calls createGymMachine with templateId and omits photoId', async () => {
     mockUsePhotoUpload.mockReturnValue(buildOcrSuccessState());
+    const mutateAsync = jest
+      .fn()
+      .mockResolvedValue({ gymMachineId: 'new-gm-2', pendingReview: false });
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
 
     const { getByTestId } = render(<UploadConfirmScreen />);
 
-    // Select first suggestion to enable register button
+    fireEvent.press(getByTestId('upload-ocr-suggestion-sug-1'));
+    fireEvent.press(getByTestId('upload-register-btn'));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        data: { gymId: 'gym-123', templateId: 'sug-1' },
+      });
+      expect(burnt.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: '등록됐어요', preset: 'done' }),
+      );
+      expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('orphan upload (no gymMachineId) sends photoId so backend binds the photo', async () => {
+    mockUseLocalSearchParams.mockReturnValue({
+      gymId: 'gym-123',
+      gymMachineId: undefined,
+      compressedUri: 'file:///compressed.webp',
+    });
+    mockUsePhotoUpload.mockReturnValue(buildOcrSuccessState());
+    const mutateAsync = jest
+      .fn()
+      .mockResolvedValue({ gymMachineId: 'new-gm-3', pendingReview: false });
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
+
+    const { getByTestId } = render(<UploadConfirmScreen />);
+
+    fireEvent.press(getByTestId('upload-ocr-suggestion-sug-2'));
+    fireEvent.press(getByTestId('upload-register-btn'));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        data: { gymId: 'gym-123', templateId: 'sug-2', photoId: 'photo-1' },
+      });
+    });
+  });
+
+  it('orphan upload + OcrFail direct input sends freeFormName + photoId', async () => {
+    mockUseLocalSearchParams.mockReturnValue({
+      gymId: 'gym-123',
+      gymMachineId: undefined,
+      compressedUri: 'file:///compressed.webp',
+    });
+    mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
+    const mutateAsync = jest
+      .fn()
+      .mockResolvedValue({ gymMachineId: 'new-gm-4', pendingReview: true });
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
+
+    const { getByTestId } = render(<UploadConfirmScreen />);
+
+    fireEvent.changeText(getByTestId('upload-direct-input'), 'Hammer Strength MTS Row');
+    fireEvent.press(getByTestId('upload-register-btn'));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        data: {
+          gymId: 'gym-123',
+          freeFormName: 'Hammer Strength MTS Row',
+          photoId: 'photo-1',
+        },
+      });
+    });
+  });
+
+  it('missing gymId surfaces an error toast and does not call the mutation', async () => {
+    mockUseLocalSearchParams.mockReturnValue({
+      gymId: undefined as unknown as string,
+      gymMachineId: 'gm-123',
+      compressedUri: 'file:///compressed.webp',
+    });
+    mockUsePhotoUpload.mockReturnValue(buildOcrSuccessState());
+    const mutateAsync = jest.fn();
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
+
+    const { getByTestId } = render(<UploadConfirmScreen />);
+
     fireEvent.press(getByTestId('upload-ocr-suggestion-sug-1'));
     fireEvent.press(getByTestId('upload-register-btn'));
 
     await waitFor(() => {
       expect(burnt.toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: '사진이 등록됐어요!', preset: 'done' }),
+        expect.objectContaining({ title: '등록할 헬스장 정보가 없어요', preset: 'error' }),
       );
-      expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+    expect(mutateAsync).not.toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it('synchronous double-tap of register button only calls the mutation once', async () => {
+    mockUsePhotoUpload.mockReturnValue(buildOcrSuccessState());
+    // Pin isPending=true on the second render so the guard catches even if
+    // React Native's Button does not swallow the repeat press.
+    const mutateAsync = jest
+      .fn()
+      .mockResolvedValue({ gymMachineId: 'new-gm-5', pendingReview: false });
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
+
+    const { getByTestId } = render(<UploadConfirmScreen />);
+
+    fireEvent.press(getByTestId('upload-ocr-suggestion-sug-1'));
+    fireEvent.press(getByTestId('upload-register-btn'));
+    fireEvent.press(getByTestId('upload-register-btn'));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('failed mutation surfaces error toast and does not navigate back', async () => {
+    mockUsePhotoUpload.mockReturnValue(buildOcrSuccessState());
+    const mutateAsync = jest.fn().mockRejectedValue(new Error('500'));
+    mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
+
+    const { getByTestId } = render(<UploadConfirmScreen />);
+
+    fireEvent.press(getByTestId('upload-ocr-suggestion-sug-1'));
+    fireEvent.press(getByTestId('upload-register-btn'));
+
+    await waitFor(() => {
+      expect(burnt.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: '등록에 실패했어요', preset: 'error' }),
+      );
+      expect(mockBack).not.toHaveBeenCalled();
     });
   });
 });

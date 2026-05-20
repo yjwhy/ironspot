@@ -38,7 +38,7 @@ jest.mock('expo-file-system/legacy', () => ({
 
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
-  useLocalSearchParams: () => ({ gymMachineId: 'gm-123' }),
+  useLocalSearchParams: () => ({ gymMachineId: 'gm-123', gymId: 'gym-123' }),
   useRouter: () => ({ push: mockPush }),
 }));
 
@@ -126,7 +126,7 @@ describe('UploadPhotoScreen', () => {
     });
   });
 
-  it('"갤러리에서 선택" navigates with gymMachineId and compressedUri when picker returns a valid asset', async () => {
+  it('"갤러리에서 선택" navigates with gymMachineId, gymId, and compressedUri when picker returns a valid asset', async () => {
     mockUseCameraPermissions.mockReturnValue([
       buildPermission({ granted: true }),
       jest.fn(),
@@ -144,7 +144,11 @@ describe('UploadPhotoScreen', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith({
         pathname: '/(upload)/confirm',
-        params: { gymMachineId: 'gm-123', compressedUri: 'file:///compressed.webp' },
+        params: {
+          gymMachineId: 'gm-123',
+          gymId: 'gym-123',
+          compressedUri: 'file:///compressed.webp',
+        },
       });
     });
   });

@@ -76,7 +76,7 @@ class PhotoUploadTest extends IntegrationTestBase {
     @Test
     void uploadRejectsEmptyFile() {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
-        given(storageService.upload(any(), any(), anyString()))
+        given(storageService.upload(any(), any(), any(), anyString()))
             .willReturn("https://example.com/photo.webp");
 
         ByteArrayResource emptyResource = new ByteArrayResource(new byte[0]) {
@@ -108,7 +108,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of(), SafeSearchVerdict.ALLOW, false));
-        given(storageService.upload(any(), any(), anyString()))
+        given(storageService.upload(any(), any(), any(), anyString()))
             .willReturn("https://example.com/octet.webp");
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -145,7 +145,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of("PANATTA", "HIGH", "ROW"), SafeSearchVerdict.ALLOW, false));
-        given(storageService.upload(any(), any(), anyString()))
+        given(storageService.upload(any(), any(), any(), anyString()))
             .willReturn("https://example.com/photo.webp");
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -174,7 +174,7 @@ class PhotoUploadTest extends IntegrationTestBase {
     void uploadSucceedsWithOcrFailure() {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
         doThrow(new RuntimeException("Vision API down")).when(ocrService).analyzeImage(any());
-        given(storageService.upload(any(), any(), anyString()))
+        given(storageService.upload(any(), any(), any(), anyString()))
             .willReturn("https://example.com/photo-noocr.webp");
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -206,7 +206,7 @@ class PhotoUploadTest extends IntegrationTestBase {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         org.mockito.Mockito.verify(storageService, org.mockito.Mockito.never())
-            .upload(any(), any(), anyString());
+            .upload(any(), any(), any(), anyString());
     }
 
     // --- 4b'. PII face detection blocks upload (400, no storage call) ---
@@ -227,7 +227,45 @@ class PhotoUploadTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("얼굴");
         org.mockito.Mockito.verify(storageService, org.mockito.Mockito.never())
-            .upload(any(), any(), anyString());
+            .upload(any(), any(), any(), anyString());
+    }
+
+    // --- 4d. Orphan upload (Phase 5 item 11 slice 2) ---
+
+    @Test
+    void uploadWithoutGymMachineIdInsertsOrphanPhoto() {
+        // OCR confirm screen uploads first (gym_machine unknown yet); the
+        // subsequent POST /api/gym-machines binds the photo via the
+        // bindOrphanGymMachineId NULL-guard added in slice 1.
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of("PANATTA", "HIGH", "ROW"), SafeSearchVerdict.ALLOW, false));
+        given(storageService.upload(any(), any(), any(), anyString()))
+            .willReturn("https://example.com/orphan.webp");
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+        // gymMachineId intentionally omitted — request is multipart-only, the
+        // @RequestParam now defaults to null.
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        Integer orphanCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM machine_photos WHERE photo_url = ? AND gym_machine_id IS NULL",
+            Integer.class, "https://example.com/orphan.webp");
+        assertThat(orphanCount).isEqualTo(1);
+
+        // Lock the storage path contract: orphan uploads must hand null as
+        // the gym_machine_id arg so the prefix derivation in StorageService
+        // takes the ORPHAN_PREFIX branch.
+        org.mockito.Mockito.verify(storageService).upload(
+            any(byte[].class),
+            org.mockito.ArgumentMatchers.isNull(),
+            any(java.util.UUID.class),
+            anyString());
     }
 
     // --- 4c. SafeSearch QUEUE_FOR_ADMIN inserts with is_blinded=TRUE + Slack notify ---
@@ -237,7 +275,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of("LATERAL"), SafeSearchVerdict.QUEUE_FOR_ADMIN, false));
-        given(storageService.upload(any(), any(), anyString()))
+        given(storageService.upload(any(), any(), any(), anyString()))
             .willReturn("https://example.com/queued.webp");
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
