@@ -21,11 +21,18 @@ jest.mock('@/shared/generated/gyms/gyms', () => ({
 const mockUseDeleteGym = useDeleteGym as jest.MockedFunction<typeof useDeleteGym>;
 const mockToast = toast as jest.MockedFunction<typeof toast>;
 
+// Orval-generated onSuccess/onError carry the full TanStack Query signature
+// (`(data, variables, onMutateResult, context) => unknown`). The tests only
+// verify the callback *runs*, so we narrow to a parameterless invariant
+// here — the actual Orval callback is wider, but the no-arg invocation is
+// fine because the captured fn is a closure that ignores its params anyway.
+type CapturedCb = (() => void) | null;
+
 interface DeleteGymStub {
   mutate: jest.Mock;
   isPending: boolean;
-  capturedOnSuccess: (() => void) | null;
-  capturedOnError: (() => void) | null;
+  capturedOnSuccess: CapturedCb;
+  capturedOnError: CapturedCb;
 }
 
 function stubDeleteGym(initialPending = false): DeleteGymStub {
@@ -36,8 +43,10 @@ function stubDeleteGym(initialPending = false): DeleteGymStub {
     capturedOnError: null,
   };
   mockUseDeleteGym.mockImplementation((options) => {
-    stub.capturedOnSuccess = options?.mutation?.onSuccess ?? null;
-    stub.capturedOnError = options?.mutation?.onError ?? null;
+    // Orval's onSuccess/onError signatures include data/variables/context
+    // params; the test stubs ignore them, so the cast widens to no-arg.
+    stub.capturedOnSuccess = (options?.mutation?.onSuccess as CapturedCb | undefined) ?? null;
+    stub.capturedOnError = (options?.mutation?.onError as CapturedCb | undefined) ?? null;
     // The hook only reads `mutate` + `isPending`, so a focused partial
     // cast keeps the stub honest without dragging in the full
     // UseMutationResult shape.
