@@ -37,7 +37,7 @@ export type uploadResponseSuccess = uploadResponse201 & {
 };
 export type uploadResponse = uploadResponseSuccess;
 
-export const getUploadUrl = (params: UploadParams) => {
+export const getUploadUrl = (params?: UploadParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -57,8 +57,8 @@ export const getUploadUrl = (params: UploadParams) => {
  * @summary Upload a machine photo
  */
 export const upload = async (
-  params: UploadParams,
   uploadBody?: UploadBody,
+  params?: UploadParams,
   options?: RequestInit,
 ): Promise<uploadResponse> => {
   const formData = new FormData();
@@ -77,14 +77,14 @@ export const getUploadMutationOptions = <TError = unknown, TContext = unknown>(o
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof upload>>,
     TError,
-    { params: UploadParams; data?: UploadBody },
+    { data?: UploadBody; params?: UploadParams },
     TContext
   >;
   request?: SecondParameter<typeof apiClient>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof upload>>,
   TError,
-  { params: UploadParams; data?: UploadBody },
+  { data?: UploadBody; params?: UploadParams },
   TContext
 > => {
   const mutationKey = ['upload'];
@@ -96,11 +96,11 @@ export const getUploadMutationOptions = <TError = unknown, TContext = unknown>(o
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof upload>>,
-    { params: UploadParams; data?: UploadBody }
+    { data?: UploadBody; params?: UploadParams }
   > = (props) => {
-    const { params, data } = props ?? {};
+    const { data, params } = props ?? {};
 
-    return upload(params, data, requestOptions);
+    return upload(data, params, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -118,7 +118,7 @@ export const useUpload = <TError = unknown, TContext = unknown>(
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof upload>>,
       TError,
-      { params: UploadParams; data?: UploadBody },
+      { data?: UploadBody; params?: UploadParams },
       TContext
     >;
     request?: SecondParameter<typeof apiClient>;
@@ -127,7 +127,7 @@ export const useUpload = <TError = unknown, TContext = unknown>(
 ): UseMutationResult<
   Awaited<ReturnType<typeof upload>>,
   TError,
-  { params: UploadParams; data?: UploadBody },
+  { data?: UploadBody; params?: UploadParams },
   TContext
 > => {
   return useMutation(getUploadMutationOptions(options), queryClient);

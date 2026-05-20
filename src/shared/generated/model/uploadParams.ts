@@ -7,5 +7,5 @@
  */
 
 export type UploadParams = {
-  gymMachineId: string;
+  gymMachineId?: string;
 };
