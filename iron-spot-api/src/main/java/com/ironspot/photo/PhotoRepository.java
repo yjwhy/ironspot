@@ -189,4 +189,25 @@ public class PhotoRepository {
             .where(MACHINE_PHOTOS.ID.eq(photoId))
             .fetchOptional(r -> r.get(MACHINE_PHOTOS.GYM_MACHINE_ID));
     }
+
+    /**
+     * Phase 5 item 11 slice 1: bind an orphan photo (uploaded with NULL
+     * gym_machine_id) to the new contribution row inside the same request.
+     *
+     * The {@code IS NULL} guard is load-bearing: it prevents a caller who
+     * owns an already-bound photo from silently relocating it to a brand-new
+     * contribution row, which would vandalise prior contributions and break
+     * vote / report integrity. Slice 2 changes PhotoService.upload to write
+     * NULL initially so this guard is reachable from the live flow.
+     *
+     * Returns rows affected — 0 means either the photo doesn't exist or it
+     * was already bound to another row; the service reads that as 400.
+     */
+    public int bindOrphanGymMachineId(UUID photoId, UUID newGymMachineId) {
+        return dsl.update(MACHINE_PHOTOS)
+            .set(MACHINE_PHOTOS.GYM_MACHINE_ID, newGymMachineId)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .and(MACHINE_PHOTOS.GYM_MACHINE_ID.isNull())
+            .execute();
+    }
 }

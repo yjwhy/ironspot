@@ -150,6 +150,43 @@ public class MachineRepository {
     }
 
     /**
+     * Phase 5 item 11 slice 1: user-contributed gym_machine insert from the
+     * OCR confirm screen. Two routes share the same code path:
+     *   - templateId set, isCustom = false → closed-list pick, pendingReview = false
+     *   - templateId null, customName + isCustom = true → direct input, pendingReview = true
+     * Caller (MachineService) validates the gym + template + photo and derives
+     * the booleans; this method stays a thin SQL sink matching insertForOwner.
+     *
+     * Duplicate (gym_id, template_id) inserts are not prevented here — that
+     * is a product decision deferred to a follow-up slice (admin promotion UI
+     * decides whether to merge / replace / reject duplicates).
+     */
+    public UUID insertContribution(UUID gymId, UUID templateId, boolean isCustom, String customName, boolean pendingReview) {
+        return dsl.insertInto(GYM_MACHINES)
+            .set(GYM_MACHINES.GYM_ID, gymId)
+            .set(GYM_MACHINES.TEMPLATE_ID, templateId)
+            .set(GYM_MACHINES.IS_CUSTOM, isCustom)
+            .set(GYM_MACHINES.CUSTOM_NAME, customName)
+            .set(GYM_MACHINES.PENDING_REVIEW, pendingReview)
+            .returning(GYM_MACHINES.ID)
+            .fetchOne()
+            .get(GYM_MACHINES.ID);
+    }
+
+    /**
+     * Phase 5 item 11 slice 1: cheap existence check used by the contribution
+     * endpoint's 404 branch (gym soft-deleted or never existed). Cheaper than
+     * findById which materialises the full GymDetailResponse.
+     */
+    public boolean gymExists(UUID gymId) {
+        return dsl.fetchExists(
+            dsl.selectOne()
+                .from(com.ironspot.jooq.Tables.GYMS)
+                .where(com.ironspot.jooq.Tables.GYMS.ID.eq(gymId))
+        );
+    }
+
+    /**
      * Owner-initiated gym_machine update (Task 47 / ADR 0023 Q5 P3). Updates
      * both template_id and quantity in one statement. Returns rows affected
      * so 0 → 404 in the service.
