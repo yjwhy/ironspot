@@ -4,6 +4,7 @@ import type { PhotoUploadResponse } from '@/shared/generated/model';
 import { useUpload } from '@/shared/generated/photos/photos';
 import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
+import { PHOTO_FILENAME, PHOTO_MIME_TYPE } from '../../constants';
 import { usePhotoUpload } from '../usePhotoUpload';
 
 jest.mock('@/shared/generated/photos/photos', () => ({
@@ -21,7 +22,7 @@ const makeMockUpload = (overrides?: Partial<ReturnType<typeof useUpload>>) => ({
 });
 
 const GYM_MACHINE_ID = 'gm-test-1';
-const COMPRESSED_URI = 'file:///tmp/compressed.jpg';
+const COMPRESSED_URI = 'file:///tmp/compressed.webp';
 
 const mockUploadResponse: { data: PhotoUploadResponse; status: 201; headers: Headers } = {
   data: {
@@ -41,10 +42,6 @@ describe('usePhotoUpload', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
-    // Mock global fetch for blob construction from URI
-    global.fetch = jest.fn().mockResolvedValue({
-      blob: jest.fn().mockResolvedValue(new Blob()),
-    });
   });
 
   it('returns correct initial state', () => {
@@ -219,6 +216,35 @@ describe('usePhotoUpload', () => {
     });
 
     expect(result.current.uploadError?.message).toBe('Upload failed');
+  });
+
+  it('sends RN file descriptor (uri + name + type) instead of a typeless Blob', async () => {
+    // Regression guard for Phase 5 item 12: fetch(file://).blob() drops the MIME on iOS,
+    // which made the backend's content-type validator reject the upload before OCR ran.
+    // The hook must pass `{ uri, name, type: 'image/webp' }` so RN's multipart writer
+    // sets the correct part Content-Type and filename.
+    mockMutateAsync.mockResolvedValue(mockUploadResponse);
+    (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => usePhotoUpload(GYM_MACHINE_ID, COMPRESSED_URI), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.upload();
+    });
+
+    expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    interface UploadCallArg {
+      params: { gymMachineId: string };
+      data: { image: { uri: string; name: string; type: string } };
+    }
+    const calls = mockMutateAsync.mock.calls as [UploadCallArg][];
+    expect(calls[0]?.[0].params.gymMachineId).toBe(GYM_MACHINE_ID);
+    expect(calls[0]?.[0].data.image.uri).toBe(COMPRESSED_URI);
+    expect(calls[0]?.[0].data.image.type).toBe(PHOTO_MIME_TYPE);
+    expect(calls[0]?.[0].data.image.name).toBe(PHOTO_FILENAME);
   });
 
   it('upload() clears uploadError before re-attempting', async () => {

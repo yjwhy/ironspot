@@ -3,7 +3,11 @@ import { useState } from 'react';
 import type { MachineTemplateSuggestion, PhotoUploadResponse } from '@/shared/generated/model';
 import { useUpload } from '@/shared/generated/photos/photos';
 
+import { PHOTO_FILENAME, PHOTO_MIME_TYPE } from '../constants';
+
 export type SuggestionPreview = Pick<MachineTemplateSuggestion, 'id' | 'brandName' | 'name'>;
+
+const UPLOAD_STARTED_PROGRESS = 0.5;
 
 interface UploadResult {
   photoId: string;
@@ -18,6 +22,18 @@ interface UsePhotoUploadReturn {
   uploadProgress: number;
   uploadError: Error | null;
   result: UploadResult | null;
+}
+
+// React Native's FormData accepts a `{ uri, name, type }` descriptor in place of a Blob
+// and writes the multipart part with the correct filename + Content-Type. The previous
+// `fetch(file://...).blob()` round-trip dropped the MIME type on iOS (blob.type === ''),
+// which made the backend reject the upload before OCR could run and surfaced the
+// "업로드 중 오류가 발생했어요" screen instead of the OCR result.
+//
+// The return type stays `RnFileDescriptor` so the helper is honest about its shape;
+// the cast to `Blob` happens once at the FormData boundary where it is needed.
+function toRnMultipartFile(uri: string): { uri: string; name: string; type: string } {
+  return { uri, name: PHOTO_FILENAME, type: PHOTO_MIME_TYPE };
 }
 
 function stripScore(suggestion: MachineTemplateSuggestion): SuggestionPreview {
@@ -40,8 +56,6 @@ export function usePhotoUpload(gymMachineId: string, compressedUri: string): Use
   const [uploadError, setUploadError] = useState<Error | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
 
-  const UPLOAD_STARTED_PROGRESS = 0.5;
-
   async function runUpload(): Promise<void> {
     setIsUploading(true);
     setUploadProgress(UPLOAD_STARTED_PROGRESS);
@@ -49,12 +63,9 @@ export function usePhotoUpload(gymMachineId: string, compressedUri: string): Use
     setResult(null);
 
     try {
-      const response = await fetch(compressedUri);
-      const blob = await response.blob();
-
       const uploadResponse = await mutateAsync({
         params: { gymMachineId },
-        data: { image: blob },
+        data: { image: toRnMultipartFile(compressedUri) as unknown as Blob },
       });
 
       setResult(toUploadResult(uploadResponse.data));

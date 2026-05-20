@@ -1,7 +1,7 @@
 import { toast } from 'burnt';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { getInfoAsync } from 'expo-file-system/legacy';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { ImageManipulator } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -9,6 +9,8 @@ import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
 import { pressedOpacity } from '@/shared/lib/pressable';
+
+import { UPLOAD_IMAGE_FORMAT } from '../constants';
 
 const COMPRESS_MAX_WIDTH = 1200;
 const COMPRESS_QUALITY = 0.8;
@@ -21,7 +23,7 @@ async function compressImage(uri: string): Promise<string> {
     try {
       const result = await imageRef.saveAsync({
         compress: COMPRESS_QUALITY,
-        format: SaveFormat.WEBP,
+        format: UPLOAD_IMAGE_FORMAT,
       });
       return result.uri;
     } finally {
