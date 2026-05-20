@@ -134,12 +134,15 @@ describe('MachinePhotoGalleryScreen', () => {
   it('navigates straight to the camera pre-bound to this gym+machine when the FAB is tapped by an authenticated user', () => {
     // Phase 5 item 15b: skip the redundant gym-select step — both gym and
     // machine are already known on this screen, so the camera should land
-    // pre-bound via gymMachineId.
+    // pre-bound via gymMachineId. Carrying gymId too lets UploadConfirmScreen
+    // fall back to the gymId-only contribution path if OCR / template match
+    // diverges from the current machine (e.g. wrong gym_machines row), so a
+    // new contribution row gets bound to the right gym instead of orphaned.
     const { getByLabelText } = render(<MachinePhotoGalleryScreen gymId="g-1" machineId="gm-1" />);
     fireEvent.press(getByLabelText('사진 올리기'));
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/(upload)/photo',
-      params: { gymMachineId: 'gm-1' },
+      params: { gymId: 'g-1', gymMachineId: 'gm-1' },
     });
   });
 
