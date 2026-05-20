@@ -86,6 +86,14 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
       snapPoints={SNAP_POINTS}
       index={1}
       enablePanDownToClose={false}
+      // @gorhom/bottom-sheet v5 defaults `enableDynamicSizing={true}` which
+      // tries to autosize the sheet to its child's measured height. When the
+      // first render is the loading skeleton or an EmptyState that hasn't
+      // measured yet, the sheet locks in at handle-only height (~24pt) and
+      // refuses to expand even after content arrives (seen as a stuck peek
+      // in Maestro hierarchy bounds [0,636][430,660]). Forcing dynamic
+      // sizing off pins the sheet to `snapPoints` regardless of content.
+      enableDynamicSizing={false}
       backdropComponent={undefined}
       bottomInset={tabBarHeight}
       backgroundStyle={BACKGROUND_STYLE}
