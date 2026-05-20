@@ -109,10 +109,10 @@ Reported by the user on a physical iPhone in New Zealand: searching "강남역 �
 **To-do (groomed scope)**
 
 - [ ] Reproduce: dev-build the simulator with `pnpm dev:prod`, set the iOS simulator location to Auckland (`xcrun simctl location booted set -36.8485,174.7633`), search "강남역 헬스장", confirm the same zoomed-out finish. Compare against starting in Seoul.
-- [ ] Decide camera strategy. Three options to grill: (a) jump-then-animate (no-anim `setCamera` to a point near the destination then short `animateCameraTo` for the polish — bypasses the long-distance cinematic), (b) animate with explicit zoom (pass `zoom: derivedFromRadius` and accept a one-frame marker race that the existing `CAMERA_DEFER_MS` already partially mitigates), or (c) avoid animation for jumps over a threshold (e.g. > 500 km — instant snap + defer markers).
-- [ ] Thread `resolvedLocation.radiusKm` into the zoom calculation. Rough mapping: 1 km → 15, 3 km → 13, 5 km → 12 (Web Mercator approximation). Lock the curve via Naver SDK's `fitBounds` if it accepts a centre + radius, otherwise hand-roll.
-- [ ] Side concern: starting camera fallback when GPS resolves outside Korea. Today the first camera is the user's GPS, which means the rare overseas tester (e.g. the developer) sees their current country before the first NL search. Per the locked "Korean users only" scope decision (see end of section), we do not need to support overseas usage — the fix here is a clamp: if `initialLocation` falls outside the Korea bounding box (roughly lat 33–39, lng 124–132), fall back to a fixed Korean centre (서울시청 좌표) at zoom 14 so the first camera always lands on Korea and the subsequent NL search never has to cross a long-distance jump.
-- [ ] Coverage: extend the existing MapScreen camera test (if present) with two cases — short-distance pan keeps zoom 14, long-distance jump lands on `derivedZoom = f(radiusKm)`.
+- [x] Decide camera strategy. Three options to grill: (a) jump-then-animate (no-anim `setCamera` to a point near the destination then short `animateCameraTo` for the polish — bypasses the long-distance cinematic), (b) animate with explicit zoom (pass `zoom: derivedFromRadius` and accept a one-frame marker race that the existing `CAMERA_DEFER_MS` already partially mitigates), or (c) avoid animation for jumps over a threshold (e.g. > 500 km — instant snap + defer markers). → Landed in `d1d95cb` as option (c) implemented as `planNlCamera` in `src/features/map/lib/cameraUtils.ts` — long-distance jumps (>500 km) skip the cinematic by calling `setCamera` instantly then deferring marker reveal via `CAMERA_DEFER_MS`.
+- [x] Thread `resolvedLocation.radiusKm` into the zoom calculation. Rough mapping: 1 km → 15, 3 km → 13, 5 km → 12 (Web Mercator approximation). Lock the curve via Naver SDK's `fitBounds` if it accepts a centre + radius, otherwise hand-roll. → Shipped via `deriveZoomFromRadius` in `cameraUtils.ts`, consumed by `planNlCamera`. Naver SDK does not expose `fitBounds` so the closed-form `15 - log2(radiusKm)` is used per the recommended solution.
+- [x] Side concern: starting camera fallback when GPS resolves outside Korea. Today the first camera is the user's GPS, which means the rare overseas tester (e.g. the developer) sees their current country before the first NL search. Per the locked "Korean users only" scope decision (see end of section), we do not need to support overseas usage — the fix here is a clamp: if `initialLocation` falls outside the Korea bounding box (roughly lat 33–39, lng 124–132), fall back to a fixed Korean centre (서울시청 좌표) at zoom 14 so the first camera always lands on Korea and the subsequent NL search never has to cross a long-distance jump. → Shipped as `clampToKoreaBbox` in `cameraUtils.ts`.
+- [x] Coverage: extend the existing MapScreen camera test (if present) with two cases — short-distance pan keeps zoom 14, long-distance jump lands on `derivedZoom = f(radiusKm)`. → MapScreen itself is excluded from Jest coverage (NaverMapView causes SIGABRT per `docs/harness/lessons.md`), so the camera logic was extracted into `cameraUtils.ts` and unit-tested in `cameraUtils.test.ts` covering both radius-derived zoom and the Auckland-bbox clamp.
 
 **Recommended solution (ui-ux-pro-max review, 2026-05-20)**
 
@@ -135,10 +135,10 @@ Reported by the user during the same 2026-05-20 review on a physical iPhone. The
 
 **To-do (groomed scope)**
 
-- [ ] Frontend: replace the `router.push('/(upload)/gym-select', ...)` in `MapScreen.handleUnregisteredPress` with a direct `useCreateGym(place)` call (Naver place fed straight into the existing mutation).
-- [ ] On mutation success, route to `/(upload)/camera?gymId=<newGymId>` so the user lands on the camera with the new gym pre-bound.
-- [ ] Add an "undo" toast on the camera screen for ~5 s ("○○를 등록했어요 · 취소") that rolls back the gym row if tapped. Persisted state hand-over via expo-router params, not a global store.
-- [ ] Telemetry: count gym-row rollbacks per week — if > 5 % we re-add a confirmation modal.
+- [x] Frontend: replace the `router.push('/(upload)/gym-select', ...)` in `MapScreen.handleUnregisteredPress` with a direct `useCreateGym(place)` call (Naver place fed straight into the existing mutation). → Shipped earlier as part of `978bb92` (item 14 partial), landing the user on `/(upload)/gym-select?selectedGymId=<newGymId>` while `POST /api/gym-machines` was still pending.
+- [x] On mutation success, route to `/(upload)/camera?gymId=<newGymId>` so the user lands on the camera with the new gym pre-bound. → Shipped this PR on `hotfix/phase-5-item-14a-route-to-camera`. Now that item 11 (POST `/api/gym-machines`) is fully wired through slices 1-3, the gym-select intermediate is pure friction and the camera (`UPLOAD_PHOTO_PATHNAME` = `/(upload)/photo`) accepts gymId-only callers since item 11 slice 2 — landing here flows directly into the OCR + closed-list picker (item 11 slice 3). Route param name is `gymId` (matches `UploadPhotoScreen.useLocalSearchParams`).
+- [ ] Add an "undo" toast on the camera screen for ~5 s ("○○를 등록했어요 · 취소") that rolls back the gym row if tapped. Persisted state hand-over via expo-router params, not a global store. → Still pending. Blocked on a `DELETE /api/gyms/<id>` endpoint (does not exist today — backend gym API has only `POST` for create). Item 14a does not enlarge the footgun surface: the create-gym mutation already fires immediately on the unregistered card tap (this PR did not change that), so the "accidentally registered a gym" risk is unchanged. The undo affordance was always orthogonal to which destination route the user lands on. Recommended next slice: backend `DELETE /api/gyms/<id>` (RLS-checked: only the gym's creator + admins; only when no `gym_machines` exist for that gym) + frontend toast on camera screen.
+- [ ] Telemetry: count gym-row rollbacks per week — if > 5 % we re-add a confirmation modal. → Pending alongside the undo.
 
 **Recommended solution (ui-ux-pro-max review, 2026-05-20)**
 
@@ -282,9 +282,9 @@ The bottom-sheet `GymCard` today crowds in (a) every machine name as a comma-sep
 
 **To-do (groomed scope)**
 
-- [ ] Frontend: drop the machine-name list from `GymCard.tsx`. Replace with the single `등록된 기구 N대` line; render `아직 등록된 기구가 없어요` when N=0.
-- [ ] Test coverage: update existing `GymCard.test.tsx` snapshots / assertions to match the new layout; add a case for the `N=0` copy.
-- [ ] Side fix: confirm the same simplification is consistent across NL-search-result cards and filter-result cards (both render through `GymCard`).
+- [x] Frontend: drop the machine-name list from `GymCard.tsx`. Replace with the single `등록된 기구 N대` line; render `아직 등록된 기구가 없어요` when N=0. → Shipped in `978bb92` (items 14+15+19 bundle); `formatMachineCount` + `EMPTY_COUNT_COPY` constants live next to `GymCard`.
+- [x] Test coverage: update existing `GymCard.test.tsx` snapshots / assertions to match the new layout; add a case for the `N=0` copy. → Shipped alongside the component change in `978bb92`.
+- [x] Side fix: confirm the same simplification is consistent across NL-search-result cards and filter-result cards (both render through `GymCard`). → Single `GymCard` component is shared; both paths benefit from the same fix.
 
 **Recommended solution (ui-ux-pro-max review, 2026-05-20)**
 
@@ -322,12 +322,12 @@ Goes in with items 14/15 since they all touch `GymCard` and gym-detail wiring. D
 
 **To-do (groomed scope)**
 
-- [ ] `src/features/gym/types.ts`: `GymBottomSheetMode` list variant 에 `hasActiveFilters?: boolean` optional 필드 추가.
-- [ ] `src/features/map/hooks/useBottomSheetMode.ts`: `hasActiveFilters` 를 파라미터로 받아서 list mode 에 그대로 매핑.
-- [ ] `src/features/map/components/MapScreen.tsx`: 기존 `activeFilterCount` 계산을 `hasActiveFilters = activeFilterCount > 0` 로 파생해 훅에 주입.
-- [ ] `src/features/gym/components/GymBottomSheet.tsx` `ListMode`: `nlEmpty` 분기 다음에 `hasActiveFilters === false` 분기 추가. NL 모드는 그대로 우선.
-- [ ] 테스트: `GymBottomSheet.test.tsx` — 새 카피 + 버튼 비노출 케이스 2개 추가, 기존 "필터 활성 + 결과 0개" 케이스는 `hasActiveFilters: true` 로 명시. `useBottomSheetMode.test.ts` — `hasActiveFilters` 패스스루 케이스 1개 추가.
-- [ ] Korean natural language 준수 (memory `feedback_korean_natural_language`): "아직" 어휘는 contribution 유도 + 데이터 보완 중임을 정직하게 알리는 톤. 영문 템플릿 직역 금지.
+- [x] `src/features/gym/types.ts`: `GymBottomSheetMode` list variant 에 `hasActiveFilters?: boolean` optional 필드 추가. → Shipped in `b6a145c` (items 20+21 bundle).
+- [x] `src/features/map/hooks/useBottomSheetMode.ts`: `hasActiveFilters` 를 파라미터로 받아서 list mode 에 그대로 매핑. → `b6a145c`.
+- [x] `src/features/map/components/MapScreen.tsx`: 기존 `activeFilterCount` 계산을 `hasActiveFilters = activeFilterCount > 0` 로 파생해 훅에 주입. → `b6a145c`.
+- [x] `src/features/gym/components/GymBottomSheet.tsx` `ListMode`: `nlEmpty` 분기 다음에 `hasActiveFilters === false` 분기 추가. NL 모드는 그대로 우선. → `b6a145c`, three-way branch lives in `renderEmptyState` (NL → hasActiveFilters → default).
+- [x] 테스트: `GymBottomSheet.test.tsx` — 새 카피 + 버튼 비노출 케이스 2개 추가, 기존 "필터 활성 + 결과 0개" 케이스는 `hasActiveFilters: true` 로 명시. `useBottomSheetMode.test.ts` — `hasActiveFilters` 패스스루 케이스 1개 추가. → `b6a145c`.
+- [x] Korean natural language 준수 (memory `feedback_korean_natural_language`): "아직" 어휘는 contribution 유도 + 데이터 보완 중임을 정직하게 알리는 톤. 영문 템플릿 직역 금지. → Locked copy "이 주변엔 아직 등록된 헬스장이 없어요 / 지도를 옮기거나 검색해보세요" shipped as-spec.
 
 **Recommended solution (2026-05-20 grill-me)**
 
@@ -365,10 +365,10 @@ return [...gymItems, ...placeItems].sort((a, b) => a.distanceKm - b.distanceKm);
 
 **To-do (groomed scope)**
 
-- [ ] `src/features/gym/components/GymBottomSheet.tsx` `buildSortedList`: 2단 비교자 적용. `(a.kind === 'gym' ? 0 : 1) - (b.kind === 'gym' ? 0 : 1) || a.distanceKm - b.distanceKm`.
-- [ ] 테스트: `GymBottomSheet.test.tsx` — (a) 가까운 미등록 + 먼 등록 → 등록 먼저, (b) 등록만 → 거리 정렬, (c) 미등록만 → 거리 정렬, (d) 동거리 혼합 → 등록 먼저.
-- [ ] Item 20 와 같은 PR 에 묶음. 두 변경 모두 BottomSheet list mode 동작 + 같은 파일 라인 근접.
-- [ ] 코드 코멘트: 거리 기대 위반(먼 등록이 가까운 미등록 앞에) 의 trade-off 를 명시. launch 초기 정책임을 future 독자에게 알림.
+- [x] `src/features/gym/components/GymBottomSheet.tsx` `buildSortedList`: 2단 비교자 적용. `(a.kind === 'gym' ? 0 : 1) - (b.kind === 'gym' ? 0 : 1) || a.distanceKm - b.distanceKm`. → Shipped in `b6a145c` as `buildBottomSheetList` in the extracted `src/features/gym/lib/sort-bottom-sheet-list.ts` (FF cohesion split out of the component). Uses a `KIND_RANK: Record<BottomSheetListItem['kind'], number>` so a third `kind` variant would force a TypeScript error.
+- [x] 테스트: `GymBottomSheet.test.tsx` — (a) 가까운 미등록 + 먼 등록 → 등록 먼저, (b) 등록만 → 거리 정렬, (c) 미등록만 → 거리 정렬, (d) 동거리 혼합 → 등록 먼저. → Test moved into `src/features/gym/lib/__tests__/sort-bottom-sheet-list.test.ts` (purer unit-test home).
+- [x] Item 20 와 같은 PR 에 묶음. 두 변경 모두 BottomSheet list mode 동작 + 같은 파일 라인 근접. → Bundled in `b6a145c`.
+- [x] 코드 코멘트: 거리 기대 위반(먼 등록이 가까운 미등록 앞에) 의 trade-off 를 명시. launch 초기 정책임을 future 독자에게 알림. → Comment lives at the top of `buildBottomSheetList` in `sort-bottom-sheet-list.ts`.
 
 **Recommended solution (2026-05-20 grill-me)**
 
