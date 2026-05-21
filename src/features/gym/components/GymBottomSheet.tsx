@@ -110,19 +110,16 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
       // in Maestro hierarchy bounds [0,636][430,660]). Forcing dynamic
       // sizing off pins the sheet to `snapPoints` regardless of content.
       enableDynamicSizing={false}
-      // Phase 5 hotfix 2026-05-21: gorhom v5 default
-      // `enableContentPanningGesture={true}` makes swipes inside the
-      // content area expand/collapse the sheet until it hits max snap,
-      // at which point the inner FlashList finally starts scrolling.
-      // That's a confusing UX with 3 snap points (25% / 50% / 90%) and
-      // a long search-result list — the user reports at the 50% snap a
-      // swipe-up on a card expands the sheet instead of scrolling, so
-      // they can't reach the unregistered Naver gyms further down the
-      // list. Disabling content panning gestures means the FlashList
-      // scrolls *immediately* on swipe at any snap point, and the
-      // handle stays the sole sheet-resize affordance (the handle has
-      // its own pan responder so dragging it still works).
-      enableContentPanningGesture={false}
+      // Phase 5 hotfix 2026-05-21: gorhom v5 locks the inner scrollable
+      // (`useScrollEventsHandlersDefault.ts:88-93`) whenever the sheet
+      // is not at its EXTENDED snap. The earlier attempt to scroll the
+      // list directly via `enableContentPanningGesture={false}` only
+      // disabled swipe-to-expand; it did NOT lift the scroll-lock, so
+      // at 50% snap the list snapped back to offset 0. The canonical
+      // UX is content-panning enabled (gorhom default) → swipe-up on
+      // a card first expands the sheet to 90%, then a follow-up swipe
+      // scrolls the list freely. We deliberately do NOT pass
+      // `enableContentPanningGesture` so the default applies.
       backdropComponent={undefined}
       backgroundStyle={BACKGROUND_STYLE}
     >
