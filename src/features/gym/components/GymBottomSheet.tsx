@@ -1,11 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  useBottomSheetScrollableCreator,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetFlatList, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { FlashList } from '@shopify/flash-list';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef } from 'react';
 import { Pressable, View } from 'react-native';
@@ -106,30 +101,31 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
       // tries to autosize the sheet to its child's measured height. When the
       // first render is the loading skeleton or an EmptyState that hasn't
       // measured yet, the sheet locks in at handle-only height (~24pt) and
-      // refuses to expand even after content arrives (seen as a stuck peek
-      // in Maestro hierarchy bounds [0,636][430,660]). Forcing dynamic
+      // refuses to expand even after content arrives. Forcing dynamic
       // sizing off pins the sheet to `snapPoints` regardless of content.
       enableDynamicSizing={false}
-      // Phase 5 hotfix 2026-05-21: gorhom v5 locks the inner scrollable
-      // (`useScrollEventsHandlersDefault.ts:88-93`) whenever the sheet
-      // is not at its EXTENDED snap. The earlier attempt to scroll the
-      // list directly via `enableContentPanningGesture={false}` only
-      // disabled swipe-to-expand; it did NOT lift the scroll-lock, so
-      // at 50% snap the list snapped back to offset 0. The canonical
-      // UX is content-panning enabled (gorhom default) → swipe-up on
-      // a card first expands the sheet to 90%, then a follow-up swipe
-      // scrolls the list freely. We deliberately do NOT pass
-      // `enableContentPanningGesture` so the default applies.
+      // Phase 5 hotfix 2026-05-21: gorhom v5 normally locks the inner
+      // scrollable until the sheet hits the EXTENDED snap. We saw on
+      // iOS that this lock fired even at the 90% (max) snap — every
+      // swipe-scroll bounced back to offset 0 (the "scroll happens
+      // then jumps back to top" symptom). Force-UNLOCK by passing
+      // `enableContentPanningGesture={false}` (per useScrollable.ts:
+      // 42-44, that short-circuits the status to UNLOCKED regardless
+      // of sheet state). Trade-off: swipe-up on a card no longer
+      // expands the sheet from a mid snap — the user has to drag the
+      // handle. Acceptable since the canonical UX never worked
+      // reliably for this combo anyway.
+      enableContentPanningGesture={false}
       backdropComponent={undefined}
       backgroundStyle={BACKGROUND_STYLE}
     >
-      <BottomSheetView style={CONTENT_STYLE}>
-        {mode.type === 'detail' ? (
+      {mode.type === 'detail' ? (
+        <BottomSheetView style={CONTENT_STYLE}>
           <DetailMode mode={mode} />
-        ) : (
-          <ListMode mode={mode} listBottomPad={listBottomPad} />
-        )}
-      </BottomSheetView>
+        </BottomSheetView>
+      ) : (
+        <ListMode mode={mode} listBottomPad={listBottomPad} />
+      )}
     </BottomSheetModal>
   );
 }
@@ -177,7 +173,6 @@ function renderEmptyState(mode: ListMode_Props) {
 }
 
 function ListMode({ mode, listBottomPad }: { mode: ListMode_Props; listBottomPad: number }) {
-  const renderScrollComponent = useBottomSheetScrollableCreator();
   const listContentStyle = {
     paddingTop: LIST_PADDING,
     paddingHorizontal: LIST_PADDING,
@@ -194,14 +189,26 @@ function ListMode({ mode, listBottomPad }: { mode: ListMode_Props; listBottomPad
     );
   }
   const items = buildBottomSheetList(mode.userLocation, mode.gyms, mode.unregisteredPlaces);
+  if (items.length === 0) {
+    return <View className="flex-1 p-4">{renderEmptyState(mode)}</View>;
+  }
+  // Phase 5 hotfix 2026-05-21: BottomSheetFlatList. After cycling
+  // through FlashList + renderScrollComponent, plain RN ScrollView,
+  // and BottomSheetScrollView (with and without BottomSheetView
+  // wrapper, with `enableContentPanningGesture={true|false}`, with
+  // 90% vs 100% top snap), none of them scrolled inside the modal
+  // on iOS — every swipe in the card area was a no-op. The
+  // deprecated-but-still-shipped `BottomSheetFlatList` is gorhom v5's
+  // original integrated FlatList wrapper and is the only scroll
+  // primitive in this lib that reliably hooks the touch path on iOS
+  // simulator and device for this config. Lists here are ≤6 items so
+  // FlatList's lack of recycler-style virtualization doesn't matter.
   return (
-    <FlashList
-      renderScrollComponent={renderScrollComponent}
+    <BottomSheetFlatList
       data={items}
       keyExtractor={bottomSheetListItemKey}
       contentContainerStyle={listContentStyle}
       ItemSeparatorComponent={ListSeparator}
-      ListEmptyComponent={renderEmptyState(mode)}
       renderItem={({ item, index }) =>
         item.kind === 'gym' ? (
           <GymCard
