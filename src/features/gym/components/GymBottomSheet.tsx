@@ -4,7 +4,6 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef } from 'react';
 import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
@@ -55,17 +54,15 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   // because BottomSheetView is portaled out of the tab navigator tree and
   // loses the bottom-tab context. We thread the values down as a prop.
   const tabBarHeight = useBottomTabBarHeight();
-  const safeAreaInsets = useSafeAreaInsets();
-  const listBottomPad = Math.max(
-    LIST_BOTTOM_PAD_FOR_TABS,
-    tabBarHeight + safeAreaInsets.bottom + LIST_PADDING,
-  );
-  // Phase 5 hotfix 2026-05-21: `useBottomTabBarHeight()` was observed
-  // returning ~7pt on iPhone 16 Plus sim (likely a portal-context quirk),
-  // so we floor the bottom inset to a safe constant (~83pt = tab bar 49
-  // + iPhone Plus safe-area bottom ~34). This is what keeps the
-  // BottomSheetModal from covering the "지도 / 마이" tab bar.
-  const sheetBottomInset = Math.max(83, tabBarHeight + safeAreaInsets.bottom);
+  // `useBottomTabBarHeight()` already includes the safe-area home-indicator
+  // strip on devices that have one (iPhone Plus reports ~83pt = 49 tab +
+  // 34 safe-area), so we must NOT add `safeAreaInsets.bottom` on top —
+  // doing that overshoots by ~34pt and leaves a visible map strip
+  // between the sheet bottom and the tab bar. The 83pt floor below is
+  // only there because the hook occasionally returns a near-zero value
+  // when read from the BottomSheetModal portal context.
+  const sheetBottomInset = Math.max(83, tabBarHeight);
+  const listBottomPad = Math.max(LIST_BOTTOM_PAD_FOR_TABS, tabBarHeight + LIST_PADDING);
 
   // useFocusEffect (not useEffect) so the portaled BottomSheetModal dismisses when the user
   // leaves the Map tab. Without dismiss-on-blur, the gorhom portal — mounted at the (tabs)
