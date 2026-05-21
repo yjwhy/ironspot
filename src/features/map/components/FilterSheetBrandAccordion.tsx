@@ -1,5 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Pressable, View } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  useReducedMotion,
+} from 'react-native-reanimated';
 
 import { AppText } from '@/shared/components/AppText';
 import { pressedOpacity } from '@/shared/lib/pressable';
@@ -34,6 +40,13 @@ export function FilterSheetBrandAccordion({
   onToggleExpand,
   onToggleTemplate,
 }: FilterSheetBrandAccordionProps) {
+  // Slice c: respect prefers-reduced-motion. When the system flag is on,
+  // expand/collapse and brand-row layout shifts snap instantly. We honour
+  // the preference by skipping the Animated transitions and falling back
+  // to plain View nodes via the `reduceMotion` ternary on `layout`.
+  const reduceMotion = useReducedMotion();
+  const layoutTransition = reduceMotion ? undefined : LinearTransition.springify().damping(18);
+
   if (groups.length === 0) {
     return (
       <View className="items-center px-4 py-12">
@@ -50,7 +63,11 @@ export function FilterSheetBrandAccordion({
       {groups.map((group) => {
         const isExpanded = expandedBrandIds.has(group.brand.id);
         return (
-          <View key={group.brand.id} className="border-b border-border">
+          <Animated.View
+            key={group.brand.id}
+            layout={layoutTransition}
+            className="border-b border-border"
+          >
             <Pressable
               onPress={() => {
                 onToggleExpand(group.brand.id);
@@ -73,8 +90,13 @@ export function FilterSheetBrandAccordion({
                 {String(group.totalCount)}
               </AppText>
             </Pressable>
-            {isExpanded
-              ? group.sections.map((section) => (
+            {isExpanded ? (
+              <Animated.View
+                entering={reduceMotion ? undefined : FadeIn.duration(180)}
+                exiting={reduceMotion ? undefined : FadeOut.duration(140)}
+                layout={layoutTransition}
+              >
+                {group.sections.map((section) => (
                   <View key={section.category.id} className="pb-2">
                     <AppText className="px-4 pt-2 text-caption font-medium text-text-tertiary">
                       {section.category.name} ({section.templates.length})
@@ -88,9 +110,10 @@ export function FilterSheetBrandAccordion({
                       />
                     ))}
                   </View>
-                ))
-              : null}
-          </View>
+                ))}
+              </Animated.View>
+            ) : null}
+          </Animated.View>
         );
       })}
     </View>
