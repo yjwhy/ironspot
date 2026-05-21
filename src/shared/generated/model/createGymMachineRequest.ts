@@ -5,9 +5,11 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
+import type { CreateGymRequest } from './createGymRequest';
 
 export interface CreateGymMachineRequest {
-  gymId: string;
+  gymId?: string;
+  naverPlace?: CreateGymRequest;
   templateId?: string;
   /**
    * @minLength 1

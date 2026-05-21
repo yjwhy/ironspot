@@ -7,6 +7,7 @@
  */
 
 export interface CreateGymMachineResponse {
+  gymId: string;
   gymMachineId: string;
   pendingReview: boolean;
 }
