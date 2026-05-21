@@ -529,6 +529,39 @@ Locked via `/grill-me` session:
 
 ADR 0022 envelope holds at 281 mechanically, but new-user onboarding sees the wrong primary axis. The first-cohort UX value is highest when the filter matches how users actually think about gym equipment. Refactor is contained to one component + one ADR; no backend / DTO / schema changes.
 
+### 24. Bilingual brand labelling — show English + Korean side-by-side
+
+**Current state**
+
+`brands.name` is a single TEXT column (V1 baseline). V8 seeded the 24 launch brands with their canonical English / Latin-script names: `Panatta`, `Hammer Strength`, `Life Fitness`, `Technogym`, `BodyMaster`, `DRAX`, `뉴텍`, etc. The accordion FilterSheet (item 23) renders this single string verbatim — Korean users see "Hammer Strength" and have to mentally re-romanise to recognise "해머 스트렝스". Item 18 solved this asymmetry for machine templates (split `name` → `nameEn` + `nameKo`); brands were left single-column at the time because the catalog was still small.
+
+**Triggering signal**
+
+Same mental-model gap that drove item 18 + item 23. The launch-cohort catalog (item 22, 24 brands) is predominantly Anglo-named, but the Korean cohort thinks in 한글 first — surfacing only English in the brand accordion row + the footer chip prefix loses recognition speed on every glance.
+
+**To-do (groomed scope)**
+
+- [ ] Backend schema: V10 migration. `ALTER TABLE brands ADD COLUMN name_ko TEXT;` Backfill the 24 launch brands — Hangul transliteration for Anglo names (Panatta → 파나타, Hammer Strength → 해머 스트렝스, Life Fitness → 라이프 피트니스, …); `name_ko = name` for already-Hangul rows (뉴텍 등). Keep `name` UNIQUE as the canonical key; do NOT add UNIQUE on `name_ko` (regional spelling variants of the same canonical brand should coexist as long as the English `name` is distinct).
+- [ ] DTO: `BrandResponse` gains `nameKo: string`. `MachineTemplateResponse.brandName` symmetrically splits into `brandName` (en) + `brandNameKo`, mirroring item 18's `nameEn` / `nameKo` pattern. OpenAPI + Orval regen.
+- [ ] FE display helper: `formatBrandLabel(brand)` — `"{nameKo} ({name})"` when both differ, plain `{nameKo}` when they're the same string. Mirrors item 18's `templateDisplayName()` pattern.
+- [ ] Surfaces to update:
+  - FilterSheet brand accordion row (`FilterSheetBrandAccordion.tsx`)
+  - FilterSheet footer chip (`formatMachineTemplateLabel` in `active-filters.ts` — chip prefix uses brand name)
+  - MachinePicker brand step (item 11 slice 3)
+  - GymDetail / MachineList rows that surface brand name alongside machine name
+  - Admin / Owner surfaces (lower priority — internal users tend to use English)
+- [ ] Visual hierarchy decision: lead with Korean and parenthesise English (matches user mental model + item 18 precedent). For global brands with strong English equity (Hammer Strength, Life Fitness) the parenthesised English keeps the global-recognition signal alive.
+- [ ] Tests: `formatBrandLabel` unit cases (both langs differ / same / nameKo empty) + a FilterSheet test that the brand row renders both languages when the seed has both populated.
+
+**Out of scope**
+
+- Localised brand sort order (Korean brands group separately from English-canonical ones). Default alphabetical (locale-aware `localeCompare(name, 'ko')`) is good enough at N=24.
+- Brand logos. Not in the launch catalog; if added, a separate item.
+
+**Reason to ship pre-launch**
+
+Same as items 18, 19, 23: the launch cohort is Korean-speaking, and surfaces that lead with English-only hurt recognition speed on the most common interactions (filter open, chip read, machine row scan). Self-contained — V10 migration + a single helper + ~5 render sites. No NL search wire-format change.
+
 ## Post-launch hypotheses (drive prioritisation)
 
 Each Phase 5 task ships only when the matching hypothesis is either confirmed or falsified by real data. Phase 4 closed without users so all of these are pre-decisions waiting on evidence.
