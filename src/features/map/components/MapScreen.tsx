@@ -173,20 +173,18 @@ export function MapScreen() {
     : null;
 
   function handleRegisterUnregisteredGym(place: UnregisteredPlace) {
-    // Phase 5 item 14: optimistic create + skip the duplicate Naver-search.
-    // Named for the action (mutation + navigate), not the event source —
-    // both the bottom-sheet UnregisteredGymCard tap and the map
-    // UnregisteredMarker tap route here.
-    // Hotfix 2026-05-21: `createGymInFlightRef` is a synchronous re-entry
-    // lock that blocks the double-tap race the React-state guard couldn't
-    // catch (see hook declaration above for the root-cause writeup).
-    // `isCreatingGymFromUnregisteredPlace` is kept as a belt-and-braces
-    // visual gate; ref check fires first.
-    if (createGymInFlightRef.current) return;
-    if (isCreatingGymFromUnregisteredPlace) return;
-    createGymInFlightRef.current = true;
-    setLastPressedUnregisteredPlaceId(place.naverPlaceId);
-    createGym.handleCreateGymFromUnregisteredPlace(place);
+    // Phase 5 item 23 slice d: the old "tap = immediate POST /api/gyms" path
+    // is gone. The CTA on UnregisteredGymDetail (and the legacy map-marker
+    // tap, while still using this handler) now navigates straight to the
+    // photo-capture screen with the Naver place data serialised onto the
+    // route param. The gym itself is created server-side inside the same
+    // transaction as the first photo upload (POST /api/gym-machines with
+    // `naverPlace`, atomic per slice a). No more race lock, no more undo
+    // toast — abandoning the flow leaves zero DB residue.
+    router.push({
+      pathname: UPLOAD_PHOTO_PATHNAME,
+      params: { naverPlace: JSON.stringify(place) },
+    });
   }
 
   const {

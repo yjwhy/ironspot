@@ -45,12 +45,19 @@ export function UploadPhotoScreen() {
   // justRegisteredGym{Id,Name}: Phase 5 item 14b — MapScreen sets these
   // after the unregistered-card-tap optimistic registration so this screen
   // can surface a 5s undo toast. Absent for FAB / gym-detail entry points.
-  const { gymMachineId, gymId, justRegisteredGymId, justRegisteredGymName } = useLocalSearchParams<{
-    gymMachineId?: string;
-    gymId?: string;
-    justRegisteredGymId?: string;
-    justRegisteredGymName?: string;
-  }>();
+  // Phase 5 item 23 slice d: `naverPlace` is a JSON-serialised UnregisteredPlace
+  // threaded from MapScreen for the first-photo-on-unregistered path. When
+  // present (no gymId / no gymMachineId), the confirm screen submits the
+  // contribution via the new `naverPlace` field on POST /api/gym-machines so
+  // gym creation + photo binding commit atomically (slice a).
+  const { gymMachineId, gymId, justRegisteredGymId, justRegisteredGymName, naverPlace } =
+    useLocalSearchParams<{
+      gymMachineId?: string;
+      gymId?: string;
+      justRegisteredGymId?: string;
+      justRegisteredGymName?: string;
+      naverPlace?: string;
+    }>();
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [isCompressing, setIsCompressing] = useState(false);
@@ -68,7 +75,7 @@ export function UploadPhotoScreen() {
       }
       router.push({
         pathname: '/(upload)/confirm',
-        params: { gymMachineId, gymId, compressedUri },
+        params: { gymMachineId, gymId, compressedUri, naverPlace },
       });
     } catch {
       toast({ title: '사진 처리 중 오류가 발생했어요', preset: 'error' });
