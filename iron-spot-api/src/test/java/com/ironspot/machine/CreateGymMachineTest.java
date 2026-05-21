@@ -312,11 +312,15 @@ class CreateGymMachineTest extends IntegrationTestBase {
         // photo in one transaction.
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principal(USER_ID)));
 
+        // Gym name must NOT collide with the seeded "테스트 헬스장" row in
+        // init-test-db.sql — NlSearchControllerIT.genericQueryDedupsAlready
+        // RegisteredNaverPlace runs UPDATE WHERE name='테스트 헬스장' and
+        // would match both rows on a unique-naver_place_id constraint.
         String fakePlaceId = "naverPlace-" + UUID.randomUUID();
         String body = """
             {
               "naverPlace": {
-                "name":"테스트 헬스장",
+                "name":"IT 미등록 시드 헬스장",
                 "address":"서울 강남구 테헤란로 99",
                 "latitude":37.4979,
                 "longitude":127.0276,
