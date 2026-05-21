@@ -60,6 +60,12 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
     LIST_BOTTOM_PAD_FOR_TABS,
     tabBarHeight + safeAreaInsets.bottom + LIST_PADDING,
   );
+  // Phase 5 hotfix 2026-05-21: `useBottomTabBarHeight()` was observed
+  // returning ~7pt on iPhone 16 Plus sim (likely a portal-context quirk),
+  // so we floor the bottom inset to a safe constant (~83pt = tab bar 49
+  // + iPhone Plus safe-area bottom ~34). This is what keeps the
+  // BottomSheetModal from covering the "지도 / 마이" tab bar.
+  const sheetBottomInset = Math.max(83, tabBarHeight + safeAreaInsets.bottom);
 
   // useFocusEffect (not useEffect) so the portaled BottomSheetModal dismisses when the user
   // leaves the Map tab. Without dismiss-on-blur, the gorhom portal — mounted at the (tabs)
@@ -116,6 +122,7 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
       // handle. Acceptable since the canonical UX never worked
       // reliably for this combo anyway.
       enableContentPanningGesture={false}
+      bottomInset={sheetBottomInset}
       backdropComponent={undefined}
       backgroundStyle={BACKGROUND_STYLE}
     >
