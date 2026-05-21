@@ -29,7 +29,7 @@
 | [0021](./0021-filter-sheet-supersedes-panel.md)    | FilterPanel → BottomSheetModal + 검색 + 활성 strip + LoadingType segmented                                                       | Accepted           |
 | [0022](./0022-machine-template-filter.md)          | 머신 템플릿 per-template chip 필터 + 카테고리 라벨 정정 ("운동 부위") + AND 토글                                                 | Superseded by 0024 |
 | [0023](./0023-gym-owner-workflow.md)               | Gym owner workflow: 사업자등록증 OCR 인증 + P3 권한 + 모더레이션 분산 + trust signal                                             | Accepted           |
-| [0024](./0024-accordion-filter-supersedes-0022.md) | Brand-first accordion 필터 UI — 24 brands accordion + 운동 부위 chip row + global search (Phase 5 item 22 의 281 templates 대응) | Draft              |
+| [0024](./0024-accordion-filter-supersedes-0022.md) | Brand-first accordion 필터 UI — 24 brands accordion + 운동 부위 chip row + global search (Phase 5 item 22 의 281 templates 대응) | Accepted           |
 
 ## 포맷
 

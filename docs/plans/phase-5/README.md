@@ -486,13 +486,27 @@ Trade-offs vs ADR 0022:
 
 **To-do**
 
-- [x] Author ADR documenting the supersede + decision rationale (link to item 23 in the README). → Shipped as `docs/adrs/0024-accordion-filter-supersedes-0022.md` (Draft, 2026-05-21). 0022 marked Superseded; index updated. Implementation slices spelled out in the ADR's Consequences → Migration section.
-- [ ] Refactor `FilterSheet.tsx` to accordion layout. `useFilters` state shape unchanged (filterIds in / chip render out); ADR 0022 결정 5 (loading_type drop) + 결정 6 (브랜드 직교) preserved.
-- [ ] FlashList with sticky brand headers for virtualization (ADR 0022 envelope was 200-400; item 22 lands 281).
-- [ ] Reanimated layout animation for accordion expand/collapse (~250ms ease-out enter / ease-in exit).
-- [ ] Cross-filter behaviour: 운동 부위 chip selection narrows the accordion's machine sub-sections; brand expand state preserved across category filter changes.
-- [ ] Empty state per brand when 운동 부위 filter active but brand has 0 machines in that part.
-- [ ] Maestro update: existing filter flows reference 3-section structure; accordion taps need new selectors.
+- [x] Author ADR documenting the supersede + decision rationale (link to item 23 in the README). → Shipped as `docs/adrs/0024-accordion-filter-supersedes-0022.md` (Draft → flipped to Accepted in slice e). 0022 marked Superseded; index updated.
+- [x] Refactor `FilterSheet.tsx` to accordion layout. `useFilters` state shape unchanged (filterIds in / chip render out); ADR 0022 결정 5 (loading_type drop) + 결정 6 (브랜드 직교) preserved. → Slice a (`FilterSheet.tsx` 243 → 280 LOC; new `FilterSheetBrandAccordion`, `FilterSheetMachineRow`, `FilterSheetSelectionStrip`; new `groupTemplatesByBrand` lib). Decisions locked pre-implementation via `/grill-me` session (see notes below).
+- [x] ~~FlashList with sticky brand headers for virtualization~~ → **Reverted to ScrollView (Q7)**. N=24 brand rows always render; only expanded brands render their machine rows, so worst-case row count is ~100 (well under FlashList's threshold). FlashList migration is reserved as a future hedge if catalog growth pushes total rendered rows past ~300.
+- [x] Reanimated layout animation for accordion expand/collapse. → Slice c. `LinearTransition.springify().damping(18)` for the row reflow, `FadeIn 180 / FadeOut 140` for the body. `useReducedMotion()` swaps in undefined for both so the system flag snaps the UI without ceremony.
+- [x] Cross-filter behaviour: 운동 부위 chip selection narrows the accordion's machine sub-sections; brand expand state preserved across category filter changes. → Slice b. `groupTemplatesByBrand` takes `activeCategoryIds`; empty brands hide; brand-row count badges reflect the after-filter count (Q3).
+- [x] Empty state per brand when 운동 부위 filter active but brand has 0 machines in that part. → Slice b — empty brands drop out of the accordion entirely; if every brand drops the body renders "필터에 맞는 머신이 없어요".
+- [x] Maestro update: existing filter flows reference 3-section structure; accordion taps need new selectors. → Slice d. `filter-sheet-flow.yaml` swaps the obsolete "브랜드" / "머신" section assertions for the new "머신 또는 브랜드 검색" global-search-input assertion (only layout-agnostic text marker at sheet open).
+
+**Pre-implementation grilling (2026-05-21)**
+
+Locked via `/grill-me` session:
+
+- **Q1**: search hides unmatched brands (vs grey-out — picked hide because N=24 means grey-out adds visual noise; the spring layout animation makes the restore smooth on clear).
+- **Q2**: NL search auto-expands brands whose `parsedFilters.templateIds` they own; manual open is collapsed.
+- **Q3**: brand-row count badge reflects the after-filter count (matches what the user sees on expand; trips the empty-brand hide path naturally).
+- **Q4**: AND/OR toggle is a footer-strip Switch with the visible label "전체 보유" + verbose accessibilityLabel "선택한 머신 전체를 보유한 헬스장만". Only mounts when ≥2 machines selected.
+- **Q5** (ADR 결정 3, restated): accordion machine rows omit the brand prefix (parent row is right above); footer chips restore the prefix for disambiguation.
+- **Q6**: expand state is local to `FilterSheet` via `useState`; persists across sheet open/close while MapScreen is mounted; NL auto-expand merges into the set (never collapses), search-active state overrides the visible set with every visible brand and clears back on query reset.
+- **Q7**: ScrollView throughout (FlashList rejected for slice a, kept as future hedge).
+- **Q8**: 5 slices a/b/c/d/e.
+- **Q8-extra**: focusing the global search input snaps the sheet to its max snap so the keyboard never hides the brand list.
 
 **Out of scope**
 
