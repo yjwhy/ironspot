@@ -1,5 +1,5 @@
 ---
-Status: Draft (Phase 5 item 23, locked 2026-05-21 — awaiting implementation)
+Status: Accepted (Phase 5 item 23, implemented 2026-05-21 across slices a-e)
 Date: 2026-05-21
 Supersedes: 0022-machine-template-filter.md
 Implements: Phase 5 README item 23

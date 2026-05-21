@@ -1,12 +1,16 @@
 # Filter sheet flow.
-# Verifies the FilterSheet (ADR 0021 BottomSheetModal + ADR 0022 machine
-# template dimension). Tests sheet entry, section labels, machine chip
-# rendering, active strip toggle, and reset CTA.
+# Verifies the FilterSheet (ADR 0021 BottomSheetModal + ADR 0024 brand-first
+# accordion). Sheet entry, 운동 부위 chip row, global search input, sheet
+# dismissal.
+#
+# ADR 0024 supersedes ADR 0022's three-section orthogonal layout — the
+# legacy "브랜드" / "머신" section headers are gone; brands now render as
+# accordion rows with their template count, and machine rows live inside
+# the expanded brand body. The 운동 부위 chip cluster stays at the top as
+# a cross-filter.
 #
 # FilterButton uses accessibilityLabel="필터" — disambiguated post-open via
-# the sheet-only label "운동 부위" (Task 45 renamed from "머신 종류").
-# Legacy "로딩 방식" SegmentedControl was removed in ADR 0022 (chip suffix
-# absorbs the loading type info).
+# the sheet-only label "운동 부위" (the chip cluster header).
 appId: com.ironspot.app
 ---
 - launchApp
@@ -15,8 +19,11 @@ appId: com.ironspot.app
 - extendedWaitUntil:
     visible: '운동 부위'
     timeout: 5000
-- assertVisible: '브랜드'
-- assertVisible: '머신'
+# Global search input (slice b): the sheet exposes a top-level "머신 또는
+# 브랜드 검색" affordance so search matches both dimensions. The legacy
+# per-section search boxes are gone.
+- assertVisible: '머신 또는 브랜드 검색'
+# Confirm the ADR 0022 leftovers are absent.
 - assertNotVisible: '로딩 방식'
 - assertNotVisible: '머신 종류'
 - tapOn: '필터 닫기'

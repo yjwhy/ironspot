@@ -4,9 +4,18 @@ import {
   type BottomSheetBackdropProps,
   BottomSheetModal,
   BottomSheetScrollView,
+  BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react';
-import { Pressable, Switch, View } from 'react-native';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
@@ -15,24 +24,19 @@ import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { Brand, Category, SearchFilters } from '@/shared/types/database';
 
-import { ActiveFilterStrip } from './ActiveFilterStrip';
+import { FilterSheetBrandAccordion } from './FilterSheetBrandAccordion';
 import { FilterSheetSection } from './FilterSheetSection';
-import {
-  type ActiveFilter,
-  formatMachineTemplateLabel,
-  hasActiveSearchFilters,
-  toActiveFilters,
-} from '../lib/active-filters';
+import { FilterSheetSelectionStrip } from './FilterSheetSelectionStrip';
+import { groupTemplatesByBrand } from '../lib/group-templates-by-brand';
 
 const SNAP_POINTS = ['65%', '90%'];
+const SNAP_INDEX_FULL = 1;
 const BACKGROUND_STYLE = { backgroundColor: colors.bg.elevated };
-const SEARCH_THRESHOLD = 8;
-// ADR 0022: 머신 섹션은 항상 검색창 노출 (200-400 templates 예상). 0 은 "임계치
-// 무효화" 의미 — FilterSheetSection 의 `items.length >= searchThreshold` 비교
-// 가 모든 items 길이에 대해 true.
-const MACHINE_SECTION_ALWAYS_SHOW_SEARCH = 0;
 const MIN_FOOTER_BOTTOM_PADDING = 16;
-const AND_TOGGLE_MIN_SELECTION = 2;
+// 6 categories — keep threshold high so FilterSheetSection skips its inline
+// search input. The global search bar at the sheet top covers cross-dimension
+// search across brands + machines (categories are short enough to skim).
+const CATEGORY_SEARCH_THRESHOLD = 999;
 
 export interface FilterSheetRef {
   present: () => void;
@@ -56,6 +60,35 @@ interface FilterSheetProps {
   testID?: string;
 }
 
+/**
+ * Phase 5 item 23 / ADR 0024: brand-first accordion FilterSheet.
+ *
+ * Body composition:
+ *   - 운동 부위 chip row (top, optional cross-filter — Q3 narrows accordion
+ *     contents AND brand-row counts to the chip selection).
+ *   - Global search input (always visible, Q8-extra: focusing snaps the
+ *     sheet to its max snap so the keyboard never hides the chip list).
+ *     Query matches `brand.name` ∪ `template.nameKo` ∪ `template.nameEn`
+ *     case-insensitively — Q1 hides unmatched brands and auto-expands the
+ *     matched ones.
+ *   - Brand accordion (body).
+ *   - Selection footer strip (sticky bottom, surfaces only when ≥1 machine
+ *     is selected; Q4 hosts the "전체 보유" Switch once ≥2 are selected).
+ *
+ * Expand state lifecycle (Q6 + Q2):
+ *   - Persists locally inside this component across sheet open/close.
+ *   - `filters.templateIds` changes (NL search applies a parsedFilters
+ *     payload, or user starts the sheet with templates pre-selected) merge
+ *     the matching brand ids into the expanded set so the user lands inside
+ *     the relevant accordions without manual taps.
+ *   - Active search query replaces the visible expand set with every
+ *     visible brand — when the user clears the query the manual expand
+ *     state restores cleanly.
+ *
+ * `useFilters` state shape is unchanged — only the UI layer changes. The
+ * backend's `searchInBounds` DTO (brandIds + categoryIds + templateIds +
+ * scope) is unchanged, matching ADR 0024's "no backend change" promise.
+ */
 export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function FilterSheet(
   {
     brands,
@@ -63,9 +96,9 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     machineTemplates,
     brandsError = false,
     categoriesError = false,
-    machineTemplatesError = false,
+    machineTemplatesError: _machineTemplatesError = false,
     filters,
-    onToggleBrand,
+    onToggleBrand: _onToggleBrand,
     onToggleCategory,
     onToggleTemplate,
     onSetMachineFilterMode,
@@ -77,6 +110,10 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
 ) {
   const sheetRef = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
   const insets = useSafeAreaInsets();
+  const [expandedBrandIds, setExpandedBrandIds] = useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  );
+  const [searchQuery, setSearchQuery] = useState('');
 
   useImperativeHandle(
     ref,
@@ -87,22 +124,61 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     [],
   );
 
-  // ADR 0022: machine chip labels include brand prefix + loading suffix.
-  // Project the template list into the {id, name} shape that FilterSheetSection
-  // expects, with the rich label as the name.
-  const machineSectionItems = useMemo(
+  const brandGroups = useMemo(
     () =>
-      machineTemplates.map((template) => ({
-        id: template.id,
-        name: formatMachineTemplateLabel(template),
-      })),
-    [machineTemplates],
+      groupTemplatesByBrand({
+        brands,
+        categories,
+        templates: machineTemplates,
+        activeCategoryIds: filters.categoryIds,
+        searchQuery,
+      }),
+    [brands, categories, machineTemplates, filters.categoryIds, searchQuery],
   );
 
-  const activeFilters = useMemo(
-    () => toActiveFilters({ filters, brands, categories, machineTemplates }),
-    [filters, brands, categories, machineTemplates],
+  // Q2 / NL auto-expand: whenever the externally-set templateIds change
+  // (NL search applied parsedFilters, or a parent set the value pre-mount),
+  // ensure the brands that own those templates are in the expanded set so
+  // the user lands inside the relevant accordions. Merge-only — never
+  // auto-collapses, so a user expanding manually and then receiving an NL
+  // result preserves both sets.
+  useEffect(
+    function autoExpandFromSelectedTemplates() {
+      if (filters.templateIds.length === 0) return;
+      const brandIdsForSelection = new Set<string>();
+      for (const templateId of filters.templateIds) {
+        const template = machineTemplates.find((t) => t.id === templateId);
+        if (template !== undefined) brandIdsForSelection.add(template.brandId);
+      }
+      if (brandIdsForSelection.size === 0) return;
+      setExpandedBrandIds((prev) => {
+        let next = prev;
+        let mutated = false;
+        for (const brandId of brandIdsForSelection) {
+          if (!next.has(brandId)) {
+            if (!mutated) {
+              next = new Set(prev);
+              mutated = true;
+            }
+            (next as Set<string>).add(brandId);
+          }
+        }
+        return mutated ? next : prev;
+      });
+    },
+    [filters.templateIds, machineTemplates],
   );
+
+  // While search is active, every visible brand reveals its matching
+  // templates by default so the user can scan results without an extra
+  // tap. Clearing the query falls back to the user's saved expand set.
+  const isSearching = searchQuery.trim() !== '';
+  const displayedExpandedBrandIds = useMemo(() => {
+    if (!isSearching) return expandedBrandIds;
+    const next = new Set<string>();
+    for (const group of brandGroups) next.add(group.brand.id);
+    return next;
+  }, [isSearching, brandGroups, expandedBrandIds]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -111,36 +187,32 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     [],
   );
 
-  function handleRemoveActive(filter: ActiveFilter) {
-    switch (filter.kind) {
-      case 'brand':
-        onToggleBrand(filter.id);
-        return;
-      case 'category':
-        onToggleCategory(filter.id);
-        return;
-      case 'machineTemplate':
-        onToggleTemplate(filter.id);
-        return;
-      default: {
-        // Exhaustive check — adding a new ActiveFilterKind triggers TS error here.
-        const _exhaustive: never = filter.kind;
-        throw new Error(`Unhandled active filter kind: ${String(_exhaustive)}`);
+  function toggleExpand(brandId: string) {
+    setExpandedBrandIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(brandId)) {
+        next.delete(brandId);
+      } else {
+        next.add(brandId);
       }
-    }
+      return next;
+    });
   }
 
   function handleClose() {
     sheetRef.current?.dismiss();
   }
 
-  function handleAndModeToggle(value: boolean) {
-    onSetMachineFilterMode(value ? 'and' : 'or');
+  function handleSearchFocus() {
+    // Q8-extra: snap to full so the keyboard never hides the brand list.
+    sheetRef.current?.snapToIndex(SNAP_INDEX_FULL);
+  }
+
+  function handleSearchClear() {
+    setSearchQuery('');
   }
 
   const footerBottomPadding = Math.max(insets.bottom, MIN_FOOTER_BOTTOM_PADDING);
-  const hasActiveFilters = hasActiveSearchFilters(filters);
-  const showAndToggle = filters.templateIds.length >= AND_TOGGLE_MIN_SELECTION;
 
   return (
     <BottomSheetModal
@@ -165,78 +237,75 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
           </Pressable>
         </View>
 
-        <BottomSheetScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 16 }}
-        >
-          {hasActiveFilters ? (
-            <ActiveFilterStrip filters={activeFilters} onRemove={handleRemoveActive} />
-          ) : null}
+        <View className="px-5 pb-3">
+          <View className="flex-row items-center gap-2 rounded-lg bg-bg-muted px-3 py-2">
+            <MaterialIcons name="search" size={16} color={colors.text.tertiary} />
+            <BottomSheetTextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onFocus={handleSearchFocus}
+              placeholder="머신 또는 브랜드 검색"
+              placeholderTextColor={colors.text.tertiary}
+              returnKeyType="search"
+              accessibilityLabel="머신 또는 브랜드 검색"
+              testID="filter-sheet-global-search"
+              style={{ flex: 1, color: colors.text.primary, fontSize: 14 }}
+            />
+            {isSearching ? (
+              <Pressable
+                onPress={handleSearchClear}
+                accessibilityRole="button"
+                accessibilityLabel="검색어 지우기"
+                hitSlop={8}
+                style={pressedOpacity}
+              >
+                <MaterialIcons name="close" size={16} color={colors.text.secondary} />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
 
-          <FilterSheetSection
-            label="운동 부위"
-            items={categories}
-            selectedIds={filters.categoryIds}
-            isError={categoriesError}
-            searchThreshold={SEARCH_THRESHOLD}
-            searchPlaceholder="운동 부위 검색"
-            onToggle={onToggleCategory}
-          />
+        <BottomSheetScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+          <View className="gap-4 px-5 pb-3">
+            <FilterSheetSection
+              label="운동 부위"
+              items={categories}
+              selectedIds={filters.categoryIds}
+              isError={categoriesError}
+              searchThreshold={CATEGORY_SEARCH_THRESHOLD}
+              searchPlaceholder=""
+              onToggle={onToggleCategory}
+            />
+          </View>
 
-          <FilterSheetSection
-            label="브랜드"
-            items={brands}
-            selectedIds={filters.brandIds}
-            isError={brandsError}
-            searchThreshold={SEARCH_THRESHOLD}
-            searchPlaceholder="브랜드 검색"
-            onToggle={onToggleBrand}
-          />
-
-          <FilterSheetSection
-            label="머신"
-            items={machineSectionItems}
-            selectedIds={filters.templateIds}
-            isError={machineTemplatesError}
-            searchThreshold={MACHINE_SECTION_ALWAYS_SHOW_SEARCH}
-            searchPlaceholder="머신 검색"
-            onToggle={onToggleTemplate}
-          />
-
-          {showAndToggle ? (
-            <View className="flex-row items-center justify-between rounded-lg bg-bg-muted px-3 py-3">
-              <AppText className="flex-1 text-body-sm text-text-primary">
-                선택한 머신 모두 보유한 헬스장만
+          {brandsError ? (
+            <View className="items-center px-4 py-12">
+              <MaterialIcons name="error-outline" size={32} color={colors.text.tertiary} />
+              <AppText className="mt-3 text-center text-body-sm text-text-secondary">
+                브랜드 정보를 불러오지 못했어요
               </AppText>
-              <Switch
-                accessibilityLabel="선택한 머신 모두 보유한 헬스장만"
-                value={filters.machineFilterMode === 'and'}
-                onValueChange={handleAndModeToggle}
-                trackColor={{ false: colors.bg.subtle, true: colors.accent.DEFAULT }}
-                thumbColor={colors.bg.elevated}
-              />
             </View>
-          ) : null}
+          ) : (
+            <FilterSheetBrandAccordion
+              groups={brandGroups}
+              expandedBrandIds={displayedExpandedBrandIds}
+              selectedTemplateIds={filters.templateIds}
+              onToggleExpand={toggleExpand}
+              onToggleTemplate={onToggleTemplate}
+            />
+          )}
         </BottomSheetScrollView>
 
-        {hasActiveFilters ? (
-          <View
-            className="flex-row items-center justify-between border-t border-border bg-bg-elevated px-5 pt-3"
-            style={{ paddingBottom: footerBottomPadding }}
-          >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="필터 전체 해제"
-              onPress={onResetAll}
-              style={pressedOpacity}
-              className="h-10 justify-center"
-            >
-              <AppText className="text-body-md font-medium text-accent">전체 해제</AppText>
-            </Pressable>
-            <AppText className="text-body-sm text-text-tertiary">
-              {`${String(activeFilters.length)}개 활성`}
-            </AppText>
-          </View>
-        ) : null}
+        <View style={{ paddingBottom: footerBottomPadding }}>
+          <FilterSheetSelectionStrip
+            selectedTemplateIds={filters.templateIds}
+            templates={machineTemplates}
+            machineFilterMode={filters.machineFilterMode}
+            onRemoveTemplate={onToggleTemplate}
+            onResetAll={onResetAll}
+            onSetMachineFilterMode={onSetMachineFilterMode}
+          />
+        </View>
       </View>
     </BottomSheetModal>
   );
