@@ -6,8 +6,7 @@
  * OpenAPI spec version: v1
  */
 
-export interface CreateGymMachineResponse {
-  gymId: string;
-  gymMachineId: string;
-  pendingReview: boolean;
+export interface QuotaInfo {
+  used: number;
+  limit: number;
 }

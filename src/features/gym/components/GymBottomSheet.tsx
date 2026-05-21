@@ -1,11 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  useBottomSheetScrollableCreator,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetFlatList, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { FlashList } from '@shopify/flash-list';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef } from 'react';
 import { Pressable, View } from 'react-native';
@@ -23,6 +18,7 @@ import { GymCard } from './GymCard';
 import { GymCardSkeleton } from './GymCardSkeleton';
 import { GymDetail } from './GymDetail';
 import { UnregisteredGymCard } from './UnregisteredGymCard';
+import { UnregisteredGymDetail } from './UnregisteredGymDetail';
 
 export type { GymBottomSheetMode };
 
@@ -38,9 +34,15 @@ interface GymBottomSheetProps {
 const SNAP_POINTS = ['25%', '50%', '90%'];
 
 const LIST_PADDING = 16;
-const LIST_CONTENT_STYLE = { padding: LIST_PADDING };
 const BACKGROUND_STYLE = { backgroundColor: '#FFFFFF' };
 const CONTENT_STYLE = { flex: 1 };
+// Phase 5 hotfix 2026-05-21: tab bar (~49pt) + iPhone Plus safe-area bottom
+// (~34pt) = ~83pt. We empirically observed `useBottomTabBarHeight()` returning
+// ~7pt inside the bottom-sheet portal context, so we don't trust it as a
+// dynamic source. The list reserves this fixed pad as bottom-of-content
+// breathing room so the last card never sits flush against (or behind) the
+// tab bar regardless of how gorhom positions the sheet itself.
+const LIST_BOTTOM_PAD_FOR_TABS = 96;
 
 const SKELETON_COUNT = 3;
 const PRESENT_DELAY_MS = 300;
@@ -48,7 +50,20 @@ const SNAP_DELAY_MS = 50;
 
 export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   const ref = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
+  // Phase 5 hotfix 2026-05-21: these hooks must be read in the parent (which
+  // is mounted inside the Tab.Screen) — calling them from ListMode crashes
+  // because BottomSheetView is portaled out of the tab navigator tree and
+  // loses the bottom-tab context. We thread the values down as a prop.
   const tabBarHeight = useBottomTabBarHeight();
+  // `useBottomTabBarHeight()` already includes the safe-area home-indicator
+  // strip on devices that have one (iPhone Plus reports ~83pt = 49 tab +
+  // 34 safe-area), so we must NOT add `safeAreaInsets.bottom` on top —
+  // doing that overshoots by ~34pt and leaves a visible map strip
+  // between the sheet bottom and the tab bar. The 83pt floor below is
+  // only there because the hook occasionally returns a near-zero value
+  // when read from the BottomSheetModal portal context.
+  const sheetBottomInset = Math.max(83, tabBarHeight);
+  const listBottomPad = Math.max(LIST_BOTTOM_PAD_FOR_TABS, tabBarHeight + LIST_PADDING);
 
   // useFocusEffect (not useEffect) so the portaled BottomSheetModal dismisses when the user
   // leaves the Map tab. Without dismiss-on-blur, the gorhom portal — mounted at the (tabs)
@@ -86,13 +101,54 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
       snapPoints={SNAP_POINTS}
       index={1}
       enablePanDownToClose={false}
+      // @gorhom/bottom-sheet v5 defaults `enableDynamicSizing={true}` which
+      // tries to autosize the sheet to its child's measured height. When the
+      // first render is the loading skeleton or an EmptyState that hasn't
+      // measured yet, the sheet locks in at handle-only height (~24pt) and
+      // refuses to expand even after content arrives. Forcing dynamic
+      // sizing off pins the sheet to `snapPoints` regardless of content.
+      enableDynamicSizing={false}
+      // Phase 5 hotfix 2026-05-21: gorhom v5 normally locks the inner
+      // scrollable until the sheet hits the EXTENDED snap. We saw on
+      // iOS that this lock fired even at the 90% (max) snap — every
+      // swipe-scroll bounced back to offset 0 (the "scroll happens
+      // then jumps back to top" symptom). Force-UNLOCK by passing
+      // `enableContentPanningGesture={false}` (per useScrollable.ts:
+      // 42-44, that short-circuits the status to UNLOCKED regardless
+      // of sheet state). Trade-off: swipe-up on a card no longer
+      // expands the sheet from a mid snap — the user has to drag the
+      // handle. Acceptable since the canonical UX never worked
+      // reliably for this combo anyway.
+      enableContentPanningGesture={false}
+      bottomInset={sheetBottomInset}
       backdropComponent={undefined}
-      bottomInset={tabBarHeight}
       backgroundStyle={BACKGROUND_STYLE}
     >
-      <BottomSheetView style={CONTENT_STYLE}>
-        {mode.type === 'detail' ? <DetailMode mode={mode} /> : <ListMode mode={mode} />}
-      </BottomSheetView>
+      {(() => {
+        switch (mode.type) {
+          case 'detail':
+            return (
+              <BottomSheetView style={CONTENT_STYLE}>
+                <DetailMode mode={mode} />
+              </BottomSheetView>
+            );
+          case 'unregistered-detail':
+            return (
+              <BottomSheetView style={CONTENT_STYLE}>
+                <UnregisteredGymDetail
+                  place={mode.place}
+                  distanceKm={mode.distanceKm}
+                  onClose={mode.onCloseDetail}
+                  onPressRegisterFirstPhoto={() => {
+                    mode.onPressRegisterFirstPhoto(mode.place);
+                  }}
+                />
+              </BottomSheetView>
+            );
+          case 'list':
+            return <ListMode mode={mode} listBottomPad={listBottomPad} />;
+        }
+      })()}
     </BottomSheetModal>
   );
 }
@@ -139,8 +195,12 @@ function renderEmptyState(mode: ListMode_Props) {
   );
 }
 
-function ListMode({ mode }: { mode: ListMode_Props }) {
-  const renderScrollComponent = useBottomSheetScrollableCreator();
+function ListMode({ mode, listBottomPad }: { mode: ListMode_Props; listBottomPad: number }) {
+  const listContentStyle = {
+    paddingTop: LIST_PADDING,
+    paddingHorizontal: LIST_PADDING,
+    paddingBottom: listBottomPad,
+  };
 
   if (mode.isLoading) {
     return (
@@ -152,14 +212,26 @@ function ListMode({ mode }: { mode: ListMode_Props }) {
     );
   }
   const items = buildBottomSheetList(mode.userLocation, mode.gyms, mode.unregisteredPlaces);
+  if (items.length === 0) {
+    return <View className="flex-1 p-4">{renderEmptyState(mode)}</View>;
+  }
+  // Phase 5 hotfix 2026-05-21: BottomSheetFlatList. After cycling
+  // through FlashList + renderScrollComponent, plain RN ScrollView,
+  // and BottomSheetScrollView (with and without BottomSheetView
+  // wrapper, with `enableContentPanningGesture={true|false}`, with
+  // 90% vs 100% top snap), none of them scrolled inside the modal
+  // on iOS — every swipe in the card area was a no-op. The
+  // deprecated-but-still-shipped `BottomSheetFlatList` is gorhom v5's
+  // original integrated FlatList wrapper and is the only scroll
+  // primitive in this lib that reliably hooks the touch path on iOS
+  // simulator and device for this config. Lists here are ≤6 items so
+  // FlatList's lack of recycler-style virtualization doesn't matter.
   return (
-    <FlashList
-      renderScrollComponent={renderScrollComponent}
+    <BottomSheetFlatList
       data={items}
       keyExtractor={bottomSheetListItemKey}
-      contentContainerStyle={LIST_CONTENT_STYLE}
+      contentContainerStyle={listContentStyle}
       ItemSeparatorComponent={ListSeparator}
-      ListEmptyComponent={renderEmptyState(mode)}
       renderItem={({ item, index }) =>
         item.kind === 'gym' ? (
           <GymCard

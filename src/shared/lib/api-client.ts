@@ -38,11 +38,22 @@ export async function apiClient<T>(url: string, options?: RequestInit): Promise<
     return await _ky(sanitisedUrl, { ...kyOptions, headers }).json<T>();
   } catch (err: unknown) {
     if (err instanceof HTTPError && err.response.status === 401) {
+      // Guest users (no initial token) hit 401 because the endpoint
+      // requires auth, not because their session expired. Re-throw the
+      // original HTTPError so callers' onError handlers can detect
+      // status 401 and surface the right CTA (e.g. NL Search's
+      // "로그인이 필요해요" alert). Same when the refresh attempt fails:
+      // throw the original 401 instead of a status-less generic Error,
+      // which made every auth failure fall through to a "검색에
+      // 실패했어요" toast.
+      if (!token) {
+        throw err;
+      }
       await supabase.auth.refreshSession();
       const { data: refreshed } = await supabase.auth.getSession();
       const newToken = refreshed.session?.access_token;
       if (!newToken) {
-        throw new Error('Session expired — please log in again');
+        throw err;
       }
       headers.set('Authorization', `Bearer ${newToken}`);
       return await _ky(sanitisedUrl, { ...kyOptions, headers }).json<T>();

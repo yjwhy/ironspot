@@ -52,7 +52,7 @@ public class NlSearchService {
             // failure does not refund the call. Quota-rejection (429) propagates as
             // BusinessException and emits a breadcrumb via the existing catch — gives
             // ops a per-user "hammering at limit" signal in Sentry.
-            quotaService.checkAndIncrement(principal);
+            int quotaUsed = quotaService.checkAndIncrement(principal);
             dsl = llmClient.parse(req.query());
             if (dsl.error() != null) {
                 outcome = "dsl_error";
@@ -73,7 +73,8 @@ public class NlSearchService {
                 ? fetchUnregisteredNaverPlaces(req.query())
                 : List.of();
             return new NlSearchResponse(
-                gyms, interpretation, totalCount, parsedFilters, location, unregistered);
+                gyms, interpretation, totalCount, parsedFilters, location, unregistered,
+                new NlSearchResponse.QuotaInfo(quotaUsed, NlSearchQuotaService.MONTHLY_LIMIT));
         } catch (BusinessException e) {
             if ("success".equals(outcome)) outcome = "business_error:" + e.getStatus().value();
             throw e;

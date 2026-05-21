@@ -7,6 +7,7 @@ import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
 import { InterpretationChip } from '@/features/search/components/InterpretationChip';
+import { NlQuotaHint } from '@/features/search/components/NlQuotaHint';
 import { PermissionDeniedBadge } from '@/features/search/components/PermissionDeniedBadge';
 import { TopSearchBar } from '@/features/search/components/TopSearchBar';
 import { useNlSearch } from '@/features/search/hooks/useNlSearch';
@@ -124,6 +125,18 @@ export function MapScreen() {
   const [lastPressedUnregisteredPlaceId, setLastPressedUnregisteredPlaceId] = useState<
     string | null
   >(null);
+  // Phase 5 hotfix: real-device + sim both observed firing useCreateGym
+  // TWICE on a single unregistered-card tap (two parallel POST /api/gyms,
+  // one commits, the other cancels mid-request). Root cause: the React
+  // state guard (`isCreatingGymFromUnregisteredPlace`) updates one tick
+  // after `mutation.mutate` and a second touch event from RN Pressable
+  // (or the UnregisteredMarker tap propagating from the map view) slips
+  // through before isPending becomes true. Backend handles dedup on
+  // naverPlaceId so the second POST returns the same gym, but the
+  // cancelled one's onError fires burnt's "등록 실패" toast — the user
+  // sees an error toast even though a gym row got created. useRef-based
+  // lock blocks re-entry synchronously, no React-state round-trip.
+  const createGymInFlightRef = useRef(false);
   const createGym = useCreateGym({
     onSuccess: (gym) => {
       // Phase 5 item 14a: land the user directly on the camera so the gym
@@ -133,20 +146,25 @@ export function MapScreen() {
       // useful while POST /api/gym-machines was still pending — now that
       // item 11 has shipped, that step is pure friction.
       //
-      // TODO(docs/plans/phase-5/README.md item 14b): once DELETE
-      // /api/gyms/<id> lands, surface a 5s "○○를 등록했어요 · 취소" undo
-      // toast on the camera screen that rolls back this gym row. The
-      // mutation already fires immediately on tap (same as before this
-      // commit) so the footgun surface is unchanged — landing on the
-      // camera does not enlarge it.
+      // Phase 5 item 14b: thread the just-registered gym's id + name
+      // into the camera route so UploadPhotoScreen can surface a 5s undo
+      // toast (DELETE /api/gyms/{id} from item 14a). Other entry points
+      // (FAB, gym-detail) push without these params so the toast stays
+      // scoped to the unregistered-card-tap path where the footgun lives.
       setLastPressedUnregisteredPlaceId(null);
+      createGymInFlightRef.current = false;
       router.push({
         pathname: UPLOAD_PHOTO_PATHNAME,
-        params: { gymId: gym.id },
+        params: {
+          gymId: gym.id,
+          justRegisteredGymId: gym.id,
+          justRegisteredGymName: gym.name,
+        },
       });
     },
     onError: () => {
       setLastPressedUnregisteredPlaceId(null);
+      createGymInFlightRef.current = false;
     },
   });
   const isCreatingGymFromUnregisteredPlace = createGym.isPending;
@@ -158,9 +176,15 @@ export function MapScreen() {
     // Phase 5 item 14: optimistic create + skip the duplicate Naver-search.
     // Named for the action (mutation + navigate), not the event source —
     // both the bottom-sheet UnregisteredGymCard tap and the map
-    // UnregisteredMarker tap route here. Ignore re-taps while a creation is
-    // in flight; `isPending` covers any other in-flight place too.
+    // UnregisteredMarker tap route here.
+    // Hotfix 2026-05-21: `createGymInFlightRef` is a synchronous re-entry
+    // lock that blocks the double-tap race the React-state guard couldn't
+    // catch (see hook declaration above for the root-cause writeup).
+    // `isCreatingGymFromUnregisteredPlace` is kept as a belt-and-braces
+    // visual gate; ref check fires first.
+    if (createGymInFlightRef.current) return;
     if (isCreatingGymFromUnregisteredPlace) return;
+    createGymInFlightRef.current = true;
     setLastPressedUnregisteredPlaceId(place.naverPlaceId);
     createGym.handleCreateGymFromUnregisteredPlace(place);
   }
@@ -179,7 +203,7 @@ export function MapScreen() {
       router.push(`/gym/${gymId}/machine/${machineId}`);
     },
     unregisteredPlaces,
-    onUnregisteredPress: handleRegisterUnregisteredGym,
+    onPressRegisterFirstPhoto: handleRegisterUnregisteredGym,
     pendingUnregisteredPlaceId,
     nlEmpty:
       source.kind === 'nl' &&
@@ -313,11 +337,14 @@ export function MapScreen() {
             onClose={nlSearch.clearValidationError}
           />
         ) : source.kind === 'nl' ? (
-          <InterpretationChip
-            text={source.response.interpretation}
-            tone={isNlZeroResult ? 'zero' : 'success'}
-            onClose={handleNlChipClose}
-          />
+          <>
+            <InterpretationChip
+              text={source.response.interpretation}
+              tone={isNlZeroResult ? 'zero' : 'success'}
+              onClose={handleNlChipClose}
+            />
+            <NlQuotaHint used={source.response.quota.used} limit={source.response.quota.limit} />
+          </>
         ) : null}
       </View>
 

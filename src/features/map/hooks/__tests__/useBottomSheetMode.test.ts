@@ -32,6 +32,7 @@ function makeParams(overrides: Partial<Parameters<typeof useBottomSheetMode>[0]>
     userLocation: USER_LOCATION,
     clearFilters: jest.fn(),
     onPressMachine: jest.fn(),
+    onPressRegisterFirstPhoto: jest.fn(),
     ...overrides,
   };
 }

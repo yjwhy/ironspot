@@ -4,6 +4,7 @@ import * as burnt from 'burnt';
 import { useCreateGym as useCreateGymMutation } from '@/shared/generated/gyms/gyms';
 import type { GymDetailResponse } from '@/shared/generated/model/gymDetailResponse';
 import type { NaverPlaceResult } from '@/shared/generated/model/naverPlaceResult';
+import { HTTPError, TimeoutError } from '@/shared/lib/api-client';
 
 import { useCreateGym } from '../useCreateGym';
 
@@ -119,12 +120,38 @@ describe('useCreateGym', () => {
     expect(onSuccess).toHaveBeenCalledWith(CREATED_GYM);
   });
 
-  it('shows error toast on mutation error', () => {
+  it('shows error toast on HTTPError (real server failure)', () => {
     const { getCaptured } = setupHook();
 
-    getCaptured().mutation?.onError?.(new Error('boom'));
+    // ky's HTTPError is the canonical "non-2xx response" failure — show the
+    // error toast for these.
+    const httpErr = Object.create(HTTPError.prototype) as HTTPError;
+    getCaptured().mutation?.onError?.(httpErr);
 
     expect(burnt.toast).toHaveBeenCalledWith(expect.objectContaining({ preset: 'error' }));
+  });
+
+  it('shows error toast on TimeoutError (request never reached server)', () => {
+    const { getCaptured } = setupHook();
+
+    const timeoutErr = Object.create(TimeoutError.prototype) as TimeoutError;
+    getCaptured().mutation?.onError?.(timeoutErr);
+
+    expect(burnt.toast).toHaveBeenCalledWith(expect.objectContaining({ preset: 'error' }));
+  });
+
+  it('suppresses the toast for cancelled/aborted fetches (Phase 5 hotfix 2026-05-21)', () => {
+    // The unregistered-card-tap race fires two parallel POST /api/gyms; one
+    // commits, the other is cancelled mid-flight by NSURLSession connection
+    // racing. The cancelled fetch rejects with a generic Error (not
+    // HTTPError, not TimeoutError). Showing the failure toast for these is
+    // a lie because the gym row exists. The MapScreen ref-lock is the
+    // first defence; this is the second.
+    const { getCaptured } = setupHook();
+
+    getCaptured().mutation?.onError?.(new Error('The operation was aborted'));
+
+    expect(burnt.toast).not.toHaveBeenCalledWith(expect.objectContaining({ preset: 'error' }));
   });
 
   it('calls the caller-supplied onError so MapScreen can clear its pending-id tracking (item 14)', () => {

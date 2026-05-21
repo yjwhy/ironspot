@@ -304,6 +304,78 @@ class CreateGymMachineTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    @Test
+    void naverPlaceCreatesGymAndContributionAtomically() {
+        // Phase 5 item 23: first-photo-on-unregistered. Caller passes the
+        // Naver place metadata instead of a gymId; the server must create
+        // (or idempotently reuse) the gym row and bind the contribution +
+        // photo in one transaction.
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principal(USER_ID)));
+
+        // Gym name must NOT collide with the seeded "테스트 헬스장" row in
+        // init-test-db.sql — NlSearchControllerIT.genericQueryDedupsAlready
+        // RegisteredNaverPlace runs UPDATE WHERE name='테스트 헬스장' and
+        // would match both rows on a unique-naver_place_id constraint.
+        String fakePlaceId = "naverPlace-" + UUID.randomUUID();
+        String body = """
+            {
+              "naverPlace": {
+                "name":"IT 미등록 시드 헬스장",
+                "address":"서울 강남구 테헤란로 99",
+                "latitude":37.4979,
+                "longitude":127.0276,
+                "phone":"02-555-1234",
+                "naverPlaceId":"%s"
+              },
+              "templateId":"%s",
+              "photoId":"%s"
+            }
+            """.formatted(fakePlaceId, TEMPLATE_ID, OWN_ORPHAN_PHOTO_ID);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/gym-machines",
+            HttpMethod.POST,
+            jsonRequest(body, "token"),
+            String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).contains("\"pendingReview\":false");
+
+        Integer gymCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM gyms WHERE naver_place_id = ?", Integer.class, fakePlaceId);
+        assertThat(gymCount).isEqualTo(1);
+
+        Integer photoBound = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM machine_photos WHERE id = ? AND gym_machine_id IS NOT NULL",
+            Integer.class, OWN_ORPHAN_PHOTO_ID);
+        assertThat(photoBound).isEqualTo(1);
+    }
+
+    @Test
+    void bothGymIdAndNaverPlaceIs400() {
+        // Phase 5 item 23: AssertTrue rejects ambiguous input.
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principal(USER_ID)));
+
+        String body = """
+            {
+              "gymId":"%s",
+              "naverPlace": {
+                "name":"X","address":"X","latitude":37.5,"longitude":127.0,
+                "naverPlaceId":"x-place"
+              },
+              "templateId":"%s"
+            }
+            """.formatted(GYM_ID, TEMPLATE_ID);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/gym-machines",
+            HttpMethod.POST,
+            jsonRequest(body, "token"),
+            String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
     private static String closedListBody(UUID gymId, UUID templateId, UUID photoId) {
         String photoField = photoId == null ? "" : ",\"photoId\":\"" + photoId + "\"";
         return """

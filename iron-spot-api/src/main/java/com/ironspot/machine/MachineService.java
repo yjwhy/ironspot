@@ -1,6 +1,7 @@
 package com.ironspot.machine;
 
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.gym.GymService;
 import com.ironspot.machine.dto.CreateGymMachineRequest;
 import com.ironspot.machine.dto.CreateGymMachineResponse;
 import com.ironspot.machine.dto.GymMachineResponse;
@@ -21,6 +22,7 @@ public class MachineService {
 
     private final MachineRepository machineRepository;
     private final PhotoRepository photoRepository;
+    private final GymService gymService;
 
     public List<GymMachineResponse> findByGymId(UUID gymId) {
         List<GymMachineResponse> machines = machineRepository.findByGymId(gymId);
@@ -49,9 +51,13 @@ public class MachineService {
      */
     @Transactional
     public CreateGymMachineResponse createContribution(UUID userId, CreateGymMachineRequest request) {
-        if (!machineRepository.gymExists(request.gymId())) {
-            throw new BusinessException("헬스장을 찾을 수 없습니다", HttpStatus.NOT_FOUND);
-        }
+        // Phase 5 item 23: resolve target gymId — either the caller's existing
+        // gymId, or one we create-or-get-by-naverPlaceId inside this same
+        // transaction. The shared @Transactional context means the gym
+        // creation, gym_machine insert, and photo rebind all commit or roll
+        // back together — eliminating the "tap = immediate create" race +
+        // orphan-row failure mode the old flow needed an undo toast to mask.
+        UUID gymId = resolveGymId(userId, request);
 
         boolean isDirectInput = request.templateId() == null;
         if (!isDirectInput && !machineRepository.templateExistsAndApproved(request.templateId())) {
@@ -67,7 +73,7 @@ public class MachineService {
         }
 
         UUID newGymMachineId = machineRepository.insertContribution(
-            request.gymId(),
+            gymId,
             request.templateId(),
             isDirectInput,
             isDirectInput ? request.freeFormName().trim() : null,
@@ -83,6 +89,20 @@ public class MachineService {
             }
         }
 
-        return new CreateGymMachineResponse(newGymMachineId, isDirectInput);
+        return new CreateGymMachineResponse(gymId, newGymMachineId, isDirectInput);
+    }
+
+    private UUID resolveGymId(UUID userId, CreateGymMachineRequest request) {
+        if (request.gymId() != null) {
+            if (!machineRepository.gymExists(request.gymId())) {
+                throw new BusinessException("헬스장을 찾을 수 없습니다", HttpStatus.NOT_FOUND);
+            }
+            return request.gymId();
+        }
+        // naverPlace path — atomic create-or-reuse keyed on naverPlaceId
+        // (GymService.createFromNaverPlaces is itself @Transactional and
+        // idempotent on the UNIQUE naver_place_id index, so concurrent
+        // first-registrants converge on a single row).
+        return gymService.createFromNaverPlaces(request.naverPlace(), userId).id();
     }
 }

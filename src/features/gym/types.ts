@@ -10,6 +10,22 @@ export type GymBottomSheetMode =
       onPressMachine: (gymMachineId: string) => void;
     }
   | {
+      /**
+       * Phase 5 item 23 (slice c): "explore before commit" detail view for
+       * an unregistered Naver place. The previous flow created the gym row
+       * the moment the user tapped the card and relied on a 5s undo toast
+       * to recover from accidental presses; this mode replaces that with a
+       * read-only detail screen + a "기구 사진 등록하기" CTA that
+       * eventually drives the atomic create-on-first-photo backend path
+       * (slice d wires the camera).
+       */
+      type: 'unregistered-detail';
+      place: UnregisteredPlace;
+      distanceKm: number;
+      onCloseDetail: () => void;
+      onPressRegisterFirstPhoto: (place: UnregisteredPlace) => void;
+    }
+  | {
       type: 'list';
       gyms: readonly GymWithMachineCount[];
       userLocation: Coordinate;
