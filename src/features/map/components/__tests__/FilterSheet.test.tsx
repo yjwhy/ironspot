@@ -77,42 +77,26 @@ const emptyFilters: SearchFilters = {
 
 interface RenderOptions {
   filters?: SearchFilters;
-  onToggleBrand?: (id: string) => void;
-  onToggleCategory?: (id: string) => void;
-  onToggleTemplate?: (id: string) => void;
-  onSetMachineFilterMode?: (mode: 'or' | 'and') => void;
-  onResetAll?: () => void;
+  onApply?: (next: SearchFilters) => void;
 }
 
 function renderSheet(options: RenderOptions = {}) {
-  const onToggleBrand = options.onToggleBrand ?? jest.fn();
-  const onToggleCategory = options.onToggleCategory ?? jest.fn();
-  const onToggleTemplate = options.onToggleTemplate ?? jest.fn();
-  const onSetMachineFilterMode = options.onSetMachineFilterMode ?? jest.fn();
-  const onResetAll = options.onResetAll ?? jest.fn();
+  const onApply = options.onApply ?? jest.fn();
   return {
-    onToggleBrand,
-    onToggleCategory,
-    onToggleTemplate,
-    onSetMachineFilterMode,
-    onResetAll,
+    onApply,
     ...render(
       <FilterSheet
         brands={brands}
         categories={categories}
         machineTemplates={machineTemplates}
         filters={options.filters ?? emptyFilters}
-        onToggleBrand={onToggleBrand}
-        onToggleCategory={onToggleCategory}
-        onToggleTemplate={onToggleTemplate}
-        onSetMachineFilterMode={onSetMachineFilterMode}
-        onResetAll={onResetAll}
+        onApply={onApply}
       />,
     ),
   };
 }
 
-describe('FilterSheet (ADR 0024 accordion layout)', () => {
+describe('FilterSheet (ADR 0024 accordion + staged-apply)', () => {
   it('renders the sheet title plus the 운동 부위 chip row label', () => {
     const { getByText } = renderSheet();
     expect(getByText('필터')).toBeTruthy();
@@ -123,78 +107,82 @@ describe('FilterSheet (ADR 0024 accordion layout)', () => {
     const { getByText, getAllByText } = renderSheet();
     expect(getByText('Panatta')).toBeTruthy();
     expect(getByText('Hammer Strength')).toBeTruthy();
-    // Both rows are collapsed by default — the chevron count reads "2" + "1".
     expect(getAllByText(/^\d+$/).length).toBeGreaterThanOrEqual(2);
   });
 
-  it('starts with all brand accordions collapsed (slice a default)', () => {
+  it('starts with all brand accordions collapsed', () => {
     const { queryByText } = renderSheet();
-    // High Row sits inside the Panatta accordion; collapsed = not rendered.
     expect(queryByText(/하이로우/)).toBeNull();
   });
 
   it('expands a brand accordion to reveal its category sub-sections and machine rows', () => {
     const { getByText, queryByText } = renderSheet();
     fireEvent.press(getByText('Panatta'));
-    // Sub-section header "등 (1)" + machine label "하이로우 · 핀".
     expect(getByText('등 (1)')).toBeTruthy();
     expect(queryByText(/하이로우/)).not.toBeNull();
   });
 
-  it('routes machine row tap to onToggleTemplate', () => {
-    const onToggleTemplate = jest.fn();
-    const { getByText } = renderSheet({ onToggleTemplate });
+  it('chip tap stages locally — onApply is not called until the apply CTA fires', () => {
+    const onApply = jest.fn();
+    const { getByText, getByLabelText } = renderSheet({ onApply });
     fireEvent.press(getByText('Panatta'));
     fireEvent.press(getByText(/하이로우/));
-    expect(onToggleTemplate).toHaveBeenCalledWith('t1');
+    // Machine staged → footer chip strip appears with the brand-prefixed label.
+    expect(getByText(/^선택 \(1\)/)).toBeTruthy();
+    // But the parent receiver hasn't been notified yet — staged-edit semantics.
+    expect(onApply).not.toHaveBeenCalled();
+
+    fireEvent.press(getByLabelText('필터 적용하기'));
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ templateIds: ['t1'] }));
   });
 
-  it('renders the selection strip only when at least one machine is selected', () => {
-    const { queryByText } = renderSheet();
-    expect(queryByText(/^선택 \(/)).toBeNull();
-  });
-
-  it('shows the selection strip with the selected machine chip when filters.templateIds is set', () => {
-    const { getByText } = renderSheet({
+  it('reset CTA clears the staged state but does not commit until apply fires', () => {
+    const onApply = jest.fn();
+    const { getByText, getByLabelText, queryByText } = renderSheet({
+      onApply,
       filters: { ...emptyFilters, templateIds: ['t1'] },
     });
     expect(getByText(/^선택 \(1\)/)).toBeTruthy();
-    // The footer chip restores the brand prefix per ADR 0024 결정 3.
-    expect(getByText(/^Panatta .* · 핀$/)).toBeTruthy();
+    fireEvent.press(getByLabelText('필터 전체 해제'));
+    expect(queryByText(/^선택 \(/)).toBeNull();
+    expect(onApply).not.toHaveBeenCalled();
+    fireEvent.press(getByLabelText('필터 적용하기'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ templateIds: [] }));
   });
 
-  it('hides the AND/OR "전체 보유" toggle when fewer than 2 machines are selected', () => {
+  it('hides the AND/OR "전체 보유" toggle when fewer than 2 machines are staged', () => {
     const { queryByText } = renderSheet({
       filters: { ...emptyFilters, templateIds: ['t1'] },
     });
     expect(queryByText('전체 보유')).toBeNull();
   });
 
-  it('shows the AND/OR "전체 보유" toggle once ≥2 machines are selected', () => {
+  it('shows the AND/OR "전체 보유" toggle once ≥2 machines are staged', () => {
     const { getByText } = renderSheet({
       filters: { ...emptyFilters, templateIds: ['t1', 't2'] },
     });
     expect(getByText('전체 보유')).toBeTruthy();
   });
 
-  it('invokes onSetMachineFilterMode("and") when the toggle flips on', () => {
-    const onSetMachineFilterMode = jest.fn();
+  it('flipping the AND toggle stages the change — committed only on apply', () => {
+    const onApply = jest.fn();
     const { getByLabelText } = renderSheet({
       filters: { ...emptyFilters, templateIds: ['t1', 't2'] },
-      onSetMachineFilterMode,
+      onApply,
     });
     fireEvent(getByLabelText('선택한 머신 전체를 보유한 헬스장만'), 'valueChange', true);
-    expect(onSetMachineFilterMode).toHaveBeenCalledWith('and');
+    expect(onApply).not.toHaveBeenCalled();
+    fireEvent.press(getByLabelText('필터 적용하기'));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ machineFilterMode: 'and' }));
   });
 
-  it('invokes onResetAll when the 전체 초기화 footer button is pressed', () => {
-    const onResetAll = jest.fn();
-    const { getByLabelText } = renderSheet({
-      filters: { ...emptyFilters, templateIds: ['t1'] },
-      onResetAll,
-    });
-    fireEvent.press(getByLabelText('필터 전체 해제'));
-    expect(onResetAll).toHaveBeenCalled();
+  it('apply CTA is accessibility-disabled when no staged changes vs committed', () => {
+    const { getByLabelText } = renderSheet({ filters: emptyFilters });
+    const applyButton = getByLabelText('필터 적용하기') as unknown as {
+      props: { accessibilityState?: { disabled?: boolean } };
+    };
+    expect(applyButton.props.accessibilityState).toEqual({ disabled: true });
   });
 
   it('renders the close button with accessibility label', () => {
@@ -206,7 +194,6 @@ describe('FilterSheet (ADR 0024 accordion layout)', () => {
     const { getByText, queryByText } = renderSheet({
       filters: { ...emptyFilters, categoryIds: ['c1'] },
     });
-    // Only Panatta has a template in 등 (c1). Hammer should disappear.
     expect(getByText('Panatta')).toBeTruthy();
     expect(queryByText('Hammer Strength')).toBeNull();
   });
@@ -214,11 +201,8 @@ describe('FilterSheet (ADR 0024 accordion layout)', () => {
   it('global search hides unmatched brands and surfaces matched templates', () => {
     const { getByLabelText, getByText, queryByText } = renderSheet();
     fireEvent.changeText(getByLabelText('머신 또는 브랜드 검색'), '하이로우');
-    // Panatta has 하이로우 → still visible. Hammer doesn't → hidden.
     expect(getByText('Panatta')).toBeTruthy();
     expect(queryByText('Hammer Strength')).toBeNull();
-    // While searching, matching brand auto-expands so the user sees the hit
-    // without an extra tap (slice b behaviour, ADR 0024 결정 5).
     expect(getByText(/하이로우/)).toBeTruthy();
   });
 
@@ -226,7 +210,6 @@ describe('FilterSheet (ADR 0024 accordion layout)', () => {
     const { getByLabelText, getByText } = renderSheet();
     fireEvent.changeText(getByLabelText('머신 또는 브랜드 검색'), 'Panatta');
     expect(getByText('Panatta')).toBeTruthy();
-    // Panatta has two templates in fixtures; both should be visible.
     expect(getByText(/하이로우/)).toBeTruthy();
     expect(getByText(/체스트 프레스 · 플레이트/)).toBeTruthy();
   });
@@ -241,13 +224,6 @@ describe('FilterSheet (ADR 0024 accordion layout)', () => {
     const { findByText } = renderSheet({
       filters: { ...emptyFilters, templateIds: ['t1'] },
     });
-    // t1 belongs to Panatta. The autoExpandFromSelectedTemplates effect
-    // runs after the initial render, so this assertion is async — findByText
-    // waits for the post-effect re-render where Panatta's accordion body
-    // (the 등 sub-section header) is visible. The 하이로우 row label
-    // appears twice (accordion + footer chip with brand prefix), so we
-    // anchor on the sub-section header which only renders inside an
-    // expanded accordion.
     expect(await findByText('등 (1)')).toBeTruthy();
   });
 });
