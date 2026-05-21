@@ -50,14 +50,8 @@ jest.mock('@gorhom/bottom-sheet', () => {
     BottomSheetModal: mock.BottomSheetModalPassthrough,
     BottomSheetModalProvider: mock.BottomSheetPassthrough,
     BottomSheetView: mock.BottomSheetPassthrough,
-    useBottomSheetScrollableCreator: jest.fn(() => jest.fn()),
+    BottomSheetFlatList: mock.BottomSheetListMock,
   };
-});
-
-jest.mock('@shopify/flash-list', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mock = require('@/test/utils/bottom-sheet-mock') as typeof BottomSheetMockModule;
-  return { FlashList: mock.BottomSheetListMock };
 });
 
 // ADR 0022 follow-up (Task 46): GymDetail → MachineList → ReportReasonSheet

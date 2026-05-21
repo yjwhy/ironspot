@@ -7,6 +7,7 @@ import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
 import { InterpretationChip } from '@/features/search/components/InterpretationChip';
+import { NlQuotaHint } from '@/features/search/components/NlQuotaHint';
 import { PermissionDeniedBadge } from '@/features/search/components/PermissionDeniedBadge';
 import { TopSearchBar } from '@/features/search/components/TopSearchBar';
 import { useNlSearch } from '@/features/search/hooks/useNlSearch';
@@ -336,11 +337,14 @@ export function MapScreen() {
             onClose={nlSearch.clearValidationError}
           />
         ) : source.kind === 'nl' ? (
-          <InterpretationChip
-            text={source.response.interpretation}
-            tone={isNlZeroResult ? 'zero' : 'success'}
-            onClose={handleNlChipClose}
-          />
+          <>
+            <InterpretationChip
+              text={source.response.interpretation}
+              tone={isNlZeroResult ? 'zero' : 'success'}
+              onClose={handleNlChipClose}
+            />
+            <NlQuotaHint used={source.response.quota.used} limit={source.response.quota.limit} />
+          </>
         ) : null}
       </View>
 
