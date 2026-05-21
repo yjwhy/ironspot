@@ -22,6 +22,7 @@
     "generate:api": "orval --config orval.config.ts && prettier --write \"src/shared/generated/**/*.ts\""
   },
   "dependencies": {
+    "@expo/react-native-action-sheet": "^4.1.1",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.1.2",
     "@hookform/resolvers": "^5.2.2",

@@ -202,11 +202,22 @@ The NL search funnel ends at the gym card or detail screen — there is no way t
 
 **To-do (groomed scope)**
 
-- [ ] Add a "길찾기" chip on `GymCard` (bottom sheet, next to the address line) and a header-right "길찾기" button on `GymDetail`. Both wired to a shared `openDirections(gym)` handler.
-- [ ] Handler: `Linking.canOpenURL('nmap://')` → if true and `naver_place_id` exists, open `nmap://place?id=<id>&appname=com.ironspot.app`; if true with no place id, open `nmap://route/public?slat=<userLat>&slng=<userLng>&dlat=<gymLat>&dlng=<gymLng>&dname=<encodedName>&appname=...`; if false, fall back to `https://map.naver.com/v5/search/<encoded>` via WebBrowser.
-- [ ] Origin policy: default to current GPS. When the NL response carried a `resolvedLocation` reference point (e.g. "강남역"), surface a one-time ActionSheet "현재 위치 / 강남역에서" on first tap of the session and remember the choice. Skip the sheet for "내 주변" / no-reference searches.
-- [ ] Native config: add `LSApplicationQueriesSchemes: ["nmap"]` to `app.config.ts` under `ios.infoPlist`. **Native rebuild required** — batch with other native changes if any.
-- [ ] Telemetry: count taps per session to validate the affordance is being discovered. If <10 % conversion from gym detail to directions tap after 4 weeks, move the entry point to a more visible slot.
+- [x] Add a "길찾기" chip on `GymCard` (bottom sheet, next to the address line) and a header-right "길찾기" button on `GymDetail`. Both wired to a shared `openDirections(gym)` handler. → Slice 16b. `DirectionsChip` component shared between both surfaces.
+- [x] Handler: `Linking.canOpenURL('nmap://')` → if true and `naver_place_id` exists, open `nmap://place?id=<id>&appname=com.ironspot.app`; if true with no place id, open `nmap://route/public?slat=<userLat>&slng=<userLng>&dlat=<gymLat>&dlng=<gymLng>&dname=<encodedName>&appname=...`; if false, fall back to `https://map.naver.com/v5/search/<encoded>` via WebBrowser. → Slice 16a. Lives at `src/shared/lib/directions.ts` with 12 unit tests covering both deeplink branches, the empty-place-id edge case, the WebBrowser fallback, and `canOpenURL`-rejection-as-absent. **Caveat**: card + detail pass `naverPlaceId: null` because the gym DTOs don't yet surface the column — the lib falls through to the lat/lng route deeplink. Surface the field once the conversion metric warrants the place-card UX upgrade.
+- [x] Origin policy: default to current GPS. When the NL response carried a `resolvedLocation` reference point (e.g. "강남역"), surface a one-time ActionSheet "현재 위치 / 강남역에서" on first tap of the session and remember the choice. Skip the sheet for "내 주변" / no-reference searches. → Slice 16c. `DirectionsOriginProvider` + `useDirectionsOriginResolver` hook + `@expo/react-native-action-sheet`. Session boundary is the NL `resolvedLocation.coordinates` pair (Q1). Current ActionSheet copy uses generic "검색 위치에서" because the ResolvedLocation DTO doesn't expose a name field; a backend follow-up can surface "강남역에서" labelling.
+- [x] Native config: add `LSApplicationQueriesSchemes: ["nmap"]` to `app.config.ts` under `ios.infoPlist`. **Native rebuild required** — batch with other native changes if any. → Slice 16a (added under `ios.infoPlist` in `app.json`).
+- [x] Telemetry: count taps per session to validate the affordance is being discovered. If <10 % conversion from gym detail to directions tap after 4 weeks, move the entry point to a more visible slot. → Slices 16a + 16b. Sentry breadcrumb (`category: 'directions'`, `data: { gymId, source: 'card'|'detail', branch: 'place'|'route' }`) drops on every chip tap. Conversion measurement = aggregate breadcrumb count per session in Sentry.
+
+**Pre-implementation grilling (2026-05-21)**
+
+Locked via `/grill-me`:
+
+- **Q1**: ActionSheet remembered per NL search session (not app-lifetime, not per-tap). New NL search clears the cache.
+- **Q2**: ADR deeplink branching preserved (place id → `nmap://place`, else `nmap://route/public`).
+- **Q3**: Web fallback via `expo-web-browser` (in-app), not the system browser — keeps the IronSpot session.
+- **Q4**: Sentry breadcrumb for telemetry; defer Mixpanel/Amplitude until the conversion data shows the affordance is moving.
+- **Q5**: 4 slices (16a lib + native + tests / 16b UI + Sentry / 16c ActionSheet / 16d docs).
+- **Q5b**: `@expo/react-native-action-sheet` (iOS/Android unified API).
 
 **Recommended solution (ui-ux-pro-max review, 2026-05-20)**
 

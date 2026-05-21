@@ -9,6 +9,8 @@ import { formatDistanceKm, formatVerifiedDate } from '@/shared/lib/format';
 import { ANIMATION, colors } from '@/shared/theme/tokens';
 import type { GymWithMachineCount } from '@/shared/types/database';
 
+import { DirectionsChip } from './DirectionsChip';
+
 interface GymCardProps {
   gym: GymWithMachineCount;
   distanceKm: number;
@@ -82,9 +84,27 @@ export function GymCard({ gym, distanceKm, index, thumbnailUrl, onPress, testID 
               <AppText className="text-heading-sm text-text-primary" numberOfLines={1}>
                 {gym.name}
               </AppText>
-              <View className="flex-row items-center gap-1">
-                <MaterialIcons name="place" size={14} color={colors.text.secondary} />
-                <AppText className="text-body-sm text-text-secondary">{distanceLabel}</AppText>
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-1">
+                  <MaterialIcons name="place" size={14} color={colors.text.secondary} />
+                  <AppText className="text-body-sm text-text-secondary">{distanceLabel}</AppText>
+                </View>
+                <DirectionsChip
+                  gym={{
+                    id: gym.id,
+                    name: gym.name,
+                    latitude: gym.latitude,
+                    longitude: gym.longitude,
+                    // `naver_place_id` is on the gyms table but not in the
+                    // current `GymWithMachineCountResponse` projection — the
+                    // directions lib treats omitted/null as "no place id" and
+                    // falls back to the lat/lng route deeplink. A follow-up
+                    // can surface the field through the DTO + Orval regen if
+                    // the conversion metric shows the place card lands better.
+                    naverPlaceId: null,
+                  }}
+                  source="card"
+                />
               </View>
               <AppText className="text-body-sm text-text-secondary">{machineCountCopy}</AppText>
             </View>
