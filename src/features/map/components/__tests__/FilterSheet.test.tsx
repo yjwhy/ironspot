@@ -50,11 +50,20 @@ const machineTemplates: MachineTemplateResponse[] = [
   },
   {
     id: 't2',
-    brandId: 'b2',
-    brandName: 'Hammer Strength',
+    brandId: 'b1',
+    brandName: 'Panatta',
     categoryId: 'c2',
     nameEn: 'Chest Press',
     nameKo: '체스트 프레스',
+    loadingType: 'plate',
+  },
+  {
+    id: 't3',
+    brandId: 'b2',
+    brandName: 'Hammer Strength',
+    categoryId: 'c2',
+    nameEn: 'Iso Chest Press',
+    nameKo: '아이소 체스트 프레스',
     loadingType: 'plate',
   },
 ];
@@ -103,97 +112,102 @@ function renderSheet(options: RenderOptions = {}) {
   };
 }
 
-describe('FilterSheet', () => {
-  it('renders the sheet title and three section labels (운동 부위 / 브랜드 / 머신)', () => {
+describe('FilterSheet (ADR 0024 accordion layout)', () => {
+  it('renders the sheet title plus the 운동 부위 chip row label', () => {
     const { getByText } = renderSheet();
     expect(getByText('필터')).toBeTruthy();
     expect(getByText('운동 부위')).toBeTruthy();
-    expect(getByText('브랜드')).toBeTruthy();
-    expect(getByText('머신')).toBeTruthy();
   });
 
-  it('does NOT render the legacy 로딩 방식 segmented control', () => {
+  it('renders one brand row per brand with its template count', () => {
+    const { getByText, getAllByText } = renderSheet();
+    expect(getByText('Panatta')).toBeTruthy();
+    expect(getByText('Hammer Strength')).toBeTruthy();
+    // Both rows are collapsed by default — the chevron count reads "2" + "1".
+    expect(getAllByText(/^\d+$/).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('starts with all brand accordions collapsed (slice a default)', () => {
     const { queryByText } = renderSheet();
-    expect(queryByText('로딩 방식')).toBeNull();
-    expect(queryByText('핀로딩')).toBeNull();
-    expect(queryByText('플레이트')).toBeNull();
+    // High Row sits inside the Panatta accordion; collapsed = not rendered.
+    expect(queryByText(/하이로우/)).toBeNull();
   });
 
-  it('renders machine chips with brand prefix and loading suffix', () => {
-    const { getByText } = renderSheet();
-    expect(getByText('Panatta 하이로우 · 핀')).toBeTruthy();
-    expect(getByText('Hammer Strength 체스트 프레스 · 플레이트')).toBeTruthy();
+  it('expands a brand accordion to reveal its category sub-sections and machine rows', () => {
+    const { getByText, queryByText } = renderSheet();
+    fireEvent.press(getByText('Panatta'));
+    // Sub-section header "등 (1)" + machine label "하이로우 · 핀".
+    expect(getByText('등 (1)')).toBeTruthy();
+    expect(queryByText(/하이로우/)).not.toBeNull();
   });
 
-  it('invokes onToggleTemplate with the template id when chip is pressed', () => {
+  it('routes machine row tap to onToggleTemplate', () => {
     const onToggleTemplate = jest.fn();
     const { getByText } = renderSheet({ onToggleTemplate });
-    fireEvent.press(getByText('Panatta 하이로우 · 핀'));
+    fireEvent.press(getByText('Panatta'));
+    fireEvent.press(getByText(/하이로우/));
     expect(onToggleTemplate).toHaveBeenCalledWith('t1');
   });
 
-  it('hides the AND toggle when fewer than 2 templates are selected', () => {
-    const { queryByLabelText } = renderSheet({
+  it('renders the selection strip only when at least one machine is selected', () => {
+    const { queryByText } = renderSheet();
+    expect(queryByText(/^선택 \(/)).toBeNull();
+  });
+
+  it('shows the selection strip with the selected machine chip when filters.templateIds is set', () => {
+    const { getByText } = renderSheet({
       filters: { ...emptyFilters, templateIds: ['t1'] },
     });
-    expect(queryByLabelText('선택한 머신 모두 보유한 헬스장만')).toBeNull();
+    expect(getByText(/^선택 \(1\)/)).toBeTruthy();
+    // The footer chip restores the brand prefix per ADR 0024 결정 3.
+    expect(getByText(/^Panatta .* · 핀$/)).toBeTruthy();
   });
 
-  it('shows the AND toggle when 2 or more templates are selected', () => {
-    const { getByLabelText } = renderSheet({
+  it('hides the AND/OR "전체 보유" toggle when fewer than 2 machines are selected', () => {
+    const { queryByText } = renderSheet({
+      filters: { ...emptyFilters, templateIds: ['t1'] },
+    });
+    expect(queryByText('전체 보유')).toBeNull();
+  });
+
+  it('shows the AND/OR "전체 보유" toggle once ≥2 machines are selected', () => {
+    const { getByText } = renderSheet({
       filters: { ...emptyFilters, templateIds: ['t1', 't2'] },
     });
-    expect(getByLabelText('선택한 머신 모두 보유한 헬스장만')).toBeTruthy();
+    expect(getByText('전체 보유')).toBeTruthy();
   });
 
-  it('invokes onSetMachineFilterMode when AND toggle is switched on', () => {
+  it('invokes onSetMachineFilterMode("and") when the toggle flips on', () => {
     const onSetMachineFilterMode = jest.fn();
     const { getByLabelText } = renderSheet({
       filters: { ...emptyFilters, templateIds: ['t1', 't2'] },
       onSetMachineFilterMode,
     });
-    fireEvent(getByLabelText('선택한 머신 모두 보유한 헬스장만'), 'valueChange', true);
+    fireEvent(getByLabelText('선택한 머신 전체를 보유한 헬스장만'), 'valueChange', true);
     expect(onSetMachineFilterMode).toHaveBeenCalledWith('and');
   });
 
-  it('shows the reset footer with active count when filters exist', () => {
-    const { getByText } = renderSheet({
-      filters: { ...emptyFilters, brandIds: ['b1'], categoryIds: ['c1'], templateIds: ['t1'] },
-    });
-    expect(getByText('전체 해제')).toBeTruthy();
-    expect(getByText('3개 활성')).toBeTruthy();
-  });
-
-  it('invokes onResetAll when 전체 해제 is pressed', () => {
+  it('invokes onResetAll when the 전체 초기화 footer button is pressed', () => {
     const onResetAll = jest.fn();
-    const { getByText } = renderSheet({
-      filters: { ...emptyFilters, brandIds: ['b1'] },
+    const { getByLabelText } = renderSheet({
+      filters: { ...emptyFilters, templateIds: ['t1'] },
       onResetAll,
     });
-    fireEvent.press(getByText('전체 해제'));
-    expect(onResetAll).toHaveBeenCalledTimes(1);
-  });
-
-  it('routes active filter chip removal to the matching toggle', () => {
-    const onToggleBrand = jest.fn();
-    const onToggleCategory = jest.fn();
-    const onToggleTemplate = jest.fn();
-    const { getByLabelText } = renderSheet({
-      filters: { ...emptyFilters, brandIds: ['b1'], categoryIds: ['c1'], templateIds: ['t1'] },
-      onToggleBrand,
-      onToggleCategory,
-      onToggleTemplate,
-    });
-    fireEvent.press(getByLabelText('브랜드 Panatta 필터 제거'));
-    expect(onToggleBrand).toHaveBeenCalledWith('b1');
-    fireEvent.press(getByLabelText('운동 부위 등 필터 제거'));
-    expect(onToggleCategory).toHaveBeenCalledWith('c1');
-    fireEvent.press(getByLabelText('머신 Panatta 하이로우 · 핀 필터 제거'));
-    expect(onToggleTemplate).toHaveBeenCalledWith('t1');
+    fireEvent.press(getByLabelText('필터 전체 해제'));
+    expect(onResetAll).toHaveBeenCalled();
   });
 
   it('renders the close button with accessibility label', () => {
     const { getByLabelText } = renderSheet();
     expect(getByLabelText('필터 닫기')).toBeTruthy();
+  });
+
+  it('narrows the accordion via active 운동 부위 filter — only brands with templates in selected categories appear', () => {
+    const { getByText, queryByText } = renderSheet({
+      filters: { ...emptyFilters, categoryIds: ['c1'] },
+    });
+    // Only Panatta has a template in 등 (c1). Hammer should disappear.
+    expect(getByText('Panatta')).toBeTruthy();
+    expect(queryByText('Hammer Strength')).toBeNull();
   });
 });
