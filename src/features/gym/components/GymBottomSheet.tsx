@@ -9,6 +9,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef } from 'react';
 import { Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
@@ -49,6 +50,16 @@ const SNAP_DELAY_MS = 50;
 export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   const ref = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
   const tabBarHeight = useBottomTabBarHeight();
+  const safeAreaInsets = useSafeAreaInsets();
+  // Phase 5 hotfix 2026-05-21: `useBottomTabBarHeight()` was observed
+  // returning a value too small (~7pt on iPhone 16 Plus sim) to clear
+  // the actual tab bar + safe-area bottom — the last gym card in the
+  // list rendered with its CTA / "아직 등록되지 않은 헬스장" caption
+  // tucked behind the tab bar. Adding `safeAreaInsets.bottom` makes the
+  // sheet's max height end at the top of the tab bar reliably, since
+  // safe-area bottom on Plus models is ~34pt and tab bar is ~49pt =
+  // ~83pt total inset.
+  const sheetBottomInset = Math.max(tabBarHeight, safeAreaInsets.bottom + 49);
 
   // useFocusEffect (not useEffect) so the portaled BottomSheetModal dismisses when the user
   // leaves the Map tab. Without dismiss-on-blur, the gorhom portal — mounted at the (tabs)
@@ -108,7 +119,7 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
       // its own pan responder so dragging it still works).
       enableContentPanningGesture={false}
       backdropComponent={undefined}
-      bottomInset={tabBarHeight}
+      bottomInset={sheetBottomInset}
       backgroundStyle={BACKGROUND_STYLE}
     >
       <BottomSheetView style={CONTENT_STYLE}>
