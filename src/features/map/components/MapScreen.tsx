@@ -6,6 +6,7 @@ import { useReducer, useRef } from 'react';
 import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
+import { DirectionsOriginProvider } from '@/features/map/directions-origin-context';
 import { InterpretationChip } from '@/features/search/components/InterpretationChip';
 import { NlQuotaHint } from '@/features/search/components/NlQuotaHint';
 import { PermissionDeniedBadge } from '@/features/search/components/PermissionDeniedBadge';
@@ -210,118 +211,146 @@ export function MapScreen() {
     surfaceDroppedConditions(parsed);
   }
 
+  // Phase 5 item 16 slice c: derive the NL-derived origin reference for the
+  // DirectionsChip ActionSheet. The current ResolvedLocation DTO only
+  // exposes coordinates + radiusKm, so the "named place" copy is generic
+  // ("검색 위치에서"); a follow-up can surface a `name` field through the
+  // backend response for the personable "강남역에서" label. The reference
+  // is considered active only when NL is the source AND the resolved
+  // coordinates differ meaningfully from the user's GPS — otherwise the
+  // ActionSheet's two choices would point at the same place.
+  const directionsReference = (() => {
+    if (source.kind !== 'nl') return null;
+    const coords = source.response.resolvedLocation.coordinates;
+    if (coords?.lat === undefined || coords.lng === undefined) {
+      return null;
+    }
+    const dLat = Math.abs(coords.lat - searchAnchor.latitude);
+    const dLng = Math.abs(coords.lng - searchAnchor.longitude);
+    // ~100m threshold so micro-GPS jitter never trips the prompt.
+    if (dLat < 0.001 && dLng < 0.001) return null;
+    return {
+      id: `${String(coords.lat)}_${String(coords.lng)}`,
+      name: '검색 위치',
+      latitude: coords.lat,
+      longitude: coords.lng,
+    };
+  })();
+
   return (
-    <View className="flex-1">
-      <NaverMapView
-        ref={mapRef}
-        style={{ flex: 1 }}
-        initialCamera={
-          initialLocation !== null
-            ? {
-                latitude: initialLocation.latitude,
-                longitude: initialLocation.longitude,
-                zoom: INITIAL_MAP_ZOOM,
-              }
-            : undefined
-        }
-        onCameraIdle={filterSearch.handleCameraIdle}
-      >
-        {visibleMarkerIds.map((gymId) => {
-          const gym = displayedGyms.find((g) => g.id === gymId);
-          if (!gym) return null;
-          return (
-            <GymMarker
-              key={gymId}
-              gymId={gymId}
-              latitude={gym.latitude}
-              longitude={gym.longitude}
-              machineCount={gym.machine_count}
-              isSelected={gymId === selectedGymId}
+    <DirectionsOriginProvider reference={directionsReference}>
+      <View className="flex-1">
+        <NaverMapView
+          ref={mapRef}
+          style={{ flex: 1 }}
+          initialCamera={
+            initialLocation !== null
+              ? {
+                  latitude: initialLocation.latitude,
+                  longitude: initialLocation.longitude,
+                  zoom: INITIAL_MAP_ZOOM,
+                }
+              : undefined
+          }
+          onCameraIdle={filterSearch.handleCameraIdle}
+        >
+          {visibleMarkerIds.map((gymId) => {
+            const gym = displayedGyms.find((g) => g.id === gymId);
+            if (!gym) return null;
+            return (
+              <GymMarker
+                key={gymId}
+                gymId={gymId}
+                latitude={gym.latitude}
+                longitude={gym.longitude}
+                machineCount={gym.machine_count}
+                isSelected={gymId === selectedGymId}
+                onPress={() => {
+                  setSelectedGymId(gymId);
+                }}
+              />
+            );
+          })}
+          {unregisteredPlaces?.map((place) => (
+            <UnregisteredMarker
+              key={`naver:${place.naverPlaceId}`}
+              naverPlaceId={place.naverPlaceId}
+              latitude={place.latitude}
+              longitude={place.longitude}
               onPress={() => {
-                setSelectedGymId(gymId);
+                handleRegisterUnregisteredGym(place);
               }}
             />
-          );
-        })}
-        {unregisteredPlaces?.map((place) => (
-          <UnregisteredMarker
-            key={`naver:${place.naverPlaceId}`}
-            naverPlaceId={place.naverPlaceId}
-            latitude={place.latitude}
-            longitude={place.longitude}
-            onPress={() => {
-              handleRegisterUnregisteredGym(place);
-            }}
-          />
-        ))}
-      </NaverMapView>
+          ))}
+        </NaverMapView>
 
-      <View className="absolute top-safe-or-2 left-0 right-0 z-20 px-4 gap-2">
-        {isPermissionDenied ? <PermissionDeniedBadge /> : null}
-        <View className="flex-row items-center gap-2">
-          <View className="flex-1">
-            <TopSearchBar onSubmit={handleNlSubmit} isPending={nlSearch.isPending} />
-          </View>
-          <FilterButton
-            activeCount={
-              filters.brandIds.length + filters.categoryIds.length + filters.templateIds.length
-            }
-            onPress={() => {
-              filterSheetRef.current?.present();
-            }}
-          />
-        </View>
-        {nlSearch.validationError !== undefined ? (
-          // 400 validation errors (e.g. "헬스장 검색만 가능해요…") surface
-          // inline so the recovery example stays readable. Replaces the
-          // earlier transient toast which truncated the example clause.
-          // Takes precedence over the success chip so the user sees the
-          // error before any stale prior result.
-          <InterpretationChip
-            text={nlSearch.validationError}
-            tone="error"
-            onClose={nlSearch.clearValidationError}
-          />
-        ) : source.kind === 'nl' ? (
-          <>
-            <InterpretationChip
-              text={source.response.interpretation}
-              tone={isNlZeroResult ? 'zero' : 'success'}
-              onClose={handleNlChipClose}
+        <View className="absolute top-safe-or-2 left-0 right-0 z-20 px-4 gap-2">
+          {isPermissionDenied ? <PermissionDeniedBadge /> : null}
+          <View className="flex-row items-center gap-2">
+            <View className="flex-1">
+              <TopSearchBar onSubmit={handleNlSubmit} isPending={nlSearch.isPending} />
+            </View>
+            <FilterButton
+              activeCount={
+                filters.brandIds.length + filters.categoryIds.length + filters.templateIds.length
+              }
+              onPress={() => {
+                filterSheetRef.current?.present();
+              }}
             />
-            <NlQuotaHint used={source.response.quota.used} limit={source.response.quota.limit} />
-          </>
-        ) : null}
-      </View>
+          </View>
+          {nlSearch.validationError !== undefined ? (
+            // 400 validation errors (e.g. "헬스장 검색만 가능해요…") surface
+            // inline so the recovery example stays readable. Replaces the
+            // earlier transient toast which truncated the example clause.
+            // Takes precedence over the success chip so the user sees the
+            // error before any stale prior result.
+            <InterpretationChip
+              text={nlSearch.validationError}
+              tone="error"
+              onClose={nlSearch.clearValidationError}
+            />
+          ) : source.kind === 'nl' ? (
+            <>
+              <InterpretationChip
+                text={source.response.interpretation}
+                tone={isNlZeroResult ? 'zero' : 'success'}
+                onClose={handleNlChipClose}
+              />
+              <NlQuotaHint used={source.response.quota.used} limit={source.response.quota.limit} />
+            </>
+          ) : null}
+        </View>
 
-      <FilterSheet
-        ref={filterSheetRef}
-        brands={brands}
-        categories={categories}
-        machineTemplates={machineTemplates}
-        brandsError={brandsError}
-        categoriesError={categoriesError}
-        machineTemplatesError={machineTemplatesError}
-        filters={filters}
-        onToggleBrand={toggleBrand}
-        onToggleCategory={toggleCategory}
-        onToggleTemplate={toggleTemplate}
-        onSetMachineFilterMode={setMachineFilterMode}
-        onResetAll={clearFilters}
-      />
+        <FilterSheet
+          ref={filterSheetRef}
+          brands={brands}
+          categories={categories}
+          machineTemplates={machineTemplates}
+          brandsError={brandsError}
+          categoriesError={categoriesError}
+          machineTemplatesError={machineTemplatesError}
+          filters={filters}
+          onToggleBrand={toggleBrand}
+          onToggleCategory={toggleCategory}
+          onToggleTemplate={toggleTemplate}
+          onSetMachineFilterMode={setMachineFilterMode}
+          onResetAll={clearFilters}
+        />
 
-      <View
-        className="absolute left-0 right-0 z-10 items-center"
-        style={{ top: '35%' }}
-        pointerEvents="box-none"
-      >
-        <SearchAreaButton visible={showSearchButton} onPress={filterSearch.handleSearch} />
-      </View>
+        <View
+          className="absolute left-0 right-0 z-10 items-center"
+          style={{ top: '35%' }}
+          pointerEvents="box-none"
+        >
+          <SearchAreaButton visible={showSearchButton} onPress={filterSearch.handleSearch} />
+        </View>
 
-      <View className="absolute bottom-0 left-0 right-0">
-        <GymBottomSheet mode={bottomSheetMode} />
+        <View className="absolute bottom-0 left-0 right-0">
+          <GymBottomSheet mode={bottomSheetMode} />
+        </View>
       </View>
-    </View>
+    </DirectionsOriginProvider>
   );
 }
 
