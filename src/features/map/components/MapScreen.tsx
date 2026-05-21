@@ -2,7 +2,7 @@ import { NaverMapView } from '@mj-studio/react-native-naver-map';
 import type { NaverMapViewRef } from '@mj-studio/react-native-naver-map';
 import * as burnt from 'burnt';
 import { useRouter } from 'expo-router';
-import { useReducer, useRef, useState } from 'react';
+import { useReducer, useRef } from 'react';
 import { View } from 'react-native';
 
 import { GymBottomSheet } from '@/features/gym/components/GymBottomSheet';
@@ -12,7 +12,6 @@ import { PermissionDeniedBadge } from '@/features/search/components/PermissionDe
 import { TopSearchBar } from '@/features/search/components/TopSearchBar';
 import { useNlSearch } from '@/features/search/hooks/useNlSearch';
 import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
-import { useCreateGym } from '@/features/upload/hooks/useCreateGym';
 import type { NlSearchResponse, ParsedFilters, UnregisteredPlace } from '@/shared/generated/model';
 import { GANGNAM_STATION, useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
 import type { GymWithMachineCount } from '@/shared/types/database';
@@ -115,62 +114,12 @@ export function MapScreen() {
   // filter mode the backend doesn't run the Naver merge so the array is empty.
   const unregisteredPlaces = source.kind === 'nl' ? source.response.unregisteredPlaces : undefined;
 
-  // Phase 5 item 14: track which unregistered place is currently being
-  // optimistically registered so the matching bottom-sheet card renders its
-  // "등록 중..." pending state. We clear `lastPressedUnregisteredPlaceId` on
-  // both onSuccess and onError so the underlying state stays truthful, and
-  // ALSO gate the derived `pendingUnregisteredPlaceId` behind `isPending` as
-  // belt-and-braces (covers any race where React batches the clear after a
-  // re-render of the bottom sheet).
-  const [lastPressedUnregisteredPlaceId, setLastPressedUnregisteredPlaceId] = useState<
-    string | null
-  >(null);
-  // Phase 5 hotfix: real-device + sim both observed firing useCreateGym
-  // TWICE on a single unregistered-card tap (two parallel POST /api/gyms,
-  // one commits, the other cancels mid-request). Root cause: the React
-  // state guard (`isCreatingGymFromUnregisteredPlace`) updates one tick
-  // after `mutation.mutate` and a second touch event from RN Pressable
-  // (or the UnregisteredMarker tap propagating from the map view) slips
-  // through before isPending becomes true. Backend handles dedup on
-  // naverPlaceId so the second POST returns the same gym, but the
-  // cancelled one's onError fires burnt's "등록 실패" toast — the user
-  // sees an error toast even though a gym row got created. useRef-based
-  // lock blocks re-entry synchronously, no React-state round-trip.
-  const createGymInFlightRef = useRef(false);
-  const createGym = useCreateGym({
-    onSuccess: (gym) => {
-      // Phase 5 item 14a: land the user directly on the camera so the gym
-      // they just registered as the first contributor flows straight into
-      // the photo-upload + machine-pick path (item 11 slice 3 picker takes
-      // it from there). The previous gym-select intermediate step was only
-      // useful while POST /api/gym-machines was still pending — now that
-      // item 11 has shipped, that step is pure friction.
-      //
-      // Phase 5 item 14b: thread the just-registered gym's id + name
-      // into the camera route so UploadPhotoScreen can surface a 5s undo
-      // toast (DELETE /api/gyms/{id} from item 14a). Other entry points
-      // (FAB, gym-detail) push without these params so the toast stays
-      // scoped to the unregistered-card-tap path where the footgun lives.
-      setLastPressedUnregisteredPlaceId(null);
-      createGymInFlightRef.current = false;
-      router.push({
-        pathname: UPLOAD_PHOTO_PATHNAME,
-        params: {
-          gymId: gym.id,
-          justRegisteredGymId: gym.id,
-          justRegisteredGymName: gym.name,
-        },
-      });
-    },
-    onError: () => {
-      setLastPressedUnregisteredPlaceId(null);
-      createGymInFlightRef.current = false;
-    },
-  });
-  const isCreatingGymFromUnregisteredPlace = createGym.isPending;
-  const pendingUnregisteredPlaceId = isCreatingGymFromUnregisteredPlace
-    ? lastPressedUnregisteredPlaceId
-    : null;
+  // Phase 5 item 23 removed the "tap = immediate POST /api/gyms" path
+  // (and with it the createGym hook usage on this screen, the race lock,
+  // the pending-id state, and the just-registered route params). The
+  // unregistered flow now opens UnregisteredGymDetail in the BottomSheet
+  // and only commits gym creation at first-photo-upload time via the
+  // atomic POST /api/gym-machines endpoint.
 
   function handleRegisterUnregisteredGym(place: UnregisteredPlace) {
     // Phase 5 item 23 slice d: the old "tap = immediate POST /api/gyms" path
@@ -202,7 +151,6 @@ export function MapScreen() {
     },
     unregisteredPlaces,
     onPressRegisterFirstPhoto: handleRegisterUnregisteredGym,
-    pendingUnregisteredPlaceId,
     nlEmpty:
       source.kind === 'nl' &&
       source.response.totalCount === 0 &&

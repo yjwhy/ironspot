@@ -200,45 +200,6 @@ describe('GymBottomSheet (list mode)', () => {
     expect(onUnregisteredPress).toHaveBeenCalledWith(nearbyNaverPlace);
   });
 
-  it('marks the UnregisteredGymCard whose naverPlaceId matches pendingUnregisteredPlaceId as in-flight (item 14)', () => {
-    // Phase 5 item 14: while the optimistic createGym mutation is running
-    // for one place, only that card shows the spinner + "등록 중..." copy.
-    // Other unregistered cards stay interactive.
-    const pendingPlace = {
-      naverPlaceId: 'naver-pending',
-      name: '진행 중인 헬스장',
-      address: '서울 강남구 역삼동 1',
-      latitude: 37.4985,
-      longitude: 127.028,
-    };
-    const otherPlace = {
-      naverPlaceId: 'naver-other',
-      name: '다른 헬스장',
-      address: '서울 강남구 역삼동 2',
-      latitude: 37.4986,
-      longitude: 127.0281,
-    };
-    const { getByText, queryAllByText } = render(
-      <GymBottomSheet
-        mode={{
-          type: 'list',
-          gyms: [],
-          unregisteredPlaces: [pendingPlace, otherPlace],
-          userLocation,
-          isLoading: false,
-          onSelectGym: () => undefined,
-          onUnregisteredPress: () => undefined,
-          onClearFilters: () => undefined,
-          pendingUnregisteredPlaceId: 'naver-pending',
-        }}
-      />,
-    );
-    expect(getByText('등록 중...')).toBeTruthy();
-    // Only the pending card swaps to the pending CTA — the other stays
-    // on the canonical "첫 등록자 되어..." copy.
-    expect(queryAllByText(/첫 등록자 되어 정보 추가하기/)).toHaveLength(1);
-  });
-
   // Phase 5 item 21: launch-initial protection. With far-away registered
   // gyms and a nearby Naver place, the unregistered card would dominate
   // the 25% snap and the user would conclude "this app knows nothing

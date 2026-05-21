@@ -11,7 +11,6 @@ import { AppText } from '@/shared/components/AppText';
 import { pressedOpacity } from '@/shared/lib/pressable';
 
 import { UPLOAD_IMAGE_FORMAT } from '../constants';
-import { UndoRegistrationToast } from './UndoRegistrationToast';
 
 const COMPRESS_MAX_WIDTH = 1200;
 const COMPRESS_QUALITY = 0.8;
@@ -42,22 +41,16 @@ export function UploadPhotoScreen() {
   // gymId is threaded through so UploadConfirmScreen can call
   // POST /api/gym-machines on contribution flows; gymMachineId stays the
   // existing photo-to-machine binding hint.
-  // justRegisteredGym{Id,Name}: Phase 5 item 14b — MapScreen sets these
-  // after the unregistered-card-tap optimistic registration so this screen
-  // can surface a 5s undo toast. Absent for FAB / gym-detail entry points.
   // Phase 5 item 23 slice d: `naverPlace` is a JSON-serialised UnregisteredPlace
   // threaded from MapScreen for the first-photo-on-unregistered path. When
   // present (no gymId / no gymMachineId), the confirm screen submits the
   // contribution via the new `naverPlace` field on POST /api/gym-machines so
   // gym creation + photo binding commit atomically (slice a).
-  const { gymMachineId, gymId, justRegisteredGymId, justRegisteredGymName, naverPlace } =
-    useLocalSearchParams<{
-      gymMachineId?: string;
-      gymId?: string;
-      justRegisteredGymId?: string;
-      justRegisteredGymName?: string;
-      naverPlace?: string;
-    }>();
+  const { gymMachineId, gymId, naverPlace } = useLocalSearchParams<{
+    gymMachineId?: string;
+    gymId?: string;
+    naverPlace?: string;
+  }>();
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [isCompressing, setIsCompressing] = useState(false);
@@ -102,43 +95,23 @@ export function UploadPhotoScreen() {
     await handleCompressAndNavigate(asset.uri);
   }
 
-  // Phase 5 item 14b: toast overlays whichever underlying view renders.
-  // Conditionally instantiated so the timer + mutation hook stay dormant
-  // for entry points (FAB, gym-detail) that don't trigger optimistic
-  // registration.
-  const undoToast =
-    justRegisteredGymId !== undefined && justRegisteredGymName !== undefined ? (
-      <UndoRegistrationToast gymId={justRegisteredGymId} gymName={justRegisteredGymName} />
-    ) : null;
-
   if (permission === null) {
-    return (
-      <>
-        {undoToast}
-        <PermissionLoadingView />
-      </>
-    );
+    return <PermissionLoadingView />;
   }
 
   if (!permission.granted) {
     return (
-      <>
-        {undoToast}
-        <PermissionDeniedView canAskAgain={permission.canAskAgain} onRequest={requestPermission} />
-      </>
+      <PermissionDeniedView canAskAgain={permission.canAskAgain} onRequest={requestPermission} />
     );
   }
 
   return (
-    <>
-      {undoToast}
-      <CameraScreenContent
-        cameraRef={cameraRef}
-        isCompressing={isCompressing}
-        onCapture={handleCapture}
-        onPickFromGallery={handlePickFromGallery}
-      />
-    </>
+    <CameraScreenContent
+      cameraRef={cameraRef}
+      isCompressing={isCompressing}
+      onCapture={handleCapture}
+      onPickFromGallery={handlePickFromGallery}
+    />
   );
 }
 
