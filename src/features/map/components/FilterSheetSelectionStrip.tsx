@@ -14,27 +14,28 @@ interface FilterSheetSelectionStripProps {
   templates: readonly MachineTemplateResponse[];
   machineFilterMode: SearchFilters['machineFilterMode'];
   onRemoveTemplate: (templateId: string) => void;
-  onResetAll: () => void;
   onSetMachineFilterMode: (mode: SearchFilters['machineFilterMode']) => void;
 }
 
 const AND_TOGGLE_MIN_SELECTION = 2;
 
 /**
- * Phase 5 item 23 (slice a): the footer strip that hosts the selected
- * machine chips, the AND/OR "전체 보유" Switch (only when ≥2 selected), and
- * the bottom "전체 초기화" CTA.
+ * Phase 5 item 23 (slice a + follow-up): the strip above the apply bar
+ * that surfaces the staged machine chips plus the "전체 보유" AND-toggle
+ * once ≥2 are selected. The "전체 초기화" CTA moved out into
+ * `FilterSheetApplyBar` along with the new "필터 적용하기" CTA so the
+ * sheet has a single, always-visible commit footer regardless of whether
+ * any machines are staged.
  *
- * Brand prefix is restored on each chip here (per ADR 0024 결정 3) since the
- * accordion parent context is gone — the user looking at the footer needs to
- * distinguish "Panatta Lat Pulldown" from "Hammer Lat Pulldown".
+ * Brand prefix is restored on each chip here (per ADR 0024 결정 3) since
+ * the accordion parent context is gone — the user looking at the footer
+ * needs to distinguish "Panatta Lat Pulldown" from "Hammer Lat Pulldown".
  */
 export function FilterSheetSelectionStrip({
   selectedTemplateIds,
   templates,
   machineFilterMode,
   onRemoveTemplate,
-  onResetAll,
   onSetMachineFilterMode,
 }: FilterSheetSelectionStripProps) {
   if (selectedTemplateIds.length === 0) return null;
@@ -96,16 +97,6 @@ export function FilterSheetSelectionStrip({
           </View>
         ))}
       </ScrollView>
-
-      <Pressable
-        onPress={onResetAll}
-        accessibilityRole="button"
-        accessibilityLabel="필터 전체 해제"
-        style={pressedOpacity}
-        className="h-10 flex-row items-center justify-center border-t border-border"
-      >
-        <AppText className="text-body-sm font-medium text-accent">전체 초기화</AppText>
-      </Pressable>
     </View>
   );
 }

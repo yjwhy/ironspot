@@ -23,15 +23,25 @@ interface FilterSheetBrandAccordionProps {
 }
 
 /**
- * Phase 5 item 23 (slice a): the brand accordion body.
+ * Phase 5 item 23 (slice a, polished 2026-05-22): the brand accordion body.
  *
  * Renders the precomputed `BrandGroup[]` — each row a tappable brand header
- * that expands into per-운동 부위 sub-sections of machine rows. Slice a is
- * static (no animations, no virtualization); slice c layers in Reanimated
- * `LayoutAnimation` for the expand/collapse motion. ScrollView is the
- * canonical container per Q7 — N=24 brand rows fit comfortably, and only
- * the expanded brands render their machine rows so the worst-case row
- * count stays well under FlashList's threshold.
+ * that expands into per-운동 부위 sub-sections of machine rows. ScrollView
+ * is the canonical container per Q7 — N=24 brand rows fit comfortably, and
+ * only the expanded brands render their machine rows.
+ *
+ * Motion (slice c + 2026-05-22 fix):
+ *   - Outer brand rows fade in/out when they appear/disappear from the
+ *     active 운동 부위 + search narrowing. We removed the previous
+ *     `LinearTransition.springify()` on the outer row because the spring's
+ *     overshoot caused the whole list to bounce up-and-down on every
+ *     category toggle (user-reported bug). A simple `FadeIn`/`FadeOut`
+ *     is calm and matches the implicit "this row disappeared because the
+ *     filter removed it" mental model.
+ *   - Inner expanded body keeps the spring `LinearTransition` so the
+ *     reveal animates smoothly as the user expands/collapses a brand.
+ *   - `useReducedMotion()` snaps everything instantly when the system
+ *     accessibility flag is on.
  */
 export function FilterSheetBrandAccordion({
   groups,
@@ -40,12 +50,10 @@ export function FilterSheetBrandAccordion({
   onToggleExpand,
   onToggleTemplate,
 }: FilterSheetBrandAccordionProps) {
-  // Slice c: respect prefers-reduced-motion. When the system flag is on,
-  // expand/collapse and brand-row layout shifts snap instantly. We honour
-  // the preference by skipping the Animated transitions and falling back
-  // to plain View nodes via the `reduceMotion` ternary on `layout`.
   const reduceMotion = useReducedMotion();
-  const layoutTransition = reduceMotion ? undefined : LinearTransition.springify().damping(18);
+  const bodyLayoutTransition = reduceMotion ? undefined : LinearTransition.springify().damping(18);
+  const rowEntering = reduceMotion ? undefined : FadeIn.duration(160);
+  const rowExiting = reduceMotion ? undefined : FadeOut.duration(120);
 
   if (groups.length === 0) {
     return (
@@ -65,7 +73,8 @@ export function FilterSheetBrandAccordion({
         return (
           <Animated.View
             key={group.brand.id}
-            layout={layoutTransition}
+            entering={rowEntering}
+            exiting={rowExiting}
             className="border-b border-border"
           >
             <Pressable
@@ -94,7 +103,7 @@ export function FilterSheetBrandAccordion({
               <Animated.View
                 entering={reduceMotion ? undefined : FadeIn.duration(180)}
                 exiting={reduceMotion ? undefined : FadeOut.duration(140)}
-                layout={layoutTransition}
+                layout={bodyLayoutTransition}
               >
                 {group.sections.map((section) => (
                   <View key={section.category.id} className="pb-2">

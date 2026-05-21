@@ -68,16 +68,15 @@ const INITIAL_SOURCE: GymsSource = { kind: 'filter' };
 export function MapScreen() {
   const router = useRouter();
   const locationState = useCurrentLocation();
-  const {
-    filters,
-    hasActiveFilters,
-    toggleBrand,
-    toggleCategory,
-    toggleTemplate,
-    setMachineFilterMode,
-    setAll: setAllFilters,
-    clear: clearFilters,
-  } = useFilters();
+  // Phase 5 item 23 follow-up (2026-05-22): FilterSheet now manages
+  // chip/checkbox/AND-toggle state locally as `stagedFilters` and only
+  // commits via `setAllFilters` when the user taps 필터 적용하기. The
+  // individual `toggle*` setters and the per-key `setMachineFilterMode`
+  // setter on useFilters stay available for non-sheet callers
+  // (NL-search empty-state "조건 바꿔서 검색" path uses setAll directly
+  // as well), so the hook API is unchanged — only MapScreen's
+  // destructure shrinks.
+  const { filters, hasActiveFilters, setAll: setAllFilters, clear: clearFilters } = useFilters();
   const { data: brands = [], isError: brandsError } = useBrands();
   const { data: categories = [], isError: categoriesError } = useCategories();
   const { data: machineTemplates = [], isError: machineTemplatesError } = useMachineTemplates();
@@ -331,11 +330,7 @@ export function MapScreen() {
           categoriesError={categoriesError}
           machineTemplatesError={machineTemplatesError}
           filters={filters}
-          onToggleBrand={toggleBrand}
-          onToggleCategory={toggleCategory}
-          onToggleTemplate={toggleTemplate}
-          onSetMachineFilterMode={setMachineFilterMode}
-          onResetAll={clearFilters}
+          onApply={setAllFilters}
         />
 
         <View

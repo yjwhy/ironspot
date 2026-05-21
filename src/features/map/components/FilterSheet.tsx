@@ -24,9 +24,11 @@ import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { Brand, Category, SearchFilters } from '@/shared/types/database';
 
+import { FilterSheetApplyBar } from './FilterSheetApplyBar';
 import { FilterSheetBrandAccordion } from './FilterSheetBrandAccordion';
 import { FilterSheetSection } from './FilterSheetSection';
 import { FilterSheetSelectionStrip } from './FilterSheetSelectionStrip';
+import { INITIAL_FILTERS } from '../hooks/useFilters';
 import { groupTemplatesByBrand } from '../lib/group-templates-by-brand';
 
 const SNAP_POINTS = ['65%', '90%'];
@@ -50,44 +52,65 @@ interface FilterSheetProps {
   brandsError?: boolean;
   categoriesError?: boolean;
   machineTemplatesError?: boolean;
+  /**
+   * Currently committed filters from `useFilters` — the sheet syncs its
+   * staged state to this whenever the sheet (re-)opens, so an NL search
+   * applying parsedFilters between two sheet sessions surfaces as the
+   * pre-filled staged state the next time the user opens the filter.
+   */
   filters: SearchFilters;
-  onToggleBrand: (brandId: string) => void;
-  onToggleCategory: (categoryId: string) => void;
-  onToggleTemplate: (templateId: string) => void;
-  onSetMachineFilterMode: (mode: SearchFilters['machineFilterMode']) => void;
-  onResetAll: () => void;
+  /**
+   * Phase 5 item 23 follow-up: chip taps no longer mutate the parent's
+   * `filters` directly — they stage local changes inside this sheet, and
+   * this callback fires only when the user taps the 필터 적용하기 CTA.
+   * Eliminates the per-toggle gym-search refetch (which wasted Render
+   * quota and caused transient list flicker mid-edit).
+   */
+  onApply: (next: SearchFilters) => void;
   onDismiss?: () => void;
   testID?: string;
 }
 
+function filtersEqual(a: SearchFilters, b: SearchFilters): boolean {
+  if (a.machineFilterMode !== b.machineFilterMode) return false;
+  if (a.brandIds.length !== b.brandIds.length) return false;
+  if (a.categoryIds.length !== b.categoryIds.length) return false;
+  if (a.templateIds.length !== b.templateIds.length) return false;
+  for (let i = 0; i < a.brandIds.length; i++) {
+    if (a.brandIds[i] !== b.brandIds[i]) return false;
+  }
+  for (let i = 0; i < a.categoryIds.length; i++) {
+    if (a.categoryIds[i] !== b.categoryIds[i]) return false;
+  }
+  for (let i = 0; i < a.templateIds.length; i++) {
+    if (a.templateIds[i] !== b.templateIds[i]) return false;
+  }
+  return true;
+}
+
+function toggleInArray(list: readonly string[], id: string): readonly string[] {
+  return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+}
+
 /**
- * Phase 5 item 23 / ADR 0024: brand-first accordion FilterSheet.
+ * Phase 5 item 23 / ADR 0024 + 2026-05-22 follow-up: brand-first accordion
+ * FilterSheet with staged-edit semantics.
  *
- * Body composition:
- *   - 운동 부위 chip row (top, optional cross-filter — Q3 narrows accordion
- *     contents AND brand-row counts to the chip selection).
- *   - Global search input (always visible, Q8-extra: focusing snaps the
- *     sheet to its max snap so the keyboard never hides the chip list).
- *     Query matches `brand.name` ∪ `template.nameKo` ∪ `template.nameEn`
- *     case-insensitively — Q1 hides unmatched brands and auto-expands the
- *     matched ones.
- *   - Brand accordion (body).
- *   - Selection footer strip (sticky bottom, surfaces only when ≥1 machine
- *     is selected; Q4 hosts the "전체 보유" Switch once ≥2 are selected).
+ * Staged-edit lifecycle (the 2026-05-22 follow-up):
+ *   - `stagedFilters` starts equal to the externally-committed `filters`.
+ *   - The sheet `onChange(index)` callback re-syncs `staged := filters`
+ *     each time the sheet opens, so any external change (NL search apply,
+ *     parent state reset) appears as the new starting point. Re-opening
+ *     after a dismissal without 적용 drops the user's edits cleanly.
+ *   - Apply CTA fires `onApply(staged)`; Reset CTA sets
+ *     `staged := INITIAL_FILTERS` (still local — user must tap Apply to
+ *     commit empty state).
+ *   - Dismiss (X / pan-down / backdrop tap) leaves the committed filters
+ *     untouched; the next open will overwrite the dropped staged state.
  *
- * Expand state lifecycle (Q6 + Q2):
- *   - Persists locally inside this component across sheet open/close.
- *   - `filters.templateIds` changes (NL search applies a parsedFilters
- *     payload, or user starts the sheet with templates pre-selected) merge
- *     the matching brand ids into the expanded set so the user lands inside
- *     the relevant accordions without manual taps.
- *   - Active search query replaces the visible expand set with every
- *     visible brand — when the user clears the query the manual expand
- *     state restores cleanly.
- *
- * `useFilters` state shape is unchanged — only the UI layer changes. The
- * backend's `searchInBounds` DTO (brandIds + categoryIds + templateIds +
- * scope) is unchanged, matching ADR 0024's "no backend change" promise.
+ * `useFilters` state shape is unchanged. The backend's `searchInBounds`
+ * DTO is unchanged. Only the FilterSheet ↔ MapScreen prop boundary
+ * changed from "many small toggles" to a single `onApply` callback.
  */
 export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function FilterSheet(
   {
@@ -98,11 +121,7 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     categoriesError = false,
     machineTemplatesError: _machineTemplatesError = false,
     filters,
-    onToggleBrand: _onToggleBrand,
-    onToggleCategory,
-    onToggleTemplate,
-    onSetMachineFilterMode,
-    onResetAll,
+    onApply,
     onDismiss,
     testID,
   },
@@ -110,10 +129,12 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
 ) {
   const sheetRef = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
   const insets = useSafeAreaInsets();
+  const [stagedFilters, setStagedFilters] = useState<SearchFilters>(filters);
   const [expandedBrandIds, setExpandedBrandIds] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const wasVisibleRef = useRef(false);
 
   useImperativeHandle(
     ref,
@@ -130,23 +151,20 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
         brands,
         categories,
         templates: machineTemplates,
-        activeCategoryIds: filters.categoryIds,
+        activeCategoryIds: stagedFilters.categoryIds,
         searchQuery,
       }),
-    [brands, categories, machineTemplates, filters.categoryIds, searchQuery],
+    [brands, categories, machineTemplates, stagedFilters.categoryIds, searchQuery],
   );
 
-  // Q2 / NL auto-expand: whenever the externally-set templateIds change
-  // (NL search applied parsedFilters, or a parent set the value pre-mount),
-  // ensure the brands that own those templates are in the expanded set so
-  // the user lands inside the relevant accordions. Merge-only — never
-  // auto-collapses, so a user expanding manually and then receiving an NL
-  // result preserves both sets.
+  // Q2 / NL auto-expand: when staged templateIds picked up an externally
+  // applied template (e.g. previous Apply or NL pre-fill), expand the
+  // owning brand so the user lands inside the relevant accordion.
   useEffect(
     function autoExpandFromSelectedTemplates() {
-      if (filters.templateIds.length === 0) return;
+      if (stagedFilters.templateIds.length === 0) return;
       const brandIdsForSelection = new Set<string>();
-      for (const templateId of filters.templateIds) {
+      for (const templateId of stagedFilters.templateIds) {
         const template = machineTemplates.find((t) => t.id === templateId);
         if (template !== undefined) brandIdsForSelection.add(template.brandId);
       }
@@ -166,12 +184,9 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
         return mutated ? next : prev;
       });
     },
-    [filters.templateIds, machineTemplates],
+    [stagedFilters.templateIds, machineTemplates],
   );
 
-  // While search is active, every visible brand reveals its matching
-  // templates by default so the user can scan results without an extra
-  // tap. Clearing the query falls back to the user's saved expand set.
   const isSearching = searchQuery.trim() !== '';
   const displayedExpandedBrandIds = useMemo(() => {
     if (!isSearching) return expandedBrandIds;
@@ -187,6 +202,18 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     [],
   );
 
+  function handleSheetChange(index: number) {
+    const isVisible = index >= 0;
+    // Open transition (closed → open): re-sync staged from committed so
+    // any external apply (NL search, parent reset) becomes the new
+    // baseline and the previous edit session's dropped staged state
+    // doesn't leak in.
+    if (isVisible && !wasVisibleRef.current) {
+      setStagedFilters(filters);
+    }
+    wasVisibleRef.current = isVisible;
+  }
+
   function toggleExpand(brandId: string) {
     setExpandedBrandIds((prev) => {
       const next = new Set(prev);
@@ -199,12 +226,38 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     });
   }
 
+  function handleToggleCategory(categoryId: string) {
+    setStagedFilters((prev) => ({
+      ...prev,
+      categoryIds: toggleInArray(prev.categoryIds, categoryId),
+    }));
+  }
+
+  function handleToggleTemplate(templateId: string) {
+    setStagedFilters((prev) => ({
+      ...prev,
+      templateIds: toggleInArray(prev.templateIds, templateId),
+    }));
+  }
+
+  function handleSetMachineFilterMode(mode: SearchFilters['machineFilterMode']) {
+    setStagedFilters((prev) => ({ ...prev, machineFilterMode: mode }));
+  }
+
+  function handleResetAll() {
+    setStagedFilters(INITIAL_FILTERS);
+  }
+
+  function handleApply() {
+    onApply(stagedFilters);
+    sheetRef.current?.dismiss();
+  }
+
   function handleClose() {
     sheetRef.current?.dismiss();
   }
 
   function handleSearchFocus() {
-    // Q8-extra: snap to full so the keyboard never hides the brand list.
     sheetRef.current?.snapToIndex(SNAP_INDEX_FULL);
   }
 
@@ -212,6 +265,7 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     setSearchQuery('');
   }
 
+  const hasPendingChanges = !filtersEqual(stagedFilters, filters);
   const footerBottomPadding = Math.max(insets.bottom, MIN_FOOTER_BOTTOM_PADDING);
 
   return (
@@ -221,6 +275,7 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
       enablePanDownToClose
       backgroundStyle={BACKGROUND_STYLE}
       backdropComponent={renderBackdrop}
+      onChange={handleSheetChange}
       onDismiss={onDismiss}
     >
       <View testID={testID} className="flex-1">
@@ -270,11 +325,11 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
             <FilterSheetSection
               label="운동 부위"
               items={categories}
-              selectedIds={filters.categoryIds}
+              selectedIds={stagedFilters.categoryIds}
               isError={categoriesError}
               searchThreshold={CATEGORY_SEARCH_THRESHOLD}
               searchPlaceholder=""
-              onToggle={onToggleCategory}
+              onToggle={handleToggleCategory}
             />
           </View>
 
@@ -289,21 +344,26 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
             <FilterSheetBrandAccordion
               groups={brandGroups}
               expandedBrandIds={displayedExpandedBrandIds}
-              selectedTemplateIds={filters.templateIds}
+              selectedTemplateIds={stagedFilters.templateIds}
               onToggleExpand={toggleExpand}
-              onToggleTemplate={onToggleTemplate}
+              onToggleTemplate={handleToggleTemplate}
             />
           )}
         </BottomSheetScrollView>
 
+        <FilterSheetSelectionStrip
+          selectedTemplateIds={stagedFilters.templateIds}
+          templates={machineTemplates}
+          machineFilterMode={stagedFilters.machineFilterMode}
+          onRemoveTemplate={handleToggleTemplate}
+          onSetMachineFilterMode={handleSetMachineFilterMode}
+        />
+
         <View style={{ paddingBottom: footerBottomPadding }}>
-          <FilterSheetSelectionStrip
-            selectedTemplateIds={filters.templateIds}
-            templates={machineTemplates}
-            machineFilterMode={filters.machineFilterMode}
-            onRemoveTemplate={onToggleTemplate}
-            onResetAll={onResetAll}
-            onSetMachineFilterMode={onSetMachineFilterMode}
+          <FilterSheetApplyBar
+            hasPendingChanges={hasPendingChanges}
+            onResetAll={handleResetAll}
+            onApply={handleApply}
           />
         </View>
       </View>
