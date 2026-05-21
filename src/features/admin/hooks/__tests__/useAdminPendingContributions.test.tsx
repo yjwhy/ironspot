@@ -46,7 +46,7 @@ describe('useAdminPendingContributions', () => {
       expect(result.current.isSuccess).toBe(true);
     });
     expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].freeFormName).toBe('커스텀 머신');
+    expect(result.current.data?.[0]?.freeFormName).toBe('커스텀 머신');
   });
 
   it('passes the limit param through to the generated client', async () => {

@@ -921,6 +921,7 @@ class AdminControllerIT extends IntegrationTestBase {
         assertThat(body).contains("\"reporterDismissedHistogram\"");
         assertThat(body).contains("\"topReporters\"");
         assertThat(body).contains("\"banEvents\"");
+        assertThat(body).contains("\"pendingContributionsByWeek\"");
     }
 
     @Test

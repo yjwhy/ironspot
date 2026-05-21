@@ -32,7 +32,11 @@ public record ModerationAnalyticsResponse(
 
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
         description = "Banned users in the period. period='all' returns the full ban audit log; '7d'/'30d' scopes to recent ban events.")
-    List<BanEvent> banEvents
+    List<BanEvent> banEvents,
+
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+        description = "Phase 5 item 11 H7 signal: per-week count of pending_review machine contributions. Includes soft-deleted (rejected) rows so admin actions don't deflate the submission rate, but excludes already-promoted rows — see MachineRepository.countPendingContributionsByWeek javadoc.")
+    List<WeeklyContributionsBucket> pendingContributionsByWeek
 ) {
 
     public record HistogramBucket(
@@ -69,5 +73,15 @@ public record ModerationAnalyticsResponse(
 
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         String role
+    ) {}
+
+    public record WeeklyContributionsBucket(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+            description = "ISO week start (Monday 00:00 UTC) for the bucket")
+        OffsetDateTime weekStart,
+
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+            description = "Pending-review contribution rows submitted that week (including admin-rejected ones)")
+        int submissionCount
     ) {}
 }

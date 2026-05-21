@@ -77,11 +77,13 @@ class ModerationDigestJobIT extends IntegrationTestBase {
             List.of(
                 new ModerationAnalyticsResponse.BanEvent(userA,
                     OffsetDateTime.now().minusDays(1), "user")
-            )
+            ),
+            7
         );
 
         assertThat(digest).contains("총 disposition: 12건");
         assertThat(digest).contains("Ban 이벤트: 1건");
+        assertThat(digest).contains("대기 머신 기여 (이번 주): 7건");
         assertThat(digest).contains("3-4: 1명");
         assertThat(digest).contains("`aaaaaaaa` — actioned 4 / dismissed 1");
         assertThat(digest).contains("정확도 80%");

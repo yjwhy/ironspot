@@ -84,3 +84,4 @@ export * from './uploadParams';
 export * from './upvoteResponse';
 export * from './userResponse';
 export * from './userResponseRole';
+export * from './weeklyContributionsBucket';
