@@ -1,5 +1,6 @@
 package com.ironspot.machine;
 
+import com.ironspot.jooq.enums.LoadingType;
 import com.ironspot.machine.dto.MachineTemplateResponse;
 import lombok.RequiredArgsConstructor;
 import org.jooq.Condition;
@@ -72,6 +73,30 @@ public class MachineTemplateRepository {
                 r.get(MACHINE_TEMPLATES.NAME_KO),
                 r.get(MACHINE_TEMPLATES.LOADING_TYPE).getLiteral()
             ));
+    }
+
+    /**
+     * Phase 5 item 11 sub-task 4: admin-created machine_template via the
+     * promote action's {@code newTemplate} / {@code newBrandAndTemplate}
+     * kinds. Always inserts with {@code is_approved = true} since the create
+     * surface is admin-only — there is no "draft" state for templates.
+     *
+     * <p>{@code categoryId} is nullable per schema (machine_templates only
+     * weakly references categories today); the picker forces a selection in
+     * the UI but the contract stays permissive for future flows.
+     */
+    public UUID create(UUID brandId, UUID categoryId, String nameEn, String nameKo, String loadingType) {
+        LoadingType lt = LoadingType.lookupLiteral(loadingType);
+        return dsl.insertInto(MACHINE_TEMPLATES)
+            .set(MACHINE_TEMPLATES.BRAND_ID, brandId)
+            .set(MACHINE_TEMPLATES.CATEGORY_ID, categoryId)
+            .set(MACHINE_TEMPLATES.NAME_EN, nameEn)
+            .set(MACHINE_TEMPLATES.NAME_KO, nameKo)
+            .set(MACHINE_TEMPLATES.LOADING_TYPE, lt)
+            .set(MACHINE_TEMPLATES.IS_APPROVED, true)
+            .returning(MACHINE_TEMPLATES.ID)
+            .fetchOne()
+            .get(MACHINE_TEMPLATES.ID);
     }
 
     public List<MachineTemplateSummary> findApprovedByOptionalFilters(UUID brandId, UUID categoryId) {
