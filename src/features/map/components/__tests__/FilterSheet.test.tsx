@@ -210,4 +210,44 @@ describe('FilterSheet (ADR 0024 accordion layout)', () => {
     expect(getByText('Panatta')).toBeTruthy();
     expect(queryByText('Hammer Strength')).toBeNull();
   });
+
+  it('global search hides unmatched brands and surfaces matched templates', () => {
+    const { getByLabelText, getByText, queryByText } = renderSheet();
+    fireEvent.changeText(getByLabelText('머신 또는 브랜드 검색'), '하이로우');
+    // Panatta has 하이로우 → still visible. Hammer doesn't → hidden.
+    expect(getByText('Panatta')).toBeTruthy();
+    expect(queryByText('Hammer Strength')).toBeNull();
+    // While searching, matching brand auto-expands so the user sees the hit
+    // without an extra tap (slice b behaviour, ADR 0024 결정 5).
+    expect(getByText(/하이로우/)).toBeTruthy();
+  });
+
+  it('matching the brand name keeps all of its templates', () => {
+    const { getByLabelText, getByText } = renderSheet();
+    fireEvent.changeText(getByLabelText('머신 또는 브랜드 검색'), 'Panatta');
+    expect(getByText('Panatta')).toBeTruthy();
+    // Panatta has two templates in fixtures; both should be visible.
+    expect(getByText(/하이로우/)).toBeTruthy();
+    expect(getByText(/체스트 프레스 · 플레이트/)).toBeTruthy();
+  });
+
+  it('renders the empty-state copy when global search has no matches', () => {
+    const { getByLabelText, getByText } = renderSheet();
+    fireEvent.changeText(getByLabelText('머신 또는 브랜드 검색'), '존재하지않는머신ABCXYZ');
+    expect(getByText(/필터에 맞는 머신이 없어요/)).toBeTruthy();
+  });
+
+  it('auto-expands the brand of an externally-selected template (NL search path)', async () => {
+    const { findByText } = renderSheet({
+      filters: { ...emptyFilters, templateIds: ['t1'] },
+    });
+    // t1 belongs to Panatta. The autoExpandFromSelectedTemplates effect
+    // runs after the initial render, so this assertion is async — findByText
+    // waits for the post-effect re-render where Panatta's accordion body
+    // (the 등 sub-section header) is visible. The 하이로우 row label
+    // appears twice (accordion + footer chip with brand prefix), so we
+    // anchor on the sub-section header which only renders inside an
+    // expanded accordion.
+    expect(await findByText('등 (1)')).toBeTruthy();
+  });
 });

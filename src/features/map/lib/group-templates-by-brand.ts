@@ -39,6 +39,18 @@ interface GroupTemplatesArgs {
    * set survive the grouping — backs the 운동 부위 chip cross-filter.
    */
   readonly activeCategoryIds?: readonly string[];
+  /**
+   * Global search query (slice b). Tokens match case-insensitively against
+   * `brand.name`, `template.nameKo`, and `template.nameEn`. A brand-name
+   * match keeps all of that brand's templates (after the category narrowing
+   * still applies); a template-name match keeps only the matching templates.
+   * Empty or whitespace-only string = no search (all templates retained).
+   */
+  readonly searchQuery?: string;
+}
+
+function normaliseQuery(raw: string | undefined): string {
+  return raw === undefined ? '' : raw.trim().toLowerCase();
 }
 
 export function groupTemplatesByBrand({
@@ -46,9 +58,11 @@ export function groupTemplatesByBrand({
   categories,
   templates,
   activeCategoryIds,
+  searchQuery,
 }: GroupTemplatesArgs): readonly BrandGroup[] {
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const brandById = new Map(brands.map((b) => [b.id, b]));
+  const query = normaliseQuery(searchQuery);
 
   const filteredTemplates =
     activeCategoryIds !== undefined && activeCategoryIds.length > 0
@@ -70,8 +84,22 @@ export function groupTemplatesByBrand({
     const brand = brandById.get(brandId);
     if (brand === undefined || brandTemplates.length === 0) continue;
 
+    // Slice b: search query narrows visible templates per ADR 0024 결정 5.
+    // - Brand-name match → all of brand's templates survive (matches the
+    //   "Hammer Strength" → see all Hammer Strength machines mental model).
+    // - Template-name match → only matching templates survive.
+    // - No query → all templates pass through.
+    const isBrandNameMatch = query !== '' && brand.name.toLowerCase().includes(query);
+    const matchedTemplates =
+      query === '' || isBrandNameMatch
+        ? brandTemplates
+        : brandTemplates.filter(
+            (t) => t.nameKo.toLowerCase().includes(query) || t.nameEn.toLowerCase().includes(query),
+          );
+    if (matchedTemplates.length === 0) continue;
+
     const byCategory = new Map<string, MachineTemplateResponse[]>();
-    for (const template of brandTemplates) {
+    for (const template of matchedTemplates) {
       const list = byCategory.get(template.categoryId);
       if (list === undefined) {
         byCategory.set(template.categoryId, [template]);
@@ -99,7 +127,11 @@ export function groupTemplatesByBrand({
     groups.push({
       brand,
       sections,
-      totalCount: brandTemplates.length,
+      // After-filter count (Q3): reflects what the user sees inside the
+      // accordion after `activeCategoryIds` + `searchQuery` narrowing. Total
+      // brand-catalog size is intentionally NOT exposed so the row badge can
+      // never lie about what's about to render on expand.
+      totalCount: matchedTemplates.length,
     });
   }
 
