@@ -6,7 +6,7 @@ import { Image, Pressable, View } from 'react-native';
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
 import { useCreateGymMachine } from '@/shared/generated/machines/machines';
-import type { CreateGymMachineRequest } from '@/shared/generated/model';
+import type { CreateGymMachineRequest, CreateGymRequest } from '@/shared/generated/model';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { templateDisplayName } from '@/shared/lib/template-display-name';
@@ -236,6 +236,44 @@ function selectionFields(
   return null;
 }
 
+/**
+ * Phase 5 item 23 slice d: parse the JSON-serialised UnregisteredPlace that
+ * MapScreen pushes onto the route param. Returns the shape required by the
+ * backend's `naverPlace` contract (CreateGymRequest), or null if the param
+ * is absent, malformed, or missing a required field — falling back to the
+ * legacy gymId path keeps the FE safe against route-corruption edge cases.
+ */
+function parseNaverPlaceParam(raw: string | undefined): CreateGymRequest | null {
+  if (raw === undefined || raw.length === 0) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<{
+      naverPlaceId: string;
+      name: string;
+      address: string;
+      latitude: number;
+      longitude: number;
+    }>;
+    if (
+      typeof parsed.naverPlaceId !== 'string' ||
+      typeof parsed.name !== 'string' ||
+      typeof parsed.address !== 'string' ||
+      typeof parsed.latitude !== 'number' ||
+      typeof parsed.longitude !== 'number'
+    ) {
+      return null;
+    }
+    return {
+      naverPlaceId: parsed.naverPlaceId,
+      name: parsed.name,
+      address: parsed.address,
+      latitude: parsed.latitude,
+      longitude: parsed.longitude,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export function UploadConfirmScreen() {
@@ -248,12 +286,19 @@ export function UploadConfirmScreen() {
   // points may push without it, and handleRegister guards against the
   // missing-gymId case explicitly rather than letting an undefined leak into
   // the request body.
-  const { gymId, gymMachineId, compressedUri } = useLocalSearchParams<{
+  // Phase 5 item 23 slice d: `naverPlace` is the alternative to `gymId` for
+  // the "first photo on an unregistered place" flow. When present, submit
+  // builds the contribution body with `naverPlace` (atomic per slice a) and
+  // navigates to the freshly-created gym detail using the response's gymId.
+  const { gymId, gymMachineId, compressedUri, naverPlace } = useLocalSearchParams<{
     gymId?: string;
     gymMachineId?: string;
     compressedUri: string;
+    naverPlace?: string;
   }>();
   const router = useRouter();
+
+  const parsedNaverPlace = parseNaverPlaceParam(naverPlace);
 
   const { upload, isUploading, uploadProgress, uploadError, result } = usePhotoUpload(
     gymMachineId,
@@ -284,9 +329,9 @@ export function UploadConfirmScreen() {
   async function handleRegister() {
     if (isSubmittingRef.current || isRegistering) return;
 
-    if (gymId === undefined) {
-      // Legacy entry point pushed without gymId — surfaces as user-visible
-      // error rather than a silent 400 from the backend.
+    if (gymId === undefined && parsedNaverPlace === null) {
+      // Legacy entry point pushed without either target — surfaces as
+      // user-visible error rather than a silent 400 from the backend.
       toast({ title: '등록할 헬스장 정보가 없어요', preset: 'error' });
       return;
     }
@@ -296,11 +341,13 @@ export function UploadConfirmScreen() {
 
     // Only send photoId on the orphan path. If the photo was already bound to
     // an existing gymMachineId during upload the backend's NULL-guard would
-    // reject the rebind with 400.
+    // reject the rebind with 400. The naverPlace path is always orphan
+    // (gym_machine doesn't exist yet) so the photo binding always fires.
     const photoIdForOrphanBind = gymMachineId === undefined ? result?.photoId : undefined;
 
     const requestBody: CreateGymMachineRequest = {
-      gymId,
+      ...(gymId !== undefined ? { gymId } : {}),
+      ...(parsedNaverPlace !== null ? { naverPlace: parsedNaverPlace } : {}),
       ...fields,
       ...(photoIdForOrphanBind !== undefined ? { photoId: photoIdForOrphanBind } : {}),
     };
@@ -313,7 +360,18 @@ export function UploadConfirmScreen() {
           ? { title: '등록 요청을 보냈어요', message: '검토 후 반영될 거예요', preset: 'done' }
           : { title: '등록됐어요', preset: 'done' },
       );
-      router.back();
+      // Phase 5 item 23 slice d: the naverPlace path just registered a
+      // brand-new gym row. Pop the camera/confirm stack and return to the
+      // map root — the next NL/filter search picks up the new gym; the
+      // success toast already confirms the registration. (We don't push
+      // /gym/{id} directly because there's no dedicated gym-detail route;
+      // detail mounts inside the BottomSheet on the map screen, so the
+      // tabs root is the correct landing point.)
+      if (parsedNaverPlace !== null) {
+        router.replace('/');
+      } else {
+        router.back();
+      }
     } catch {
       toast({ title: '등록에 실패했어요', message: '잠시 후 다시 시도해 주세요', preset: 'error' });
     } finally {

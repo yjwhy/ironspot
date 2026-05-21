@@ -171,30 +171,4 @@ describe('useCreateGym', () => {
 
     expect(onError).toHaveBeenCalledTimes(1);
   });
-
-  it('maps UnregisteredPlace fields onto CreateGymRequest via handleCreateGymFromUnregisteredPlace', () => {
-    // Phase 5 item 14: MapScreen taps an UnregisteredGymCard and calls this
-    // helper to skip the duplicate Naver-search step. UnregisteredPlace
-    // carries a flat `address` (road-name with jibun fallback) so we map it
-    // straight onto CreateGymRequest.address without indirection.
-    const { result, mutate } = setupHook();
-
-    result.current.handleCreateGymFromUnregisteredPlace({
-      naverPlaceId: 'naver-77',
-      name: '미등록 헬스장',
-      address: '서울 강남구 역삼동 99',
-      latitude: 37.5,
-      longitude: 127.04,
-    });
-
-    expect(mutate).toHaveBeenCalledWith({
-      data: {
-        name: '미등록 헬스장',
-        address: '서울 강남구 역삼동 99',
-        latitude: 37.5,
-        longitude: 127.04,
-        naverPlaceId: 'naver-77',
-      },
-    });
-  });
 });

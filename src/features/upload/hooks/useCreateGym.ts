@@ -6,23 +6,18 @@ import { useCreateGym as useCreateGymMutation } from '@/shared/generated/gyms/gy
 import type { CreateGymRequest } from '@/shared/generated/model/createGymRequest';
 import type { GymDetailResponse } from '@/shared/generated/model/gymDetailResponse';
 import type { NaverPlaceResult } from '@/shared/generated/model/naverPlaceResult';
-import type { UnregisteredPlace } from '@/shared/generated/model/unregisteredPlace';
 import { HTTPError, TimeoutError } from '@/shared/lib/api-client';
 
 /**
- * Phase 5 hotfix 2026-05-21: the unregistered-card-tap race fires two
- * parallel POST /api/gyms calls; one commits backend-side, the other is
- * cancelled mid-flight by NSURLSession's connection racing on iOS. The
- * cancelled request rejects with an AbortError-style generic Error
- * (NOT an HTTPError, NOT a TimeoutError). Showing "헬스장 등록에
- * 실패했어요" for these is a lie — the gym row exists in the DB and a
- * re-search will surface it as registered. We treat non-HTTP / non-
- * timeout errors as transient "request was interrupted but the
- * duplicate likely committed" and skip the failure toast.
- *
- * The MapScreen-side ref-lock (`createGymInFlightRef`) blocks the
- * double-tap that triggers this race in the first place; this is the
- * second line of defence for any racy edge that slips past the lock.
+ * Phase 5 hotfix 2026-05-21 (pre-item-23): the unregistered-card-tap race
+ * fired two parallel POST /api/gyms calls; one committed backend-side, the
+ * other got cancelled mid-flight by NSURLSession's connection racing on
+ * iOS, and the cancellation surfaced a "헬스장 등록에 실패했어요" toast
+ * even though the gym row existed. Item 23 removed the entire
+ * "tap = immediate POST /api/gyms" path, so the race is gone. The
+ * isRealFailure check is kept because the gym-search → register flow
+ * (UploadGymSelectScreen) still goes through `handleCreateGym` and can
+ * still hit transient cancellation on flaky networks.
  */
 function isRealFailure(err: unknown): boolean {
   return err instanceof HTTPError || err instanceof TimeoutError;
@@ -30,11 +25,6 @@ function isRealFailure(err: unknown): boolean {
 
 interface UseCreateGymOptions {
   onSuccess?: (gym: GymDetailResponse) => void;
-  /**
-   * Phase 5 item 14: lets the caller clear any local "in-flight place id"
-   * tracking on the error edge so the bottom-sheet spinner stops decisively
-   * rather than relying on the derived gating alone.
-   */
   onError?: () => void;
 }
 
@@ -45,6 +35,11 @@ interface UseCreateGymOptions {
  *
  * The backend dedupes on `naverPlaceId`, so onSuccess fires for both the
  * "first registration" and "user re-tapped same place" cases.
+ *
+ * Phase 5 item 23: this hook now only powers the gym-search-then-register
+ * flow inside `UploadGymSelectScreen`. The unregistered-card-tap path was
+ * replaced by the atomic create-on-first-photo backend endpoint and no
+ * longer calls this hook.
  */
 export function useCreateGym(options?: UseCreateGymOptions) {
   const queryClient = useQueryClient();
@@ -56,12 +51,6 @@ export function useCreateGym(options?: UseCreateGymOptions) {
         options?.onSuccess?.(response.data);
       },
       onError: (err) => {
-        // Only show the "등록 실패" toast for actual server / timeout
-        // failures. Cancelled / aborted fetches (NSURLSession connection
-        // race, RN Pressable double-tap leftovers) silently swallow the
-        // toast — the backend dedupe on naverPlaceId means the gym was
-        // either already created by the winner of the race, or a re-tap
-        // will hit the same idempotent endpoint.
         if (isRealFailure(err)) {
           burnt.toast({ title: GYM_CREATE_FAILED_TITLE, preset: 'error' });
         }
@@ -82,28 +71,8 @@ export function useCreateGym(options?: UseCreateGymOptions) {
     mutation.mutate({ data });
   }
 
-  /**
-   * Phase 5 item 14: MapScreen taps an UnregisteredGymCard and creates the
-   * gym directly, bypassing the duplicate Naver-search step. UnregisteredPlace
-   * carries a flat `address` (backend already falls back from road-name to
-   * jibun when needed) and has no `phone` field, so the request omits phone
-   * unconditionally — this is intentional asymmetry with `handleCreateGym`,
-   * not an oversight.
-   */
-  function handleCreateGymFromUnregisteredPlace(place: UnregisteredPlace) {
-    const data: CreateGymRequest = {
-      name: place.name,
-      address: place.address,
-      latitude: place.latitude,
-      longitude: place.longitude,
-      naverPlaceId: place.naverPlaceId,
-    };
-    mutation.mutate({ data });
-  }
-
   return {
     handleCreateGym,
-    handleCreateGymFromUnregisteredPlace,
     isPending: mutation.isPending,
   };
 }

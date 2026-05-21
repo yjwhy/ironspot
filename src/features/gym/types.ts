@@ -50,17 +50,11 @@ export type GymBottomSheetMode =
        * queries where Naver merge is suppressed.
        */
       unregisteredPlaces?: readonly UnregisteredPlace[];
-      /** Called when the user taps an unregistered place card — routes to
-       * the upload flow with the place pre-filled so the user can become
-       * the first registrant. */
+      /** Called when the user taps an unregistered place card — switches
+       * the bottom sheet into `unregistered-detail` mode so the user can
+       * review the place before committing to registration. The actual
+       * register-and-upload action lives on the detail screen's CTA. */
       onUnregisteredPress?: (place: UnregisteredPlace) => void;
-      /**
-       * Phase 5 item 14: naver place ID for which the optimistic
-       * `useCreateGym` mutation is currently in flight. The matching card
-       * renders a spinner + "등록 중..." copy and ignores taps. `null` /
-       * omitted means no creation is pending.
-       */
-      pendingUnregisteredPlaceId?: string | null;
       /**
        * NL Search 0-result fallback. When present and BOTH `gyms` and
        * `unregisteredPlaces` are empty, the bottom sheet renders an

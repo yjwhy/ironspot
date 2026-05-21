@@ -34,8 +34,6 @@ interface UseBottomSheetModeParams {
    * (wired by the caller via `onPressRegisterFirstPhoto`).
    */
   onPressRegisterFirstPhoto: (place: UnregisteredPlace) => void;
-  /** Phase 5 item 14: see `GymBottomSheetMode.list.pendingUnregisteredPlaceId`. */
-  pendingUnregisteredPlaceId?: string | null;
 }
 
 interface UseBottomSheetModeResult {
@@ -56,7 +54,6 @@ export function useBottomSheetMode({
   hasActiveFilters,
   unregisteredPlaces,
   onPressRegisterFirstPhoto,
-  pendingUnregisteredPlaceId,
 }: UseBottomSheetModeParams): UseBottomSheetModeResult {
   const [selectedGymId, setSelectedGymId] = useState<string | null>(null);
   const [selectedUnregisteredPlace, setSelectedUnregisteredPlace] =
@@ -105,7 +102,6 @@ export function useBottomSheetMode({
       hasActiveFilters: hasActiveFilters ?? false,
       unregisteredPlaces,
       onUnregisteredPress: setSelectedUnregisteredPlace,
-      pendingUnregisteredPlaceId,
       nlEmpty,
     };
   }

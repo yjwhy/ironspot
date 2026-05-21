@@ -137,8 +137,32 @@ Reported by the user during the same 2026-05-20 review on a physical iPhone. The
 
 - [x] Frontend: replace the `router.push('/(upload)/gym-select', ...)` in `MapScreen.handleUnregisteredPress` with a direct `useCreateGym(place)` call (Naver place fed straight into the existing mutation). → Shipped earlier as part of `978bb92` (item 14 partial), landing the user on `/(upload)/gym-select?selectedGymId=<newGymId>` while `POST /api/gym-machines` was still pending.
 - [x] On mutation success, route to `/(upload)/camera?gymId=<newGymId>` so the user lands on the camera with the new gym pre-bound. → Shipped this PR on `hotfix/phase-5-item-14a-route-to-camera`. Now that item 11 (POST `/api/gym-machines`) is fully wired through slices 1-3, the gym-select intermediate is pure friction and the camera (`UPLOAD_PHOTO_PATHNAME` = `/(upload)/photo`) accepts gymId-only callers since item 11 slice 2 — landing here flows directly into the OCR + closed-list picker (item 11 slice 3). Route param name is `gymId` (matches `UploadPhotoScreen.useLocalSearchParams`).
-- [x] Add an "undo" toast on the camera screen for ~5 s ("○○를 등록했어요 · 취소") that rolls back the gym row if tapped. Persisted state hand-over via expo-router params, not a global store. → **Shipped.** Backend in 14a (PR #142): `DELETE /api/gyms/{id}` + V9 `created_by_user_id` column + 7-case authorisation IT. Frontend in 14b: `UndoRegistrationToast` + `useUndoRegistration` hook + camera route reads new `justRegisteredGym{Id,Name}` params; MapScreen's `useCreateGym` onSuccess threads them so the toast only mounts on the unregistered-card-tap path. Reanimated slide-in/out, amber "취소" CTA, 5s setTimeout, on-success `router.replace('/')` for clean back stack, on-error burnt toast ("등록 취소 실패"). 11 new unit/component tests (frontend lint + tsc + jest 676 ✓). Visual sim check still recommended before merge — `pnpm snap` after deep-linking to camera with the new params.
-- [ ] Telemetry: count gym-row rollbacks per week — if > 5 % we re-add a confirmation modal. → Pending alongside the undo.
+- [x] Add an "undo" toast on the camera screen for ~5 s ("○○를 등록했어요 · 취소") that rolls back the gym row if tapped. Persisted state hand-over via expo-router params, not a global store. → **Shipped.** Backend in 14a (PR #142): `DELETE /api/gyms/{id}` + V9 `created_by_user_id` column + 7-case authorisation IT. Frontend in 14b: `UndoRegistrationToast` + `useUndoRegistration` hook + camera route reads new `justRegisteredGym{Id,Name}` params; MapScreen's `useCreateGym` onSuccess threads them so the toast only mounts on the unregistered-card-tap path. Reanimated slide-in/out, amber "취소" CTA, 5s setTimeout, on-success `router.replace('/')` for clean back stack, on-error burnt toast ("등록 취소 실패"). 11 new unit/component tests (frontend lint + tsc + jest 676 ✓). Visual sim check still recommended before merge — `pnpm snap` after deep-linking to camera with the new params. **Superseded by the 23a-23f refactor below (2026-05-21).**
+- [ ] Telemetry: count gym-row rollbacks per week — if > 5 % we re-add a confirmation modal. → Pending alongside the undo. **Superseded** — atomic create eliminates the rollback path so the metric becomes 0 by construction.
+
+**Iteration: atomic create on first photo, replaces the immediate-create + undo workaround (2026-05-21, slices 23a-23f)**
+
+Triggered by a real-device session where the optimistic immediate-create flow exposed several footguns: a double-POST race when iOS's NSURLSession connection racing cancelled one of two parallel requests (mid-flight refresh from `useCreateGym` retry surfaced "등록 실패" toast on a gym row that actually committed); a 5s undo window meant orphan gyms accumulated if the user backgrounded the app; the gym row lived in the DB before the user picked even one machine. The UX recommendation in the original section (Quick Reference §8 `undo-support`) trusted the tap too literally — the tap doesn't actually mean "register this gym," it means "look at this gym and decide whether to register." The refactor below re-aligns the implementation with that intent.
+
+New flow:
+
+1. Tap unregistered card on the bottom sheet → opens `UnregisteredGymDetail` mode (no DB write). Place metadata + empty gallery + a single CTA "기구 사진 등록하기".
+2. CTA → photo camera with the Naver place serialised on the route param.
+3. Photo + OCR + machine pick → submit goes through the existing `POST /api/gym-machines`, but with the new `naverPlace` field (alternative to `gymId`). Server creates the gym row, the gym_machine row, and binds the photo all inside one `@Transactional` block.
+4. On success, `router.replace('/')` returns to the map; the new gym appears on the next NL/filter search.
+
+Backend contract: `CreateGymMachineRequest` accepts exactly one of `{ gymId, naverPlace }`; `CreateGymMachineResponse` always returns `gymId` so the client can navigate to the new gym. `GymService.createFromNaverPlaces` is idempotent on the UNIQUE `naver_place_id` index so concurrent first-registrants converge on a single gym row.
+
+Slices (PR `task/phase-5-item-23-de-unregistered-flow` opened atop merged PR #144 which carried slices a-c):
+
+- **23a**: backend — `CreateGymMachineRequest.naverPlace`, `MachineService.resolveGymId`, IT covering happy-path and ambiguous-input rejection (commit `a2bf5d9`, merged in #144).
+- **23b**: regen OpenAPI + Orval client (`b3429b1`, merged in #144).
+- **23c**: `UnregisteredGymDetail` component + `unregistered-detail` mode + `useBottomSheetMode` selection state (`bcd3459`, merged in #144).
+- **23d**: thread `naverPlace` through `UploadPhotoScreen` + `UploadConfirmScreen`; submit branches on the field and lands the user on the map root on success (this PR).
+- **23e**: remove the dead immediate-create scaffolding — `useCreateGym.handleCreateGymFromUnregisteredPlace`, `UndoRegistrationToast`, `useUndoRegistration`, `MapScreen.createGymInFlightRef`, `pendingUnregisteredPlaceId` plumbing (this PR).
+- **23f**: this docs update (this PR).
+
+Kept as admin/cleanup primitives even though no user-facing path drives them now: `DELETE /api/gyms/{id}` + V9 `created_by_user_id` column.
 
 **Recommended solution (ui-ux-pro-max review, 2026-05-20)**
 
