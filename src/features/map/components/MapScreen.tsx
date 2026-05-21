@@ -124,6 +124,18 @@ export function MapScreen() {
   const [lastPressedUnregisteredPlaceId, setLastPressedUnregisteredPlaceId] = useState<
     string | null
   >(null);
+  // Phase 5 hotfix: real-device + sim both observed firing useCreateGym
+  // TWICE on a single unregistered-card tap (two parallel POST /api/gyms,
+  // one commits, the other cancels mid-request). Root cause: the React
+  // state guard (`isCreatingGymFromUnregisteredPlace`) updates one tick
+  // after `mutation.mutate` and a second touch event from RN Pressable
+  // (or the UnregisteredMarker tap propagating from the map view) slips
+  // through before isPending becomes true. Backend handles dedup on
+  // naverPlaceId so the second POST returns the same gym, but the
+  // cancelled one's onError fires burnt's "등록 실패" toast — the user
+  // sees an error toast even though a gym row got created. useRef-based
+  // lock blocks re-entry synchronously, no React-state round-trip.
+  const createGymInFlightRef = useRef(false);
   const createGym = useCreateGym({
     onSuccess: (gym) => {
       // Phase 5 item 14a: land the user directly on the camera so the gym
@@ -139,6 +151,7 @@ export function MapScreen() {
       // (FAB, gym-detail) push without these params so the toast stays
       // scoped to the unregistered-card-tap path where the footgun lives.
       setLastPressedUnregisteredPlaceId(null);
+      createGymInFlightRef.current = false;
       router.push({
         pathname: UPLOAD_PHOTO_PATHNAME,
         params: {
@@ -150,6 +163,7 @@ export function MapScreen() {
     },
     onError: () => {
       setLastPressedUnregisteredPlaceId(null);
+      createGymInFlightRef.current = false;
     },
   });
   const isCreatingGymFromUnregisteredPlace = createGym.isPending;
@@ -161,9 +175,15 @@ export function MapScreen() {
     // Phase 5 item 14: optimistic create + skip the duplicate Naver-search.
     // Named for the action (mutation + navigate), not the event source —
     // both the bottom-sheet UnregisteredGymCard tap and the map
-    // UnregisteredMarker tap route here. Ignore re-taps while a creation is
-    // in flight; `isPending` covers any other in-flight place too.
+    // UnregisteredMarker tap route here.
+    // Hotfix 2026-05-21: `createGymInFlightRef` is a synchronous re-entry
+    // lock that blocks the double-tap race the React-state guard couldn't
+    // catch (see hook declaration above for the root-cause writeup).
+    // `isCreatingGymFromUnregisteredPlace` is kept as a belt-and-braces
+    // visual gate; ref check fires first.
+    if (createGymInFlightRef.current) return;
     if (isCreatingGymFromUnregisteredPlace) return;
+    createGymInFlightRef.current = true;
     setLastPressedUnregisteredPlaceId(place.naverPlaceId);
     createGym.handleCreateGymFromUnregisteredPlace(place);
   }
