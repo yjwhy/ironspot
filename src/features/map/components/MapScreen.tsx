@@ -203,7 +203,7 @@ export function MapScreen() {
       router.push(`/gym/${gymId}/machine/${machineId}`);
     },
     unregisteredPlaces,
-    onUnregisteredPress: handleRegisterUnregisteredGym,
+    onPressRegisterFirstPhoto: handleRegisterUnregisteredGym,
     pendingUnregisteredPlaceId,
     nlEmpty:
       source.kind === 'nl' &&

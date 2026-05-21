@@ -18,6 +18,7 @@ import { GymCard } from './GymCard';
 import { GymCardSkeleton } from './GymCardSkeleton';
 import { GymDetail } from './GymDetail';
 import { UnregisteredGymCard } from './UnregisteredGymCard';
+import { UnregisteredGymDetail } from './UnregisteredGymDetail';
 
 export type { GymBottomSheetMode };
 
@@ -123,13 +124,31 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
       backdropComponent={undefined}
       backgroundStyle={BACKGROUND_STYLE}
     >
-      {mode.type === 'detail' ? (
-        <BottomSheetView style={CONTENT_STYLE}>
-          <DetailMode mode={mode} />
-        </BottomSheetView>
-      ) : (
-        <ListMode mode={mode} listBottomPad={listBottomPad} />
-      )}
+      {(() => {
+        switch (mode.type) {
+          case 'detail':
+            return (
+              <BottomSheetView style={CONTENT_STYLE}>
+                <DetailMode mode={mode} />
+              </BottomSheetView>
+            );
+          case 'unregistered-detail':
+            return (
+              <BottomSheetView style={CONTENT_STYLE}>
+                <UnregisteredGymDetail
+                  place={mode.place}
+                  distanceKm={mode.distanceKm}
+                  onClose={mode.onCloseDetail}
+                  onPressRegisterFirstPhoto={() => {
+                    mode.onPressRegisterFirstPhoto(mode.place);
+                  }}
+                />
+              </BottomSheetView>
+            );
+          case 'list':
+            return <ListMode mode={mode} listBottomPad={listBottomPad} />;
+        }
+      })()}
     </BottomSheetModal>
   );
 }
