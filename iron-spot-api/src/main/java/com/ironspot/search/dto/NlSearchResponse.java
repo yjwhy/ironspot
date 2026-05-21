@@ -26,5 +26,16 @@ public record NlSearchResponse(
                 + "filter (Naver has no machine metadata, so filtered queries can't match). "
                 + "Frontend renders these as separate cards with a 'first registrant' CTA "
                 + "linking to the upload flow.")
-    List<UnregisteredPlace> unregisteredPlaces
-) {}
+    List<UnregisteredPlace> unregisteredPlaces,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+            description = "Quota state after this search committed. `used` is the user's "
+                + "post-increment monthly count and `limit` is the per-user monthly cap. "
+                + "Frontend renders `남은 검색 (limit - used)/limit` as a small hint near "
+                + "the search bar.")
+    QuotaInfo quota
+) {
+    public record QuotaInfo(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int used,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int limit
+    ) {}
+}
