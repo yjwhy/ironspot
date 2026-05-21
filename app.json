@@ -57,7 +57,10 @@
     },
     "ios": {
       "bundleIdentifier": "com.ironspot.app",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["nmap"]
+      }
     },
     "android": {
       "package": "com.ironspot.app",
