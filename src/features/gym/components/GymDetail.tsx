@@ -14,6 +14,7 @@ import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { Gym, GymMachineWithDetails } from '@/shared/types/database';
 
+import { DirectionsChip } from './DirectionsChip';
 import { GymOwnerEntry } from './GymOwnerEntry';
 import { MachineList } from './MachineList';
 import { useGymMachines } from '../hooks/useGymMachines';
@@ -46,9 +47,24 @@ export function GymDetail({ gym, onPressMachine }: GymDetailProps) {
 function GymHeader({ gym }: { gym: Gym }) {
   return (
     <View className="gap-1">
-      <AppText accessibilityRole="header" className="text-heading-lg text-text-primary">
-        {gym.name}
-      </AppText>
+      <View className="flex-row items-start justify-between gap-3">
+        <AppText accessibilityRole="header" className="flex-1 text-heading-lg text-text-primary">
+          {gym.name}
+        </AppText>
+        <DirectionsChip
+          gym={{
+            id: gym.id,
+            name: gym.name,
+            latitude: gym.latitude,
+            longitude: gym.longitude,
+            // See GymCard for the rationale — naver_place_id isn't surfaced
+            // through the current DTO, so the directions lib falls back to
+            // the lat/lng route deeplink.
+            naverPlaceId: null,
+          }}
+          source="detail"
+        />
+      </View>
       <MetaLine>{gym.address}</MetaLine>
       {gym.phone ? <MetaLine>{gym.phone}</MetaLine> : null}
       {gym.operating_hours ? <MetaLine>{gym.operating_hours}</MetaLine> : null}
