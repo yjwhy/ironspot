@@ -64,6 +64,7 @@ export * from './parsedFiltersScope';
 export * from './photoResponse';
 export * from './photoUploadResponse';
 export * from './queueParams';
+export * from './quotaInfo';
 export * from './resolvedLocation';
 export * from './searchParams';
 export * from './searchPlacesParams';

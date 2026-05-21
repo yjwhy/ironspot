@@ -7,6 +7,7 @@
  */
 import type { GymWithMachineCountResponse } from './gymWithMachineCountResponse';
 import type { ParsedFilters } from './parsedFilters';
+import type { QuotaInfo } from './quotaInfo';
 import type { ResolvedLocation } from './resolvedLocation';
 import type { UnregisteredPlace } from './unregisteredPlace';
 
@@ -21,4 +22,6 @@ export interface NlSearchResponse {
   resolvedLocation: ResolvedLocation;
   /** Naver 지역검색 results for gyms not yet registered in IronSpot. Empty when the NL query carries any specific brand / category / machine filter (Naver has no machine metadata, so filtered queries can't match). Frontend renders these as separate cards with a 'first registrant' CTA linking to the upload flow. */
   unregisteredPlaces: UnregisteredPlace[];
+  /** Quota state after this search committed. `used` is the user's post-increment monthly count and `limit` is the per-user monthly cap. Frontend renders `남은 검색 (limit - used)/limit` as a small hint near the search bar. */
+  quota: QuotaInfo;
 }
