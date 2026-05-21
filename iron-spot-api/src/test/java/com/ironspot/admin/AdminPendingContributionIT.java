@@ -208,13 +208,11 @@ class AdminPendingContributionIT extends IntegrationTestBase {
 
         String body = "{"
             + "\"kind\":\"newBrandAndTemplate\","
-            + "\"brand\":{\"name\":\"IT-NewBrand\"},"
-            + "\"template\":{"
-                + "\"nameEn\":\"IT-NewBrandTpl\","
-                + "\"nameKo\":\"IT 신규 브랜드 템플릿\","
-                + "\"loadingType\":\"pin\","
-                + "\"categoryId\":\"" + CATEGORY_ID + "\""
-            + "}"
+            + "\"newBrandName\":\"IT-NewBrand\","
+            + "\"nameEn\":\"IT-NewBrandTpl\","
+            + "\"nameKo\":\"IT 신규 브랜드 템플릿\","
+            + "\"loadingType\":\"pin\","
+            + "\"categoryId\":\"" + CATEGORY_ID + "\""
             + "}";
         ResponseEntity<String> response = restTemplate.exchange(
             "/api/admin/gym-machines/" + pending + "/promote",

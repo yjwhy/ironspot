@@ -5,20 +5,42 @@
  * 헬스장 기구 정보 플랫폼 API
  * OpenAPI spec version: v1
  */
-import type { ExistingTemplate } from './existingTemplate';
-import type { NewBrandAndTemplate } from './newBrandAndTemplate';
-import type { NewTemplate } from './newTemplate';
+import type { PromoteContributionRequestKind } from './promoteContributionRequestKind';
+import type { PromoteContributionRequestLoadingType } from './promoteContributionRequestLoadingType';
 
-/**
- * Promote action discriminated on `kind`
- */
-export type PromoteContributionRequest =
-  | (ExistingTemplate & {
-      kind: string;
-    })
-  | (NewTemplate & {
-      kind: string;
-    })
-  | (NewBrandAndTemplate & {
-      kind: string;
-    });
+export interface PromoteContributionRequest {
+  /**
+   * @minLength 1
+   * @pattern existingTemplate|newTemplate|newBrandAndTemplate
+   */
+  kind: PromoteContributionRequestKind;
+  /** Required when kind='existingTemplate' */
+  templateId?: string;
+  /** Required when kind='newTemplate' */
+  brandId?: string;
+  /**
+   * Required when kind='newBrandAndTemplate'
+   * @minLength 0
+   * @maxLength 80
+   */
+  newBrandName?: string;
+  /**
+   * Required when kind='newTemplate' or 'newBrandAndTemplate'
+   * @minLength 0
+   * @maxLength 120
+   */
+  nameEn?: string;
+  /**
+   * Required when kind='newTemplate' or 'newBrandAndTemplate'
+   * @minLength 0
+   * @maxLength 120
+   */
+  nameKo?: string;
+  /**
+   * Required when kind='newTemplate' or 'newBrandAndTemplate'
+   * @pattern pin|plate
+   */
+  loadingType?: PromoteContributionRequestLoadingType;
+  /** Optional categories.id; null leaves the template uncategorised */
+  categoryId?: string;
+}

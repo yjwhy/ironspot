@@ -50,8 +50,7 @@ class AdminPendingContributionServiceTest {
         when(machineRepository.findExistingApprovedAtGym(gymId, templateId)).thenReturn(Optional.empty());
         when(machineRepository.promoteToTemplate(gymMachineId, templateId)).thenReturn(1);
 
-        PromoteContributionResponse out = service.promote(
-            gymMachineId, new PromoteContributionRequest.ExistingTemplate(templateId));
+        PromoteContributionResponse out = service.promote(gymMachineId, existingTemplateRequest(templateId));
 
         assertThat(out.gymMachineId()).isEqualTo(gymMachineId);
         assertThat(out.templateId()).isEqualTo(templateId);
@@ -68,8 +67,7 @@ class AdminPendingContributionServiceTest {
         when(machineRepository.findExistingApprovedAtGym(gymId, templateId))
             .thenReturn(Optional.of(existingApproved));
 
-        PromoteContributionResponse out = service.promote(
-            gymMachineId, new PromoteContributionRequest.ExistingTemplate(templateId));
+        PromoteContributionResponse out = service.promote(gymMachineId, existingTemplateRequest(templateId));
 
         assertThat(out.gymMachineId()).isEqualTo(existingApproved);
         assertThat(out.mergedIntoGymMachineId()).isEqualTo(existingApproved);
@@ -80,14 +78,18 @@ class AdminPendingContributionServiceTest {
     }
 
     @Test
+    void promote_existingTemplate_400WhenTemplateIdMissing() {
+        givenPendingExists();
+        PromoteContributionRequest req = new PromoteContributionRequest(
+            "existingTemplate", null, null, null, null, null, null, null);
+        assertBadRequest(() -> service.promote(gymMachineId, req));
+    }
+
+    @Test
     void promote_existingTemplate_400WhenTemplateUnknownOrUnapproved() {
         givenPendingExists();
         when(machineRepository.templateExistsAndApproved(templateId)).thenReturn(false);
-
-        assertThatThrownBy(() -> service.promote(
-            gymMachineId, new PromoteContributionRequest.ExistingTemplate(templateId)))
-            .isInstanceOf(BusinessException.class)
-            .matches(ex -> ((BusinessException) ex).getStatus() == HttpStatus.BAD_REQUEST);
+        assertBadRequest(() -> service.promote(gymMachineId, existingTemplateRequest(templateId)));
         verify(machineRepository, never()).promoteToTemplate(any(), any());
     }
 
@@ -101,10 +103,7 @@ class AdminPendingContributionServiceTest {
         when(machineRepository.findExistingApprovedAtGym(gymId, createdTemplate)).thenReturn(Optional.empty());
         when(machineRepository.promoteToTemplate(gymMachineId, createdTemplate)).thenReturn(1);
 
-        PromoteContributionResponse out = service.promote(
-            gymMachineId,
-            new PromoteContributionRequest.NewTemplate(
-                brandId, "Lat Pulldown", "랫 풀다운", "pin", categoryId));
+        PromoteContributionResponse out = service.promote(gymMachineId, newTemplateRequest());
 
         assertThat(out.templateId()).isEqualTo(createdTemplate);
         assertThat(out.mergedIntoGymMachineId()).isNull();
@@ -115,13 +114,16 @@ class AdminPendingContributionServiceTest {
         givenPendingExists();
         when(brandRepository.existsById(brandId)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.promote(
-            gymMachineId,
-            new PromoteContributionRequest.NewTemplate(
-                brandId, "Lat Pulldown", "랫 풀다운", "pin", categoryId)))
-            .isInstanceOf(BusinessException.class)
-            .matches(ex -> ((BusinessException) ex).getStatus() == HttpStatus.BAD_REQUEST);
+        assertBadRequest(() -> service.promote(gymMachineId, newTemplateRequest()));
         verify(templateRepository, never()).create(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void promote_newTemplate_400WhenRequiredFieldMissing() {
+        givenPendingExists();
+        PromoteContributionRequest missingNameEn = new PromoteContributionRequest(
+            "newTemplate", null, brandId, null, null, "랫", "pin", categoryId);
+        assertBadRequest(() -> service.promote(gymMachineId, missingNameEn));
     }
 
     @Test
@@ -135,12 +137,7 @@ class AdminPendingContributionServiceTest {
         when(machineRepository.findExistingApprovedAtGym(gymId, createdTemplate)).thenReturn(Optional.empty());
         when(machineRepository.promoteToTemplate(gymMachineId, createdTemplate)).thenReturn(1);
 
-        PromoteContributionResponse out = service.promote(
-            gymMachineId,
-            new PromoteContributionRequest.NewBrandAndTemplate(
-                new PromoteContributionRequest.NewBrandPayload("NewBrand"),
-                new PromoteContributionRequest.NewTemplatePayload(
-                    "Custom Press", "커스텀 프레스", "plate", categoryId)));
+        PromoteContributionResponse out = service.promote(gymMachineId, newBrandAndTemplateRequest());
 
         assertThat(out.templateId()).isEqualTo(createdTemplate);
         assertThat(out.mergedIntoGymMachineId()).isNull();
@@ -149,26 +146,28 @@ class AdminPendingContributionServiceTest {
     @Test
     void promote_newBrandAndTemplate_409WhenBrandNameDuplicates() {
         givenPendingExists();
-        when(brandRepository.create("Dup"))
+        when(brandRepository.create("NewBrand"))
             .thenThrow(new DuplicateKeyException("brands_name_key"));
 
-        assertThatThrownBy(() -> service.promote(
-            gymMachineId,
-            new PromoteContributionRequest.NewBrandAndTemplate(
-                new PromoteContributionRequest.NewBrandPayload("Dup"),
-                new PromoteContributionRequest.NewTemplatePayload(
-                    "X", "엑스", "pin", categoryId))))
+        assertThatThrownBy(() -> service.promote(gymMachineId, newBrandAndTemplateRequest()))
             .isInstanceOf(BusinessException.class)
             .matches(ex -> ((BusinessException) ex).getStatus() == HttpStatus.CONFLICT);
         verify(templateRepository, never()).create(any(), any(), any(), any(), any());
     }
 
     @Test
+    void promote_400WhenKindUnknown() {
+        givenPendingExists();
+        PromoteContributionRequest req = new PromoteContributionRequest(
+            "garbage", null, null, null, null, null, null, null);
+        assertBadRequest(() -> service.promote(gymMachineId, req));
+    }
+
+    @Test
     void promote_404WhenPendingRowMissing() {
         when(machineRepository.findPendingForPromote(gymMachineId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.promote(
-            gymMachineId, new PromoteContributionRequest.ExistingTemplate(templateId)))
+        assertThatThrownBy(() -> service.promote(gymMachineId, existingTemplateRequest(templateId)))
             .isInstanceOf(BusinessException.class)
             .matches(ex -> ((BusinessException) ex).getStatus() == HttpStatus.NOT_FOUND);
     }
@@ -180,8 +179,7 @@ class AdminPendingContributionServiceTest {
         when(machineRepository.findExistingApprovedAtGym(gymId, templateId)).thenReturn(Optional.empty());
         when(machineRepository.promoteToTemplate(gymMachineId, templateId)).thenReturn(0);
 
-        assertThatThrownBy(() -> service.promote(
-            gymMachineId, new PromoteContributionRequest.ExistingTemplate(templateId)))
+        assertThatThrownBy(() -> service.promote(gymMachineId, existingTemplateRequest(templateId)))
             .isInstanceOf(BusinessException.class)
             .matches(ex -> ((BusinessException) ex).getStatus() == HttpStatus.CONFLICT);
     }
@@ -189,9 +187,7 @@ class AdminPendingContributionServiceTest {
     @Test
     void reject_softDeletesPendingRow() {
         givenPendingExists();
-
         service.reject(gymMachineId);
-
         verify(machineRepository).softDeleteById(gymMachineId);
     }
 
@@ -208,10 +204,30 @@ class AdminPendingContributionServiceTest {
     @Test
     void list_delegatesWithLimit() {
         when(machineRepository.listPendingContributions(25)).thenReturn(java.util.List.of());
-
         service.list(25);
-
         verify(machineRepository).listPendingContributions(eq(25));
+    }
+
+    private PromoteContributionRequest existingTemplateRequest(UUID templateId) {
+        return new PromoteContributionRequest(
+            "existingTemplate", templateId, null, null, null, null, null, null);
+    }
+
+    private PromoteContributionRequest newTemplateRequest() {
+        return new PromoteContributionRequest(
+            "newTemplate", null, brandId, null, "Lat Pulldown", "랫 풀다운", "pin", categoryId);
+    }
+
+    private PromoteContributionRequest newBrandAndTemplateRequest() {
+        return new PromoteContributionRequest(
+            "newBrandAndTemplate", null, null, "NewBrand",
+            "Custom Press", "커스텀 프레스", "plate", categoryId);
+    }
+
+    private void assertBadRequest(Runnable run) {
+        assertThatThrownBy(run::run)
+            .isInstanceOf(BusinessException.class)
+            .matches(ex -> ((BusinessException) ex).getStatus() == HttpStatus.BAD_REQUEST);
     }
 
     private void givenPendingExists() {
