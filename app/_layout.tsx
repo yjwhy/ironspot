@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
+import { useKeepBackendWarm } from '@/shared/hooks/useKeepBackendWarm';
 import { queryClient } from '@/shared/lib/query-client';
 import { forwardRenderErrorToSentry, initSentry } from '@/shared/lib/sentry';
 import { useAppFonts } from '@/shared/theme/fonts';
@@ -26,6 +27,13 @@ void SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
   const fontsReady = fontsLoaded || fontError !== null;
+
+  // Eager BE warm-up fires immediately on app launch (parallel with font
+  // loading + splash screen), so the Render free-tier cold-boot finishes
+  // before the user reaches any screen that actually issues a request.
+  // Unconditional placement (above the fontsReady gate) keeps the hook
+  // order stable across renders.
+  useKeepBackendWarm();
 
   useEffect(() => {
     if (fontsReady) {
