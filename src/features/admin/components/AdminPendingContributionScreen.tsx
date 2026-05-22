@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useBrands } from '@/features/map/hooks/useBrands';
@@ -11,20 +11,17 @@ import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import type { PromoteContributionRequest } from '@/shared/generated/model/promoteContributionRequest';
 import { formatRelativeKo } from '@/shared/lib/format';
-import { templateDisplayName } from '@/shared/lib/template-display-name';
+import { formatLoadingType, templateDisplayName } from '@/shared/lib/template-display-name';
+import { colors } from '@/shared/theme/tokens';
 
-import { useAdminPendingContributions } from '../hooks/useAdminPendingContributions';
+import { ADMIN_LOADING_TITLE } from './strings';
+import { useAdminPendingContributionItem } from '../hooks/useAdminPendingContributions';
 import { usePromoteContribution } from '../hooks/usePromoteContribution';
 import { useRejectContribution } from '../hooks/useRejectContribution';
 
 const HEADER_TITLE = '대기 머신 검토';
-const LOADING_TITLE = '불러오는 중…';
 const NOT_FOUND_TITLE = '대기 중인 기여가 아니에요';
 const PHOTO_HEIGHT = 200;
-const REJECT_CONFIRM_TITLE = '이 기여를 반려할까요?';
-const REJECT_CONFIRM_BODY =
-  '반려하면 사용자가 등록한 머신은 노출되지 않아요. 사진은 감사 기록을 위해 남아요.';
-
 type PromoteMode = 'existing' | 'newTemplate' | 'newBrandAndTemplate';
 type LoadingType = 'pin' | 'plate';
 
@@ -35,20 +32,19 @@ interface AdminPendingContributionScreenProps {
 export function AdminPendingContributionScreen({
   gymMachineId,
 }: AdminPendingContributionScreenProps) {
-  const list = useAdminPendingContributions();
-  const contribution = list.data?.find((row) => row.gymMachineId === gymMachineId);
+  const { contribution, isLoading, isError } = useAdminPendingContributionItem(gymMachineId);
 
-  if (list.isError) {
+  if (isError) {
     return (
       <ScreenShell>
         <EmptyState icon="error-outline" title="대기 머신을 불러오지 못했어요" />
       </ScreenShell>
     );
   }
-  if (list.isLoading || list.data === undefined) {
+  if (isLoading) {
     return (
       <ScreenShell>
-        <EmptyState icon="hourglass-empty" title={LOADING_TITLE} />
+        <EmptyState icon="hourglass-empty" title={ADMIN_LOADING_TITLE} />
       </ScreenShell>
     );
   }
@@ -217,7 +213,7 @@ function ExistingTemplateForm({ onSubmit, isPending }: FormProps) {
         >
           <Text className="text-sm text-text-primary">
             {template.brandName} {templateDisplayName(template)} ·{' '}
-            {template.loadingType === 'pin' ? '핀' : '플레이트'}
+            {formatLoadingType(template.loadingType)}
           </Text>
         </Pressable>
       ))}
@@ -234,7 +230,9 @@ function NewTemplateForm({ onSubmit, isPending }: FormProps) {
   const [loadingType, setLoadingType] = useState<LoadingType>('pin');
   const [categoryId, setCategoryId] = useState<string>('');
 
-  const canSubmit = brandId !== '' && nameEn.trim() !== '' && nameKo.trim() !== '';
+  const hasBrand = brandId !== '';
+  const hasTemplateName = nameEn.trim() !== '' && nameKo.trim() !== '';
+  const canSubmit = hasBrand && hasTemplateName;
 
   function submit() {
     onSubmit({
@@ -277,7 +275,9 @@ function NewBrandAndTemplateForm({ onSubmit, isPending }: FormProps) {
   const [loadingType, setLoadingType] = useState<LoadingType>('pin');
   const [categoryId, setCategoryId] = useState<string>('');
 
-  const canSubmit = brandName.trim() !== '' && nameEn.trim() !== '' && nameKo.trim() !== '';
+  const hasBrandName = brandName.trim() !== '';
+  const hasTemplateName = nameEn.trim() !== '' && nameKo.trim() !== '';
+  const canSubmit = hasBrandName && hasTemplateName;
 
   function submit() {
     onSubmit({
@@ -321,7 +321,7 @@ function Input(props: React.ComponentProps<typeof TextInput>) {
     <TextInput
       {...props}
       className="rounded-md border border-border-base bg-bg-base px-3 py-2 text-text-primary"
-      placeholderTextColor="#9ca3af"
+      placeholderTextColor={colors.text.tertiary}
     />
   );
 }
@@ -406,14 +406,14 @@ function LoadingTypeToggle({
   return (
     <View className="flex-row gap-2">
       <PickerChip
-        label="핀"
+        label={formatLoadingType('pin')}
         active={value === 'pin'}
         onPress={() => {
           onChange('pin');
         }}
       />
       <PickerChip
-        label="플레이트"
+        label={formatLoadingType('plate')}
         active={value === 'plate'}
         onPress={() => {
           onChange('plate');
@@ -430,26 +430,13 @@ function RejectSection({ gymMachineId }: { gymMachineId: string }) {
     },
   });
 
-  function confirmReject() {
-    Alert.alert(REJECT_CONFIRM_TITLE, REJECT_CONFIRM_BODY, [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '반려',
-        style: 'destructive',
-        onPress: () => {
-          reject.handleReject();
-        },
-      },
-    ]);
-  }
-
   return (
     <View className="px-4 pb-8 pt-2">
       <Button
         label="반려"
         variant="secondary"
         disabled={reject.isPending}
-        onPress={confirmReject}
+        onPress={reject.confirmAndReject}
       />
     </View>
   );

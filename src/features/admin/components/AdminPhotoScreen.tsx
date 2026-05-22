@@ -7,12 +7,12 @@ import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { formatRelativeKo } from '@/shared/lib/format';
 
+import { ADMIN_LOADING_TITLE } from './strings';
 import { useAdminPhotoDetail } from '../hooks/useAdminPhotoDetail';
 import { useBanUserAction } from '../hooks/useBanUser';
 import { useDisposeReport } from '../hooks/useDisposeReport';
 import { useRestorePhotoAction } from '../hooks/useRestorePhoto';
 
-const LOADING_TITLE = '불러오는 중…';
 const ERROR_TITLE = '사진 정보를 불러오지 못했어요';
 const BLINDED_BADGE = '블라인드됨';
 const BANNED_BADGE = '차단됨';
@@ -39,7 +39,7 @@ export function AdminPhotoScreen({ photoId }: Props) {
   if (isLoading || data === undefined) {
     return (
       <SafeAreaView className="flex-1 bg-bg-base">
-        <EmptyState icon="hourglass-empty" title={LOADING_TITLE} />
+        <EmptyState icon="hourglass-empty" title={ADMIN_LOADING_TITLE} />
       </SafeAreaView>
     );
   }

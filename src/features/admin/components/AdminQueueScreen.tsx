@@ -1,4 +1,5 @@
 import { FlashList } from '@shopify/flash-list';
+import type { UseQueryResult } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -13,6 +14,7 @@ import { formatRelativeKo } from '@/shared/lib/format';
 import { useAdminPendingContributions } from '../hooks/useAdminPendingContributions';
 import { useAdminQueue } from '../hooks/useAdminQueue';
 import { ADMIN_ROUTES } from '../routes';
+import { ADMIN_LOADING_TITLE } from './strings';
 
 const QUEUE_TITLE = '관리자 대기 큐';
 const REPORTS_TAB = '신고';
@@ -21,7 +23,6 @@ const EMPTY_REPORTS_TITLE = '처리 대기 신고 없음';
 const EMPTY_REPORTS_DESCRIPTION = '모든 신고가 처리되었어요';
 const EMPTY_CONTRIBUTIONS_TITLE = '대기 중인 머신 기여 없음';
 const EMPTY_CONTRIBUTIONS_DESCRIPTION = '아직 검토할 사용자 머신 기여가 없어요';
-const LOADING_TITLE = '불러오는 중…';
 const ERROR_REPORTS_TITLE = '신고 큐를 불러오지 못했어요';
 const ERROR_CONTRIBUTIONS_TITLE = '대기 머신을 불러오지 못했어요';
 
@@ -141,7 +142,7 @@ function TabButton({
 }
 
 interface ReportsTabProps {
-  query: ReturnType<typeof useAdminQueue>;
+  query: UseQueryResult<AdminQueueItem[]>;
 }
 
 function ReportsTab({ query }: ReportsTabProps) {
@@ -149,7 +150,7 @@ function ReportsTab({ query }: ReportsTabProps) {
     return <EmptyState icon="error-outline" title={ERROR_REPORTS_TITLE} />;
   }
   if (query.isLoading || query.data === undefined) {
-    return <EmptyState icon="hourglass-empty" title={LOADING_TITLE} />;
+    return <EmptyState icon="hourglass-empty" title={ADMIN_LOADING_TITLE} />;
   }
   return (
     <FlashList
@@ -169,7 +170,7 @@ function ReportsTab({ query }: ReportsTabProps) {
 }
 
 interface ContributionsTabProps {
-  query: ReturnType<typeof useAdminPendingContributions>;
+  query: UseQueryResult<AdminPendingContribution[]>;
 }
 
 function ContributionsTab({ query }: ContributionsTabProps) {
@@ -177,7 +178,7 @@ function ContributionsTab({ query }: ContributionsTabProps) {
     return <EmptyState icon="error-outline" title={ERROR_CONTRIBUTIONS_TITLE} />;
   }
   if (query.isLoading || query.data === undefined) {
-    return <EmptyState icon="hourglass-empty" title={LOADING_TITLE} />;
+    return <EmptyState icon="hourglass-empty" title={ADMIN_LOADING_TITLE} />;
   }
   return (
     <FlashList
@@ -200,6 +201,31 @@ function QueueSeparator() {
   return <View className="h-px bg-border-subtle" />;
 }
 
+/**
+ * Square thumbnail used by both queue tabs. Renders the photo when present
+ * and a "머신" placeholder otherwise. Extracted from QueueRow / ContributionRow
+ * so both rows share one source for the `THUMB_SIZE` + corner-radius pair.
+ */
+function RowThumb({ url }: { url: string | undefined }) {
+  if (url !== undefined) {
+    return (
+      <Image
+        source={{ uri: url }}
+        style={{ width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: 8 }}
+        cachePolicy="memory-disk"
+      />
+    );
+  }
+  return (
+    <View
+      style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
+      className="items-center justify-center rounded-lg bg-bg-muted"
+    >
+      <Text className="text-xs text-text-secondary">머신</Text>
+    </View>
+  );
+}
+
 function renderQueueRow({ item }: { item: AdminQueueItem }) {
   return <QueueRow item={item} />;
 }
@@ -214,20 +240,7 @@ function QueueRow({ item }: { item: AdminQueueItem }) {
       }}
       className="flex-row items-center gap-3 px-4 py-3 active:bg-bg-elevated"
     >
-      {imageUrl !== undefined ? (
-        <Image
-          source={{ uri: imageUrl }}
-          style={{ width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: 8 }}
-          cachePolicy="memory-disk"
-        />
-      ) : (
-        <View
-          style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
-          className="items-center justify-center rounded-lg bg-bg-muted"
-        >
-          <Text className="text-xs text-text-secondary">머신</Text>
-        </View>
-      )}
+      <RowThumb url={imageUrl} />
       <View className="flex-1">
         <Text className="text-base font-medium text-text-primary" numberOfLines={1}>
           {item.label} · 신고 {item.pendingReportCount}건
@@ -246,7 +259,6 @@ function renderContributionRow({ item }: { item: AdminPendingContribution }) {
 }
 
 function ContributionRow({ item }: { item: AdminPendingContribution }) {
-  const photoUrl = item.photoUrl;
   return (
     <Pressable
       testID={`admin-contribution-row-${item.gymMachineId}`}
@@ -255,20 +267,7 @@ function ContributionRow({ item }: { item: AdminPendingContribution }) {
       }}
       className="flex-row items-center gap-3 px-4 py-3 active:bg-bg-elevated"
     >
-      {photoUrl !== undefined ? (
-        <Image
-          source={{ uri: photoUrl }}
-          style={{ width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: 8 }}
-          cachePolicy="memory-disk"
-        />
-      ) : (
-        <View
-          style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
-          className="items-center justify-center rounded-lg bg-bg-muted"
-        >
-          <Text className="text-xs text-text-secondary">머신</Text>
-        </View>
-      )}
+      <RowThumb url={item.photoUrl} />
       <View className="flex-1">
         <Text className="text-base font-medium text-text-primary" numberOfLines={1}>
           {item.freeFormName}

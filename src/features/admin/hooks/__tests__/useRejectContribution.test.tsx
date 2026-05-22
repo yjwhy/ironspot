@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react-native';
 import * as burnt from 'burnt';
-import type { ReactNode } from 'react';
+import { Alert } from 'react-native';
 
 import { useReject } from '@/shared/generated/admin-contributions/admin-contributions';
+import { captureMutation } from '@/test/utils/mutation-mock';
+import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
 import { adminKeys } from '../../query-keys';
 import { useRejectContribution } from '../useRejectContribution';
@@ -15,6 +16,17 @@ jest.mock('burnt', () => ({ toast: jest.fn() }));
 
 const useRejectMock = useReject as jest.Mock;
 
+// Auto-confirm the Alert so confirmAndReject() exercises the mutate path.
+interface AlertButton {
+  text?: string;
+  style?: string;
+  onPress?: () => void;
+}
+jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
+  const confirm = (buttons as AlertButton[] | undefined)?.find((b) => b.style === 'destructive');
+  confirm?.onPress?.();
+});
+
 interface CapturedOptions {
   mutation?: {
     onSuccess?: () => void;
@@ -23,21 +35,7 @@ interface CapturedOptions {
 }
 
 function setupMutation() {
-  const mutate = jest.fn();
-  let captured: CapturedOptions | undefined;
-  useRejectMock.mockImplementation((options: CapturedOptions) => {
-    captured = options;
-    return { mutate, isPending: false };
-  });
-  return { mutate, getOptions: () => captured };
-}
-
-function makeWrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  }
-  return { Wrapper, client };
+  return captureMutation<CapturedOptions>(useRejectMock);
 }
 
 beforeEach(() => {
@@ -45,21 +43,22 @@ beforeEach(() => {
 });
 
 describe('useRejectContribution', () => {
-  it('mutates with the gymMachineId', () => {
+  it('opens the destructive Alert and mutates with gymMachineId when confirmed', () => {
     const { mutate } = setupMutation();
-    const { Wrapper } = makeWrapper();
+    const { Wrapper } = createQueryWrapper();
     const { result } = renderHook(() => useRejectContribution('gm-1'), { wrapper: Wrapper });
 
     act(() => {
-      result.current.handleReject();
+      result.current.confirmAndReject();
     });
 
+    expect(Alert.alert).toHaveBeenCalled();
     expect(mutate).toHaveBeenCalledWith({ id: 'gm-1' });
   });
 
   it('shows a success toast and invalidates the pending contributions cache', () => {
     const { getOptions } = setupMutation();
-    const { Wrapper, client } = makeWrapper();
+    const { Wrapper, client } = createQueryWrapper();
     const invalidateSpy = jest.spyOn(client, 'invalidateQueries');
     renderHook(() => useRejectContribution('gm-1'), { wrapper: Wrapper });
 
@@ -77,7 +76,7 @@ describe('useRejectContribution', () => {
 
   it('surfaces an error toast on failure', () => {
     const { getOptions } = setupMutation();
-    const { Wrapper } = makeWrapper();
+    const { Wrapper } = createQueryWrapper();
     renderHook(() => useRejectContribution('gm-1'), { wrapper: Wrapper });
 
     act(() => {

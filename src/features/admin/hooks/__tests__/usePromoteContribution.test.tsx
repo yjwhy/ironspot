@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react-native';
 import * as burnt from 'burnt';
-import type { ReactNode } from 'react';
 
 import { usePromote } from '@/shared/generated/admin-contributions/admin-contributions';
+import { captureMutation } from '@/test/utils/mutation-mock';
+import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
 import { adminKeys } from '../../query-keys';
 import { usePromoteContribution } from '../usePromoteContribution';
@@ -23,21 +23,7 @@ interface CapturedOptions {
 }
 
 function setupMutation() {
-  const mutate = jest.fn();
-  let captured: CapturedOptions | undefined;
-  usePromoteMock.mockImplementation((options: CapturedOptions) => {
-    captured = options;
-    return { mutate, isPending: false };
-  });
-  return { mutate, getOptions: () => captured };
-}
-
-function makeWrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  }
-  return { Wrapper, client };
+  return captureMutation<CapturedOptions>(usePromoteMock);
 }
 
 beforeEach(() => {
@@ -47,7 +33,7 @@ beforeEach(() => {
 describe('usePromoteContribution', () => {
   it('mutates with the gymMachineId and the supplied request body', () => {
     const { mutate } = setupMutation();
-    const { Wrapper } = makeWrapper();
+    const { Wrapper } = createQueryWrapper();
     const { result } = renderHook(() => usePromoteContribution('gm-1'), { wrapper: Wrapper });
 
     act(() => {
@@ -62,7 +48,7 @@ describe('usePromoteContribution', () => {
 
   it('shows the "promoted" toast and invalidates caches on a non-merge success', () => {
     const { getOptions } = setupMutation();
-    const { Wrapper, client } = makeWrapper();
+    const { Wrapper, client } = createQueryWrapper();
     const invalidateSpy = jest.spyOn(client, 'invalidateQueries');
     renderHook(() => usePromoteContribution('gm-1'), { wrapper: Wrapper });
 
@@ -80,7 +66,7 @@ describe('usePromoteContribution', () => {
 
   it('shows the "merged" toast when the response carries mergedIntoGymMachineId', () => {
     const { getOptions } = setupMutation();
-    const { Wrapper } = makeWrapper();
+    const { Wrapper } = createQueryWrapper();
     renderHook(() => usePromoteContribution('gm-1'), { wrapper: Wrapper });
 
     act(() => {
@@ -92,9 +78,29 @@ describe('usePromoteContribution', () => {
     );
   });
 
+  it('treats a null mergedIntoGymMachineId (wire-level absent) as a non-merge promote', () => {
+    const { getOptions } = setupMutation();
+    const { Wrapper } = createQueryWrapper();
+    renderHook(() => usePromoteContribution('gm-1'), { wrapper: Wrapper });
+
+    // Jackson may emit `{"mergedIntoGymMachineId": null}` when the Java field
+    // is null, even though the generated TS type is `?: string`. Cast through
+    // unknown so the test exercises the wire shape, not the generated type.
+    act(() => {
+      const response = {
+        data: { mergedIntoGymMachineId: null },
+      } as unknown as { data: { mergedIntoGymMachineId?: string } };
+      getOptions()?.mutation?.onSuccess?.(response);
+    });
+
+    expect(burnt.toast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '머신을 승격했어요', preset: 'done' }),
+    );
+  });
+
   it('shows an error toast on failure', () => {
     const { getOptions } = setupMutation();
-    const { Wrapper } = makeWrapper();
+    const { Wrapper } = createQueryWrapper();
     renderHook(() => usePromoteContribution('gm-1'), { wrapper: Wrapper });
 
     act(() => {

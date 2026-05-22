@@ -23,3 +23,27 @@ export function useAdminPendingContributions(
     staleTime: STALE_TIME_PHOTOS_MS,
   });
 }
+
+interface SingleContributionResult {
+  contribution: AdminPendingContribution | undefined;
+  isLoading: boolean;
+  isError: boolean;
+}
+
+/**
+ * Phase 5 item 11 sub-task 4: detail-screen hook that derives a single
+ * contribution by id from the list query's cache. There is no dedicated
+ * GET /api/admin/contributions/{id} endpoint — the list page is small
+ * enough that fetching the whole array and finding the row by id is the
+ * cheapest path. {@code contribution === undefined} after load completes
+ * means "not in the current pending set" (already promoted / rejected /
+ * unknown id), not "still loading".
+ */
+export function useAdminPendingContributionItem(gymMachineId: string): SingleContributionResult {
+  const list = useAdminPendingContributions();
+  return {
+    contribution: list.data?.find((row) => row.gymMachineId === gymMachineId),
+    isLoading: list.isLoading,
+    isError: list.isError,
+  };
+}

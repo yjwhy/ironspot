@@ -50,3 +50,17 @@ export function gymMachineDisplayName(machine: {
   if (custom) return custom;
   return preferKorean(machine.machineNameKo, machine.machineNameEn);
 }
+
+/**
+ * Korean label for the loading_type enum. Previously inlined as
+ * `type === 'pin' ? '핀' : '플레이트'` in 3 admin screens + a picker toggle;
+ * Phase 5 item 11-4 FF review unifies the mapping here. Falls back to the
+ * raw literal for forward compatibility — if a future enum value lands
+ * before the UI is updated, we render the literal rather than mis-labeling
+ * it as '플레이트'.
+ */
+export function formatLoadingType(loadingType: string): string {
+  if (loadingType === 'pin') return '핀';
+  if (loadingType === 'plate') return '플레이트';
+  return loadingType;
+}

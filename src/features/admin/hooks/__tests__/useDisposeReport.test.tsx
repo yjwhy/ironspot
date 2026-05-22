@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react-native';
-import type { ReactNode } from 'react';
 
 import { useDisposition } from '@/shared/generated/admin/admin';
+import { captureMutation } from '@/test/utils/mutation-mock';
+import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
 import { adminKeys } from '../../query-keys';
 import { useDisposeReport } from '../useDisposeReport';
@@ -20,21 +20,7 @@ interface CapturedOptions {
 }
 
 function setupMutation() {
-  const mutate = jest.fn();
-  let captured: CapturedOptions | undefined;
-  useDispositionMock.mockImplementation((options: CapturedOptions) => {
-    captured = options;
-    return { mutate, isPending: false };
-  });
-  return { mutate, getOptions: () => captured };
-}
-
-function makeWrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  }
-  return { Wrapper, client };
+  return captureMutation<CapturedOptions>(useDispositionMock);
 }
 
 beforeEach(() => {
@@ -44,7 +30,7 @@ beforeEach(() => {
 describe('useDisposeReport', () => {
   it('dispatches useDisposition.mutate with the supplied reportId and disposition', () => {
     const { mutate } = setupMutation();
-    const { Wrapper } = makeWrapper();
+    const { Wrapper } = createQueryWrapper();
     const { result } = renderHook(
       () => useDisposeReport('r-1', { type: 'photo', photoId: 'p-1' }),
       { wrapper: Wrapper },
@@ -59,7 +45,7 @@ describe('useDisposeReport', () => {
 
   it('invalidates the pending queue and photo detail caches on success', () => {
     const { getOptions } = setupMutation();
-    const { Wrapper, client } = makeWrapper();
+    const { Wrapper, client } = createQueryWrapper();
     const invalidateSpy = jest.spyOn(client, 'invalidateQueries');
     renderHook(() => useDisposeReport('r-1', { type: 'photo', photoId: 'p-1' }), {
       wrapper: Wrapper,

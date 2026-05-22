@@ -1,8 +1,7 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react-native';
-import type { ReactNode } from 'react';
 
 import { listPending } from '@/shared/generated/admin-contributions/admin-contributions';
+import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
 import { useAdminPendingContributions } from '../useAdminPendingContributions';
 
@@ -11,14 +10,6 @@ jest.mock('@/shared/generated/admin-contributions/admin-contributions', () => ({
 }));
 
 const listPendingMock = listPending as jest.Mock;
-
-function makeWrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  }
-  return { Wrapper };
-}
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -38,7 +29,7 @@ describe('useAdminPendingContributions', () => {
         createdAt: '2026-05-22T01:00:00Z',
       },
     ]);
-    const { Wrapper } = makeWrapper();
+    const { Wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useAdminPendingContributions(), { wrapper: Wrapper });
 
@@ -51,7 +42,7 @@ describe('useAdminPendingContributions', () => {
 
   it('passes the limit param through to the generated client', async () => {
     listPendingMock.mockResolvedValue([]);
-    const { Wrapper } = makeWrapper();
+    const { Wrapper } = createQueryWrapper();
 
     renderHook(() => useAdminPendingContributions(20), { wrapper: Wrapper });
 
@@ -62,7 +53,7 @@ describe('useAdminPendingContributions', () => {
 
   it('surfaces an error result when the request fails', async () => {
     listPendingMock.mockRejectedValue(new Error('boom'));
-    const { Wrapper } = makeWrapper();
+    const { Wrapper } = createQueryWrapper();
 
     const { result } = renderHook(() => useAdminPendingContributions(), { wrapper: Wrapper });
 

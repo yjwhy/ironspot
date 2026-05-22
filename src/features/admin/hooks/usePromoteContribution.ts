@@ -29,7 +29,10 @@ export function usePromoteContribution(
   const mutation = usePromote({
     mutation: {
       onSuccess: (response) => {
-        const merged = response.data.mergedIntoGymMachineId !== undefined;
+        // Jackson serialises a null record field as JSON `null`, but Orval's
+        // generated type is `?: string` (undefined-only). Boolean() narrows
+        // both representations without triggering no-unnecessary-condition.
+        const merged = Boolean(response.data.mergedIntoGymMachineId);
         burnt.toast({
           title: merged ? TOAST_MERGED : TOAST_PROMOTED,
           preset: 'done',
