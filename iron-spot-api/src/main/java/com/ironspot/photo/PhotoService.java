@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +24,14 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class PhotoService {
+
+    // Phase 5 item 11 slice (b): orphan-upload quota. A user may upload at
+    // most HOURLY_ORPHAN_LIMIT photos with gym_machine_id IS NULL inside a
+    // rolling ORPHAN_QUOTA_WINDOW. The COUNT is partial-index-backed (V10),
+    // and a successful POST /api/gym-machines binds the photo so it drops out
+    // of the count immediately — the quota auto-rewards completing the flow.
+    public static final int HOURLY_ORPHAN_LIMIT = 10;
+    private static final Duration ORPHAN_QUOTA_WINDOW = Duration.ofHours(1);
 
     private final PhotoRepository photoRepository;
     private final OcrService ocrService;
@@ -60,6 +71,13 @@ public class PhotoService {
             throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
         }
         validateImage(file, imageBytes);
+
+        // Orphan quota: gate before the Vision API call so abuse never spends
+        // a Vision credit. Bound uploads (gymMachineId != null) skip the
+        // precheck because they can't be orphans by definition.
+        if (gymMachineId == null) {
+            enforceOrphanQuota(userId);
+        }
 
         UUID photoId = UUID.randomUUID();
         String filename = photoId + ".webp";
@@ -120,6 +138,32 @@ public class PhotoService {
             throw new BusinessException("본인의 사진만 삭제할 수 있습니다", HttpStatus.FORBIDDEN);
         }
         photoRepository.delete(photoId);
+    }
+
+    /**
+     * Best-effort per-user orphan quota check. Two concurrent requests from
+     * the same user can both read {@code count == LIMIT - 1} and both pass,
+     * over-running the cap by one. Acceptable because (a) the daily reaper
+     * (slice c) eventually cleans either way, and (b) we don't want to
+     * introduce a SELECT-FOR-UPDATE row-lock contention on every upload to
+     * close a race that's impossible to exploit at any meaningful scale.
+     * The {@code >=} predicate rejects when this would be the {@code (N+1)}th
+     * upload within the window.
+     */
+    private void enforceOrphanQuota(String userId) {
+        OffsetDateTime since = OffsetDateTime.now(ZoneOffset.UTC).minus(ORPHAN_QUOTA_WINDOW);
+        int recentOrphans = photoRepository.countOrphansForUserSince(UUID.fromString(userId), since);
+        if (recentOrphans >= HOURLY_ORPHAN_LIMIT) {
+            // log.warn so the per-user-per-day spike is observable in Render
+            // logs / Sentry breadcrumbs without spamming the moderation Slack.
+            // The 429 response carries the per-window cap so the FE can render
+            // copy that names the actual limit.
+            log.warn("Orphan upload quota tripped — userId={} recentOrphans={} limit={}",
+                userId, recentOrphans, HOURLY_ORPHAN_LIMIT);
+            throw new BusinessException(
+                "시간당 업로드 한도(" + HOURLY_ORPHAN_LIMIT + "개)를 초과했어요. 잠시 후 다시 시도해주세요.",
+                HttpStatus.TOO_MANY_REQUESTS);
+        }
     }
 
     private void validateImage(MultipartFile file, byte[] bytes) {
