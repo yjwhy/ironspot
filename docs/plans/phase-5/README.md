@@ -545,19 +545,21 @@ ADR 0022 envelope holds at 281 mechanically, but new-user onboarding sees the wr
 
 Same mental-model gap that drove item 18 + item 23. The launch-cohort catalog (item 22, 24 brands) is predominantly Anglo-named, but the Korean cohort thinks in 한글 first — surfacing only English in the brand accordion row + the footer chip prefix loses recognition speed on every glance.
 
-**To-do (groomed scope)**
+**To-do (groomed scope)** — closed 2026-05-22 (5-slice PR).
 
-- [ ] Backend schema: V10 migration. `ALTER TABLE brands ADD COLUMN name_ko TEXT;` Backfill the 24 launch brands — Hangul transliteration for Anglo names (Panatta → 파나타, Hammer Strength → 해머 스트렝스, Life Fitness → 라이프 피트니스, …); `name_ko = name` for already-Hangul rows (뉴텍 등). Keep `name` UNIQUE as the canonical key; do NOT add UNIQUE on `name_ko` (regional spelling variants of the same canonical brand should coexist as long as the English `name` is distinct).
-- [ ] DTO: `BrandResponse` gains `nameKo: string`. `MachineTemplateResponse.brandName` symmetrically splits into `brandName` (en) + `brandNameKo`, mirroring item 18's `nameEn` / `nameKo` pattern. OpenAPI + Orval regen.
-- [ ] FE display helper: `formatBrandLabel(brand)` — `"{nameKo} ({name})"` when both differ, plain `{nameKo}` when they're the same string. Mirrors item 18's `templateDisplayName()` pattern.
-- [ ] Surfaces to update:
-  - FilterSheet brand accordion row (`FilterSheetBrandAccordion.tsx`)
-  - FilterSheet footer chip (`formatMachineTemplateLabel` in `active-filters.ts` — chip prefix uses brand name)
-  - MachinePicker brand step (item 11 slice 3)
-  - GymDetail / MachineList rows that surface brand name alongside machine name
-  - Admin / Owner surfaces (lower priority — internal users tend to use English)
-- [ ] Visual hierarchy decision: lead with Korean and parenthesise English (matches user mental model + item 18 precedent). For global brands with strong English equity (Hammer Strength, Life Fitness) the parenthesised English keeps the global-recognition signal alive.
-- [ ] Tests: `formatBrandLabel` unit cases (both langs differ / same / nameKo empty) + a FilterSheet test that the brand row renders both languages when the seed has both populated.
+- [x] Backend schema: V11 migration. `ALTER TABLE brands ADD COLUMN name_ko TEXT;` Backfill the 24 launch brands — Hangul transliteration for Anglo names (Panatta → 파나타, Hammer Strength → 해머 스트렝스, Life Fitness → 라이프 피트니스, …; user-confirmed overrides during 2026-05-22 grill: DRAX → **디랙스**, Telju → **텔유**, gym80 / 뉴텍 stay verbatim with `name_ko = name`). Keep `name` UNIQUE as the canonical key; `name_ko` NOT NULL but without a UNIQUE constraint (regional spelling variants of the same canonical brand coexist as long as the English `name` is distinct). Defensive final `UPDATE ... WHERE name_ko IS NULL SET name_ko = name` catches admin-promoted brands inserted between V8 and V11. Full 24-row mapping lives in `V11__brands_name_ko.sql` as canonical source.
+- [x] DTO: `BrandResponse` gains `nameKo: string`. `MachineTemplateResponse.brandName` keeps the canonical English semantic + adds `brandNameKo` (mirrors item 18's `nameEn` / `nameKo` pattern). `GymMachineResponse.brandNameKo` likewise. `PromoteContributionRequest.newBrandNameKo` required when kind='newBrandAndTemplate' because V11 made `brands.name_ko` NOT NULL — admin form requires both English + Korean inputs. OpenAPI + Orval regen.
+- [x] FE display helpers (two contexts):
+  - `formatBrandLabel(brand)` — `"{nameKo} ({name})"` when both differ, plain `{nameKo}` (or `{name}` when nameKo missing) when they match. Used in **brand-as-primary-label surfaces** (filter accordion row, MachinePicker brand step, MachineList section header, brand-only chip).
+  - `brandShortName(brand)` — Korean primary (`nameKo || name`). Mirrors item 18's `templateDisplayName` pattern. Used in **brand-as-prefix compound contexts** (template chip with brand+machine, MachinePicker TemplateStep row).
+- [x] Surfaces updated (5 of 5 + admin form):
+  - FilterSheet brand accordion row (`FilterSheetBrandAccordion.tsx`) — `formatBrandLabel`
+  - FilterSheet footer chip (`formatMachineTemplateLabel` in `active-filters.ts`) — `brandShortName` (compound stays compact)
+  - MachinePicker brand step (item 11 slice 3) — `formatBrandLabel`; TemplateStep row also uses precomputed `brandLabel` via `brandShortName` so both steps within the same picker render consistently
+  - GymDetail / MachineList section header — `formatBrandLabel`
+  - Admin / Owner compound surfaces — intentionally stay English (locked branch 5 Q3 ②: internal users tend to use English); AdminPendingContributionScreen's NewBrandAndTemplateForm split brand input into 영문 + 한글 because V11's NOT NULL forces both
+- [x] Visual hierarchy decision: lead with Korean and parenthesise English (matches user mental model + item 18 precedent). For global brands with strong English equity (Hammer Strength, Life Fitness) the parenthesised English keeps the global-recognition signal alive.
+- [x] Tests: 10 `formatBrandLabel` / `brandShortName` unit cases + FilterSheet / MachineList / MachinePicker RTL bilingual assertions; backend `BrandFuzzyResolverIT` (7 cases) + `FuzzyMatchServiceTest.findMatchesIncludesKoreanBrandLabelInOcrTarget` + admin promotion IT asserting `brands.name_ko` storage.
 
 **Out of scope**
 
@@ -566,7 +568,7 @@ Same mental-model gap that drove item 18 + item 23. The launch-cohort catalog (i
 
 **Reason to ship pre-launch**
 
-Same as items 18, 19, 23: the launch cohort is Korean-speaking, and surfaces that lead with English-only hurt recognition speed on the most common interactions (filter open, chip read, machine row scan). Self-contained — V10 migration + a single helper + ~5 render sites. No NL search wire-format change.
+Same as items 18, 19, 23: the launch cohort is Korean-speaking, and surfaces that lead with English-only hurt recognition speed on the most common interactions (filter open, chip read, machine row scan). Self-contained — V11 migration + two helpers + ~5 render sites. No NL search wire-format change (internal: `BrandRepository.findIdByNameOrKoFuzzy` expands to a 3-stage resolver — exact case-insensitive → whitespace-stripped → Levenshtein similarity ≥ 0.6 — over the 24-row catalog, so Korean queries like "해머스트렝스 풀다운" resolve without prompt drift).
 
 ## Post-launch hypotheses (drive prioritisation)
 

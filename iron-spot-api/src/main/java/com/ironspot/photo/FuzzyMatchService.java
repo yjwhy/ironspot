@@ -62,12 +62,16 @@ public class FuzzyMatchService {
     }
 
     private Set<String> bilingualTokens(MachineTemplateSummary t) {
-        // Concatenate brand + both name columns into one lowercase token set.
-        // Used by findMatches (OCR target) where brand is part of the user's
-        // visual context and adding it to the target boosts whole-row matches
-        // ("HAMMER STRENGTH LAT PULL DOWN") without hurting partial ones.
-        String concat = (t.brandName() + " " + t.nameEn() + " " + t.nameKo())
-            .toLowerCase(Locale.ROOT);
+        // Concatenate brand (en + ko) + template name (en + ko) into one
+        // lowercase token set. Used by findMatches (OCR target) where the
+        // brand plate is part of the user's visual context: a sticker
+        // reading "해머 스트렝스" or "Hammer Strength" should both boost
+        // whole-row matches without hurting partial ones. Item 24 added
+        // brandNameKo to the concat — item 18 had nameKo for the template
+        // already; this brings brand parity.
+        String concat = (
+            t.brandName() + " " + t.brandNameKo() + " " + t.nameEn() + " " + t.nameKo()
+        ).toLowerCase(Locale.ROOT);
         return tokenize(concat);
     }
 

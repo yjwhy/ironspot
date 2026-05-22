@@ -43,7 +43,9 @@ class SqlBuilderIT extends IntegrationTestBase {
 
     @BeforeEach
     void seed() {
-        dsl.execute("INSERT INTO brands(id, name) VALUES (?, 'Cybex'), (?, 'Technogym'), (?, 'Prime')",
+        dsl.execute(
+            "INSERT INTO brands(id, name, name_ko) VALUES "
+                + "(?, 'Cybex', '싸이벡스'), (?, 'Technogym', '테크노짐'), (?, 'Prime', '프라임')",
             brandCybex, brandTechnogym, brandPrime);
         dsl.execute("INSERT INTO categories(id, name) VALUES (?, 'Chest')", categoryChest);
         dsl.execute("INSERT INTO machine_templates(id, brand_id, category_id, name_en, name_ko, loading_type) VALUES " +

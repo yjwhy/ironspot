@@ -15,7 +15,7 @@ interface FactoryOverrides {
 }
 
 export function makeBrand(overrides: Partial<Brand> = {}): Brand {
-  return { id: 'b-1', name: 'Panatta', ...overrides };
+  return { id: 'b-1', name: 'Panatta', nameKo: '파나타', ...overrides };
 }
 
 export function makeCategory(overrides: Partial<Category> = {}): Category {

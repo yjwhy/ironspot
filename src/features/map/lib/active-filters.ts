@@ -1,4 +1,5 @@
 import type { MachineTemplateResponse, SearchScope } from '@/shared/generated/model';
+import { brandShortName, formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { templateDisplayName } from '@/shared/lib/template-display-name';
 import type { Brand, Category, LoadingType, SearchFilters } from '@/shared/types/database';
 
@@ -68,12 +69,31 @@ function loadingTypeSuffix(loadingType: string): string {
 }
 
 /**
+ * Phase 5 item 24: extract the BrandLike projection from
+ * MachineTemplateResponse into one helper so the field-name dependency
+ * lives in one place. If Orval regen ever renames `brandName` or
+ * `brandNameKo`, this is the single site to update.
+ */
+function templateBrandLike(template: MachineTemplateResponse): {
+  name: string;
+  nameKo: string;
+} {
+  return { name: template.brandName, nameKo: template.brandNameKo };
+}
+
+/**
  * Renders a machine template chip label.
  * ADR 0022: chip 라벨은 "BrandName TemplateName · LoadingType" 형식. 사용자가
  * 정확히 어떤 (브랜드, 머신) 짝을 선택했는지 한눈에 파악 가능.
+ *
+ * Phase 5 item 24: chip is a B-group compound surface (brand prefix +
+ * machine name + loading). Uses {@link brandShortName} so the chip stays
+ * compact — the parenthesised English form would overflow the chip's
+ * max width for global brands like "Life Fitness".
  */
 export function formatMachineTemplateLabel(template: MachineTemplateResponse): string {
-  return `${template.brandName} ${templateDisplayName(template)} · ${loadingTypeSuffix(template.loadingType)}`;
+  const brand = brandShortName(templateBrandLike(template));
+  return `${brand} ${templateDisplayName(template)} · ${loadingTypeSuffix(template.loadingType)}`;
 }
 
 export function toActiveFilters({
@@ -87,7 +107,7 @@ export function toActiveFilters({
   for (const brandId of filters.brandIds) {
     const brand = brands.find((candidate) => candidate.id === brandId);
     if (brand !== undefined) {
-      result.push({ kind: 'brand', id: brand.id, label: brand.name });
+      result.push({ kind: 'brand', id: brand.id, label: formatBrandLabel(brand) });
     }
   }
 

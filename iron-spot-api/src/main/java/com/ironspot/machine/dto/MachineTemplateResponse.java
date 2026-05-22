@@ -9,7 +9,10 @@ import java.util.UUID;
  *
  * <p>ADR 0022 / Task 45 introduced the response; Phase 5 item 18 split the
  * English name into {@code nameEn} (canonical) and added {@code nameKo}
- * (Korean primary). Card surfaces render {@code nameKo} alone; detail
+ * (Korean primary). Phase 5 item 24 added {@code brandNameKo} so the
+ * accordion / picker / chip surfaces can lead with Korean for the launch
+ * cohort while keeping the canonical English brand identifier on
+ * {@code brandName}. Card surfaces render {@code nameKo} alone; detail
  * surfaces render {@code nameKo} primary + {@code nameEn} secondary.
  * {@code brandId} / {@code categoryId} stay so the cross-dimension filter
  * UI can still narrow templates without an extra round trip.
@@ -18,6 +21,7 @@ public record MachineTemplateResponse(
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID id,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID brandId,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String brandName,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String brandNameKo,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID categoryId,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String nameEn,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String nameKo,

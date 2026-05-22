@@ -16,8 +16,8 @@ jest.mock('@/features/photo/components/ReportReasonSheet', () => ({
   ReportReasonSheet: () => null,
 }));
 
-const panatta = makeBrand({ id: 'b-pan', name: 'Panatta' });
-const hammer = makeBrand({ id: 'b-ham', name: 'Hammer Strength' });
+const panatta = makeBrand({ id: 'b-pan', name: 'Panatta', nameKo: '파나타' });
+const hammer = makeBrand({ id: 'b-ham', name: 'Hammer Strength', nameKo: '해머 스트렝스' });
 const back = makeCategory({ id: 'c-back', name: 'Back' });
 
 const panattaHighRow = makeGymMachineWithDetails({
@@ -47,13 +47,13 @@ const hammerLatPullDown = makeGymMachineWithDetails({
 const all = [panattaHighRow, panattaLowRow, hammerLatPullDown];
 
 describe('MachineList', () => {
-  it('renders one header per brand', () => {
+  it('renders one header per brand with the bilingual "한글 (영문)" label', () => {
     const { getAllByRole, getByRole } = render(
       <MachineList machines={all} onPressMachine={() => undefined} />,
     );
     expect(getAllByRole('header')).toHaveLength(2);
-    expect(getByRole('header', { name: 'Panatta' })).toBeTruthy();
-    expect(getByRole('header', { name: 'Hammer Strength' })).toBeTruthy();
+    expect(getByRole('header', { name: '파나타 (Panatta)' })).toBeTruthy();
+    expect(getByRole('header', { name: '해머 스트렝스 (Hammer Strength)' })).toBeTruthy();
   });
 
   it('renders each machine display name as a button', () => {
@@ -92,7 +92,7 @@ describe('MachineList', () => {
     const { getByRole, queryByRole } = render(
       <MachineList machines={all} onPressMachine={() => undefined} />,
     );
-    fireEvent.press(getByRole('button', { name: 'Panatta 섹션 접기' }));
+    fireEvent.press(getByRole('button', { name: '파나타 (Panatta) 섹션 접기' }));
     expect(queryByRole('button', { name: /^High Row,/ })).toBeNull();
     expect(queryByRole('button', { name: /^Low Row,/ })).toBeNull();
     expect(queryByRole('button', { name: /^Lat Pull Down,/ })).toBeTruthy();
@@ -100,8 +100,8 @@ describe('MachineList', () => {
 
   it('expands a previously-collapsed brand section when its header is tapped again', () => {
     const { getByRole } = render(<MachineList machines={all} onPressMachine={() => undefined} />);
-    fireEvent.press(getByRole('button', { name: 'Panatta 섹션 접기' }));
-    fireEvent.press(getByRole('button', { name: 'Panatta 섹션 펼치기' }));
+    fireEvent.press(getByRole('button', { name: '파나타 (Panatta) 섹션 접기' }));
+    fireEvent.press(getByRole('button', { name: '파나타 (Panatta) 섹션 펼치기' }));
     expect(getByRole('button', { name: /^High Row,/ })).toBeTruthy();
   });
 });

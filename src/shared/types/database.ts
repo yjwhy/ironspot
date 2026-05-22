@@ -35,6 +35,14 @@ export interface Gym {
 export interface Brand {
   id: string;
   name: string;
+  /**
+   * Phase 5 item 24: Korean display label for the brand. Mirrors the
+   * `brands.name_ko` column (NOT NULL after V11). Use `formatBrandLabel`
+   * or `brandShortName` from `@/shared/lib/format-brand-label` to render
+   * — call sites should not concatenate the parenthesised English form
+   * inline.
+   */
+  nameKo: string;
 }
 
 export interface Category {

@@ -42,5 +42,13 @@ class BrandListTest extends IntegrationTestBase {
         ResponseEntity<String> response = restTemplate.getForEntity("/api/brands", String.class);
         assertThat(response.getBody()).contains("\"name\"");
         assertThat(response.getBody()).contains("\"id\"");
+        assertThat(response.getBody()).contains("\"nameKo\"");
+    }
+
+    @Test
+    void getBrandsReturnsKoreanLocalisedNames() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/api/brands", String.class);
+        assertThat(response.getBody()).contains("파나타");
+        assertThat(response.getBody()).contains("라이프 피트니스");
     }
 }

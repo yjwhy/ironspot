@@ -54,7 +54,7 @@ class DslValidatorTest {
     @Test
     void resolvesBrandIgnoringCase() {
         UUID panattaId = UUID.randomUUID();
-        when(brandRepository.findIdByNameIgnoreCase("panatta")).thenReturn(Optional.of(panattaId));
+        when(brandRepository.findIdByNameOrKoFuzzy("panatta")).thenReturn(Optional.of(panattaId));
 
         SearchDsl dsl = new SearchDsl(
             new Location.Current(1.0),
@@ -72,7 +72,7 @@ class DslValidatorTest {
 
     @Test
     void throwsWhenBrandUnknown() {
-        when(brandRepository.findIdByNameIgnoreCase("UnknownBrand")).thenReturn(Optional.empty());
+        when(brandRepository.findIdByNameOrKoFuzzy("UnknownBrand")).thenReturn(Optional.empty());
 
         SearchDsl dsl = new SearchDsl(
             new Location.Current(1.0),
@@ -121,7 +121,7 @@ class DslValidatorTest {
         UUID panattaId = UUID.randomUUID();
         UUID templateA = UUID.randomUUID();
         UUID templateB = UUID.randomUUID();
-        when(brandRepository.findIdByNameIgnoreCase("Panatta")).thenReturn(Optional.of(panattaId));
+        when(brandRepository.findIdByNameOrKoFuzzy("Panatta")).thenReturn(Optional.of(panattaId));
         when(fuzzyMatchService.findTemplateIds("High Row", panattaId, null))
             .thenReturn(List.of(templateA, templateB));
 
@@ -158,8 +158,8 @@ class DslValidatorTest {
     void combinedScopeRequiresAllFiltersToShareMinCount() {
         UUID panattaId = UUID.randomUUID();
         UUID technogymId = UUID.randomUUID();
-        when(brandRepository.findIdByNameIgnoreCase("Panatta")).thenReturn(Optional.of(panattaId));
-        when(brandRepository.findIdByNameIgnoreCase("Technogym")).thenReturn(Optional.of(technogymId));
+        when(brandRepository.findIdByNameOrKoFuzzy("Panatta")).thenReturn(Optional.of(panattaId));
+        when(brandRepository.findIdByNameOrKoFuzzy("Technogym")).thenReturn(Optional.of(technogymId));
 
         SearchDsl dsl = new SearchDsl(
             new Location.Current(1.0),
@@ -179,8 +179,8 @@ class DslValidatorTest {
     void combinedScopeWithConsistentMinCountSucceeds() {
         UUID panattaId = UUID.randomUUID();
         UUID technogymId = UUID.randomUUID();
-        when(brandRepository.findIdByNameIgnoreCase("Panatta")).thenReturn(Optional.of(panattaId));
-        when(brandRepository.findIdByNameIgnoreCase("Technogym")).thenReturn(Optional.of(technogymId));
+        when(brandRepository.findIdByNameOrKoFuzzy("Panatta")).thenReturn(Optional.of(panattaId));
+        when(brandRepository.findIdByNameOrKoFuzzy("Technogym")).thenReturn(Optional.of(technogymId));
 
         SearchDsl dsl = new SearchDsl(
             new Location.Current(1.0),
@@ -200,7 +200,7 @@ class DslValidatorTest {
     @Test
     void singleFilterEachScopeNeedsNoCombinedInvariant() {
         UUID panattaId = UUID.randomUUID();
-        when(brandRepository.findIdByNameIgnoreCase("Panatta")).thenReturn(Optional.of(panattaId));
+        when(brandRepository.findIdByNameOrKoFuzzy("Panatta")).thenReturn(Optional.of(panattaId));
 
         SearchDsl dsl = new SearchDsl(
             new Location.Current(1.0),

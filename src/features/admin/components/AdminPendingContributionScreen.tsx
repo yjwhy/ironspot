@@ -270,19 +270,23 @@ function NewTemplateForm({ onSubmit, isPending }: FormProps) {
 function NewBrandAndTemplateForm({ onSubmit, isPending }: FormProps) {
   const categories = useCategories();
   const [brandName, setBrandName] = useState('');
+  // Phase 5 item 24: V11 made brands.name_ko NOT NULL, so admin must
+  // supply both languages when creating a new brand via promotion.
+  const [brandNameKo, setBrandNameKo] = useState('');
   const [nameEn, setNameEn] = useState('');
   const [nameKo, setNameKo] = useState('');
   const [loadingType, setLoadingType] = useState<LoadingType>('pin');
   const [categoryId, setCategoryId] = useState<string>('');
 
-  const hasBrandName = brandName.trim() !== '';
+  const hasBothBrandNames = brandName.trim() !== '' && brandNameKo.trim() !== '';
   const hasTemplateName = nameEn.trim() !== '' && nameKo.trim() !== '';
-  const canSubmit = hasBrandName && hasTemplateName;
+  const canSubmit = hasBothBrandNames && hasTemplateName;
 
   function submit() {
     onSubmit({
       kind: 'newBrandAndTemplate',
       newBrandName: brandName.trim(),
+      newBrandNameKo: brandNameKo.trim(),
       nameEn: nameEn.trim(),
       nameKo: nameKo.trim(),
       loadingType,
@@ -292,8 +296,10 @@ function NewBrandAndTemplateForm({ onSubmit, isPending }: FormProps) {
 
   return (
     <View className="gap-3">
-      <FieldLabel label="브랜드 이름" />
-      <Input value={brandName} onChangeText={setBrandName} placeholder="새 브랜드명" />
+      <FieldLabel label="브랜드 이름 (영문)" />
+      <Input value={brandName} onChangeText={setBrandName} placeholder="Panatta" />
+      <FieldLabel label="브랜드 이름 (한글)" />
+      <Input value={brandNameKo} onChangeText={setBrandNameKo} placeholder="파나타" />
       <FieldLabel label="영문 이름" />
       <Input value={nameEn} onChangeText={setNameEn} placeholder="Lat Pulldown" />
       <FieldLabel label="한국어 이름" />

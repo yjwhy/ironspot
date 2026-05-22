@@ -19,6 +19,7 @@ export interface GymMachineResponse {
   loadingType?: string;
   brandId?: string;
   brandName?: string;
+  brandNameKo?: string;
   categoryId?: string;
   categoryName?: string;
   photos: PhotoResponse[];

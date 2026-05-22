@@ -18,6 +18,7 @@ interface TemplateFixture {
   id: string;
   brandId: string;
   brandName: string;
+  brandNameKo: string;
   categoryId: string;
   nameEn: string;
   nameKo: string;
@@ -25,16 +26,16 @@ interface TemplateFixture {
 }
 
 interface SetupOverrides {
-  brands?: { id: string; name: string }[];
+  brands?: { id: string; name: string; nameKo: string }[];
   categories?: { id: string; name: string }[];
   templates?: TemplateFixture[];
 }
 
 function setupQueries(overrides: SetupOverrides = {}) {
   const brands = overrides.brands ?? [
-    { id: 'brand-hammer', name: 'Hammer Strength' },
-    { id: 'brand-life', name: 'Life Fitness' },
-    { id: 'brand-panatta', name: 'Panatta' },
+    { id: 'brand-hammer', name: 'Hammer Strength', nameKo: '해머 스트렝스' },
+    { id: 'brand-life', name: 'Life Fitness', nameKo: '라이프 피트니스' },
+    { id: 'brand-panatta', name: 'Panatta', nameKo: '파나타' },
   ];
   const categories = overrides.categories ?? [
     { id: 'cat-chest', name: '가슴' },
@@ -46,6 +47,7 @@ function setupQueries(overrides: SetupOverrides = {}) {
       id: 'tpl-hammer-chest',
       brandId: 'brand-hammer',
       brandName: 'Hammer Strength',
+      brandNameKo: '해머 스트렝스',
       categoryId: 'cat-chest',
       nameEn: 'Iso Chest Press',
       nameKo: '아이소 체스트 프레스',
@@ -55,6 +57,7 @@ function setupQueries(overrides: SetupOverrides = {}) {
       id: 'tpl-hammer-back',
       brandId: 'brand-hammer',
       brandName: 'Hammer Strength',
+      brandNameKo: '해머 스트렝스',
       categoryId: 'cat-back',
       nameEn: 'Lat Pull Down',
       nameKo: '랫 풀다운',
@@ -64,6 +67,7 @@ function setupQueries(overrides: SetupOverrides = {}) {
       id: 'tpl-panatta-chest',
       brandId: 'brand-panatta',
       brandName: 'Panatta',
+      brandNameKo: '파나타',
       categoryId: 'cat-chest',
       nameEn: 'Chest Press',
       nameKo: '체스트 프레스',
@@ -144,6 +148,7 @@ describe('MachinePicker', () => {
           id: 'tpl-iso',
           brandId: 'brand-hammer',
           brandName: 'Hammer Strength',
+          brandNameKo: '해머 스트렝스',
           categoryId: 'cat-chest',
           nameEn: 'Iso Chest Press',
           nameKo: '아이소 체스트 프레스',
@@ -153,6 +158,7 @@ describe('MachinePicker', () => {
           id: 'tpl-incline',
           brandId: 'brand-hammer',
           brandName: 'Hammer Strength',
+          brandNameKo: '해머 스트렝스',
           categoryId: 'cat-chest',
           nameEn: 'Incline Press',
           nameKo: '인클라인 프레스',

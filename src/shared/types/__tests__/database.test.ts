@@ -86,7 +86,7 @@ describe('Database types', () => {
   });
 
   it('Brand and Category share shape', () => {
-    const brand: Brand = { id: 'b1', name: 'Panatta' };
+    const brand: Brand = { id: 'b1', name: 'Panatta', nameKo: '' };
     const category: Category = { id: 'c1', name: 'Row' };
     expect(brand.name).toBe('Panatta');
     expect(category.name).toBe('Row');
@@ -145,7 +145,7 @@ describe('Database types', () => {
         loading_type: 'plate',
         is_approved: true,
         created_at: '2026-03-01',
-        brand: { id: 'b1', name: 'Panatta' },
+        brand: { id: 'b1', name: 'Panatta', nameKo: '' },
         category: { id: 'c1', name: 'Row' },
       },
       photos: [],

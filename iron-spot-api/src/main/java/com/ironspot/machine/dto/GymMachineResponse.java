@@ -31,6 +31,7 @@ public record GymMachineResponse(
     String loadingType,
     UUID brandId,
     String brandName,
+    String brandNameKo,
     UUID categoryId,
     String categoryName,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<PhotoResponse> photos

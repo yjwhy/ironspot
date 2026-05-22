@@ -30,8 +30,8 @@ class FuzzyMatchServiceTest {
         UUID lowRowId = UUID.randomUUID();
 
         when(templateRepository.findAllApproved()).thenReturn(List.of(
-            new MachineTemplateSummary(highRowId, "Panatta", "High Row", ""),
-            new MachineTemplateSummary(lowRowId, "Panatta", "Low Row", "")
+            new MachineTemplateSummary(highRowId, "Panatta", "", "High Row", ""),
+            new MachineTemplateSummary(lowRowId, "Panatta", "", "Low Row", "")
         ));
 
         List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
@@ -55,7 +55,7 @@ class FuzzyMatchServiceTest {
         UUID someId = UUID.randomUUID();
 
         when(templateRepository.findAllApproved()).thenReturn(List.of(
-            new MachineTemplateSummary(someId, "Panatta", "High Row", "")
+            new MachineTemplateSummary(someId, "Panatta", "", "High Row", "")
         ));
 
         List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
@@ -77,8 +77,8 @@ class FuzzyMatchServiceTest {
         UUID cybexHighRow = UUID.randomUUID();
 
         when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
-            new MachineTemplateSummary(panattaHighRow, "Panatta", "High Row", ""),
-            new MachineTemplateSummary(cybexHighRow, "Cybex", "High Row", "")
+            new MachineTemplateSummary(panattaHighRow, "Panatta", "", "High Row", ""),
+            new MachineTemplateSummary(cybexHighRow, "Cybex", "", "High Row", "")
         ));
 
         List<UUID> ids = fuzzyMatchService.findTemplateIds("High Row", null, null);
@@ -91,7 +91,7 @@ class FuzzyMatchServiceTest {
         UUID id = UUID.randomUUID();
 
         when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
-            new MachineTemplateSummary(id, "Hammer Strength Plate Loaded International", "Row", "")
+            new MachineTemplateSummary(id, "Hammer Strength Plate Loaded International", "", "Row", "")
         ));
 
         List<UUID> ids = fuzzyMatchService.findTemplateIds("Row", null, null);
@@ -105,7 +105,7 @@ class FuzzyMatchServiceTest {
         UUID onlyPanattaHighRow = UUID.randomUUID();
 
         when(templateRepository.findApprovedByOptionalFilters(panattaId, null)).thenReturn(List.of(
-            new MachineTemplateSummary(onlyPanattaHighRow, "Panatta", "High Row", "")
+            new MachineTemplateSummary(onlyPanattaHighRow, "Panatta", "", "High Row", "")
         ));
 
         List<UUID> ids = fuzzyMatchService.findTemplateIds("High Row", panattaId, null);
@@ -118,7 +118,7 @@ class FuzzyMatchServiceTest {
         UUID legPressId = UUID.randomUUID();
 
         when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
-            new MachineTemplateSummary(legPressId, "Cybex", "Leg Press", "")
+            new MachineTemplateSummary(legPressId, "Cybex", "", "Leg Press", "")
         ));
 
         List<UUID> ids = fuzzyMatchService.findTemplateIds("High Row", null, null);
@@ -133,9 +133,9 @@ class FuzzyMatchServiceTest {
         UUID treadmill = UUID.randomUUID();
 
         when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
-            new MachineTemplateSummary(highRowLite, "Panatta", "High Row Lite", ""),
-            new MachineTemplateSummary(highRowPro, "Panatta", "Pro High Row", ""),
-            new MachineTemplateSummary(treadmill, "Cybex", "Treadmill", "")
+            new MachineTemplateSummary(highRowLite, "Panatta", "", "High Row Lite", ""),
+            new MachineTemplateSummary(highRowPro, "Panatta", "", "Pro High Row", ""),
+            new MachineTemplateSummary(treadmill, "Cybex", "", "Treadmill", "")
         ));
 
         List<UUID> ids = fuzzyMatchService.findTemplateIds("High Row", null, null);
@@ -153,8 +153,8 @@ class FuzzyMatchServiceTest {
         UUID seatedRow = UUID.randomUUID();
 
         when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
-            new MachineTemplateSummary(latPullDown, "Hammer Strength", "Lat Pull Down", "랫 풀다운"),
-            new MachineTemplateSummary(seatedRow, "Hammer Strength", "Seated Row", "시티드로우")
+            new MachineTemplateSummary(latPullDown, "Hammer Strength", "", "Lat Pull Down", "랫 풀다운"),
+            new MachineTemplateSummary(seatedRow, "Hammer Strength", "", "Seated Row", "시티드로우")
         ));
 
         // User types the Korean alias verbatim — should match the Lat Pull Down
@@ -172,7 +172,7 @@ class FuzzyMatchServiceTest {
         UUID chestPress = UUID.randomUUID();
 
         when(templateRepository.findApprovedByOptionalFilters(null, null)).thenReturn(List.of(
-            new MachineTemplateSummary(chestPress, "Panatta", "Chest Press", "체스트 프레스")
+            new MachineTemplateSummary(chestPress, "Panatta", "", "Chest Press", "체스트 프레스")
         ));
 
         List<UUID> ids = fuzzyMatchService.findTemplateIds("Chest Press", null, null);
@@ -188,7 +188,7 @@ class FuzzyMatchServiceTest {
         UUID latPullDown = UUID.randomUUID();
 
         when(templateRepository.findAllApproved()).thenReturn(List.of(
-            new MachineTemplateSummary(latPullDown, "Hammer Strength", "Lat Pull Down", "랫 풀다운")
+            new MachineTemplateSummary(latPullDown, "Hammer Strength", "", "Lat Pull Down", "랫 풀다운")
         ));
 
         List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
@@ -198,5 +198,27 @@ class FuzzyMatchServiceTest {
         assertThat(results).isNotEmpty();
         assertThat(results.get(0).id()).isEqualTo(latPullDown);
         assertThat(results.get(0).score()).isGreaterThan(0.5);
+    }
+
+    @Test
+    void findMatchesIncludesKoreanBrandLabelInOcrTarget() {
+        // Phase 5 item 24: brand stickers in Korean ("해머 스트렝스") should
+        // contribute to OCR matching. Template's own nameKo is intentionally
+        // empty here so the match comes purely from brandNameKo participating
+        // in bilingualTokens — proves the brand-Korean column was added to
+        // the concat.
+        UUID latPullDown = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(
+                latPullDown, "Hammer Strength", "해머 스트렝스", "Lat Pull Down", "")
+        ));
+
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of("해머", "스트렝스", "Lat", "Pull", "Down")
+        );
+
+        assertThat(results).isNotEmpty();
+        assertThat(results.get(0).id()).isEqualTo(latPullDown);
     }
 }

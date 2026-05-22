@@ -7,6 +7,7 @@ import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
 import { AppText } from '@/shared/components/AppText';
 import { Chip } from '@/shared/components/Chip';
+import { brandShortName, formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { templateDisplayName } from '@/shared/lib/template-display-name';
 import { colors } from '@/shared/theme/tokens';
@@ -119,9 +120,13 @@ export function MachinePicker({ value, onChange }: MachinePickerProps) {
           // typing English brand + Korean machine name still matches.
           templates={(templates ?? []).map((t) => ({
             id: t.id,
-            brandName: t.brandName,
+            // Item 24: B-group compound (brand prefix + template name). Korean
+            // primary keeps the row tight; the parenthesised English would
+            // overflow the picker row width — same rationale as active-filters
+            // chip's brandShortName usage.
+            brandLabel: brandShortName({ name: t.brandName, nameKo: t.brandNameKo }),
             displayName: templateDisplayName(t),
-            searchText: `${t.brandName} ${t.nameKo} ${t.nameEn}`,
+            searchText: `${t.brandName} ${t.brandNameKo} ${t.nameKo} ${t.nameEn}`,
           }))}
           selectedTemplateId={selectedTemplateId}
           query={templateQuery}
@@ -143,7 +148,7 @@ export function MachinePicker({ value, onChange }: MachinePickerProps) {
 // ─── Brand step ─────────────────────────────────────────────────────────────
 
 interface BrandStepProps {
-  brands: readonly { id: string; name: string }[];
+  brands: readonly { id: string; name: string; nameKo: string }[];
   selectedBrandId: string;
   query: string;
   onChangeQuery: (text: string) => void;
@@ -159,7 +164,7 @@ function BrandStep({
   onSelect,
   isDisabled,
 }: BrandStepProps) {
-  const filteredBrands = filterByText(brands, query, (b) => b.name);
+  const filteredBrands = filterByText(brands, query, (b) => `${b.name} ${b.nameKo}`);
 
   return (
     <View className="gap-2">
@@ -185,7 +190,7 @@ function BrandStep({
               style={pressedOpacity}
               className={selectedRowClass(isSelected)}
             >
-              <AppText className="text-body text-text-primary">{brand.name}</AppText>
+              <AppText className="text-body text-text-primary">{formatBrandLabel(brand)}</AppText>
             </Pressable>
           );
         })}
@@ -232,7 +237,13 @@ function CategoryStep({ categories, selectedCategoryId, onSelect }: CategoryStep
 // DTO column rename only touches one site rather than this child's props.
 interface TemplateStepItem {
   id: string;
-  brandName: string;
+  /**
+   * Phase 5 item 24: precomputed brand label (Korean primary via
+   * brandShortName, English fallback). Replaces the prior raw `brandName`
+   * so the row renders consistently with the active-filters chip's
+   * B-group convention.
+   */
+  brandLabel: string;
   /** Korean primary with English fallback per item 18. */
   displayName: string;
   /** Concatenated brand + both languages so the search box matches mixed input. */
@@ -287,7 +298,7 @@ function TemplateStep({
                 className={selectedRowClass(isSelected)}
               >
                 <AppText className="text-body text-text-primary">
-                  {`${template.brandName} ${displayName}`}
+                  {`${template.brandLabel} ${displayName}`}
                 </AppText>
               </Pressable>
             );

@@ -209,6 +209,7 @@ class AdminPendingContributionIT extends IntegrationTestBase {
         String body = "{"
             + "\"kind\":\"newBrandAndTemplate\","
             + "\"newBrandName\":\"IT-NewBrand\","
+            + "\"newBrandNameKo\":\"IT 신규 브랜드\","
             + "\"nameEn\":\"IT-NewBrandTpl\","
             + "\"nameKo\":\"IT 신규 브랜드 템플릿\","
             + "\"loadingType\":\"pin\","
@@ -222,9 +223,12 @@ class AdminPendingContributionIT extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         UUID brandId = jdbc.queryForObject(
             "SELECT id FROM brands WHERE name = 'IT-NewBrand'", UUID.class);
+        String storedNameKo = jdbc.queryForObject(
+            "SELECT name_ko FROM brands WHERE name = 'IT-NewBrand'", String.class);
         UUID templateId = jdbc.queryForObject(
             "SELECT id FROM machine_templates WHERE name_en = 'IT-NewBrandTpl'", UUID.class);
         assertThat(brandId).isNotNull();
+        assertThat(storedNameKo).isEqualTo("IT 신규 브랜드");
         assertThat(templateId).isNotNull();
         UUID rowTemplate = jdbc.queryForObject(
             "SELECT template_id FROM gym_machines WHERE id = ?", UUID.class, pending);

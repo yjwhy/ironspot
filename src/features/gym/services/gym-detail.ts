@@ -20,7 +20,7 @@ function toMachineTemplate(
     loading_type: (r.loadingType ?? 'plate') as LoadingType,
     is_approved: true, // DB field not returned by the list-machines API endpoint
     created_at: '', // DB field not returned by the list-machines API endpoint
-    brand: { id: brandId, name: r.brandName ?? '' },
+    brand: { id: brandId, name: r.brandName ?? '', nameKo: r.brandNameKo ?? '' },
     category: { id: categoryId, name: r.categoryName ?? '' },
   };
 }
