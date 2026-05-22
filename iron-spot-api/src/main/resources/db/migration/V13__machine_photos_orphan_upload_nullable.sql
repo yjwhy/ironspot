@@ -1,0 +1,35 @@
+-- =========================================================================
+-- V13 — corrective: machine_photos.gym_machine_id NULLABLE for orphan uploads
+-- =========================================================================
+--
+-- Phase 5 item 11 slice 2 (PR #136, 2026-05-20) introduced orphan uploads:
+-- POST /api/photos/upload became callable with gymMachineId=null, and the
+-- subsequent POST /api/gym-machines binds the photo. The application code +
+-- src/test/resources/init-test-db.sql were updated together to allow NULL on
+-- machine_photos.gym_machine_id — but no Vn migration was authored, so prod
+-- kept the V1 NOT NULL constraint.
+--
+-- Symptom (2026-05-22 diagnosis): every orphan upload silently failed with
+-- "유효하지 않은 헬스장 기구 ID입니다" (PhotoService catches
+-- DataIntegrityViolationException after Storage upload succeeds; FE shows
+-- generic "업로드 중 오류가 발생했어요" because classifyUploadError only
+-- special-cases 429). Vision API outage (BILLING_DISABLED until 2026-05-22)
+-- had been MASKING the failure as a Vision-side warning. Once billing was
+-- enabled the underlying NOT NULL violation surfaced.
+--
+-- Forensic trail: 17+ orphan files exist in Supabase Storage bucket
+-- `machine-photos/orphan/<userId>/*.webp` going back to 2026-05-22T01:28Z,
+-- but the matching machine_photos row count is zero. Storage was already
+-- written when the DB insert failed, leaking files that the orphan reaper
+-- (V10) can't clean because no row references them.
+--
+-- This migration was applied manually to prod on 2026-05-22 ~10:50 UTC via
+-- docker psql. The file is idempotent so Flyway can re-record it on next
+-- boot without erroring on the already-loosened column.
+--
+-- Init-test-db.sql already has the column as nullable (no NOT NULL clause),
+-- so no test-side mirror change is needed.
+-- =========================================================================
+
+ALTER TABLE machine_photos
+  ALTER COLUMN gym_machine_id DROP NOT NULL;

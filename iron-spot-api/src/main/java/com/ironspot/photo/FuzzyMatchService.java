@@ -26,7 +26,7 @@ public class FuzzyMatchService {
         if (ocrTexts.isEmpty()) return List.of();
 
         String normalizedInput = String.join(" ", ocrTexts).toLowerCase(Locale.ROOT);
-        Set<String> inputTokens = tokenize(normalizedInput);
+        Set<String> inputTokens = meaningfulTokens(normalizedInput);
 
         return templateRepository.findAllApproved().stream()
             .map(t -> {
@@ -84,6 +84,44 @@ public class FuzzyMatchService {
 
     private Set<String> tokenize(String text) {
         return new HashSet<>(Arrays.asList(text.split("\\s+")));
+    }
+
+    // OCR text on a real gym plate is mostly model numbers, weight units, URLs
+    // and stray punctuation. Those tokens never match a catalog row but each
+    // one inflates the Jaccard union, pushing real matches below THRESHOLD.
+    // Target-side tokens (curated catalog text) are not filtered — they are
+    // clean by construction and removing tokens there would lose precision.
+    private Set<String> meaningfulTokens(String text) {
+        Set<String> raw = tokenize(text);
+        Set<String> kept = new HashSet<>();
+        for (String token : raw) {
+            if (isMeaningfulToken(token)) kept.add(token);
+        }
+        return kept;
+    }
+
+    private boolean isMeaningfulToken(String token) {
+        if (token.isBlank()) return false;
+        // Single ASCII chars are always noise on a gym plate ("Q", "D", ".",
+        // "0"). A single Hangul char can carry meaning (e.g. "랫" / "팻"), so
+        // length-1 Hangul tokens stay in.
+        if (token.length() == 1 && !isHangul(token.charAt(0))) return false;
+        if (token.contains("://") || token.startsWith("www.")
+            || token.endsWith(".com") || token.endsWith(".net")
+            || token.endsWith(".org") || token.endsWith(".kr")
+            || token.endsWith(".io")) return false;
+        for (int i = 0; i < token.length(); i++) {
+            if (Character.isDigit(token.charAt(i))) return false;
+        }
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            if (Character.isLetter(c)) return true;
+        }
+        return false;
+    }
+
+    private boolean isHangul(char c) {
+        return Character.UnicodeScript.of(c) == Character.UnicodeScript.HANGUL;
     }
 
     private double jaccardSimilarity(Set<String> a, Set<String> b) {
