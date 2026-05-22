@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 import type { PhotoUploadResponse } from '@/shared/generated/model';
 import { useUpload } from '@/shared/generated/photos/photos';
+import { HTTPError } from '@/shared/lib/api-client';
 import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
 import { PHOTO_FILENAME, PHOTO_MIME_TYPE } from '../../constants';
@@ -205,7 +206,7 @@ describe('usePhotoUpload', () => {
       expect(result.current.uploadError).not.toBeNull();
     });
 
-    expect(result.current.uploadError?.message).toBe('Network failure');
+    expect(result.current.uploadError).toEqual({ kind: 'generic', error: networkError });
     expect(result.current.uploadProgress).toBe(0);
     expect(result.current.isUploading).toBe(false);
     expect(result.current.result).toBeNull();
@@ -228,7 +229,43 @@ describe('usePhotoUpload', () => {
       expect(result.current.uploadError).not.toBeNull();
     });
 
-    expect(result.current.uploadError?.message).toBe('Upload failed');
+    const err = result.current.uploadError;
+    expect(err?.kind).toBe('generic');
+    if (err?.kind === 'generic') {
+      expect(err.error.message).toBe('Upload failed');
+    }
+  });
+
+  it('on 429 HTTPError: uploadError is classified as quota and retry is not invited', async () => {
+    // Phase 5 item 11 slice (d): orphan quota 429 should set uploadError to
+    // { kind: 'quota' } so UploadErrorView can render quota-specific copy
+    // and hide the retry CTA (retrying against a quota wall is a no-op).
+    // Construct via the prototype directly instead of `new HTTPError(...)` so
+    // the test doesn't depend on ky's internal constructor signature. The
+    // hook narrows by `instanceof HTTPError && response.status === 429`, so
+    // those two surface fields are all it needs.
+    const httpError: HTTPError = Object.assign(Object.create(HTTPError.prototype) as HTTPError, {
+      response: { status: 429 } as Response,
+      message: 'Quota exceeded',
+    });
+
+    mockMutateAsync.mockRejectedValue(httpError);
+    (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
+
+    const { Wrapper } = createQueryWrapper();
+    const { result } = renderHook(() => usePhotoUpload(undefined, COMPRESSED_URI), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.upload();
+    });
+
+    await waitFor(() => {
+      expect(result.current.uploadError).not.toBeNull();
+    });
+
+    expect(result.current.uploadError).toEqual({ kind: 'quota' });
   });
 
   it('sends RN file descriptor (uri + name + type) instead of a typeless Blob', async () => {

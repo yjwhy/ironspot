@@ -16,7 +16,11 @@ import { OcrScanAnimation } from './OcrScanAnimation';
 import { selectedRowClass } from './selectedRowClass';
 import { UploadProgressBar } from './UploadProgressBar';
 import { MAX_OCR_SUGGESTIONS } from '../constants';
-import { type SuggestionPreview, usePhotoUpload } from '../hooks/usePhotoUpload';
+import {
+  type SuggestionPreview,
+  type UploadErrorState,
+  usePhotoUpload,
+} from '../hooks/usePhotoUpload';
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -171,12 +175,25 @@ function OcrFailView({
 }
 
 interface UploadErrorViewProps {
+  error: UploadErrorState;
   onRetry: () => void;
 }
 
-function UploadErrorView({ onRetry }: UploadErrorViewProps) {
+function UploadErrorView({ error, onRetry }: UploadErrorViewProps) {
+  // Phase 5 item 11 slice (d): quota branch hides the retry CTA because
+  // retrying against a 429 wall just produces another 429. The user has to
+  // wait for the rolling window to clear.
+  if (error.kind === 'quota') {
+    return (
+      <View testID="upload-error-quota" className="flex-1 items-center justify-center gap-4 p-4">
+        <AppText className="text-center text-body text-text-secondary">
+          시간당 업로드 한도를 초과했어요{'\n'}잠시 후 다시 시도해주세요
+        </AppText>
+      </View>
+    );
+  }
   return (
-    <View className="flex-1 items-center justify-center gap-4 p-4">
+    <View testID="upload-error-generic" className="flex-1 items-center justify-center gap-4 p-4">
       <AppText className="text-center text-body text-text-secondary">
         업로드 중 오류가 발생했어요
       </AppText>
@@ -400,7 +417,7 @@ export function UploadConfirmScreen() {
   }
 
   if (uploadError !== null) {
-    return <UploadErrorView onRetry={handleRetry} />;
+    return <UploadErrorView error={uploadError} onRetry={handleRetry} />;
   }
 
   const isInitialOrUploading = isUploading || result === null;

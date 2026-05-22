@@ -133,7 +133,18 @@ function buildErrorState(overrides = {}) {
     upload: jest.fn(),
     isUploading: false,
     uploadProgress: 0,
-    uploadError: new Error('Network error'),
+    uploadError: { kind: 'generic' as const, error: new Error('Network error') },
+    result: null,
+    ...overrides,
+  };
+}
+
+function buildQuotaErrorState(overrides = {}) {
+  return {
+    upload: jest.fn(),
+    isUploading: false,
+    uploadProgress: 0,
+    uploadError: { kind: 'quota' as const },
     result: null,
     ...overrides,
   };
@@ -215,6 +226,19 @@ describe('UploadConfirmScreen', () => {
     fireEvent.press(getByTestId('upload-retry-btn'));
 
     expect(upload).toHaveBeenCalledTimes(2);
+  });
+
+  it('quota error: shows hourly-limit copy and hides the retry CTA', () => {
+    // Phase 5 item 11 slice (d): a 429 from the orphan quota wall renders
+    // quota-specific copy with NO retry button — retry against quota is a
+    // no-op until the rolling window clears.
+    mockUsePhotoUpload.mockReturnValue(buildQuotaErrorState());
+
+    const { getByTestId, getByText, queryByTestId } = render(<UploadConfirmScreen />);
+
+    expect(getByTestId('upload-error-quota')).toBeTruthy();
+    expect(getByText(/시간당 업로드 한도를 초과했어요/)).toBeTruthy();
+    expect(queryByTestId('upload-retry-btn')).toBeNull();
   });
 
   it('OcrFail escape-hatch free-text registration calls createGymMachine with freeFormName + no photoId on bound flow', async () => {
