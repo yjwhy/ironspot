@@ -4,6 +4,7 @@
 package com.ironspot.jooq.tables;
 
 
+import com.ironspot.jooq.Indexes;
 import com.ironspot.jooq.Keys;
 import com.ironspot.jooq.Public;
 import com.ironspot.jooq.tables.GymMachines.GymMachinesPath;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -165,6 +167,11 @@ public class MachinePhotos extends TableImpl<Record> {
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.IDX_MACHINE_PHOTOS_ORPHAN_USER_CREATED);
     }
 
     @Override

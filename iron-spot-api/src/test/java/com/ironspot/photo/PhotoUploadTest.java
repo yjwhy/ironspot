@@ -18,6 +18,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -51,6 +53,13 @@ class PhotoUploadTest extends IntegrationTestBase {
             "INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
             UUID.fromString(USER_B_ID), "userb@example.com", "유저B"
         );
+        // Quota cases (Phase 5 item 11 slice b) insert orphan rows that
+        // bleed across tests in the same JVM. Seeded machine_photos rows are
+        // all bound (gym_machine_id NOT NULL) so this targeted cleanup
+        // doesn't disturb them.
+        jdbcTemplate.update(
+            "DELETE FROM machine_photos WHERE gym_machine_id IS NULL AND user_id IN (?, ?)",
+            UUID.fromString(USER_A_ID), UUID.fromString(USER_B_ID));
     }
 
     // --- 1. Unauthenticated upload is rejected ---
@@ -266,6 +275,115 @@ class PhotoUploadTest extends IntegrationTestBase {
             org.mockito.ArgumentMatchers.isNull(),
             any(java.util.UUID.class),
             anyString());
+    }
+
+    // --- 4e. Per-user orphan quota (Phase 5 item 11 slice e) ---
+    //
+    // Slice 2 made gymMachineId nullable on POST /api/photos/upload, which lets
+    // an authenticated user fill `<bucket>/orphan/<userId>/` with 2 MB images
+    // without ever calling POST /api/gym-machines. The quota precheck caps
+    // orphan uploads at HOURLY_ORPHAN_LIMIT per user per rolling hour and
+    // short-circuits before the Vision API call so spam never spends a
+    // Vision credit. Bound uploads (gymMachineId != null) bypass the precheck.
+
+    @Test
+    void uploadRejectsOrphanWhenUserOverHourlyQuota() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+
+        for (int i = 0; i < PhotoService.HOURLY_ORPHAN_LIMIT; i++) {
+            insertOrphanForUser(USER_A_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
+        }
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(response.getBody()).contains("한도");
+        org.mockito.Mockito.verify(ocrService, org.mockito.Mockito.never()).analyzeImage(any());
+        org.mockito.Mockito.verify(storageService, org.mockito.Mockito.never())
+            .upload(any(), any(), any(), anyString());
+    }
+
+    @Test
+    void uploadAllowsOrphanWhenUserUnderQuota() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of(), SafeSearchVerdict.ALLOW, false));
+        given(storageService.upload(any(), any(), any(), anyString()))
+            .willReturn("https://example.com/under-quota.webp");
+
+        for (int i = 0; i < PhotoService.HOURLY_ORPHAN_LIMIT - 1; i++) {
+            insertOrphanForUser(USER_A_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
+        }
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    void uploadIgnoresStaleOrphansOutsideQuotaWindow() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of(), SafeSearchVerdict.ALLOW, false));
+        given(storageService.upload(any(), any(), any(), anyString()))
+            .willReturn("https://example.com/stale-window.webp");
+
+        // Pile up HOURLY_ORPHAN_LIMIT orphans created > 1h ago; the rolling
+        // window must skip them and accept a fresh orphan.
+        for (int i = 0; i < PhotoService.HOURLY_ORPHAN_LIMIT; i++) {
+            insertOrphanForUser(USER_A_ID, OffsetDateTime.now(ZoneOffset.UTC).minusHours(2));
+        }
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    void uploadBoundPhotoBypassesOrphanQuota() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of(), SafeSearchVerdict.ALLOW, false));
+        given(storageService.upload(any(), any(), any(), anyString()))
+            .willReturn("https://example.com/bound-bypass.webp");
+
+        for (int i = 0; i < PhotoService.HOURLY_ORPHAN_LIMIT; i++) {
+            insertOrphanForUser(USER_A_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
+        }
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+        body.add("gymMachineId", GYM_MACHINE_ID.toString());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // Bound uploads must always reach Vision regardless of orphan count.
+        // Without this assertion the test would pass if quota silently
+        // short-circuited bound uploads too.
+        org.mockito.Mockito.verify(ocrService).analyzeImage(any());
+    }
+
+    private void insertOrphanForUser(String userId, OffsetDateTime createdAt) {
+        jdbcTemplate.update(
+            "INSERT INTO machine_photos(id, gym_machine_id, user_id, photo_url, created_at) "
+                + "VALUES (?, NULL, ?, ?, ?)",
+            UUID.randomUUID(), UUID.fromString(userId),
+            "https://example.com/quota-" + UUID.randomUUID() + ".webp",
+            createdAt);
     }
 
     // --- 4c. SafeSearch QUEUE_FOR_ADMIN inserts with is_blinded=TRUE + Slack notify ---

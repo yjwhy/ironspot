@@ -2,9 +2,11 @@ import { useState } from 'react';
 
 import type { MachineTemplateSuggestion, PhotoUploadResponse } from '@/shared/generated/model';
 import { useUpload } from '@/shared/generated/photos/photos';
+import { HTTPError } from '@/shared/lib/api-client';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 
 import { PHOTO_FILENAME, PHOTO_MIME_TYPE } from '../constants';
+import type { UploadErrorState } from '../types';
 
 export type SuggestionPreview = Pick<
   MachineTemplateSuggestion,
@@ -24,8 +26,18 @@ interface UsePhotoUploadReturn {
   upload: () => Promise<void>;
   isUploading: boolean;
   uploadProgress: number;
-  uploadError: Error | null;
+  uploadError: UploadErrorState | null;
   result: UploadResult | null;
+}
+
+function classifyUploadError(error: unknown): UploadErrorState {
+  if (error instanceof HTTPError && error.response.status === 429) {
+    return { kind: 'quota' };
+  }
+  return {
+    kind: 'generic',
+    error: error instanceof Error ? error : new Error('Upload failed'),
+  };
 }
 
 // React Native's FormData accepts a `{ uri, name, type }` descriptor in place of a Blob
@@ -70,7 +82,7 @@ export function usePhotoUpload(
   const { mutateAsync } = useUpload();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadError, setUploadError] = useState<Error | null>(null);
+  const [uploadError, setUploadError] = useState<UploadErrorState | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
 
   async function runUpload(): Promise<void> {
@@ -91,7 +103,7 @@ export function usePhotoUpload(
       setResult(toUploadResult(unwrapOrvalResponse(uploadResponse)));
       setUploadProgress(1);
     } catch (error) {
-      setUploadError(error instanceof Error ? error : new Error('Upload failed'));
+      setUploadError(classifyUploadError(error));
       setUploadProgress(0);
     } finally {
       setIsUploading(false);

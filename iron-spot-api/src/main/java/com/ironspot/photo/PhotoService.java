@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +24,19 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class PhotoService {
+
+    // Phase 5 item 11 slice (b): orphan-upload quota. A user may upload at
+    // most HOURLY_ORPHAN_LIMIT photos with gym_machine_id IS NULL inside a
+    // rolling ORPHAN_QUOTA_WINDOW. The COUNT is partial-index-backed (V10),
+    // and a successful POST /api/gym-machines binds the photo so it drops out
+    // of the count immediately — the quota auto-rewards completing the flow.
+    public static final int HOURLY_ORPHAN_LIMIT = 10;
+    private static final Duration ORPHAN_QUOTA_WINDOW = Duration.ofHours(1);
+
+    // Phase 5 item 11 slice (c): age threshold for the daily reaper. 24h
+    // covers "user backgrounded the app and came back the next day" while
+    // capping Storage waste from abandoned or abusive orphan uploads.
+    public static final Duration ORPHAN_RETENTION = Duration.ofHours(24);
 
     private final PhotoRepository photoRepository;
     private final OcrService ocrService;
@@ -38,17 +54,13 @@ public class PhotoService {
 
     // Storage upload is intentionally not wrapped in @Transactional:
     // a DB rollback cannot undo a file already uploaded to Supabase Storage.
-    // Orphaned files are removed by a periodic cleanup job (Phase 2 tradeoff).
+    // Orphaned files (`<bucket>/orphan/<userId>/<photoId>.webp`) are removed
+    // by {@link OrphanReaperJob} once their row crosses
+    // {@link #ORPHAN_RETENTION} without a binding POST /api/gym-machines.
     //
-    // TODO(phase-5 item 11 slice 4): the cleanup job must purge
-    // `<bucket>/orphan/<userId>/` entries whose corresponding machine_photos
-    // row stays orphan (gym_machine_id IS NULL) past N hours. See
-    // StorageService.ORPHAN_PREFIX. Open question tracked in
-    // docs/plans/phase-5/README.md item 11 "Orphan upload rate limit + reaper".
-    //
-    // Phase 5 item 11 slice 2: gymMachineId is now nullable. The OCR confirm
+    // Phase 5 item 11 slice 2: gymMachineId is nullable. The OCR confirm
     // screen uploads first (gym_machine unknown yet) and then calls
-    // POST /api/gym-machines which binds the orphan photo via the new
+    // POST /api/gym-machines which binds the orphan photo via the
     // PhotoRepository.bindOrphanGymMachineId NULL-guard. Existing flows
     // that already know the gym_machine (e.g. machine photo gallery) keep
     // passing the id and bypass the contribution path.
@@ -60,6 +72,13 @@ public class PhotoService {
             throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
         }
         validateImage(file, imageBytes);
+
+        // Orphan quota: gate before the Vision API call so abuse never spends
+        // a Vision credit. Bound uploads (gymMachineId != null) skip the
+        // precheck because they can't be orphans by definition.
+        if (gymMachineId == null) {
+            enforceOrphanQuota(userId);
+        }
 
         UUID photoId = UUID.randomUUID();
         String filename = photoId + ".webp";
@@ -113,6 +132,55 @@ public class PhotoService {
         return new PhotoUploadResponse(photoId, photoUrl, suggestions, ocrSucceeded);
     }
 
+    /**
+     * Phase 5 item 11 slice (c): daily reaper entry point invoked by
+     * {@link OrphanReaperJob}. Purges {@link #ORPHAN_RETENTION}-old orphan
+     * rows + their Supabase Storage files.
+     *
+     * <p>The DELETE-then-Storage order makes the loop race-safe against a
+     * concurrent {@code POST /api/gym-machines} that binds an orphan between
+     * the SELECT and the DELETE: if the DELETE returns 0 rows the photo got
+     * bound mid-reap and the Storage file is preserved. Storage failures
+     * are logged + swallowed so a single 5xx from Supabase doesn't abort the
+     * batch.
+     *
+     * <p>Intentionally NOT {@code @Transactional} — each row's DELETE must
+     * commit before its Storage delete so a crash mid-loop can't roll a row
+     * back into existence after its file is already gone.
+     */
+    public int purgeStaleOrphans() {
+        OffsetDateTime cutoff = OffsetDateTime.now(ZoneOffset.UTC).minus(ORPHAN_RETENTION);
+        List<PhotoRepository.OrphanRow> candidates = photoRepository.findOrphansOlderThan(cutoff);
+
+        int deleted = 0;
+        for (PhotoRepository.OrphanRow row : candidates) {
+            int rowsAffected = photoRepository.deleteOrphanIfStillOrphan(row.id());
+            if (rowsAffected == 0) {
+                log.info("Orphan reaper skipped photo {} — bound mid-reap", row.id());
+                continue;
+            }
+
+            String path = StorageService.extractStoragePath(row.photoUrl());
+            if (path == null) {
+                log.warn("Orphan reaper deleted row {} but photo_url={} carries no bucket segment",
+                    row.id(), row.photoUrl());
+                deleted++;
+                continue;
+            }
+
+            try {
+                storageService.delete(path);
+            } catch (Exception e) {
+                log.warn("Orphan reaper Storage delete failed for path {} — DB row already gone, file will leak: {}",
+                    path, e.getMessage());
+            }
+            deleted++;
+        }
+
+        log.info("Orphan reaper finished — purged={} of candidates={}", deleted, candidates.size());
+        return deleted;
+    }
+
     public void deleteOwn(String userId, UUID photoId) {
         PhotoResponse photo = photoRepository.findById(photoId)
             .orElseThrow(() -> new BusinessException("사진을 찾을 수 없습니다", HttpStatus.NOT_FOUND));
@@ -120,6 +188,32 @@ public class PhotoService {
             throw new BusinessException("본인의 사진만 삭제할 수 있습니다", HttpStatus.FORBIDDEN);
         }
         photoRepository.delete(photoId);
+    }
+
+    /**
+     * Best-effort per-user orphan quota check. Two concurrent requests from
+     * the same user can both read {@code count == LIMIT - 1} and both pass,
+     * over-running the cap by one. Acceptable because (a) the daily reaper
+     * (slice c) eventually cleans either way, and (b) we don't want to
+     * introduce a SELECT-FOR-UPDATE row-lock contention on every upload to
+     * close a race that's impossible to exploit at any meaningful scale.
+     * The {@code >=} predicate rejects when this would be the {@code (N+1)}th
+     * upload within the window.
+     */
+    private void enforceOrphanQuota(String userId) {
+        OffsetDateTime since = OffsetDateTime.now(ZoneOffset.UTC).minus(ORPHAN_QUOTA_WINDOW);
+        int recentOrphans = photoRepository.countOrphansForUserSince(UUID.fromString(userId), since);
+        if (recentOrphans >= HOURLY_ORPHAN_LIMIT) {
+            // log.warn so the per-user-per-day spike is observable in Render
+            // logs / Sentry breadcrumbs without spamming the moderation Slack.
+            // The 429 response carries the per-window cap so the FE can render
+            // copy that names the actual limit.
+            log.warn("Orphan upload quota tripped — userId={} recentOrphans={} limit={}",
+                userId, recentOrphans, HOURLY_ORPHAN_LIMIT);
+            throw new BusinessException(
+                "시간당 업로드 한도(" + HOURLY_ORPHAN_LIMIT + "개)를 초과했어요. 잠시 후 다시 시도해주세요.",
+                HttpStatus.TOO_MANY_REQUESTS);
+        }
     }
 
     private void validateImage(MultipartFile file, byte[] bytes) {

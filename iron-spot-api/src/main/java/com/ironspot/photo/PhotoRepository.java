@@ -223,4 +223,59 @@ public class PhotoRepository {
             .where(MACHINE_PHOTOS.GYM_MACHINE_ID.eq(fromGymMachineId))
             .execute();
     }
+
+    /**
+     * Phase 5 item 11 slice (a): count orphan photos owned by a user that
+     * were uploaded after the given cutoff. Backs the per-user quota
+     * precheck in {@code PhotoService.upload} (slice b) so a single user
+     * can't fill {@code <bucket>/orphan/<userId>/} with images without ever
+     * binding them to a contribution row.
+     *
+     * <p>The V10 partial index
+     * {@code idx_machine_photos_orphan_user_created} covers exactly this
+     * predicate set (user_id, created_at, WHERE gym_machine_id IS NULL) so
+     * the COUNT runs as an index-only scan over the small orphan partition
+     * even as machine_photos grows.
+     */
+    public int countOrphansForUserSince(UUID userId, OffsetDateTime since) {
+        return dsl.fetchCount(
+            dsl.selectOne()
+                .from(MACHINE_PHOTOS)
+                .where(MACHINE_PHOTOS.USER_ID.eq(userId))
+                .and(MACHINE_PHOTOS.GYM_MACHINE_ID.isNull())
+                .and(MACHINE_PHOTOS.CREATED_AT.greaterOrEqual(since)));
+    }
+
+    /**
+     * Phase 5 item 11 slice (c): identity + URL of every orphan photo
+     * uploaded before the given cutoff. The reaper job pages through this
+     * list to compute the Storage path for each, then deletes the row +
+     * file. Reads the same partial index as the quota COUNT (V10).
+     */
+    public record OrphanRow(UUID id, String photoUrl) {}
+
+    public List<OrphanRow> findOrphansOlderThan(OffsetDateTime cutoff) {
+        return dsl.select(MACHINE_PHOTOS.ID, MACHINE_PHOTOS.PHOTO_URL)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.GYM_MACHINE_ID.isNull())
+            .and(MACHINE_PHOTOS.CREATED_AT.lessThan(cutoff))
+            .fetch(r -> new OrphanRow(
+                r.get(MACHINE_PHOTOS.ID),
+                r.get(MACHINE_PHOTOS.PHOTO_URL)));
+    }
+
+    /**
+     * Phase 5 item 11 slice (c): conditionally delete an orphan row only if
+     * it is still orphan at DELETE time. The {@code gym_machine_id IS NULL}
+     * predicate makes the call race-safe against a concurrent
+     * {@link #bindOrphanGymMachineId} that fires between the reaper's
+     * SELECT and DELETE — in that case the DELETE returns 0 and the caller
+     * skips the Storage file delete so the now-bound photo's image survives.
+     */
+    public int deleteOrphanIfStillOrphan(UUID photoId) {
+        return dsl.deleteFrom(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .and(MACHINE_PHOTOS.GYM_MACHINE_ID.isNull())
+            .execute();
+    }
 }
