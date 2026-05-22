@@ -200,6 +200,41 @@ class FuzzyMatchServiceTest {
         assertThat(results.get(0).score()).isGreaterThan(0.5);
     }
 
+    // -------------------------------------------------------------------------
+    // OCR noise filtering — model numbers, weights, URLs, punctuation must not
+    // inflate the Jaccard union and starve real matches below threshold.
+    // Regression source: a real-world Hammer Strength Leg Extension photo
+    // produced OCR tokens [257, www.hammerstrength.com, HAMMER, STRENGTH, LEG,
+    // EXTENSION, Start, 7, lb./3.5Kg, .] and the only matching catalog row
+    // (Iso-Lateral Leg Extension) came out at Jaccard ≈ 0.235 — just below the
+    // 0.25 threshold. Filtering the noise tokens off the input restores the
+    // match.
+    // -------------------------------------------------------------------------
+    @Test
+    void findMatchesIgnoresUrlNumericAndPunctuationNoise() {
+        UUID isoLateralLegExtension = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(
+                isoLateralLegExtension,
+                "Hammer Strength", "해머 스트렝스",
+                "Iso-Lateral Leg Extension", "아이소 래터럴 레그 익스텐션")
+        ));
+
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of(
+                "257",
+                "www.hammerstrength.com",
+                "HAMMER", "STRENGTH",
+                "LEG", "EXTENSION",
+                "Start", "7", "lb./3.5Kg", "."
+            )
+        );
+
+        assertThat(results).isNotEmpty();
+        assertThat(results.get(0).id()).isEqualTo(isoLateralLegExtension);
+    }
+
     @Test
     void findMatchesIncludesKoreanBrandLabelInOcrTarget() {
         // Phase 5 item 24: brand stickers in Korean ("해머 스트렝스") should
