@@ -10,6 +10,7 @@ export interface MachineTemplateResponse {
   id: string;
   brandId: string;
   brandName: string;
+  brandNameKo: string;
   categoryId: string;
   nameEn: string;
   nameKo: string;

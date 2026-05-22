@@ -4,8 +4,8 @@ import type { Brand, Category, SearchFilters } from '@/shared/types/database';
 import { formatMachineTemplateLabel, toActiveFilters } from '../active-filters';
 
 const brands: Brand[] = [
-  { id: 'b1', name: 'Panatta' },
-  { id: 'b2', name: 'Hammer Strength' },
+  { id: 'b1', name: 'Panatta', nameKo: '' },
+  { id: 'b2', name: 'Hammer Strength', nameKo: '' },
 ];
 
 const categories: Category[] = [
@@ -18,6 +18,7 @@ const machineTemplates: MachineTemplateResponse[] = [
     id: 't1',
     brandId: 'b1',
     brandName: 'Panatta',
+    brandNameKo: '',
     categoryId: 'c1',
     nameEn: 'High Row',
     nameKo: 'High Row',
@@ -27,6 +28,7 @@ const machineTemplates: MachineTemplateResponse[] = [
     id: 't2',
     brandId: 'b2',
     brandName: 'Hammer Strength',
+    brandNameKo: '',
     categoryId: 'c2',
     nameEn: 'Chest Press',
     nameKo: 'Chest Press',

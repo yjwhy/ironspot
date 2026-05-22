@@ -19,11 +19,17 @@ export interface PromoteContributionRequest {
   /** Required when kind='newTemplate' */
   brandId?: string;
   /**
-   * Required when kind='newBrandAndTemplate'
+   * Required when kind='newBrandAndTemplate'. Canonical English brand identifier.
    * @minLength 0
    * @maxLength 80
    */
   newBrandName?: string;
+  /**
+   * Required when kind='newBrandAndTemplate'. Korean display label for the brand (Phase 5 item 24).
+   * @minLength 0
+   * @maxLength 80
+   */
+  newBrandNameKo?: string;
   /**
    * Required when kind='newTemplate' or 'newBrandAndTemplate'
    * @minLength 0

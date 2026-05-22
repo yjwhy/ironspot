@@ -16,8 +16,8 @@ describe('fetchBrands', () => {
 
   it('calls listBrands and returns mapped Brand array', async () => {
     const apiResponse: BrandResponse[] = [
-      { id: 'b1', name: 'Panatta' },
-      { id: 'b2', name: 'Technogym' },
+      { id: 'b1', name: 'Panatta', nameKo: '' },
+      { id: 'b2', name: 'Technogym', nameKo: '' },
     ];
     mockListBrands.mockResolvedValue(apiResponse);
 
@@ -25,8 +25,8 @@ describe('fetchBrands', () => {
 
     expect(mockListBrands).toHaveBeenCalledTimes(1);
     const expected: Brand[] = [
-      { id: 'b1', name: 'Panatta' },
-      { id: 'b2', name: 'Technogym' },
+      { id: 'b1', name: 'Panatta', nameKo: '' },
+      { id: 'b2', name: 'Technogym', nameKo: '' },
     ];
     expect(result).toEqual(expected);
   });

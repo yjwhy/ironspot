@@ -17,8 +17,8 @@ describe('useBrands', () => {
 
   it('calls fetchBrands and returns the data on success', async () => {
     const brands: Brand[] = [
-      { id: 'b1', name: 'Panatta' },
-      { id: 'b2', name: 'Technogym' },
+      { id: 'b1', name: 'Panatta', nameKo: '' },
+      { id: 'b2', name: 'Technogym', nameKo: '' },
     ];
     const mockFetch = fetchBrands as jest.MockedFunction<typeof fetchBrands>;
     mockFetch.mockResolvedValue(brands);
@@ -36,11 +36,11 @@ describe('useBrands', () => {
 
   it('sorts brands by name using locale-aware compare', async () => {
     const unsorted: Brand[] = [
-      { id: 'b1', name: 'Technogym' },
-      { id: 'b2', name: 'Panatta' },
-      { id: 'b3', name: '하이로우' },
-      { id: 'b4', name: 'Atlantis' },
-      { id: 'b5', name: '가가짐' },
+      { id: 'b1', name: 'Technogym', nameKo: '' },
+      { id: 'b2', name: 'Panatta', nameKo: '' },
+      { id: 'b3', name: '하이로우', nameKo: '' },
+      { id: 'b4', name: 'Atlantis', nameKo: '' },
+      { id: 'b5', name: '가가짐', nameKo: '' },
     ];
     const mockFetch = fetchBrands as jest.MockedFunction<typeof fetchBrands>;
     mockFetch.mockResolvedValue(unsorted);

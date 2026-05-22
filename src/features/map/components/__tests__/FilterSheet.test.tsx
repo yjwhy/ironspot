@@ -29,8 +29,8 @@ jest.mock('@gorhom/bottom-sheet', () => {
 });
 
 const brands: Brand[] = [
-  { id: 'b1', name: 'Panatta' },
-  { id: 'b2', name: 'Hammer Strength' },
+  { id: 'b1', name: 'Panatta', nameKo: '' },
+  { id: 'b2', name: 'Hammer Strength', nameKo: '' },
 ];
 
 const categories: Category[] = [
@@ -43,6 +43,7 @@ const machineTemplates: MachineTemplateResponse[] = [
     id: 't1',
     brandId: 'b1',
     brandName: 'Panatta',
+    brandNameKo: '',
     categoryId: 'c1',
     nameEn: 'High Row',
     nameKo: '하이로우',
@@ -52,6 +53,7 @@ const machineTemplates: MachineTemplateResponse[] = [
     id: 't2',
     brandId: 'b1',
     brandName: 'Panatta',
+    brandNameKo: '',
     categoryId: 'c2',
     nameEn: 'Chest Press',
     nameKo: '체스트 프레스',
@@ -61,6 +63,7 @@ const machineTemplates: MachineTemplateResponse[] = [
     id: 't3',
     brandId: 'b2',
     brandName: 'Hammer Strength',
+    brandNameKo: '',
     categoryId: 'c2',
     nameEn: 'Iso Chest Press',
     nameKo: '아이소 체스트 프레스',
