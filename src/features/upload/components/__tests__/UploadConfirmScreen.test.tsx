@@ -128,7 +128,7 @@ function buildOcrFailState(overrides = {}) {
   };
 }
 
-function buildErrorState(overrides = {}) {
+function buildGenericErrorState(overrides = {}) {
   return {
     upload: jest.fn(),
     isUploading: false,
@@ -208,7 +208,7 @@ describe('UploadConfirmScreen', () => {
   });
 
   it('shows error view when uploadError is set', () => {
-    mockUsePhotoUpload.mockReturnValue(buildErrorState());
+    mockUsePhotoUpload.mockReturnValue(buildGenericErrorState());
 
     const { getByTestId, getByText } = render(<UploadConfirmScreen />);
 
@@ -218,7 +218,7 @@ describe('UploadConfirmScreen', () => {
 
   it('"다시 시도" calls upload()', () => {
     const upload = jest.fn();
-    mockUsePhotoUpload.mockReturnValue(buildErrorState({ upload }));
+    mockUsePhotoUpload.mockReturnValue(buildGenericErrorState({ upload }));
 
     const { getByTestId } = render(<UploadConfirmScreen />);
 

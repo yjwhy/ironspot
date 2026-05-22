@@ -16,11 +16,8 @@ import { OcrScanAnimation } from './OcrScanAnimation';
 import { selectedRowClass } from './selectedRowClass';
 import { UploadProgressBar } from './UploadProgressBar';
 import { MAX_OCR_SUGGESTIONS } from '../constants';
-import {
-  type SuggestionPreview,
-  type UploadErrorState,
-  usePhotoUpload,
-} from '../hooks/usePhotoUpload';
+import { type SuggestionPreview, usePhotoUpload } from '../hooks/usePhotoUpload';
+import type { UploadErrorState } from '../types';
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -179,19 +176,22 @@ interface UploadErrorViewProps {
   onRetry: () => void;
 }
 
-function UploadErrorView({ error, onRetry }: UploadErrorViewProps) {
-  // Phase 5 item 11 slice (d): quota branch hides the retry CTA because
-  // retrying against a 429 wall just produces another 429. The user has to
-  // wait for the rolling window to clear.
-  if (error.kind === 'quota') {
-    return (
-      <View testID="upload-error-quota" className="flex-1 items-center justify-center gap-4 p-4">
-        <AppText className="text-center text-body text-text-secondary">
-          시간당 업로드 한도를 초과했어요{'\n'}잠시 후 다시 시도해주세요
-        </AppText>
-      </View>
-    );
-  }
+// Phase 5 item 11 slice (d): quota branch hides the retry CTA because
+// retrying against a 429 wall just produces another 429. Each kind has
+// its own view so the props contract reflects what the variant uses
+// (quota takes no onRetry).
+
+function UploadQuotaErrorView() {
+  return (
+    <View testID="upload-error-quota" className="flex-1 items-center justify-center gap-4 p-4">
+      <AppText className="text-center text-body text-text-secondary">
+        시간당 업로드 한도를 초과했어요{'\n'}잠시 후 다시 시도해주세요
+      </AppText>
+    </View>
+  );
+}
+
+function UploadGenericErrorView({ onRetry }: { onRetry: () => void }) {
   return (
     <View testID="upload-error-generic" className="flex-1 items-center justify-center gap-4 p-4">
       <AppText className="text-center text-body text-text-secondary">
@@ -200,6 +200,11 @@ function UploadErrorView({ error, onRetry }: UploadErrorViewProps) {
       <Button testID="upload-retry-btn" label="다시 시도" variant="secondary" onPress={onRetry} />
     </View>
   );
+}
+
+function UploadErrorView({ error, onRetry }: UploadErrorViewProps) {
+  if (error.kind === 'quota') return <UploadQuotaErrorView />;
+  return <UploadGenericErrorView onRetry={onRetry} />;
 }
 
 interface RadioDotProps {

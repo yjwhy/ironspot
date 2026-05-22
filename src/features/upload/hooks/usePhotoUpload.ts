@@ -6,6 +6,7 @@ import { HTTPError } from '@/shared/lib/api-client';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 
 import { PHOTO_FILENAME, PHOTO_MIME_TYPE } from '../constants';
+import type { UploadErrorState } from '../types';
 
 export type SuggestionPreview = Pick<
   MachineTemplateSuggestion,
@@ -20,12 +21,6 @@ interface UploadResult {
   ocrSucceeded: boolean;
   suggestions: SuggestionPreview[];
 }
-
-// Phase 5 item 11 slice (d): the upload screen needs to distinguish a 429
-// (orphan quota exceeded) from a transient failure so it can render quota
-// copy + hide the retry CTA — retrying against a quota wall just produces
-// another 429.
-export type UploadErrorState = { kind: 'quota' } | { kind: 'generic'; error: Error };
 
 interface UsePhotoUploadReturn {
   upload: () => Promise<void>;
