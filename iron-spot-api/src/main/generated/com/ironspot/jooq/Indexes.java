@@ -7,6 +7,7 @@ package com.ironspot.jooq;
 import com.ironspot.jooq.tables.GymMachines;
 import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
+import com.ironspot.jooq.tables.MachinePhotos;
 import com.ironspot.jooq.tables.ModerationAuditLog;
 import com.ironspot.jooq.tables.NlSearchLog;
 import com.ironspot.jooq.tables.Reports;
@@ -35,6 +36,7 @@ public class Indexes {
     public static final Index IDX_GYM_OWNERS_GYM_ACTIVE = Internal.createIndex(DSL.name("idx_gym_owners_gym_active"), GymOwners.GYM_OWNERS, new OrderField[] { GymOwners.GYM_OWNERS.GYM_ID }, false);
     public static final Index IDX_GYM_OWNERS_USER_ACTIVE = Internal.createIndex(DSL.name("idx_gym_owners_user_active"), GymOwners.GYM_OWNERS, new OrderField[] { GymOwners.GYM_OWNERS.USER_ID }, false);
     public static final Index IDX_GYMS_CREATED_BY_USER_ID = Internal.createIndex(DSL.name("idx_gyms_created_by_user_id"), Gyms.GYMS, new OrderField[] { Gyms.GYMS.CREATED_BY_USER_ID }, false);
+    public static final Index IDX_MACHINE_PHOTOS_ORPHAN_USER_CREATED = Internal.createIndex(DSL.name("idx_machine_photos_orphan_user_created"), MachinePhotos.MACHINE_PHOTOS, new OrderField[] { MachinePhotos.MACHINE_PHOTOS.USER_ID, MachinePhotos.MACHINE_PHOTOS.CREATED_AT }, false);
     public static final Index IDX_USERS_ROLE = Internal.createIndex(DSL.name("idx_users_role"), Users.USERS, new OrderField[] { Users.USERS.ROLE }, false);
     public static final Index NL_SEARCH_LOG_CREATED_AT_IDX = Internal.createIndex(DSL.name("nl_search_log_created_at_idx"), NlSearchLog.NL_SEARCH_LOG, new OrderField[] { NlSearchLog.NL_SEARCH_LOG.CREATED_AT }, false);
     public static final Index NL_SEARCH_LOG_NORMALISED_CREATED_IDX = Internal.createIndex(DSL.name("nl_search_log_normalised_created_idx"), NlSearchLog.NL_SEARCH_LOG, new OrderField[] { NlSearchLog.NL_SEARCH_LOG.NORMALISED_QUERY, NlSearchLog.NL_SEARCH_LOG.CREATED_AT }, false);

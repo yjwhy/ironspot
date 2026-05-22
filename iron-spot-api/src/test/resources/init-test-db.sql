@@ -149,6 +149,13 @@ CREATE TABLE IF NOT EXISTS machine_photos (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- V10 mirror: partial index supporting orphan quota COUNT + reaper SELECT
+-- (Phase 5 item 11 slice e). Flyway is disabled in tests so V10's CREATE
+-- INDEX is applied here.
+CREATE INDEX IF NOT EXISTS idx_machine_photos_orphan_user_created
+  ON machine_photos (user_id, created_at)
+  WHERE gym_machine_id IS NULL;
+
 CREATE TABLE IF NOT EXISTS photo_votes (
   user_id UUID REFERENCES users(id),
   photo_id UUID REFERENCES machine_photos(id),

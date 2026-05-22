@@ -223,4 +223,26 @@ public class PhotoRepository {
             .where(MACHINE_PHOTOS.GYM_MACHINE_ID.eq(fromGymMachineId))
             .execute();
     }
+
+    /**
+     * Phase 5 item 11 slice (a): count orphan photos owned by a user that
+     * were uploaded after the given cutoff. Backs the per-user quota
+     * precheck in {@code PhotoService.upload} (slice b) so a single user
+     * can't fill {@code <bucket>/orphan/<userId>/} with images without ever
+     * binding them to a contribution row.
+     *
+     * <p>The V10 partial index
+     * {@code idx_machine_photos_orphan_user_created} covers exactly this
+     * predicate set (user_id, created_at, WHERE gym_machine_id IS NULL) so
+     * the COUNT runs as an index-only scan over the small orphan partition
+     * even as machine_photos grows.
+     */
+    public int countOrphansForUserSince(UUID userId, OffsetDateTime since) {
+        return dsl.fetchCount(
+            dsl.selectOne()
+                .from(MACHINE_PHOTOS)
+                .where(MACHINE_PHOTOS.USER_ID.eq(userId))
+                .and(MACHINE_PHOTOS.GYM_MACHINE_ID.isNull())
+                .and(MACHINE_PHOTOS.CREATED_AT.greaterOrEqual(since)));
+    }
 }
