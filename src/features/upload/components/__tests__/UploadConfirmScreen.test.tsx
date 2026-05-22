@@ -20,8 +20,8 @@ jest.mock('@/shared/generated/machines/machines', () => ({
 jest.mock('@/features/map/hooks/useBrands', () => ({
   useBrands: () => ({
     data: [
-      { id: 'brand-hammer', name: 'Hammer Strength' },
-      { id: 'brand-life', name: 'Life Fitness' },
+      { id: 'brand-hammer', name: 'Hammer Strength', nameKo: '해머 스트렝스' },
+      { id: 'brand-life', name: 'Life Fitness', nameKo: '라이프 피트니스' },
     ],
   }),
 }));
@@ -40,6 +40,7 @@ jest.mock('@/features/map/hooks/useMachineTemplates', () => ({
         id: 'tpl-hammer-chest',
         brandId: 'brand-hammer',
         brandName: 'Hammer Strength',
+        brandNameKo: '해머 스트렝스',
         categoryId: 'cat-chest',
         name: 'Iso Chest Press',
         loadingType: 'plate',

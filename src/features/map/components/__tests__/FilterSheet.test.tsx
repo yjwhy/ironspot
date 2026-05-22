@@ -29,8 +29,8 @@ jest.mock('@gorhom/bottom-sheet', () => {
 });
 
 const brands: Brand[] = [
-  { id: 'b1', name: 'Panatta', nameKo: '' },
-  { id: 'b2', name: 'Hammer Strength', nameKo: '' },
+  { id: 'b1', name: 'Panatta', nameKo: '파나타' },
+  { id: 'b2', name: 'Hammer Strength', nameKo: '해머 스트렝스' },
 ];
 
 const categories: Category[] = [
@@ -106,10 +106,10 @@ describe('FilterSheet (ADR 0024 accordion + staged-apply)', () => {
     expect(getByText('운동 부위')).toBeTruthy();
   });
 
-  it('renders one brand row per brand with its template count', () => {
+  it('renders one brand row per brand with the bilingual "한글 (영문)" label', () => {
     const { getByText, getAllByText } = renderSheet();
-    expect(getByText('Panatta')).toBeTruthy();
-    expect(getByText('Hammer Strength')).toBeTruthy();
+    expect(getByText('파나타 (Panatta)')).toBeTruthy();
+    expect(getByText('해머 스트렝스 (Hammer Strength)')).toBeTruthy();
     expect(getAllByText(/^\d+$/).length).toBeGreaterThanOrEqual(2);
   });
 
@@ -120,7 +120,7 @@ describe('FilterSheet (ADR 0024 accordion + staged-apply)', () => {
 
   it('expands a brand accordion to reveal its category sub-sections and machine rows', () => {
     const { getByText, queryByText } = renderSheet();
-    fireEvent.press(getByText('Panatta'));
+    fireEvent.press(getByText('파나타 (Panatta)'));
     expect(getByText('등 (1)')).toBeTruthy();
     expect(queryByText(/하이로우/)).not.toBeNull();
   });
@@ -128,7 +128,7 @@ describe('FilterSheet (ADR 0024 accordion + staged-apply)', () => {
   it('chip tap stages locally — onApply is not called until the apply CTA fires', () => {
     const onApply = jest.fn();
     const { getByText, getByLabelText } = renderSheet({ onApply });
-    fireEvent.press(getByText('Panatta'));
+    fireEvent.press(getByText('파나타 (Panatta)'));
     fireEvent.press(getByText(/하이로우/));
     // Machine staged → footer chip strip appears with the brand-prefixed label.
     expect(getByText(/^선택 \(1\)/)).toBeTruthy();
@@ -197,22 +197,22 @@ describe('FilterSheet (ADR 0024 accordion + staged-apply)', () => {
     const { getByText, queryByText } = renderSheet({
       filters: { ...emptyFilters, categoryIds: ['c1'] },
     });
-    expect(getByText('Panatta')).toBeTruthy();
-    expect(queryByText('Hammer Strength')).toBeNull();
+    expect(getByText('파나타 (Panatta)')).toBeTruthy();
+    expect(queryByText('해머 스트렝스 (Hammer Strength)')).toBeNull();
   });
 
   it('global search hides unmatched brands and surfaces matched templates', () => {
     const { getByLabelText, getByText, queryByText } = renderSheet();
     fireEvent.changeText(getByLabelText('머신 또는 브랜드 검색'), '하이로우');
-    expect(getByText('Panatta')).toBeTruthy();
-    expect(queryByText('Hammer Strength')).toBeNull();
+    expect(getByText('파나타 (Panatta)')).toBeTruthy();
+    expect(queryByText('해머 스트렝스 (Hammer Strength)')).toBeNull();
     expect(getByText(/하이로우/)).toBeTruthy();
   });
 
   it('matching the brand name keeps all of its templates', () => {
     const { getByLabelText, getByText } = renderSheet();
     fireEvent.changeText(getByLabelText('머신 또는 브랜드 검색'), 'Panatta');
-    expect(getByText('Panatta')).toBeTruthy();
+    expect(getByText('파나타 (Panatta)')).toBeTruthy();
     expect(getByText(/하이로우/)).toBeTruthy();
     expect(getByText(/체스트 프레스 · 플레이트/)).toBeTruthy();
   });

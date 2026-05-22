@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AppText } from '@/shared/components/AppText';
+import { formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 
@@ -82,7 +83,7 @@ export function FilterSheetBrandAccordion({
                 onToggleExpand(group.brand.id);
               }}
               accessibilityRole="button"
-              accessibilityLabel={group.brand.name}
+              accessibilityLabel={formatBrandLabel(group.brand)}
               accessibilityState={{ expanded: isExpanded }}
               style={pressedOpacity}
               className="flex-row items-center gap-2 px-4 py-3.5"
@@ -93,7 +94,7 @@ export function FilterSheetBrandAccordion({
                 color={colors.text.secondary}
               />
               <AppText className="flex-1 text-body-md font-medium text-text-primary">
-                {group.brand.name}
+                {formatBrandLabel(group.brand)}
               </AppText>
               <AppText className="text-caption text-text-tertiary">
                 {String(group.totalCount)}

@@ -4,8 +4,8 @@ import type { Brand, Category, SearchFilters } from '@/shared/types/database';
 import { formatMachineTemplateLabel, toActiveFilters } from '../active-filters';
 
 const brands: Brand[] = [
-  { id: 'b1', name: 'Panatta', nameKo: '' },
-  { id: 'b2', name: 'Hammer Strength', nameKo: '' },
+  { id: 'b1', name: 'Panatta', nameKo: '파나타' },
+  { id: 'b2', name: 'Hammer Strength', nameKo: '해머 스트렝스' },
 ];
 
 const categories: Category[] = [
@@ -18,20 +18,20 @@ const machineTemplates: MachineTemplateResponse[] = [
     id: 't1',
     brandId: 'b1',
     brandName: 'Panatta',
-    brandNameKo: '',
+    brandNameKo: '파나타',
     categoryId: 'c1',
     nameEn: 'High Row',
-    nameKo: 'High Row',
+    nameKo: '하이로우',
     loadingType: 'pin',
   },
   {
     id: 't2',
     brandId: 'b2',
     brandName: 'Hammer Strength',
-    brandNameKo: '',
+    brandNameKo: '해머 스트렝스',
     categoryId: 'c2',
     nameEn: 'Chest Press',
-    nameKo: 'Chest Press',
+    nameKo: '체스트 프레스',
     loadingType: 'plate',
   },
 ];
@@ -46,15 +46,17 @@ const emptyFilters: SearchFilters = {
 describe('formatMachineTemplateLabel', () => {
   const [pinTemplate, plateTemplate] = machineTemplates;
 
-  it('formats pin loading with brand prefix + 핀 suffix', () => {
+  it('formats pin loading with Korean-primary brand prefix + 핀 suffix', () => {
     if (pinTemplate === undefined) throw new Error('test fixture missing');
-    expect(formatMachineTemplateLabel(pinTemplate)).toBe('Panatta High Row · 핀');
+    // Item 24: compound chip uses brandShortName (Korean only) so the chip
+    // stays compact; the parenthesised English would overflow.
+    expect(formatMachineTemplateLabel(pinTemplate)).toBe('파나타 하이로우 · 핀');
   });
 
   it('formats plate loading with 플레이트 suffix', () => {
     if (plateTemplate === undefined) throw new Error('test fixture missing');
     expect(formatMachineTemplateLabel(plateTemplate)).toBe(
-      'Hammer Strength Chest Press · 플레이트',
+      '해머 스트렝스 체스트 프레스 · 플레이트',
     );
   });
 });
@@ -73,9 +75,11 @@ describe('toActiveFilters', () => {
       categories,
       machineTemplates,
     });
+    // Item 24: brand-only chip uses formatBrandLabel (bilingual "한글 (영문)")
+    // because the brand stands alone in the label slot.
     expect(result).toEqual([
-      { kind: 'brand', id: 'b2', label: 'Hammer Strength' },
-      { kind: 'brand', id: 'b1', label: 'Panatta' },
+      { kind: 'brand', id: 'b2', label: '해머 스트렝스 (Hammer Strength)' },
+      { kind: 'brand', id: 'b1', label: '파나타 (Panatta)' },
     ]);
   });
 
@@ -100,8 +104,8 @@ describe('toActiveFilters', () => {
       machineTemplates,
     });
     expect(result).toEqual([
-      { kind: 'machineTemplate', id: 't1', label: 'Panatta High Row · 핀' },
-      { kind: 'machineTemplate', id: 't2', label: 'Hammer Strength Chest Press · 플레이트' },
+      { kind: 'machineTemplate', id: 't1', label: '파나타 하이로우 · 핀' },
+      { kind: 'machineTemplate', id: 't2', label: '해머 스트렝스 체스트 프레스 · 플레이트' },
     ]);
   });
 
@@ -113,8 +117,8 @@ describe('toActiveFilters', () => {
       machineTemplates,
     });
     expect(result).toEqual([
-      { kind: 'brand', id: 'b1', label: 'Panatta' },
-      { kind: 'machineTemplate', id: 't1', label: 'Panatta High Row · 핀' },
+      { kind: 'brand', id: 'b1', label: '파나타 (Panatta)' },
+      { kind: 'machineTemplate', id: 't1', label: '파나타 하이로우 · 핀' },
     ]);
   });
 
@@ -131,9 +135,9 @@ describe('toActiveFilters', () => {
       machineTemplates,
     });
     expect(result).toEqual([
-      { kind: 'brand', id: 'b1', label: 'Panatta' },
+      { kind: 'brand', id: 'b1', label: '파나타 (Panatta)' },
       { kind: 'category', id: 'c2', label: '가슴' },
-      { kind: 'machineTemplate', id: 't2', label: 'Hammer Strength Chest Press · 플레이트' },
+      { kind: 'machineTemplate', id: 't2', label: '해머 스트렝스 체스트 프레스 · 플레이트' },
     ]);
   });
 });

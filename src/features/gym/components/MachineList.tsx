@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 import { ReportReasonSheet } from '@/features/photo/components/ReportReasonSheet';
 import { AppText } from '@/shared/components/AppText';
 import { toTestSlug } from '@/shared/lib/format';
+import { formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 import type { GymMachineWithDetails } from '@/shared/types/database';
@@ -40,7 +41,8 @@ export function MachineList({ machines, onPressMachine }: MachineListProps) {
     <View className="gap-4">
       {groups.map((group) => {
         const isCollapsed = collapsedBrandIds.has(group.brand.id);
-        const headerLabel = `${group.brand.name} 섹션 ${isCollapsed ? '펼치기' : '접기'}`;
+        const brandLabel = formatBrandLabel(group.brand);
+        const headerLabel = `${brandLabel} 섹션 ${isCollapsed ? '펼치기' : '접기'}`;
         return (
           <View key={group.brand.id} className="gap-2">
             <Pressable
@@ -53,7 +55,7 @@ export function MachineList({ machines, onPressMachine }: MachineListProps) {
               style={pressedOpacity}
             >
               <AppText accessibilityRole="header" className="text-heading-sm text-text-primary">
-                {group.brand.name}
+                {brandLabel}
               </AppText>
               <MaterialIcons
                 name={isCollapsed ? 'expand-more' : 'expand-less'}
