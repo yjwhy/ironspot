@@ -8,9 +8,17 @@ import { supabase } from './supabase';
 // ever duplicated in the bundle (e.g. via a transitive dep pin).
 export { HTTPError, TimeoutError };
 
+// 15s rather than 10s gives headroom for the slowest legitimate path:
+// large multipart upload (compressed image up to 2 MB) + BE Vision call
+// (timeout configured at 7s in OcrService) + Storage write + DB insert.
+// Cold-boot recovery is NOT handled by this timeout — Render free-tier
+// boot is 50s+, so the app warms the BE eagerly at start-up via
+// `useKeepBackendWarm`. If a cold-boot still slips through, the timeout
+// will trip and the user retries — but the eager ping makes that the
+// rare path.
 const _ky = ky.create({
   prefixUrl: API_URL,
-  timeout: 10_000,
+  timeout: 15_000,
 });
 
 // Accept RequestInit so Orval-generated callers (which use SecondParameter<typeof apiClient>)
