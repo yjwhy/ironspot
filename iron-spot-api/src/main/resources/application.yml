@@ -48,13 +48,23 @@ supabase:
 google:
   vision:
     api-key: ${GOOGLE_VISION_API_KEY:}
-    # Phase 5 cost safety net: keep BE Vision call timeout strictly less
-    # than the FE upload mutation timeout (api-client.ts: 10s) so a slow
-    # Vision response never leaves the FE timing out before the BE can
-    # respond. Vision normally returns in 1-3s; 7s gives a comfortable
-    # buffer while ensuring the FE never sees "업로드 중 오류" from a slow
-    # Vision call that would have eventually fail-opened.
-    timeout-seconds: ${VISION_TIMEOUT_SECONDS:7}
+    # BE Vision call timeout must stay strictly less than the FE upload
+    # mutation timeout (api-client.ts: 30s) so a slow Vision response
+    # never leaves the FE timing out before the BE can respond.
+    #
+    # Vision normally returns in 1-3s on a warm WebClient connection pool.
+    # The very first Vision call after a Render cold-boot is significantly
+    # slower (~7-15s) because Netty has to load native libs, establish a
+    # fresh TLS connection to vision.googleapis.com, and warm the reactor
+    # event loop. The 7s default tripped on photo da0fd491 on 2026-05-23
+    # for exactly this reason (TimeoutException at OcrService:76 with a
+    # warm BE but a cold WebClient pool).
+    #
+    # 20s gives the cold-pool first request enough headroom while leaving
+    # 10s of slack before the FE ky timeout fires. Subsequent calls reuse
+    # the warm pool and finish in 1-3s — the long timeout never trips on
+    # the happy path.
+    timeout-seconds: ${VISION_TIMEOUT_SECONDS:20}
 
 # Phase 5 cost safety net (Layer B): per-user Vision-spending upload quota.
 # Layered with GCP-side quotas (30 req/min per feature) + budget alert ($5)

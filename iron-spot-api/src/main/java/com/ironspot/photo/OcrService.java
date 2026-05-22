@@ -31,14 +31,22 @@ public class OcrService {
     private String apiKey;
 
     /**
-     * Phase 5 cost safety net: BE Vision timeout must stay strictly less than
-     * the FE upload mutation timeout (src/shared/lib/api-client.ts → 10s) so
-     * the FE never sees "업로드 중 오류" while the BE is still waiting on
-     * Vision. 7s is the locked default — give us 3s headroom to handle
-     * storage upload + DB insert + response serialisation before the FE
-     * gives up. Tune via {@code VISION_TIMEOUT_SECONDS} env var.
+     * BE Vision timeout must stay strictly less than the FE upload mutation
+     * timeout (src/shared/lib/api-client.ts → 30s) so the FE never sees
+     * "업로드 중 오류" while the BE is still waiting on Vision.
+     *
+     * <p>20s default covers the cold-WebClient-pool case: the very first
+     * Vision call after a Render boot pays Netty native-lib load + fresh
+     * TLS handshake to vision.googleapis.com + reactor event loop warm-up,
+     * which empirically takes 7-15s (verified on photo da0fd491 retry).
+     * Warm-pool calls finish in 1-3s so the generous timeout never trips
+     * on the happy path.
+     *
+     * <p>Tune via {@code VISION_TIMEOUT_SECONDS} env var. Always keep
+     * {@code timeoutSeconds < FE ky timeout - 5s} so the FE has slack for
+     * Storage upload + DB insert + response serialisation.
      */
-    @Value("${google.vision.timeout-seconds:7}")
+    @Value("${google.vision.timeout-seconds:20}")
     private int timeoutSeconds;
 
     private final WebClient webClient;
