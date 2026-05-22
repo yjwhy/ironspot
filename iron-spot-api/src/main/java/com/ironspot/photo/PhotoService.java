@@ -33,6 +33,11 @@ public class PhotoService {
     public static final int HOURLY_ORPHAN_LIMIT = 10;
     private static final Duration ORPHAN_QUOTA_WINDOW = Duration.ofHours(1);
 
+    // Phase 5 item 11 slice (c): age threshold for the daily reaper. 24h
+    // covers "user backgrounded the app and came back the next day" while
+    // capping Storage waste from abandoned or abusive orphan uploads.
+    public static final Duration ORPHAN_RETENTION = Duration.ofHours(24);
+
     private final PhotoRepository photoRepository;
     private final OcrService ocrService;
     private final FuzzyMatchService fuzzyMatchService;
@@ -129,6 +134,55 @@ public class PhotoService {
 
         boolean ocrSucceeded = !vision.texts().isEmpty();
         return new PhotoUploadResponse(photoId, photoUrl, suggestions, ocrSucceeded);
+    }
+
+    /**
+     * Phase 5 item 11 slice (c): daily reaper entry point invoked by
+     * {@link OrphanReaperJob}. Purges {@link #ORPHAN_RETENTION}-old orphan
+     * rows + their Supabase Storage files.
+     *
+     * <p>The DELETE-then-Storage order makes the loop race-safe against a
+     * concurrent {@code POST /api/gym-machines} that binds an orphan between
+     * the SELECT and the DELETE: if the DELETE returns 0 rows the photo got
+     * bound mid-reap and the Storage file is preserved. Storage failures
+     * are logged + swallowed so a single 5xx from Supabase doesn't abort the
+     * batch.
+     *
+     * <p>Intentionally NOT {@code @Transactional} — each row's DELETE must
+     * commit before its Storage delete so a crash mid-loop can't roll a row
+     * back into existence after its file is already gone.
+     */
+    public int purgeStaleOrphans() {
+        OffsetDateTime cutoff = OffsetDateTime.now(ZoneOffset.UTC).minus(ORPHAN_RETENTION);
+        List<PhotoRepository.OrphanRow> candidates = photoRepository.findOrphansOlderThan(cutoff);
+
+        int deleted = 0;
+        for (PhotoRepository.OrphanRow row : candidates) {
+            int rowsAffected = photoRepository.deleteOrphanIfStillOrphan(row.id());
+            if (rowsAffected == 0) {
+                log.info("Orphan reaper skipped photo {} — bound mid-reap", row.id());
+                continue;
+            }
+
+            String path = StorageService.extractStoragePath(row.photoUrl());
+            if (path == null) {
+                log.warn("Orphan reaper deleted row {} but photo_url={} carries no bucket segment",
+                    row.id(), row.photoUrl());
+                deleted++;
+                continue;
+            }
+
+            try {
+                storageService.delete(path);
+            } catch (Exception e) {
+                log.warn("Orphan reaper Storage delete failed for path {} — DB row already gone, file will leak: {}",
+                    path, e.getMessage());
+            }
+            deleted++;
+        }
+
+        log.info("Orphan reaper finished — purged={} of candidates={}", deleted, candidates.size());
+        return deleted;
     }
 
     public void deleteOwn(String userId, UUID photoId) {

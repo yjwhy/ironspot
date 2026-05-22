@@ -48,4 +48,41 @@ public class StorageService {
             .block(Duration.ofSeconds(15));
         return supabaseUrl + "/storage/v1/object/public/" + BUCKET + "/" + path;
     }
+
+    /**
+     * Phase 5 item 11 slice (c): delete a Supabase Storage object by its
+     * bucket-relative path. Called by the orphan reaper after the photo row
+     * is gone — best effort, the caller logs + continues on failure (Supabase
+     * idempotently returns 200 for missing keys).
+     */
+    public void delete(String path) {
+        webClient.delete()
+            .uri(supabaseUrl + "/storage/v1/object/" + BUCKET + "/" + path)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + serviceRoleKey)
+            .retrieve()
+            .bodyToMono(String.class)
+            .block(Duration.ofSeconds(15));
+    }
+
+    /**
+     * Phase 5 item 11 slice (c): derive a bucket-relative Storage path from a
+     * persisted {@code machine_photos.photo_url}. The URL shape is fixed by
+     * {@link #upload}: every value ends with
+     * {@code /<bucket>/<prefix>/<photoId>.webp}, so splitting on the bucket
+     * literal yields the path the {@link #delete} contract wants. Returns
+     * {@code null} when the URL doesn't carry the expected bucket segment so
+     * the reaper can log + skip without throwing.
+     */
+    public static String extractStoragePath(String photoUrl) {
+        if (photoUrl == null) return null;
+        String marker = "/" + BUCKET + "/";
+        int idx = photoUrl.indexOf(marker);
+        if (idx < 0) return null;
+        int start = idx + marker.length();
+        // Defensive against future signed-URL shapes that append a query
+        // string — Supabase would treat `path.webp?token=…` as a different
+        // key and silently return 200-not-found.
+        int q = photoUrl.indexOf('?', start);
+        return q < 0 ? photoUrl.substring(start) : photoUrl.substring(start, q);
+    }
 }
