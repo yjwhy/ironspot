@@ -37,13 +37,14 @@ public class MachineRepository {
         Field<String> machineNameKoField = mt.NAME_KO.as("machine_name_ko");
         Field<UUID> brandIdField = b.ID.as("brand_id");
         Field<String> brandNameField = b.NAME.as("brand_name");
+        Field<String> brandNameKoField = b.NAME_KO.as("brand_name_ko");
         Field<UUID> categoryIdField = c.ID.as("category_id");
         Field<String> categoryNameField = c.NAME.as("category_name");
 
         return dsl.select(
                 gm.ID, gm.QUANTITY, gm.IS_CUSTOM, gm.CUSTOM_NAME, gm.LAST_VERIFIED_AT,
                 templateIdField, machineNameEnField, machineNameKoField, mt.LOADING_TYPE,
-                brandIdField, brandNameField, categoryIdField, categoryNameField)
+                brandIdField, brandNameField, brandNameKoField, categoryIdField, categoryNameField)
             .from(gm)
             .join(mt).on(mt.ID.eq(gm.TEMPLATE_ID))
             .join(b).on(b.ID.eq(mt.BRAND_ID))
@@ -66,6 +67,7 @@ public class MachineRepository {
                     lt != null ? lt.getLiteral() : null,
                     r.get(brandIdField),
                     r.get(brandNameField),
+                    r.get(brandNameKoField),
                     r.get(categoryIdField),
                     r.get(categoryNameField),
                     List.of()

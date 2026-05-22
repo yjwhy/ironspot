@@ -89,23 +89,22 @@ public class BrandRepository {
     }
 
     /**
-     * Phase 5 item 11 sub-task 4: admin-created brand from the promote
-     * action's {@code newBrandAndTemplate} kind. Returns the new id so the
-     * caller can chain into MachineTemplateRepository.create. The unique
-     * constraint on {@code brands.name} bubbles up as a
+     * Phase 5 item 11 sub-task 4 / item 24 slice (b): admin-created brand
+     * from the promote action's {@code newBrandAndTemplate} kind. Returns
+     * the new id so the caller can chain into
+     * {@link com.ironspot.machine.MachineTemplateRepository#create}. The
+     * unique constraint on {@code brands.name} bubbles up as a
      * {@link org.springframework.dao.DuplicateKeyException} for the service
      * to map to 409.
      *
-     * <p>Phase 5 item 24 slice (a) note: V11 made {@code name_ko} NOT NULL,
-     * so this single-arg variant temporarily fills it with the English name
-     * to satisfy the constraint. Slice (b) lands the wire-level
-     * {@code newBrandNameKo} field on {@code PromoteContributionRequest} and
-     * updates this call to pass the admin-typed Korean string through.
+     * <p>Both {@code name} (canonical English identifier) and
+     * {@code nameKo} (Korean display label) are required by the V11
+     * NOT NULL constraint.
      */
-    public UUID create(String name) {
+    public UUID create(String name, String nameKo) {
         return dsl.insertInto(BRANDS)
             .set(BRANDS.NAME, name)
-            .set(BRANDS.NAME_KO, name)
+            .set(BRANDS.NAME_KO, nameKo)
             .returning(BRANDS.ID)
             .fetchOne()
             .get(BRANDS.ID);

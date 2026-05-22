@@ -179,7 +179,7 @@ class PendingContributionRepositoryIT extends IntegrationTestBase {
 
     @Test
     void brandCreate_returnsIdAndExistsById() {
-        UUID newId = brandRepository.create("IT-pending-brand-A");
+        UUID newId = brandRepository.create("IT-pending-brand-A", "IT 보류 브랜드 A");
         assertThat(newId).isNotNull();
         assertThat(brandRepository.existsById(newId)).isTrue();
         assertThat(brandRepository.existsById(UUID.randomUUID())).isFalse();
@@ -187,7 +187,7 @@ class PendingContributionRepositoryIT extends IntegrationTestBase {
 
     @Test
     void templateCreate_insertsApprovedRow() {
-        UUID brandId = brandRepository.create("IT-pending-brand-B");
+        UUID brandId = brandRepository.create("IT-pending-brand-B", "IT 보류 브랜드 B");
         UUID templateId = templateRepository.create(
             brandId, CATEGORY_ID,
             "IT-pending-template", "한국어 머신명", "pin");

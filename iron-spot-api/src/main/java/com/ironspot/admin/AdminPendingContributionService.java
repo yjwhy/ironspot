@@ -99,10 +99,11 @@ public class AdminPendingContributionService {
 
     private UUID resolveNewBrandAndTemplate(PromoteContributionRequest req) {
         String brandName = requirePresentString(req.newBrandName(), "newBrandName");
+        String brandNameKo = requirePresentString(req.newBrandNameKo(), "newBrandNameKo");
         TemplateFields tpl = requireTemplateFields(req);
         UUID brandId;
         try {
-            brandId = brandRepository.create(brandName);
+            brandId = brandRepository.create(brandName, brandNameKo);
         } catch (DuplicateKeyException ex) {
             throw new BusinessException(
                 "이미 존재하는 브랜드입니다", HttpStatus.CONFLICT);

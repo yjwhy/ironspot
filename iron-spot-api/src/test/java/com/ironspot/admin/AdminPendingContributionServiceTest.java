@@ -81,7 +81,7 @@ class AdminPendingContributionServiceTest {
     void promote_existingTemplate_400WhenTemplateIdMissing() {
         givenPendingExists();
         PromoteContributionRequest req = new PromoteContributionRequest(
-            "existingTemplate", null, null, null, null, null, null, null);
+            "existingTemplate", null, null, null, null, null, null, null, null);
         assertBadRequest(() -> service.promote(gymMachineId, req));
     }
 
@@ -122,7 +122,7 @@ class AdminPendingContributionServiceTest {
     void promote_newTemplate_400WhenRequiredFieldMissing() {
         givenPendingExists();
         PromoteContributionRequest missingNameEn = new PromoteContributionRequest(
-            "newTemplate", null, brandId, null, null, "랫", "pin", categoryId);
+            "newTemplate", null, brandId, null, null, null, "랫", "pin", categoryId);
         assertBadRequest(() -> service.promote(gymMachineId, missingNameEn));
     }
 
@@ -131,7 +131,7 @@ class AdminPendingContributionServiceTest {
         UUID createdBrand = UUID.fromString("88888888-8888-8888-8888-888888888888");
         UUID createdTemplate = UUID.fromString("99999999-9999-9999-9999-999999999999");
         givenPendingExists();
-        when(brandRepository.create("NewBrand")).thenReturn(createdBrand);
+        when(brandRepository.create("NewBrand", "신규 브랜드")).thenReturn(createdBrand);
         when(templateRepository.create(createdBrand, categoryId, "Custom Press", "커스텀 프레스", "plate"))
             .thenReturn(createdTemplate);
         when(machineRepository.findExistingApprovedAtGym(gymId, createdTemplate)).thenReturn(Optional.empty());
@@ -146,7 +146,7 @@ class AdminPendingContributionServiceTest {
     @Test
     void promote_newBrandAndTemplate_409WhenBrandNameDuplicates() {
         givenPendingExists();
-        when(brandRepository.create("NewBrand"))
+        when(brandRepository.create("NewBrand", "신규 브랜드"))
             .thenThrow(new DuplicateKeyException("brands_name_key"));
 
         assertThatThrownBy(() -> service.promote(gymMachineId, newBrandAndTemplateRequest()))
@@ -159,7 +159,7 @@ class AdminPendingContributionServiceTest {
     void promote_400WhenKindUnknown() {
         givenPendingExists();
         PromoteContributionRequest req = new PromoteContributionRequest(
-            "garbage", null, null, null, null, null, null, null);
+            "garbage", null, null, null, null, null, null, null, null);
         assertBadRequest(() -> service.promote(gymMachineId, req));
     }
 
@@ -210,17 +210,17 @@ class AdminPendingContributionServiceTest {
 
     private PromoteContributionRequest existingTemplateRequest(UUID templateId) {
         return new PromoteContributionRequest(
-            "existingTemplate", templateId, null, null, null, null, null, null);
+            "existingTemplate", templateId, null, null, null, null, null, null, null);
     }
 
     private PromoteContributionRequest newTemplateRequest() {
         return new PromoteContributionRequest(
-            "newTemplate", null, brandId, null, "Lat Pulldown", "랫 풀다운", "pin", categoryId);
+            "newTemplate", null, brandId, null, null, "Lat Pulldown", "랫 풀다운", "pin", categoryId);
     }
 
     private PromoteContributionRequest newBrandAndTemplateRequest() {
         return new PromoteContributionRequest(
-            "newBrandAndTemplate", null, null, "NewBrand",
+            "newBrandAndTemplate", null, null, "NewBrand", "신규 브랜드",
             "Custom Press", "커스텀 프레스", "plate", categoryId);
     }
 

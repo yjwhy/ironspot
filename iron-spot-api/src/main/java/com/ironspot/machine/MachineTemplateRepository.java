@@ -20,7 +20,12 @@ public class MachineTemplateRepository {
     private final DSLContext dsl;
 
     public List<MachineTemplateSummary> findAllApproved() {
-        return dsl.select(MACHINE_TEMPLATES.ID, BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN, MACHINE_TEMPLATES.NAME_KO)
+        return dsl.select(
+                MACHINE_TEMPLATES.ID,
+                BRANDS.NAME,
+                BRANDS.NAME_KO,
+                MACHINE_TEMPLATES.NAME_EN,
+                MACHINE_TEMPLATES.NAME_KO)
             .from(MACHINE_TEMPLATES)
             .join(BRANDS).on(MACHINE_TEMPLATES.BRAND_ID.eq(BRANDS.ID))
             .where(MACHINE_TEMPLATES.IS_APPROVED.isTrue())
@@ -28,6 +33,7 @@ public class MachineTemplateRepository {
             .fetch(r -> new MachineTemplateSummary(
                 r.get(MACHINE_TEMPLATES.ID),
                 r.get(BRANDS.NAME),
+                r.get(BRANDS.NAME_KO),
                 r.get(MACHINE_TEMPLATES.NAME_EN),
                 r.get(MACHINE_TEMPLATES.NAME_KO)
             ));
@@ -42,6 +48,9 @@ public class MachineTemplateRepository {
      * <p>Phase 5 item 18: both {@code name_en} and {@code name_ko} are
      * projected so the client renders Korean primary on cards + English
      * secondary on detail without an extra request.
+     *
+     * <p>Phase 5 item 24: {@code brand_name_ko} also projected so the
+     * filter accordion / picker / brand chip can lead with Korean.
      */
     public List<MachineTemplateResponse> findAllApprovedDetailed(UUID brandId, UUID categoryId) {
         Condition brandCond = brandId != null
@@ -54,6 +63,7 @@ public class MachineTemplateRepository {
                 MACHINE_TEMPLATES.ID,
                 MACHINE_TEMPLATES.BRAND_ID,
                 BRANDS.NAME,
+                BRANDS.NAME_KO,
                 MACHINE_TEMPLATES.CATEGORY_ID,
                 MACHINE_TEMPLATES.NAME_EN,
                 MACHINE_TEMPLATES.NAME_KO,
@@ -68,6 +78,7 @@ public class MachineTemplateRepository {
                 r.get(MACHINE_TEMPLATES.ID),
                 r.get(MACHINE_TEMPLATES.BRAND_ID),
                 r.get(BRANDS.NAME),
+                r.get(BRANDS.NAME_KO),
                 r.get(MACHINE_TEMPLATES.CATEGORY_ID),
                 r.get(MACHINE_TEMPLATES.NAME_EN),
                 r.get(MACHINE_TEMPLATES.NAME_KO),
@@ -106,7 +117,12 @@ public class MachineTemplateRepository {
         Condition categoryCond = categoryId != null
             ? MACHINE_TEMPLATES.CATEGORY_ID.eq(categoryId)
             : DSL.noCondition();
-        return dsl.select(MACHINE_TEMPLATES.ID, BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN, MACHINE_TEMPLATES.NAME_KO)
+        return dsl.select(
+                MACHINE_TEMPLATES.ID,
+                BRANDS.NAME,
+                BRANDS.NAME_KO,
+                MACHINE_TEMPLATES.NAME_EN,
+                MACHINE_TEMPLATES.NAME_KO)
             .from(MACHINE_TEMPLATES)
             .join(BRANDS).on(MACHINE_TEMPLATES.BRAND_ID.eq(BRANDS.ID))
             .where(MACHINE_TEMPLATES.IS_APPROVED.isTrue())
@@ -116,6 +132,7 @@ public class MachineTemplateRepository {
             .fetch(r -> new MachineTemplateSummary(
                 r.get(MACHINE_TEMPLATES.ID),
                 r.get(BRANDS.NAME),
+                r.get(BRANDS.NAME_KO),
                 r.get(MACHINE_TEMPLATES.NAME_EN),
                 r.get(MACHINE_TEMPLATES.NAME_KO)
             ));

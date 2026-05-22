@@ -21,9 +21,11 @@ import java.util.UUID;
  *   <li>{@code newTemplate} — requires {@code brandId, nameEn, nameKo,
  *       loadingType}. Authors a new template under an existing brand and
  *       promotes the pending row to it. {@code categoryId} is optional.</li>
- *   <li>{@code newBrandAndTemplate} — requires {@code newBrandName, nameEn,
- *       nameKo, loadingType}. Authors a new brand AND a new template under
- *       it (used when the brand catalog itself is short a row). {@code
+ *   <li>{@code newBrandAndTemplate} — requires {@code newBrandName,
+ *       newBrandNameKo, nameEn, nameKo, loadingType}. Authors a new brand
+ *       AND a new template under it (used when the brand catalog itself is
+ *       short a row). {@code newBrandNameKo} (Phase 5 item 24) is required
+ *       because V11 made {@code brands.name_ko} NOT NULL. {@code
  *       categoryId} is optional.</li>
  * </ul>
  *
@@ -52,8 +54,12 @@ public record PromoteContributionRequest(
     UUID brandId,
 
     @Size(max = 80)
-    @Schema(description = "Required when kind='newBrandAndTemplate'")
+    @Schema(description = "Required when kind='newBrandAndTemplate'. Canonical English brand identifier.")
     String newBrandName,
+
+    @Size(max = 80)
+    @Schema(description = "Required when kind='newBrandAndTemplate'. Korean display label for the brand (Phase 5 item 24).")
+    String newBrandNameKo,
 
     @Size(max = 120)
     @Schema(description = "Required when kind='newTemplate' or 'newBrandAndTemplate'")
