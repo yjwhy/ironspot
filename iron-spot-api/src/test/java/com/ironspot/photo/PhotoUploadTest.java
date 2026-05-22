@@ -35,6 +35,7 @@ class PhotoUploadTest extends IntegrationTestBase {
 
     @Autowired private TestRestTemplate restTemplate;
     @Autowired private PhotoRepository photoRepository;
+    @Autowired private VisionQuotaConfig visionQuotaConfig;
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @MockitoBean private JwtValidator jwtValidator;
@@ -53,13 +54,33 @@ class PhotoUploadTest extends IntegrationTestBase {
             "INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
             UUID.fromString(USER_B_ID), "userb@example.com", "유저B"
         );
-        // Quota cases (Phase 5 item 11 slice b) insert orphan rows that
-        // bleed across tests in the same JVM. Seeded machine_photos rows are
-        // all bound (gym_machine_id NOT NULL) so this targeted cleanup
-        // doesn't disturb them.
+        cleanupTestRows();
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void cleanupAfter() {
+        // @BeforeEach scrubs ahead of the next test, but tests in OTHER
+        // classes (e.g. MyContentTest) run without this class's setup hook
+        // and would see the orphan rows piled up by the quota tests. Clean
+        // up AFTER each test too so the JVM-wide DB state stays neutral.
+        cleanupTestRows();
+    }
+
+    private void cleanupTestRows() {
+        // Layer B (Vision quota) counts ALL photos per user, not just orphans,
+        // so test rows for USER_A / USER_B bleed across tests if not purged.
+        // Keep the two seeded bound photos (aa000001 + aa000002) — those are
+        // referenced by gallery / report tests in this class. Delete every
+        // other photo for these users.
         jdbcTemplate.update(
-            "DELETE FROM machine_photos WHERE gym_machine_id IS NULL AND user_id IN (?, ?)",
+            "DELETE FROM machine_photos "
+                + "WHERE user_id IN (?, ?) "
+                + "AND id NOT IN ('aa000001-0000-0000-0000-000000000001', "
+                + "                'aa000002-0000-0000-0000-000000000002')",
             UUID.fromString(USER_A_ID), UUID.fromString(USER_B_ID));
+        // Layer C (Vision cache) — clear so each test sees a cold cache
+        // and the Vision-API mock is actually consulted.
+        jdbcTemplate.update("DELETE FROM vision_cache");
     }
 
     // --- 1. Unauthenticated upload is rejected ---
@@ -277,21 +298,23 @@ class PhotoUploadTest extends IntegrationTestBase {
             anyString());
     }
 
-    // --- 4e. Per-user orphan quota (Phase 5 item 11 slice e) ---
+    // --- 4e. Per-user Vision-spending quota (Phase 5 cost safety net Layer B) ---
     //
-    // Slice 2 made gymMachineId nullable on POST /api/photos/upload, which lets
-    // an authenticated user fill `<bucket>/orphan/<userId>/` with 2 MB images
-    // without ever calling POST /api/gym-machines. The quota precheck caps
-    // orphan uploads at HOURLY_ORPHAN_LIMIT per user per rolling hour and
-    // short-circuits before the Vision API call so spam never spends a
-    // Vision credit. Bound uploads (gymMachineId != null) bypass the precheck.
+    // Replaces the orphan-only gate from Phase 5 item 11 slice (b). Every
+    // upload spends 3 Vision units regardless of binding, so the quota now
+    // covers bound + orphan paths. Three rolling windows (1h / 24h / 30d)
+    // short-circuit before the Vision call so spam never spends a credit.
+    // Cache hits still count toward the quota (limiting per-user uploads
+    // bounds storage cost even when Vision is free).
 
     @Test
-    void uploadRejectsOrphanWhenUserOverHourlyQuota() {
-        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+    void uploadRejectsWhenUserOverHourlyQuota() {
+        // Quota tests use USER_B because USER_A has 2 seeded bound photos
+        // from init-test-db.sql that would otherwise distort the count.
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalB()));
 
-        for (int i = 0; i < PhotoService.HOURLY_ORPHAN_LIMIT; i++) {
-            insertOrphanForUser(USER_A_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
+        for (int i = 0; i < visionQuotaConfig.getHourly(); i++) {
+            insertOrphanForUser(USER_B_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
         }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -301,22 +324,22 @@ class PhotoUploadTest extends IntegrationTestBase {
             "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
-        assertThat(response.getBody()).contains("한도");
+        assertThat(response.getBody()).contains("시간당");
         org.mockito.Mockito.verify(ocrService, org.mockito.Mockito.never()).analyzeImage(any());
         org.mockito.Mockito.verify(storageService, org.mockito.Mockito.never())
             .upload(any(), any(), any(), anyString());
     }
 
     @Test
-    void uploadAllowsOrphanWhenUserUnderQuota() {
-        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+    void uploadAllowsWhenUserUnderQuota() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalB()));
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of(), SafeSearchVerdict.ALLOW, false));
         given(storageService.upload(any(), any(), any(), anyString()))
             .willReturn("https://example.com/under-quota.webp");
 
-        for (int i = 0; i < PhotoService.HOURLY_ORPHAN_LIMIT - 1; i++) {
-            insertOrphanForUser(USER_A_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
+        for (int i = 0; i < visionQuotaConfig.getHourly() - 1; i++) {
+            insertOrphanForUser(USER_B_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
         }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -329,17 +352,19 @@ class PhotoUploadTest extends IntegrationTestBase {
     }
 
     @Test
-    void uploadIgnoresStaleOrphansOutsideQuotaWindow() {
-        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+    void uploadIgnoresStalePhotosOutsideHourlyWindow() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalB()));
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of(), SafeSearchVerdict.ALLOW, false));
         given(storageService.upload(any(), any(), any(), anyString()))
             .willReturn("https://example.com/stale-window.webp");
 
-        // Pile up HOURLY_ORPHAN_LIMIT orphans created > 1h ago; the rolling
-        // window must skip them and accept a fresh orphan.
-        for (int i = 0; i < PhotoService.HOURLY_ORPHAN_LIMIT; i++) {
-            insertOrphanForUser(USER_A_ID, OffsetDateTime.now(ZoneOffset.UTC).minusHours(2));
+        // Pile up hourly-limit photos created > 1h ago; the rolling hourly
+        // window must skip them and accept a fresh upload. Daily/monthly
+        // windows still cover these older photos but are far above the
+        // hourly count so they don't trip.
+        for (int i = 0; i < visionQuotaConfig.getHourly(); i++) {
+            insertOrphanForUser(USER_B_ID, OffsetDateTime.now(ZoneOffset.UTC).minusHours(2));
         }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -352,15 +377,14 @@ class PhotoUploadTest extends IntegrationTestBase {
     }
 
     @Test
-    void uploadBoundPhotoBypassesOrphanQuota() {
-        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
-        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
-            java.util.List.of(), SafeSearchVerdict.ALLOW, false));
-        given(storageService.upload(any(), any(), any(), anyString()))
-            .willReturn("https://example.com/bound-bypass.webp");
+    void uploadBoundPhotoAlsoCountsTowardQuota() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalB()));
 
-        for (int i = 0; i < PhotoService.HOURLY_ORPHAN_LIMIT; i++) {
-            insertOrphanForUser(USER_A_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
+        // Vision quota applies to ALL uploads (Layer B): even when a bound
+        // upload comes through, the per-user hourly cap still gates it.
+        // This is the policy change vs the old orphan-only gate.
+        for (int i = 0; i < visionQuotaConfig.getHourly(); i++) {
+            insertOrphanForUser(USER_B_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
         }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -370,11 +394,11 @@ class PhotoUploadTest extends IntegrationTestBase {
         ResponseEntity<String> response = restTemplate.exchange(
             "/api/photos/upload", HttpMethod.POST, authedMultipart(body, null), String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        // Bound uploads must always reach Vision regardless of orphan count.
-        // Without this assertion the test would pass if quota silently
-        // short-circuited bound uploads too.
-        org.mockito.Mockito.verify(ocrService).analyzeImage(any());
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        // No Vision call when quota tripped — credit conservation.
+        org.mockito.Mockito.verify(ocrService, org.mockito.Mockito.never()).analyzeImage(any());
+        org.mockito.Mockito.verify(storageService, org.mockito.Mockito.never())
+            .upload(any(), any(), any(), anyString());
     }
 
     private void insertOrphanForUser(String userId, OffsetDateTime createdAt) {

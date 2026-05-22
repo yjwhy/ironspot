@@ -30,6 +30,7 @@ import com.ironspot.jooq.tables.StHexagongrid;
 import com.ironspot.jooq.tables.StSquaregrid;
 import com.ironspot.jooq.tables.StSubdivide;
 import com.ironspot.jooq.tables.Users;
+import com.ironspot.jooq.tables.VisionCache;
 import com.ironspot.jooq.udt.records.GeometryDumpRecord;
 
 import org.jooq.Configuration;
@@ -626,4 +627,9 @@ public class Tables {
      * The table <code>public.users</code>.
      */
     public static final Users USERS = Users.USERS;
+
+    /**
+     * The table <code>public.vision_cache</code>.
+     */
+    public static final VisionCache VISION_CACHE = VisionCache.VISION_CACHE;
 }

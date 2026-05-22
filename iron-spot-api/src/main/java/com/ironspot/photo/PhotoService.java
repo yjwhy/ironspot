@@ -25,13 +25,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PhotoService {
 
-    // Phase 5 item 11 slice (b): orphan-upload quota. A user may upload at
-    // most HOURLY_ORPHAN_LIMIT photos with gym_machine_id IS NULL inside a
-    // rolling ORPHAN_QUOTA_WINDOW. The COUNT is partial-index-backed (V10),
-    // and a successful POST /api/gym-machines binds the photo so it drops out
-    // of the count immediately — the quota auto-rewards completing the flow.
-    public static final int HOURLY_ORPHAN_LIMIT = 10;
-    private static final Duration ORPHAN_QUOTA_WINDOW = Duration.ofHours(1);
+    // Phase 5 cost safety net (Layer B): rolling-window cutoffs that pair
+    // with VisionQuotaConfig.hourly / daily / monthly. Hourly catches burst
+    // abuse, daily caps single-day spend, 30d caps long-tail abuse. Each
+    // photo upload spends 3 Vision units regardless of whether OCR succeeds.
+    private static final Duration HOURLY_WINDOW = Duration.ofHours(1);
+    private static final Duration DAILY_WINDOW = Duration.ofHours(24);
+    private static final Duration MONTHLY_WINDOW = Duration.ofDays(30);
 
     // Phase 5 item 11 slice (c): age threshold for the daily reaper. 24h
     // covers "user backgrounded the app and came back the next day" while
@@ -43,6 +43,8 @@ public class PhotoService {
     private final FuzzyMatchService fuzzyMatchService;
     private final StorageService storageService;
     private final AdminNotificationService adminNotifier;
+    private final VisionCacheRepository visionCacheRepository;
+    private final VisionQuotaConfig visionQuotaConfig;
 
     public List<PhotoResponse> findByGymMachineId(UUID gymMachineId) {
         return photoRepository.findByGymMachineId(gymMachineId);
@@ -73,27 +75,44 @@ public class PhotoService {
         }
         validateImage(file, imageBytes);
 
-        // Orphan quota: gate before the Vision API call so abuse never spends
-        // a Vision credit. Bound uploads (gymMachineId != null) skip the
-        // precheck because they can't be orphans by definition.
-        if (gymMachineId == null) {
-            enforceOrphanQuota(userId);
-        }
+        // Per-user Vision quota: covers BOTH orphan and bound uploads since
+        // every upload spends 3 Vision units regardless of binding. Replaces
+        // the orphan-only gate from Phase 5 item 11 slice (b) — the unified
+        // gate prevents bound-upload abuse paths that were previously
+        // un-throttled.
+        enforceVisionQuota(userId);
 
         UUID photoId = UUID.randomUUID();
         String filename = photoId + ".webp";
 
-        // Layer 1: Vision SafeSearch + OCR. Run before storage upload so a REJECT
-        // verdict aborts before producing an orphan file. Failures fail-open
-        // (verdict=ALLOW, empty texts) to preserve existing OCR behaviour during
-        // Vision API outages.
-        VisionAnalysisResult vision;
-        try {
-            vision = ocrService.analyzeImage(imageBytes);
-        } catch (Exception e) {
-            log.warn("Vision API failed for photo {} — failing open", photoId, e);
-            vision = VisionAnalysisResult.EMPTY;
-        }
+        // Layer 1: Vision SafeSearch + OCR. Cache lookup first via SHA-256 of
+        // the image bytes — second + upload of the same image (retry, abuse
+        // resends) reuses the cached verdict + texts and skips the Vision
+        // API call entirely. Cache miss falls through to a fresh Vision
+        // call; failures fail-open (verdict=ALLOW, empty texts) so a Vision
+        // outage doesn't break upload, just suppresses OCR suggestions.
+        // Run before storage upload so REJECT aborts before producing an
+        // orphan file.
+        String imageSha256 = VisionCacheRepository.sha256(imageBytes);
+        VisionAnalysisResult vision = visionCacheRepository.findBySha256(imageSha256)
+            .map(cached -> {
+                visionCacheRepository.bumpHitCount(imageSha256);
+                // INFO so cache effectiveness is observable in Render logs
+                // without enabling DEBUG. Low cardinality (one line per
+                // cache hit) so noise stays bounded.
+                log.info("Vision cache hit for photo {} (sha256={})", photoId, imageSha256);
+                return cached;
+            })
+            .orElseGet(() -> {
+                try {
+                    VisionAnalysisResult fresh = ocrService.analyzeImage(imageBytes);
+                    visionCacheRepository.insert(imageSha256, fresh);
+                    return fresh;
+                } catch (Exception e) {
+                    log.warn("Vision API failed for photo {} — failing open (not cached)", photoId, e);
+                    return VisionAnalysisResult.EMPTY;
+                }
+            });
 
         if (vision.verdict() == SafeSearchVerdict.REJECT) {
             throw new BusinessException("부적절한 콘텐츠로 감지되었습니다", HttpStatus.BAD_REQUEST);
@@ -191,27 +210,50 @@ public class PhotoService {
     }
 
     /**
-     * Best-effort per-user orphan quota check. Two concurrent requests from
-     * the same user can both read {@code count == LIMIT - 1} and both pass,
-     * over-running the cap by one. Acceptable because (a) the daily reaper
-     * (slice c) eventually cleans either way, and (b) we don't want to
-     * introduce a SELECT-FOR-UPDATE row-lock contention on every upload to
-     * close a race that's impossible to exploit at any meaningful scale.
-     * The {@code >=} predicate rejects when this would be the {@code (N+1)}th
-     * upload within the window.
+     * Phase 5 cost safety net (Layer B): three-tier per-user Vision-spending
+     * quota. Hourly catches burst (script/bot resends), daily caps a single
+     * heavy gym-cataloging day, 30-day caps long-tail abuse spread out
+     * across time. Each tier short-circuits independently, so the first
+     * one tripped wins.
+     *
+     * <p>Best-effort: two concurrent uploads from the same user can both
+     * read {@code count == LIMIT - 1} and both pass, over-running by one.
+     * Acceptable — adding row-level locking would harm every upload to close
+     * an unexploitable race. The {@code >=} predicate rejects the {@code
+     * (N+1)}th upload within each window.
+     *
+     * <p>Counts ALL uploads (bound + orphan, cache hits + cache misses).
+     * Cache hits still consume the user's quota slot — limiting per-user
+     * uploads bounds storage waste even when Vision credits aren't spent.
      */
-    private void enforceOrphanQuota(String userId) {
-        OffsetDateTime since = OffsetDateTime.now(ZoneOffset.UTC).minus(ORPHAN_QUOTA_WINDOW);
-        int recentOrphans = photoRepository.countOrphansForUserSince(UUID.fromString(userId), since);
-        if (recentOrphans >= HOURLY_ORPHAN_LIMIT) {
-            // log.warn so the per-user-per-day spike is observable in Render
-            // logs / Sentry breadcrumbs without spamming the moderation Slack.
-            // The 429 response carries the per-window cap so the FE can render
-            // copy that names the actual limit.
-            log.warn("Orphan upload quota tripped — userId={} recentOrphans={} limit={}",
-                userId, recentOrphans, HOURLY_ORPHAN_LIMIT);
+    private void enforceVisionQuota(String userId) {
+        UUID userUuid = UUID.fromString(userId);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+        int recentHourly = photoRepository.countVisionCallsForUserSince(userUuid, now.minus(HOURLY_WINDOW));
+        if (recentHourly >= visionQuotaConfig.getHourly()) {
+            log.warn("Vision quota tripped (hourly) — userId={} recent={} limit={}",
+                userId, recentHourly, visionQuotaConfig.getHourly());
             throw new BusinessException(
-                "시간당 업로드 한도(" + HOURLY_ORPHAN_LIMIT + "개)를 초과했어요. 잠시 후 다시 시도해주세요.",
+                "시간당 업로드 한도(" + visionQuotaConfig.getHourly() + "개)를 초과했어요. 잠시 후 다시 시도해주세요.",
+                HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        int recentDaily = photoRepository.countVisionCallsForUserSince(userUuid, now.minus(DAILY_WINDOW));
+        if (recentDaily >= visionQuotaConfig.getDaily()) {
+            log.warn("Vision quota tripped (daily) — userId={} recent={} limit={}",
+                userId, recentDaily, visionQuotaConfig.getDaily());
+            throw new BusinessException(
+                "일일 업로드 한도(" + visionQuotaConfig.getDaily() + "개)를 초과했어요. 내일 다시 시도해주세요.",
+                HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        int recentMonthly = photoRepository.countVisionCallsForUserSince(userUuid, now.minus(MONTHLY_WINDOW));
+        if (recentMonthly >= visionQuotaConfig.getMonthly()) {
+            log.warn("Vision quota tripped (monthly) — userId={} recent={} limit={}",
+                userId, recentMonthly, visionQuotaConfig.getMonthly());
+            throw new BusinessException(
+                "월간 업로드 한도(" + visionQuotaConfig.getMonthly() + "개)를 초과했어요.",
                 HttpStatus.TOO_MANY_REQUESTS);
         }
     }

@@ -247,6 +247,30 @@ public class PhotoRepository {
     }
 
     /**
+     * Phase 5 cost safety net (Layer B): every {@code machine_photos} row
+     * corresponds to a Vision API call attempt (cache hits don't insert
+     * fresh rows in this table — they reuse the cached Vision verdict but
+     * still create a photo row, so each upload counts toward the user's
+     * quota regardless of whether the Vision call cost a credit).
+     *
+     * <p>The V12 non-partial index {@code idx_machine_photos_user_created}
+     * covers {@code (user_id, created_at)} so this COUNT runs as an
+     * index-only scan even on the bound-upload path (where the V10 partial
+     * index doesn't apply).
+     *
+     * <p>{@code is_blinded} filter excluded because a photo is still a
+     * Vision-spending upload even if later moderated. Quota counts what
+     * the user CONSUMED, not what survives moderation.
+     */
+    public int countVisionCallsForUserSince(UUID userId, OffsetDateTime since) {
+        return dsl.fetchCount(
+            dsl.selectOne()
+                .from(MACHINE_PHOTOS)
+                .where(MACHINE_PHOTOS.USER_ID.eq(userId))
+                .and(MACHINE_PHOTOS.CREATED_AT.greaterOrEqual(since)));
+    }
+
+    /**
      * Phase 5 item 11 slice (c): identity + URL of every orphan photo
      * uploaded before the given cutoff. The reaper job pages through this
      * list to compute the Storage path for each, then deletes the row +

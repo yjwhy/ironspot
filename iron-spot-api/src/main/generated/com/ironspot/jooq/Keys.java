@@ -16,6 +16,7 @@ import com.ironspot.jooq.tables.NlSearchLog;
 import com.ironspot.jooq.tables.PhotoVotes;
 import com.ironspot.jooq.tables.Reports;
 import com.ironspot.jooq.tables.Users;
+import com.ironspot.jooq.tables.VisionCache;
 
 import org.jooq.ForeignKey;
 import org.jooq.Record;
@@ -53,6 +54,7 @@ public class Keys {
     public static final UniqueKey<Record> REPORTS_PKEY = Internal.createUniqueKey(Reports.REPORTS, DSL.name("reports_pkey"), new TableField[] { Reports.REPORTS.ID }, true);
     public static final UniqueKey<Record> REPORTS_UNIQUE_REPORTER_TARGET = Internal.createUniqueKey(Reports.REPORTS, DSL.name("reports_unique_reporter_target"), new TableField[] { Reports.REPORTS.USER_ID, Reports.REPORTS.TARGET_ID }, true);
     public static final UniqueKey<Record> USERS_PKEY = Internal.createUniqueKey(Users.USERS, DSL.name("users_pkey"), new TableField[] { Users.USERS.ID }, true);
+    public static final UniqueKey<Record> VISION_CACHE_PKEY = Internal.createUniqueKey(VisionCache.VISION_CACHE, DSL.name("vision_cache_pkey"), new TableField[] { VisionCache.VISION_CACHE.SHA256 }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions

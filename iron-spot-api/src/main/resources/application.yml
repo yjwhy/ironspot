@@ -48,6 +48,27 @@ supabase:
 google:
   vision:
     api-key: ${GOOGLE_VISION_API_KEY:}
+    # Phase 5 cost safety net: keep BE Vision call timeout strictly less
+    # than the FE upload mutation timeout (api-client.ts: 10s) so a slow
+    # Vision response never leaves the FE timing out before the BE can
+    # respond. Vision normally returns in 1-3s; 7s gives a comfortable
+    # buffer while ensuring the FE never sees "업로드 중 오류" from a slow
+    # Vision call that would have eventually fail-opened.
+    timeout-seconds: ${VISION_TIMEOUT_SECONDS:7}
+
+# Phase 5 cost safety net (Layer B): per-user Vision-spending upload quota.
+# Layered with GCP-side quotas (30 req/min per feature) + budget alert ($5)
+# so a single compromised account cannot drain the free tier on its own.
+# Each photo upload spends 3 Vision units (TEXT_DETECTION + SAFE_SEARCH +
+# FACE_DETECTION). Free tier = 1000 units/month = ~333 photos/month total.
+# Per-user 30/day × DAU 50 = 1500/month theoretical max — exceeds free tier
+# but most users will not hit the daily cap. Tune via env vars without a
+# redeploy.
+vision:
+  quota:
+    hourly: ${VISION_QUOTA_HOURLY:15}
+    daily: ${VISION_QUOTA_DAILY:30}
+    monthly: ${VISION_QUOTA_MONTHLY:200}
 
 # 국세청 사업자등록정보 진위확인 및 상태조회 서비스 (Task 47 / ADR 0023 Q1 U).
 # Public data portal API (공공데이터포털): https://www.data.go.kr/data/15081808/openapi.do
