@@ -9,6 +9,7 @@ import com.ironspot.machine.dto.GymMachineResponse;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.jooq.Field;
+import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
@@ -226,4 +227,153 @@ public class MachineRepository {
             .fetchOneInto(Integer.class);
         return Objects.requireNonNullElse(count, 0) > 0;
     }
+
+    /**
+     * Phase 5 item 11 sub-task 4: admin queue list for pending contributions.
+     * Surfaces gym_machines rows with {@code pending_review = true} that have
+     * not been reported, so they never appear in the unified report queue at
+     * {@code /api/admin/queue}.
+     *
+     * <p>Photo URL is a scalar subquery picking the most recently created
+     * machine_photos row bound to the gym_machine; nullable when the OCR
+     * direct-input flow never uploaded a photo. ORDER BY created_at DESC uses
+     * the partial index {@code idx_gym_machines_pending_review} from V6.
+     */
+    public List<com.ironspot.admin.dto.AdminPendingContribution> listPendingContributions(int limit) {
+        Field<String> photoUrlField = DSL.field(
+            DSL.select(MACHINE_PHOTOS.PHOTO_URL)
+                .from(MACHINE_PHOTOS)
+                .where(MACHINE_PHOTOS.GYM_MACHINE_ID.eq(GYM_MACHINES.ID))
+                .orderBy(MACHINE_PHOTOS.CREATED_AT.desc())
+                .limit(1)
+        ).as("photo_url");
+
+        return dsl.select(
+                GYM_MACHINES.ID,
+                GYM_MACHINES.GYM_ID,
+                GYMS.NAME.as("gym_name"),
+                GYM_MACHINES.CUSTOM_NAME,
+                photoUrlField,
+                GYM_MACHINES.CREATED_AT)
+            .from(GYM_MACHINES)
+            .join(GYMS).on(GYMS.ID.eq(GYM_MACHINES.GYM_ID))
+            .where(GYM_MACHINES.PENDING_REVIEW.isTrue())
+            .and(GYM_MACHINES.DELETED_AT.isNull())
+            .orderBy(GYM_MACHINES.CREATED_AT.desc())
+            .limit(limit)
+            .fetch(r -> new com.ironspot.admin.dto.AdminPendingContribution(
+                r.get(GYM_MACHINES.ID),
+                r.get(GYM_MACHINES.GYM_ID),
+                r.get("gym_name", String.class),
+                Objects.requireNonNullElse(r.get(GYM_MACHINES.CUSTOM_NAME), ""),
+                r.get(photoUrlField),
+                r.get(GYM_MACHINES.CREATED_AT)
+            ));
+    }
+
+    /**
+     * Phase 5 item 11 sub-task 4: pre-promote lookup. Returns the pending
+     * row's gymId + quantity so the service can decide between merge and
+     * straight promote. {@code Optional.empty()} when the row is unknown,
+     * already promoted ({@code pending_review = false}), or soft-deleted —
+     * each maps to 404 at the controller.
+     */
+    public Optional<PendingContributionForPromote> findPendingForPromote(UUID gymMachineId) {
+        return dsl.select(GYM_MACHINES.GYM_ID, GYM_MACHINES.QUANTITY)
+            .from(GYM_MACHINES)
+            .where(GYM_MACHINES.ID.eq(gymMachineId))
+            .and(GYM_MACHINES.PENDING_REVIEW.isTrue())
+            .and(GYM_MACHINES.DELETED_AT.isNull())
+            .fetchOptional(r -> new PendingContributionForPromote(
+                r.get(GYM_MACHINES.GYM_ID),
+                Objects.requireNonNullElse(r.get(GYM_MACHINES.QUANTITY), 1)
+            ));
+    }
+
+    public record PendingContributionForPromote(UUID gymId, int quantity) {}
+
+    /**
+     * Phase 5 item 11 sub-task 4: merge-target detection. Returns an existing
+     * approved gym_machines.id for {@code (gymId, templateId)} when one exists,
+     * so the service can merge the pending row into it instead of leaving two
+     * rows at the same gym pointing at the same template.
+     */
+    public Optional<UUID> findExistingApprovedAtGym(UUID gymId, UUID templateId) {
+        return dsl.select(GYM_MACHINES.ID)
+            .from(GYM_MACHINES)
+            .where(GYM_MACHINES.GYM_ID.eq(gymId))
+            .and(GYM_MACHINES.TEMPLATE_ID.eq(templateId))
+            .and(GYM_MACHINES.PENDING_REVIEW.isFalse())
+            .and(GYM_MACHINES.DELETED_AT.isNull())
+            .limit(1)
+            .fetchOptional(r -> r.get(GYM_MACHINES.ID));
+    }
+
+    /**
+     * Phase 5 item 11 sub-task 4: bump quantity on an approved gym_machines
+     * row by {@code delta}. Used in the merge branch of promote.
+     */
+    public int incrementQuantity(UUID gymMachineId, int delta) {
+        return dsl.update(GYM_MACHINES)
+            .set(GYM_MACHINES.QUANTITY, GYM_MACHINES.QUANTITY.plus(delta))
+            .where(GYM_MACHINES.ID.eq(gymMachineId))
+            .and(GYM_MACHINES.DELETED_AT.isNull())
+            .execute();
+    }
+
+    /**
+     * Phase 5 item 11 sub-task 4: promote a pending row to an existing or
+     * newly-created template. Clears {@code pending_review}, {@code is_custom},
+     * and {@code custom_name} atomically. The {@code pending_review = true}
+     * guard is load-bearing: it prevents racing promotes from a parallel admin
+     * session from re-promoting the same row, and returns 0 to the caller as
+     * an idempotency signal.
+     */
+    public int promoteToTemplate(UUID gymMachineId, UUID templateId) {
+        return dsl.update(GYM_MACHINES)
+            .set(GYM_MACHINES.TEMPLATE_ID, templateId)
+            .set(GYM_MACHINES.PENDING_REVIEW, false)
+            .set(GYM_MACHINES.IS_CUSTOM, false)
+            .setNull(GYM_MACHINES.CUSTOM_NAME)
+            .where(GYM_MACHINES.ID.eq(gymMachineId))
+            .and(GYM_MACHINES.PENDING_REVIEW.isTrue())
+            .and(GYM_MACHINES.DELETED_AT.isNull())
+            .execute();
+    }
+
+    /**
+     * Phase 5 item 11 sub-task 5 telemetry (H7 hypothesis falsification).
+     * Per-week count of pending_review = true rows grouped by ISO week start.
+     * Drives {@code pendingContributionsByWeek} on
+     * {@code ModerationAnalyticsResponse}.
+     *
+     * <p>Includes soft-deleted rows ({@code deleted_at IS NOT NULL}) so admin
+     * rejects do not retroactively deflate the historical volume signal —
+     * H7 asks "do users submit free-form names often enough to justify the
+     * queue?", which is a submission-rate question, not a survival-rate one.
+     *
+     * <p>Caveat (documented): once admin promotes a pending row it flips to
+     * {@code pending_review = false} and disappears from this count. The
+     * resulting undercount is acceptable for H7's order-of-magnitude signal
+     * (a queue worth keeping shows meaningful volume even after promotes);
+     * a proper event log is the future-proof fix when the hypothesis is
+     * worth more precision than this query offers.
+     */
+    public List<PendingContributionWeekBucket> countPendingContributionsByWeek() {
+        Field<OffsetDateTime> weekStart = DSL.field(
+            "date_trunc('week', {0})", OffsetDateTime.class, GYM_MACHINES.CREATED_AT
+        ).as("week_start");
+        Field<Integer> count = DSL.count().as("submission_count");
+        return dsl.select(weekStart, count)
+            .from(GYM_MACHINES)
+            .where(GYM_MACHINES.PENDING_REVIEW.isTrue())
+            .groupBy(weekStart)
+            .orderBy(weekStart.desc())
+            .fetch(r -> new PendingContributionWeekBucket(
+                r.get(weekStart),
+                r.get(count)
+            ));
+    }
+
+    public record PendingContributionWeekBucket(OffsetDateTime weekStart, int submissionCount) {}
 }

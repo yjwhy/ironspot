@@ -210,4 +210,17 @@ public class PhotoRepository {
             .and(MACHINE_PHOTOS.GYM_MACHINE_ID.isNull())
             .execute();
     }
+
+    /**
+     * Phase 5 item 11 sub-task 4: re-bind every machine_photos row from a
+     * source gym_machine to a target gym_machine. Used in the merge branch
+     * of admin promote so the rejected pending row's photos follow it into
+     * the existing approved row. Returns rows affected for assertion in tests.
+     */
+    public int rebindGymMachineId(UUID fromGymMachineId, UUID toGymMachineId) {
+        return dsl.update(MACHINE_PHOTOS)
+            .set(MACHINE_PHOTOS.GYM_MACHINE_ID, toGymMachineId)
+            .where(MACHINE_PHOTOS.GYM_MACHINE_ID.eq(fromGymMachineId))
+            .execute();
+    }
 }

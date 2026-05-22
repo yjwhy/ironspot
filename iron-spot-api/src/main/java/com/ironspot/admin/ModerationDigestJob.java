@@ -30,6 +30,7 @@ public class ModerationDigestJob {
     private static final int DIGEST_TOP_REPORTERS = 5;
 
     private final ModerationAnalyticsRepository analyticsRepository;
+    private final com.ironspot.machine.MachineRepository machineRepository;
     private final AdminNotificationService notifier;
 
     @Scheduled(cron = "0 0 9 ? * MON", zone = "Asia/Seoul")
@@ -44,12 +45,20 @@ public class ModerationDigestJob {
             analyticsRepository.topReporters(DIGEST_PERIOD_DAYS, DIGEST_TOP_REPORTERS);
         List<ModerationAnalyticsResponse.BanEvent> banEvents =
             analyticsRepository.banEvents(DIGEST_PERIOD_DAYS);
+        // Phase 5 item 11 sub-task 5 telemetry (H7): most-recent week of
+        // pending_review contributions. Surfaces the queue's signal alongside
+        // existing moderation metrics so ops sees both in one weekly read.
+        int pendingThisWeek = machineRepository.countPendingContributionsByWeek()
+            .stream()
+            .findFirst()
+            .map(com.ironspot.machine.MachineRepository.PendingContributionWeekBucket::submissionCount)
+            .orElse(0);
 
         String message = formatDigest(totalDispositions, uploaderHist, reporterHist,
-            topReporters, banEvents);
+            topReporters, banEvents, pendingThisWeek);
         notifier.notifyModerationDigest(message);
-        log.info("Moderation weekly digest posted: {} dispositions, {} bans, {} top reporters",
-            totalDispositions, banEvents.size(), topReporters.size());
+        log.info("Moderation weekly digest posted: {} dispositions, {} bans, {} top reporters, {} pending contributions",
+            totalDispositions, banEvents.size(), topReporters.size(), pendingThisWeek);
     }
 
     static String formatDigest(
@@ -57,11 +66,13 @@ public class ModerationDigestJob {
         List<ModerationAnalyticsResponse.HistogramBucket> uploaderHist,
         List<ModerationAnalyticsResponse.HistogramBucket> reporterHist,
         List<ModerationAnalyticsResponse.TopReporter> topReporters,
-        List<ModerationAnalyticsResponse.BanEvent> banEvents
+        List<ModerationAnalyticsResponse.BanEvent> banEvents,
+        int pendingContributionsThisWeek
     ) {
         StringBuilder sb = new StringBuilder();
         sb.append(":bar_chart: *모더레이션 주간 요약 (최근 7일)*\n");
         sb.append("• 총 disposition: ").append(totalDispositions).append("건\n");
+        sb.append("• 대기 머신 기여 (이번 주): ").append(pendingContributionsThisWeek).append("건\n");
         sb.append("• Ban 이벤트: ").append(banEvents.size()).append("건");
         if (!banEvents.isEmpty()) {
             sb.append(" — ");

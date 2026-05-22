@@ -9,12 +9,12 @@ import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import type { AdminReportResponse } from '@/shared/generated/model';
 import { formatRelativeKo } from '@/shared/lib/format';
-import { templateDisplayName } from '@/shared/lib/template-display-name';
+import { formatLoadingType, templateDisplayName } from '@/shared/lib/template-display-name';
 
+import { ADMIN_LOADING_TITLE } from './strings';
 import { useAdminGymMachineDetail } from '../hooks/useAdminGymMachineDetail';
 import { useDisposeReport } from '../hooks/useDisposeReport';
 
-const LOADING_TITLE = '불러오는 중…';
 const ERROR_TITLE = '머신 정보를 불러오지 못했어요';
 const NO_PENDING_TITLE = '대기 중인 신고가 없어요';
 const HEADER_TITLE = '머신 신고 처리';
@@ -41,7 +41,7 @@ export function AdminGymMachineScreen({ gymMachineId }: AdminGymMachineScreenPro
   if (detail.isLoading || detail.data === undefined) {
     return (
       <ScreenShell>
-        <EmptyState icon="hourglass-empty" title={LOADING_TITLE} />
+        <EmptyState icon="hourglass-empty" title={ADMIN_LOADING_TITLE} />
       </ScreenShell>
     );
   }
@@ -49,7 +49,7 @@ export function AdminGymMachineScreen({ gymMachineId }: AdminGymMachineScreenPro
   const data = detail.data;
   const templateLabel =
     data.brandName && data.templateName && data.loadingType
-      ? `${data.brandName} ${data.templateName} · ${data.loadingType === 'pin' ? '핀' : '플레이트'}`
+      ? `${data.brandName} ${data.templateName} · ${formatLoadingType(data.loadingType)}`
       : '커스텀 머신';
 
   return (
@@ -220,7 +220,7 @@ function TemplatePicker({ onPick, onClose }: TemplatePickerProps) {
           >
             <Text className="text-sm text-text-primary">
               {template.brandName} {templateDisplayName(template)} ·{' '}
-              {template.loadingType === 'pin' ? '핀' : '플레이트'}
+              {formatLoadingType(template.loadingType)}
             </Text>
           </Pressable>
         ))}

@@ -9,6 +9,7 @@ import type { BanEvent } from './banEvent';
 import type { HistogramBucket } from './histogramBucket';
 import type { ModerationAnalyticsResponsePeriod } from './moderationAnalyticsResponsePeriod';
 import type { TopReporter } from './topReporter';
+import type { WeeklyContributionsBucket } from './weeklyContributionsBucket';
 
 export interface ModerationAnalyticsResponse {
   period: ModerationAnalyticsResponsePeriod;
@@ -22,4 +23,6 @@ export interface ModerationAnalyticsResponse {
   topReporters: TopReporter[];
   /** Banned users in the period. period='all' returns the full ban audit log; '7d'/'30d' scopes to recent ban events. */
   banEvents: BanEvent[];
+  /** Phase 5 item 11 H7 signal: per-week count of pending_review machine contributions. Includes soft-deleted (rejected) rows so admin actions don't deflate the submission rate, but excludes already-promoted rows — see MachineRepository.countPendingContributionsByWeek javadoc. */
+  pendingContributionsByWeek: WeeklyContributionsBucket[];
 }

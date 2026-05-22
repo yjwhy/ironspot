@@ -77,7 +77,11 @@ public class AdminService {
             moderationAnalyticsRepository.uploaderActionedHistogram(periodDays),
             moderationAnalyticsRepository.reporterDismissedHistogram(periodDays),
             moderationAnalyticsRepository.topReporters(periodDays, MODERATION_TOP_REPORTERS_LIMIT),
-            moderationAnalyticsRepository.banEvents(periodDays)
+            moderationAnalyticsRepository.banEvents(periodDays),
+            machineRepository.countPendingContributionsByWeek().stream()
+                .map(b -> new ModerationAnalyticsResponse.WeeklyContributionsBucket(
+                    b.weekStart(), b.submissionCount()))
+                .toList()
         );
     }
 

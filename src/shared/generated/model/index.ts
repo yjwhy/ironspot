@@ -7,6 +7,7 @@
  */
 
 export * from './adminGymMachineDetailResponse';
+export * from './adminPendingContribution';
 export * from './adminPhotoDetailResponse';
 export * from './adminPhotoSummary';
 export * from './adminQueueItem';
@@ -38,6 +39,7 @@ export * from './gymMachineResponse';
 export * from './gymWithMachineCountResponse';
 export * from './histogramBucket';
 export * from './listMineParams';
+export * from './listPendingParams';
 export * from './listPendingPhotosParams';
 export * from './listPendingQueueParams';
 export * from './listReportsParams';
@@ -63,6 +65,10 @@ export * from './parsedFilters';
 export * from './parsedFiltersScope';
 export * from './photoResponse';
 export * from './photoUploadResponse';
+export * from './promoteContributionRequest';
+export * from './promoteContributionRequestKind';
+export * from './promoteContributionRequestLoadingType';
+export * from './promoteContributionResponse';
 export * from './queueParams';
 export * from './quotaInfo';
 export * from './resolvedLocation';
@@ -78,3 +84,4 @@ export * from './uploadParams';
 export * from './upvoteResponse';
 export * from './userResponse';
 export * from './userResponseRole';
+export * from './weeklyContributionsBucket';
