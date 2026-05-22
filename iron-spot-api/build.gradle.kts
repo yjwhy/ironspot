@@ -75,10 +75,19 @@ dependencies {
     // Flyway — DB schema migrations (Task 47 / ADR 0023)
     // Community edition (Apache 2.0, free). flyway-database-postgresql plugin is required
     // for PostgreSQL 14+ since Flyway 9.22+ (it's a separate jar from core).
-    // Spring Boot 4 auto-configures FlywayMigrationStrategy on startup when on classpath;
-    // disabled in tests via src/test/resources/application.yml so Testcontainers init.sql
-    // pattern stays authoritative for JOOQ codegen + IT setup.
-    implementation("org.flywaydb:flyway-core")
+    //
+    // Spring Boot 4 BREAKING: FlywayAutoConfiguration is no longer triggered just by
+    // having org.flywaydb:flyway-core on the classpath. The 4.0 migration guide
+    // requires the dedicated starter — "you now need to replace that with
+    // spring-boot-starter-flyway". Without the starter, Spring Boot silently skips
+    // Flyway entirely at boot (zero log lines, no error). That bit prod on V10 +
+    // V11 (2026-05-22) — see [[lesson-prod-flyway-never-ran]] memory; recovered by
+    // running the Flyway CLI manually, then this dep change makes future Vn
+    // migrations apply automatically on the next deploy.
+    //
+    // Tests still disable Flyway via src/test/resources/application.yml so
+    // Testcontainers init-test-db.sql stays the authoritative IT schema source.
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
 
     // HTTP client — for Google Vision API + Naver Places proxy
