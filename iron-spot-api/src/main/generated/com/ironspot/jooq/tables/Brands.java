@@ -67,6 +67,11 @@ public class Brands extends TableImpl<Record> {
      */
     public final TableField<Record, String> NAME = createField(DSL.name("name"), SQLDataType.CLOB.nullable(false), this, "");
 
+    /**
+     * The column <code>public.brands.name_ko</code>.
+     */
+    public final TableField<Record, String> NAME_KO = createField(DSL.name("name_ko"), SQLDataType.CLOB.nullable(false), this, "");
+
     private Brands(Name alias, Table<Record> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

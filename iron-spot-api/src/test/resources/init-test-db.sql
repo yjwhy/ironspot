@@ -25,7 +25,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS gyms_naver_place_id_key
 
 CREATE TABLE IF NOT EXISTS brands (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT UNIQUE NOT NULL
+  name TEXT UNIQUE NOT NULL,
+  name_ko TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS categories (
@@ -261,8 +262,9 @@ WHERE u.deleted_at IS NULL
 ORDER BY (COALESCE(a.cnt, 0) + COALESCE(d.cnt, 0)) DESC;
 
 -- Minimal seed for tests
-INSERT INTO brands(id, name) VALUES ('b0000001-0000-0000-0000-000000000001', 'Panatta');
-INSERT INTO brands(id, name) VALUES ('b0000002-0000-0000-0000-000000000002', 'Life Fitness');
+INSERT INTO brands(id, name, name_ko) VALUES ('b0000001-0000-0000-0000-000000000001', 'Panatta', '파나타');
+INSERT INTO brands(id, name, name_ko) VALUES ('b0000002-0000-0000-0000-000000000002', 'Life Fitness', '라이프 피트니스');
+INSERT INTO brands(id, name, name_ko) VALUES ('b1000003-0000-0000-0000-000000000003', 'Hammer Strength', '해머 스트렝스');
 INSERT INTO categories(id, name) VALUES ('c0000001-0000-0000-0000-000000000001', '등');
 INSERT INTO categories(id, name) VALUES ('c0000002-0000-0000-0000-000000000002', '가슴');
 INSERT INTO gyms(id, name, address, location, is_verified)

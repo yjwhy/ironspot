@@ -34,7 +34,7 @@ public class DslValidator {
 
     private ResolvedFilter resolveFilter(MachineFilter f) {
         UUID brandId = f.brand() != null
-            ? brandRepository.findIdByNameIgnoreCase(f.brand())
+            ? brandRepository.findIdByNameOrKoFuzzy(f.brand())
                 .orElseThrow(() -> new BusinessException(
                     "'" + f.brand() + "' 브랜드는 등록되지 않았어요. (예: Panatta, Technogym, Cybex)",
                     HttpStatus.BAD_REQUEST))
