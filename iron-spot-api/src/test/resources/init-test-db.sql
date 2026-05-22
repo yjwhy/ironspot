@@ -157,6 +157,20 @@ CREATE INDEX IF NOT EXISTS idx_machine_photos_orphan_user_created
   ON machine_photos (user_id, created_at)
   WHERE gym_machine_id IS NULL;
 
+-- V12 mirror: non-partial index for Vision-quota count over bound + orphan.
+CREATE INDEX IF NOT EXISTS idx_machine_photos_user_created
+  ON machine_photos (user_id, created_at);
+
+-- V12 mirror: image-hash dedupe cache for Vision API responses.
+CREATE TABLE IF NOT EXISTS vision_cache (
+  sha256       TEXT PRIMARY KEY,
+  verdict      TEXT NOT NULL,
+  has_pii      BOOLEAN NOT NULL,
+  texts_json   JSONB NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  hit_count    INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS photo_votes (
   user_id UUID REFERENCES users(id),
   photo_id UUID REFERENCES machine_photos(id),

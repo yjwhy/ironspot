@@ -30,6 +30,7 @@ import com.ironspot.jooq.tables.StHexagongrid;
 import com.ironspot.jooq.tables.StSquaregrid;
 import com.ironspot.jooq.tables.StSubdivide;
 import com.ironspot.jooq.tables.Users;
+import com.ironspot.jooq.tables.VisionCache;
 import com.ironspot.jooq.udt.GeometryDump;
 import com.ironspot.jooq.udt.ValidDetail;
 import com.ironspot.jooq.udt.records.GeometryDumpRecord;
@@ -645,6 +646,11 @@ public class Public extends SchemaImpl {
     public final Users USERS = Users.USERS;
 
     /**
+     * The table <code>public.vision_cache</code>.
+     */
+    public final VisionCache VISION_CACHE = VisionCache.VISION_CACHE;
+
+    /**
      * No further instances allowed
      */
     private Public() {
@@ -685,7 +691,8 @@ public class Public extends SchemaImpl {
             StHexagongrid.ST_HEXAGONGRID,
             StSquaregrid.ST_SQUAREGRID,
             StSubdivide.ST_SUBDIVIDE,
-            Users.USERS
+            Users.USERS,
+            VisionCache.VISION_CACHE
         );
     }
 

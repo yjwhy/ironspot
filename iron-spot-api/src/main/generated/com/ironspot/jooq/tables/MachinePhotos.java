@@ -171,7 +171,7 @@ public class MachinePhotos extends TableImpl<Record> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IDX_MACHINE_PHOTOS_ORPHAN_USER_CREATED);
+        return Arrays.asList(Indexes.IDX_MACHINE_PHOTOS_ORPHAN_USER_CREATED, Indexes.IDX_MACHINE_PHOTOS_USER_CREATED);
     }
 
     @Override

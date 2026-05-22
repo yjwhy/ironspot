@@ -30,6 +30,17 @@ public class OcrService {
     @Value("${google.vision.api-key}")
     private String apiKey;
 
+    /**
+     * Phase 5 cost safety net: BE Vision timeout must stay strictly less than
+     * the FE upload mutation timeout (src/shared/lib/api-client.ts → 10s) so
+     * the FE never sees "업로드 중 오류" while the BE is still waiting on
+     * Vision. 7s is the locked default — give us 3s headroom to handle
+     * storage upload + DB insert + response serialisation before the FE
+     * gives up. Tune via {@code VISION_TIMEOUT_SECONDS} env var.
+     */
+    @Value("${google.vision.timeout-seconds:7}")
+    private int timeoutSeconds;
+
     private final WebClient webClient;
 
     @PostConstruct
@@ -62,7 +73,7 @@ public class OcrService {
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(Map.class)
-            .block(Duration.ofSeconds(15));
+            .block(Duration.ofSeconds(timeoutSeconds));
 
         if (response == null) return VisionAnalysisResult.EMPTY;
 
