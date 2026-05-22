@@ -54,17 +54,13 @@ public class PhotoService {
 
     // Storage upload is intentionally not wrapped in @Transactional:
     // a DB rollback cannot undo a file already uploaded to Supabase Storage.
-    // Orphaned files are removed by a periodic cleanup job (Phase 2 tradeoff).
+    // Orphaned files (`<bucket>/orphan/<userId>/<photoId>.webp`) are removed
+    // by {@link OrphanReaperJob} once their row crosses
+    // {@link #ORPHAN_RETENTION} without a binding POST /api/gym-machines.
     //
-    // TODO(phase-5 item 11 slice 4): the cleanup job must purge
-    // `<bucket>/orphan/<userId>/` entries whose corresponding machine_photos
-    // row stays orphan (gym_machine_id IS NULL) past N hours. See
-    // StorageService.ORPHAN_PREFIX. Open question tracked in
-    // docs/plans/phase-5/README.md item 11 "Orphan upload rate limit + reaper".
-    //
-    // Phase 5 item 11 slice 2: gymMachineId is now nullable. The OCR confirm
+    // Phase 5 item 11 slice 2: gymMachineId is nullable. The OCR confirm
     // screen uploads first (gym_machine unknown yet) and then calls
-    // POST /api/gym-machines which binds the orphan photo via the new
+    // POST /api/gym-machines which binds the orphan photo via the
     // PhotoRepository.bindOrphanGymMachineId NULL-guard. Existing flows
     // that already know the gym_machine (e.g. machine photo gallery) keep
     // passing the id and bypass the contribution path.
