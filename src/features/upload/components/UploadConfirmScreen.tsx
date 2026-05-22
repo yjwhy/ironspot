@@ -1,7 +1,7 @@
 import { toast } from 'burnt';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
@@ -79,8 +79,17 @@ function OcrSuccessView({
   onRegister,
   children,
 }: OcrSuccessViewProps) {
+  // ScrollView wrapper: the picker mount slot below can expand to ~24 brand
+  // rows + category chips + template list. With a fixed-height View those rows
+  // disappear past the screen edge with no way to reach them. `handled` lets
+  // a tap on a brand row register even when the search TextInput keyboard is
+  // still up.
   return (
-    <View className="flex-1 gap-4 p-4">
+    <ScrollView
+      className="flex-1"
+      contentContainerClassName="gap-4 p-4"
+      keyboardShouldPersistTaps="handled"
+    >
       <Image
         testID="upload-photo-preview"
         source={{ uri: compressedUri }}
@@ -128,7 +137,7 @@ function OcrSuccessView({
         onPress={onRegister}
         disabled={!canRegister}
       />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -149,8 +158,14 @@ function OcrFailView({
   onRetry,
   onRegister,
 }: OcrFailViewProps) {
+  // Same wrapping rationale as OcrSuccessView: the picker is unconditionally
+  // mounted here so the brand list (24 rows) is guaranteed to overflow.
   return (
-    <View className="flex-1 gap-4 p-4">
+    <ScrollView
+      className="flex-1"
+      contentContainerClassName="gap-4 p-4"
+      keyboardShouldPersistTaps="handled"
+    >
       <Image
         testID="upload-photo-preview"
         source={{ uri: compressedUri }}
@@ -167,7 +182,7 @@ function OcrFailView({
         ) : null}
         <Button testID="upload-retry-btn" label="다시 시도" variant="secondary" onPress={onRetry} />
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
