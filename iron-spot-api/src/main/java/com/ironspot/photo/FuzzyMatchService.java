@@ -18,7 +18,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FuzzyMatchService {
 
-    private static final double THRESHOLD = 0.25;
+    // Jaccard cutoff for accepting a template as an OCR match. Lowered from
+    // 0.25 to 0.15 on 2026-05-23 after photo da0fd491 surfaced the realistic
+    // case where the user's gym shot captures a Mac/IDE screen in the
+    // background. The stopword filter strips digits/URLs/punctuation but
+    // generic English UI tokens (Bookmarks, Profiles, Window, Help, Java,
+    // Resources, Projects, …) survive and inflate the union, dragging the
+    // real-target Jaccard to ~0.15. 0.15 admits true brand+template matches
+    // (intersection includes the brand tokens) while still rejecting
+    // brand-mismatch candidates, which score ≤0.10 against the same input.
+    private static final double THRESHOLD = 0.15;
 
     private final MachineTemplateRepository templateRepository;
 

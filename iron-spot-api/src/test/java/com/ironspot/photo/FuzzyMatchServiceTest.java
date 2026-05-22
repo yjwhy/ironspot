@@ -235,6 +235,57 @@ class FuzzyMatchServiceTest {
         assertThat(results.get(0).id()).isEqualTo(isoLateralLegExtension);
     }
 
+    // -------------------------------------------------------------------------
+    // OCR noise from background screens/UI must not starve real matches.
+    // Regression source: photo da0fd491 on 2026-05-23. The user's gym shot
+    // captured a Mac screen in the background ("Bookmarks", "Profiles",
+    // "Tab", "Window", "Help", "DELL", "Java", "Resources", "Projects",
+    // etc.) on top of the real plate "HAMMER STRENGTH LEG EXTENSION". The
+    // stopword filter strips digits/URLs/punctuation but cannot guess that
+    // generic English UI words aren't part of the machine label. With 19
+    // meaningful tokens after filtering, the Iso-Lateral Leg Extension
+    // target (11 tokens) shared 4 → Jaccard 4/26 ≈ 0.154, just under the
+    // legacy 0.25 threshold. Lowering threshold to 0.15 surfaces real
+    // brand+template matches without admitting brand-mismatch candidates
+    // (other-brand Leg Extension still scores ≤0.10 because the brand
+    // tokens don't intersect).
+    // -------------------------------------------------------------------------
+    @Test
+    void findMatchesSurvivesBackgroundScreenNoise() {
+        UUID isoLateralLegExtension = UUID.randomUUID();
+        UUID cybexLegExtension = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(
+                isoLateralLegExtension,
+                "Hammer Strength", "해머 스트렝스",
+                "Iso-Lateral Leg Extension", "아이소 래터럴 레그 익스텐션"),
+            new MachineTemplateSummary(
+                cybexLegExtension,
+                "Cybex", "사이벡스",
+                "Leg Extension", "레그 익스텐션")
+        ));
+
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of(
+                "print", "Y'log", "Resources", "Projects",
+                "HAMMER", "STRENGTH", "LEG", "EXTENSION",
+                "Start", "7", "lb./3.5Kg", ".",
+                "sat", "Java", "ory", "Bookmarks", "Profiles",
+                "Tab", "Window", "Help", "DELL",
+                "www.hammerstrength.com", "23", "May", "80", "%", "B"
+            )
+        );
+
+        assertThat(results).isNotEmpty();
+        assertThat(results.get(0).id()).isEqualTo(isoLateralLegExtension);
+        // Cybex Leg Extension shares only {leg, extension} and the brand
+        // mismatch keeps its score below 0.15 — must not surface.
+        assertThat(results)
+            .extracting(MachineTemplateSuggestion::id)
+            .doesNotContain(cybexLegExtension);
+    }
+
     @Test
     void findMatchesIncludesKoreanBrandLabelInOcrTarget() {
         // Phase 5 item 24: brand stickers in Korean ("해머 스트렝스") should
