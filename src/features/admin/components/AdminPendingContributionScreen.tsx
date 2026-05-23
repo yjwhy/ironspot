@@ -18,6 +18,7 @@ import { ADMIN_LOADING_TITLE } from './strings';
 import { useAdminPendingContributionItem } from '../hooks/useAdminPendingContributions';
 import { usePromoteContribution } from '../hooks/usePromoteContribution';
 import { useRejectContribution } from '../hooks/useRejectContribution';
+import { useTransliterateBrand } from '../hooks/useTransliterateBrand';
 
 const HEADER_TITLE = '대기 머신 검토';
 const NOT_FOUND_TITLE = '대기 중인 기여가 아니에요';
@@ -278,15 +279,34 @@ function NewBrandAndTemplateForm({ onSubmit, isPending }: FormProps) {
   const [loadingType, setLoadingType] = useState<LoadingType>('pin');
   const [categoryId, setCategoryId] = useState<string>('');
 
-  const hasBothBrandNames = brandName.trim() !== '' && brandNameKo.trim() !== '';
+  const transliterate = useTransliterateBrand({
+    onSuccess(result) {
+      setBrandName(result.name);
+      setBrandNameKo(result.nameKo);
+    },
+  });
+
+  const trimmedBrandName = brandName.trim();
+  const trimmedBrandNameKo = brandNameKo.trim();
+  const exactlyOneBrandFieldFilled = (trimmedBrandName !== '') !== (trimmedBrandNameKo !== '');
+  const canSuggest = exactlyOneBrandFieldFilled && !transliterate.isPending;
+
+  const hasBothBrandNames = trimmedBrandName !== '' && trimmedBrandNameKo !== '';
   const hasTemplateName = nameEn.trim() !== '' && nameKo.trim() !== '';
   const canSubmit = hasBothBrandNames && hasTemplateName;
+
+  function suggest() {
+    if (!canSuggest) return;
+    transliterate.mutate(
+      trimmedBrandName !== '' ? { name: trimmedBrandName } : { nameKo: trimmedBrandNameKo },
+    );
+  }
 
   function submit() {
     onSubmit({
       kind: 'newBrandAndTemplate',
-      newBrandName: brandName.trim(),
-      newBrandNameKo: brandNameKo.trim(),
+      newBrandName: trimmedBrandName,
+      newBrandNameKo: trimmedBrandNameKo,
       nameEn: nameEn.trim(),
       nameKo: nameKo.trim(),
       loadingType,
@@ -300,6 +320,20 @@ function NewBrandAndTemplateForm({ onSubmit, isPending }: FormProps) {
       <Input value={brandName} onChangeText={setBrandName} placeholder="Panatta" />
       <FieldLabel label="브랜드 이름 (한글)" />
       <Input value={brandNameKo} onChangeText={setBrandNameKo} placeholder="파나타" />
+      <Pressable
+        testID="admin-transliterate-brand-suggest"
+        accessibilityRole="button"
+        onPress={suggest}
+        disabled={!canSuggest}
+        className={
+          'self-start rounded-md px-3 py-2 ' +
+          (canSuggest ? 'bg-bg-muted' : 'bg-bg-muted opacity-50')
+        }
+      >
+        <Text className="text-xs font-semibold text-text-primary">
+          {transliterate.isPending ? 'AI 제안 받는 중…' : 'AI 제안 (영문 ↔ 한글 자동 채우기)'}
+        </Text>
+      </Pressable>
       <FieldLabel label="영문 이름" />
       <Input value={nameEn} onChangeText={setNameEn} placeholder="Lat Pulldown" />
       <FieldLabel label="한국어 이름" />
