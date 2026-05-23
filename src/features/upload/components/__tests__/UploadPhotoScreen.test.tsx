@@ -143,7 +143,7 @@ describe('UploadPhotoScreen', () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith({
-        pathname: '/(upload)/confirm',
+        pathname: '/(upload)/crop',
         params: {
           gymMachineId: 'gm-123',
           gymId: 'gym-123',
