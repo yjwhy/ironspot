@@ -18,6 +18,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class FuzzyMatchServiceTest {
 
+    // Mirrors FuzzyMatchService.TEMPLATE_NAME_THRESHOLD. Tests own a copy so
+    // they're explicit about the contract they're verifying rather than
+    // chained to a production constant.
+    private static final double TEMPLATE_NAME_THRESHOLD_FOR_TEST = 0.2;
+
     @Mock
     private MachineTemplateRepository templateRepository;
 
@@ -184,7 +189,10 @@ class FuzzyMatchServiceTest {
     void findMatchesIncludesKoreanTokensInOcrTarget() {
         // Korean labels on machine bodies are common in domestic gyms even when
         // the brand plate is English. OCR text mixing Korean + English should
-        // still find a match when either column tokenises in.
+        // still find a match when either column tokenises in. With
+        // brand-anchored scoring, the brand match is consumed up-front and
+        // the precision score reflects machine-name coverage only — half of
+        // the template name (랫, 풀다운) hits, score is around 0.4.
         UUID latPullDown = UUID.randomUUID();
 
         when(templateRepository.findAllApproved()).thenReturn(List.of(
@@ -197,7 +205,7 @@ class FuzzyMatchServiceTest {
 
         assertThat(results).isNotEmpty();
         assertThat(results.get(0).id()).isEqualTo(latPullDown);
-        assertThat(results.get(0).score()).isGreaterThan(0.5);
+        assertThat(results.get(0).score()).isGreaterThan(TEMPLATE_NAME_THRESHOLD_FOR_TEST);
     }
 
     // -------------------------------------------------------------------------
@@ -239,9 +247,9 @@ class FuzzyMatchServiceTest {
     void findMatchesIncludesKoreanBrandLabelInOcrTarget() {
         // Phase 5 item 24: brand stickers in Korean ("해머 스트렝스") should
         // contribute to OCR matching. Template's own nameKo is intentionally
-        // empty here so the match comes purely from brandNameKo participating
-        // in bilingualTokens — proves the brand-Korean column was added to
-        // the concat.
+        // empty here so the match comes purely from brand recognition picking
+        // up "해머 스트렝스" — proves the Korean brand column powers brand
+        // anchoring on photos where only the Korean plate is visible.
         UUID latPullDown = UUID.randomUUID();
 
         when(templateRepository.findAllApproved()).thenReturn(List.of(
@@ -255,5 +263,135 @@ class FuzzyMatchServiceTest {
 
         assertThat(results).isNotEmpty();
         assertThat(results.get(0).id()).isEqualTo(latPullDown);
+    }
+
+    // -------------------------------------------------------------------------
+    // Brand-anchored matching: OCR text on real gym photos commonly captures
+    // background noise (Mac/IDE screens, other people's apparel logos,
+    // posters, mirror reflections). The matcher must identify catalog brand
+    // tokens in the input first and only score within those brand's
+    // templates — off-brand candidates are never even considered, so noise
+    // tokens cannot starve real matches.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void brandAnchoredScoringIgnoresBackgroundScreenNoise() {
+        // Regression source: photo da0fd491 (2026-05-23). The user's gym
+        // shot captured a Mac screen with 15+ UI/IDE tokens on top of the
+        // real "HAMMER STRENGTH LEG EXTENSION" plate. Hammer Strength brand
+        // tokens are present in input → only HS templates score; Cybex
+        // and other brands are off-list and never reach scoring.
+        UUID isoLateralLegExtension = UUID.randomUUID();
+        UUID cybexLegExtension = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(
+                isoLateralLegExtension,
+                "Hammer Strength", "해머 스트렝스",
+                "Iso-Lateral Leg Extension", "아이소 래터럴 레그 익스텐션"),
+            new MachineTemplateSummary(
+                cybexLegExtension,
+                "Cybex", "사이벡스",
+                "Leg Extension", "레그 익스텐션")
+        ));
+
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of(
+                "print", "Y'log", "Resources", "Projects",
+                "HAMMER", "STRENGTH", "LEG", "EXTENSION",
+                "Start", "7", "lb./3.5Kg", ".",
+                "sat", "Java", "ory", "Bookmarks", "Profiles",
+                "Tab", "Window", "Help", "DELL",
+                "www.hammerstrength.com", "23", "May", "80", "%", "B"
+            )
+        );
+
+        assertThat(results).isNotEmpty();
+        assertThat(results.get(0).id()).isEqualTo(isoLateralLegExtension);
+        assertThat(results)
+            .extracting(MachineTemplateSuggestion::id)
+            .doesNotContain(cybexLegExtension);
+    }
+
+    @Test
+    void brandAnchoredScoringIgnoresApparelLogosFromOtherPeople() {
+        // Realistic field case: someone walks behind the camera wearing a
+        // Nike hoodie. Vision picks up "Nike", "Air", "Force" alongside
+        // the machine plate. Nike is not a catalog brand so the matcher
+        // discards those tokens entirely; Hammer Strength still matches
+        // via its own tokens.
+        UUID isoLateralLegExtension = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(
+                isoLateralLegExtension,
+                "Hammer Strength", "해머 스트렝스",
+                "Iso-Lateral Leg Extension", "아이소 래터럴 레그 익스텐션")
+        ));
+
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of(
+                "NIKE", "AIR", "FORCE",
+                "HAMMER", "STRENGTH", "LEG", "EXTENSION"
+            )
+        );
+
+        assertThat(results).isNotEmpty();
+        assertThat(results.get(0).id()).isEqualTo(isoLateralLegExtension);
+    }
+
+    @Test
+    void brandAnchoredScoringRejectsOffBrandTemplatesWithSharedNameTokens() {
+        // Multiple brands carry a "Leg Extension". Without brand anchoring
+        // they'd all share {leg, extension} with the user's input and the
+        // top suggestion would be whichever brand happened to sort first.
+        // With brand anchoring, the user's HAMMER STRENGTH tokens lock the
+        // candidate set to Hammer Strength templates — the off-brand
+        // "Leg Extension" rows never appear, even though they share name
+        // tokens.
+        UUID hammerStrengthIsoLateral = UUID.randomUUID();
+        UUID cybexLegExtension = UUID.randomUUID();
+        UUID matrixLegExtension = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(hammerStrengthIsoLateral, "Hammer Strength",
+                "해머 스트렝스", "Iso-Lateral Leg Extension", "아이소 래터럴 레그 익스텐션"),
+            new MachineTemplateSummary(cybexLegExtension, "Cybex", "사이벡스",
+                "Leg Extension", "레그 익스텐션"),
+            new MachineTemplateSummary(matrixLegExtension, "Matrix", "매트릭스",
+                "Leg Extension", "레그 익스텐션")
+        ));
+
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of("HAMMER", "STRENGTH", "LEG", "EXTENSION")
+        );
+
+        assertThat(results)
+            .extracting(MachineTemplateSuggestion::id)
+            .containsExactly(hammerStrengthIsoLateral)
+            .doesNotContain(cybexLegExtension, matrixLegExtension);
+    }
+
+    @Test
+    void brandAnchoredFallbackEngagesWhenNoCatalogBrandIsRecognised() {
+        // User photographed a brand whose name didn't end up in OCR (worn
+        // sticker, harsh lighting, sleeve obscuring the plate). Plain
+        // template-name tokens still need to match via the legacy Jaccard
+        // path so the user gets *some* suggestion rather than an empty
+        // screen.
+        UUID panattaHighRow = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(panattaHighRow, "Panatta", "파나타",
+                "High Row", "하이 로우")
+        ));
+
+        // Input lacks the brand entirely but carries the machine name.
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of("HIGH", "ROW")
+        );
+
+        assertThat(results).isNotEmpty();
+        assertThat(results.get(0).id()).isEqualTo(panattaHighRow);
     }
 }
