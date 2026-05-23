@@ -522,6 +522,86 @@ class PhotoUploadTest extends IntegrationTestBase {
      * Builds a multipart part with explicit Content-Type=application/octet-stream, matching the
      * production RN multipart shape (RN's fetch(file://).blob() loses the MIME type).
      */
+    // -------------------------------------------------------------------------
+    // Two-photo capture flow (Phase 5 follow-up G): /api/photos/ocr-only
+    // -------------------------------------------------------------------------
+
+    @Test
+    void ocrOnlyReturnsSuggestionsWithoutStorageOrDbRow() throws Exception {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of("PANATTA", "HIGH", "ROW"), SafeSearchVerdict.ALLOW, false));
+
+        long photoCountBefore = photoCountForUser(USER_A_ID);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/ocr-only", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("ocrSucceeded");
+        assertThat(response.getBody()).contains("suggestions");
+
+        // Storage MUST NOT have been touched on this path — label photos are
+        // discarded after Vision returns.
+        org.mockito.Mockito.verifyNoInteractions(storageService);
+
+        // No new machine_photos row created.
+        long photoCountAfter = photoCountForUser(USER_A_ID);
+        assertThat(photoCountAfter).isEqualTo(photoCountBefore);
+    }
+
+    @Test
+    void ocrOnlyRejectsUnauthenticated() {
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+            "/api/photos/ocr-only", request, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void ocrOnlyEnforcesVisionQuotaSameAsUpload() throws Exception {
+        // Use USER_B (no seed rows) and saturate the hourly quota at limit-1
+        // via direct INSERTs that count towards Vision-quota window. The
+        // ocr-only call should then trip the same 429 the upload path does.
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalB()));
+        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+            java.util.List.of(), SafeSearchVerdict.ALLOW, false));
+
+        int hourly = visionQuotaConfig.getHourly();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        for (int i = 0; i < hourly; i++) {
+            jdbcTemplate.update(
+                "INSERT INTO machine_photos(id, user_id, photo_url, created_at) VALUES (?, ?, ?, ?)",
+                UUID.randomUUID(), UUID.fromString(USER_B_ID),
+                "https://example.com/q" + i + ".webp", now.minusMinutes(1));
+        }
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("image", minimalJpegResource());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/ocr-only", HttpMethod.POST, authedMultipart(body, null), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    private long photoCountForUser(String userId) {
+        Long count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM machine_photos WHERE user_id = ?",
+            Long.class, UUID.fromString(userId));
+        return count == null ? 0 : count;
+    }
+
     private HttpEntity<ByteArrayResource> octetStreamPart(byte[] bytes, String filename) {
         ByteArrayResource resource = new ByteArrayResource(bytes) {
             @Override public String getFilename() { return filename; }

@@ -2,6 +2,7 @@ package com.ironspot.photo;
 
 import com.ironspot.auth.UserPrincipal;
 import com.ironspot.common.dto.ErrorResponse;
+import com.ironspot.photo.dto.OcrOnlyResponse;
 import com.ironspot.photo.dto.PhotoUploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -51,6 +52,32 @@ public class PhotoController {
         @RequestParam(value = "gymMachineId", required = false) UUID gymMachineId
     ) {
         return photoService.upload(principal.getUserId(), image, gymMachineId);
+    }
+
+    @PostMapping(value = "/ocr-only", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+        summary = "Analyse a label photo for OCR suggestions without storing it",
+        tags = {"photos"},
+        description = "Two-photo capture flow: the label image is used only "
+            + "for Vision OCR + brand-anchored matching, then discarded. "
+            + "The caller then captures the whole-machine photo and posts "
+            + "it through the regular /api/photos/upload endpoint."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "OCR suggestions returned"),
+        @ApiResponse(responseCode = "400", description = "Invalid file or content rejected by SafeSearch / PII",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthenticated",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "429", description = "Per-user Vision quota exceeded",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public OcrOnlyResponse analyzeForOcrOnly(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @RequestParam("image") MultipartFile image
+    ) {
+        return photoService.analyzeForOcrOnly(principal.getUserId(), image);
     }
 
     @DeleteMapping("/{id}")
