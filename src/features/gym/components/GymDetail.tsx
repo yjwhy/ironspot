@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
-import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
+import { UPLOAD_METHOD_CHOICE_PATHNAME } from '@/features/upload/constants';
 import { AccentChip } from '@/shared/components/AccentChip';
 import { AppText } from '@/shared/components/AppText';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -124,8 +124,11 @@ function AddPhotoFab({ gymId }: AddPhotoFabProps) {
   const requireAuth = useRequireAuth();
   function handlePress() {
     requireAuth(function navigateToUpload() {
+      // Phase 5 follow-up G: route through method-choice (OCR vs manual)
+      // before the camera. Existing-machine photo-add callers
+      // (MachinePhotoGalleryScreen) still go directly to UPLOAD_PHOTO_PATHNAME.
       router.push({
-        pathname: UPLOAD_PHOTO_PATHNAME,
+        pathname: UPLOAD_METHOD_CHOICE_PATHNAME,
         params: { gymId },
       });
     });

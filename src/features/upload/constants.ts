@@ -18,3 +18,13 @@ export const MAX_OCR_SUGGESTIONS = 3;
 // the matching test assertions import this so a future route rename only
 // touches one location and the typed-routes guarantee stays intact.
 export const UPLOAD_PHOTO_PATHNAME = '/(upload)/photo' as const;
+
+// Phase 5 follow-up G: new-machine registration starts at the method-choice
+// screen so the user picks between OCR (label photo) and manual input. Only
+// callers that DON'T already know the gym_machine_id route through this
+// (MapScreen + GymDetail "머신 추가"); existing-machine photo-add callers
+// (MachinePhotoGalleryScreen, UploadGymSelectScreen) stay on
+// UPLOAD_PHOTO_PATHNAME directly.
+export const UPLOAD_METHOD_CHOICE_PATHNAME = '/(upload)/method-choice' as const;
+export const UPLOAD_MANUAL_INPUT_PATHNAME = '/(upload)/manual-input' as const;
+export const UPLOAD_MACHINE_PHOTO_PATHNAME = '/(upload)/machine-photo' as const;

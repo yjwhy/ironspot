@@ -12,7 +12,7 @@ import { NlQuotaHint } from '@/features/search/components/NlQuotaHint';
 import { PermissionDeniedBadge } from '@/features/search/components/PermissionDeniedBadge';
 import { TopSearchBar } from '@/features/search/components/TopSearchBar';
 import { useNlSearch } from '@/features/search/hooks/useNlSearch';
-import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
+import { UPLOAD_METHOD_CHOICE_PATHNAME } from '@/features/upload/constants';
 import type { NlSearchResponse, ParsedFilters, UnregisteredPlace } from '@/shared/generated/model';
 import { GANGNAM_STATION, useCurrentLocation } from '@/shared/hooks/useCurrentLocation';
 import type { GymWithMachineCount } from '@/shared/types/database';
@@ -130,8 +130,11 @@ export function MapScreen() {
     // transaction as the first photo upload (POST /api/gym-machines with
     // `naverPlace`, atomic per slice a). No more race lock, no more undo
     // toast — abandoning the flow leaves zero DB residue.
+    // Phase 5 follow-up G: route through the method-choice screen so the
+    // user can pick OCR (label photo) vs manual input. The legacy direct
+    // photo entry only made sense when label OCR was the only path.
     router.push({
-      pathname: UPLOAD_PHOTO_PATHNAME,
+      pathname: UPLOAD_METHOD_CHOICE_PATHNAME,
       params: { naverPlace: JSON.stringify(place) },
     });
   }
