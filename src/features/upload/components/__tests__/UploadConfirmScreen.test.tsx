@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- jest's expect.objectContaining returns any; narrowing it would defeat the matcher API */
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import * as burnt from 'burnt';
 
@@ -50,6 +51,8 @@ jest.mock('@/features/map/hooks/useMachineTemplates', () => ({
 }));
 
 const mockBack = jest.fn();
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
 interface MockParams {
   gymId: string;
   gymMachineId?: string;
@@ -58,17 +61,17 @@ interface MockParams {
 const mockUseLocalSearchParams = jest.fn<MockParams, []>();
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockUseLocalSearchParams(),
-  useRouter: () => ({ back: mockBack }),
+  useRouter: () => ({ back: mockBack, push: mockPush, replace: mockReplace }),
 }));
 
 jest.mock('@/features/upload/components/OcrScanAnimation', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   return { OcrScanAnimation: () => <View testID="ocr-scan-animation" /> };
 });
 
 jest.mock('@/features/upload/components/UploadProgressBar', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   return {
     UploadProgressBar: ({ progress }: { progress: number }) => (
@@ -317,16 +320,18 @@ describe('UploadConfirmScreen', () => {
     });
   });
 
-  it('orphan upload (no gymMachineId) sends photoId so backend binds the photo', async () => {
+  it('orphan upload (no gymMachineId) navigates to whole-machine capture instead of registering inline', async () => {
+    // Phase 5 follow-up G: the new-machine path no longer registers from
+    // the confirm screen. After the user picks a template, we route to
+    // /(upload)/machine-photo where the whole-machine photo is captured
+    // and the upload + register pipeline runs in one shot.
     mockUseLocalSearchParams.mockReturnValue({
       gymId: 'gym-123',
       gymMachineId: undefined,
       compressedUri: 'file:///compressed.webp',
     });
     mockUsePhotoUpload.mockReturnValue(buildOcrSuccessState());
-    const mutateAsync = jest
-      .fn()
-      .mockResolvedValue({ gymMachineId: 'new-gm-3', pendingReview: false });
+    const mutateAsync = jest.fn();
     mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
 
     const { getByTestId } = render(<UploadConfirmScreen />);
@@ -335,22 +340,27 @@ describe('UploadConfirmScreen', () => {
     fireEvent.press(getByTestId('upload-register-btn'));
 
     await waitFor(() => {
-      expect(mutateAsync).toHaveBeenCalledWith({
-        data: { gymId: 'gym-123', templateId: 'sug-2', photoId: 'photo-1' },
-      });
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: '/(upload)/machine-photo',
+          params: expect.objectContaining({
+            gymId: 'gym-123',
+            selection: JSON.stringify({ kind: 'template', templateId: 'sug-2' }),
+          }),
+        }),
+      );
     });
+    expect(mutateAsync).not.toHaveBeenCalled();
   });
 
-  it('orphan upload + OcrFail escape-hatch free-text sends freeFormName + photoId', async () => {
+  it('orphan upload + OcrFail escape-hatch free-text navigates to whole-machine capture with freeForm selection', async () => {
     mockUseLocalSearchParams.mockReturnValue({
       gymId: 'gym-123',
       gymMachineId: undefined,
       compressedUri: 'file:///compressed.webp',
     });
     mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
-    const mutateAsync = jest
-      .fn()
-      .mockResolvedValue({ gymMachineId: 'new-gm-4', pendingReview: true });
+    const mutateAsync = jest.fn();
     mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
 
     const { getByTestId } = render(<UploadConfirmScreen />);
@@ -360,14 +370,17 @@ describe('UploadConfirmScreen', () => {
     fireEvent.press(getByTestId('upload-register-btn'));
 
     await waitFor(() => {
-      expect(mutateAsync).toHaveBeenCalledWith({
-        data: {
-          gymId: 'gym-123',
-          freeFormName: 'Hammer Strength MTS Row',
-          photoId: 'photo-1',
-        },
-      });
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: '/(upload)/machine-photo',
+          params: expect.objectContaining({
+            gymId: 'gym-123',
+            selection: JSON.stringify({ kind: 'freeForm', text: 'Hammer Strength MTS Row' }),
+          }),
+        }),
+      );
     });
+    expect(mutateAsync).not.toHaveBeenCalled();
   });
 
   it('missing gymId surfaces an error toast and does not call the mutation', async () => {
@@ -432,16 +445,14 @@ describe('UploadConfirmScreen', () => {
     });
   });
 
-  it('orphan upload + OcrFail closed-list template pick sends templateId + photoId', async () => {
+  it('orphan upload + OcrFail closed-list template pick navigates to whole-machine capture', async () => {
     mockUseLocalSearchParams.mockReturnValue({
       gymId: 'gym-123',
       gymMachineId: undefined,
       compressedUri: 'file:///compressed.webp',
     });
     mockUsePhotoUpload.mockReturnValue(buildOcrFailState());
-    const mutateAsync = jest
-      .fn()
-      .mockResolvedValue({ gymMachineId: 'new-gm-6', pendingReview: false });
+    const mutateAsync = jest.fn();
     mockUseCreateGymMachine.mockReturnValue(buildCreateMutation({ mutateAsync }));
 
     const { getByTestId } = render(<UploadConfirmScreen />);
@@ -452,14 +463,17 @@ describe('UploadConfirmScreen', () => {
     fireEvent.press(getByTestId('upload-register-btn'));
 
     await waitFor(() => {
-      expect(mutateAsync).toHaveBeenCalledWith({
-        data: {
-          gymId: 'gym-123',
-          templateId: 'tpl-hammer-chest',
-          photoId: 'photo-1',
-        },
-      });
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: '/(upload)/machine-photo',
+          params: expect.objectContaining({
+            gymId: 'gym-123',
+            selection: JSON.stringify({ kind: 'template', templateId: 'tpl-hammer-chest' }),
+          }),
+        }),
+      );
     });
+    expect(mutateAsync).not.toHaveBeenCalled();
   });
 
   it('OcrSuccess: tapping an OCR radio after browsing the picker discards in-progress freeform text', async () => {

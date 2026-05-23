@@ -1,7 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
-import { UPLOAD_PHOTO_PATHNAME } from '@/features/upload/constants';
+import { UPLOAD_METHOD_CHOICE_PATHNAME } from '@/features/upload/constants';
 import type { Gym, GymMachineWithDetails } from '@/shared/types/database';
 import { makeGymMachineWithDetails } from '@/test/utils/factories/gym-machine';
 
@@ -193,7 +193,7 @@ describe('GymDetail', () => {
     const { getByLabelText } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
     fireEvent.press(getByLabelText('사진 추가'));
     expect(router.push).toHaveBeenCalledWith({
-      pathname: UPLOAD_PHOTO_PATHNAME,
+      pathname: UPLOAD_METHOD_CHOICE_PATHNAME,
       params: { gymId: 'g-1' },
     });
   });

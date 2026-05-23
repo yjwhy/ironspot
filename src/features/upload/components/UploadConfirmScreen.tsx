@@ -15,7 +15,7 @@ import { MachinePicker, type MachinePickerSelection } from './MachinePicker';
 import { OcrScanAnimation } from './OcrScanAnimation';
 import { selectedRowClass } from './selectedRowClass';
 import { UploadProgressBar } from './UploadProgressBar';
-import { MAX_OCR_SUGGESTIONS } from '../constants';
+import { MAX_OCR_SUGGESTIONS, UPLOAD_MACHINE_PHOTO_PATHNAME } from '../constants';
 import { type SuggestionPreview, usePhotoUpload } from '../hooks/usePhotoUpload';
 import type { UploadErrorState } from '../types';
 
@@ -376,17 +376,35 @@ export function UploadConfirmScreen() {
     const fields = selectionFields(selection);
     if (fields === null) return;
 
-    // Only send photoId on the orphan path. If the photo was already bound to
-    // an existing gymMachineId during upload the backend's NULL-guard would
-    // reject the rebind with 400. The naverPlace path is always orphan
-    // (gym_machine doesn't exist yet) so the photo binding always fires.
-    const photoIdForOrphanBind = gymMachineId === undefined ? result?.photoId : undefined;
+    // Phase 5 follow-up G: new-machine path (no gymMachineId). The label
+    // photo wasn't stored (ocr-only call) — hand the selection off to the
+    // whole-machine capture step, which runs the real upload + register
+    // pipeline. Keeps this screen out of the long-running mutation
+    // sequence so user can cancel cleanly via back.
+    if (gymMachineId === undefined) {
+      const submittable: MachinePickerSelection =
+        selection.kind === 'template' || selection.kind === 'freeForm'
+          ? selection
+          : { kind: 'none' };
+      if (submittable.kind === 'none') return;
+      router.push({
+        pathname: UPLOAD_MACHINE_PHOTO_PATHNAME,
+        params: {
+          gymId,
+          naverPlace,
+          selection: JSON.stringify(submittable),
+        },
+      });
+      return;
+    }
 
+    // Existing-machine path (gymMachineId set): photo is already bound to
+    // the gym_machine row during upload. Just create the contribution row
+    // — no photoId rebind, backend's NULL-guard would reject that.
     const requestBody: CreateGymMachineRequest = {
       ...(gymId !== undefined ? { gymId } : {}),
       ...(parsedNaverPlace !== null ? { naverPlace: parsedNaverPlace } : {}),
       ...fields,
-      ...(photoIdForOrphanBind !== undefined ? { photoId: photoIdForOrphanBind } : {}),
     };
 
     isSubmittingRef.current = true;
@@ -397,13 +415,6 @@ export function UploadConfirmScreen() {
           ? { title: '등록 요청을 보냈어요', message: '검토 후 반영될 거예요', preset: 'done' }
           : { title: '등록됐어요', preset: 'done' },
       );
-      // Phase 5 item 23 slice d: the naverPlace path just registered a
-      // brand-new gym row. Pop the camera/confirm stack and return to the
-      // map root — the next NL/filter search picks up the new gym; the
-      // success toast already confirms the registration. (We don't push
-      // /gym/{id} directly because there's no dedicated gym-detail route;
-      // detail mounts inside the BottomSheet on the map screen, so the
-      // tabs root is the correct landing point.)
       if (parsedNaverPlace !== null) {
         router.replace('/');
       } else {
