@@ -388,7 +388,7 @@ export function UploadConfirmScreen() {
           : { kind: 'none' };
       if (submittable.kind === 'none') return;
       router.push({
-        pathname: UPLOAD_MACHINE_PHOTO_PATHNAME as never,
+        pathname: UPLOAD_MACHINE_PHOTO_PATHNAME,
         params: {
           gymId,
           naverPlace,

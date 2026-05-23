@@ -30,12 +30,8 @@ export function UploadManualInputScreen() {
 
   function handleNext() {
     if (!canProceed) return;
-    // typedRoutes regenerates on the next expo build, but on a cold tsc
-    // run the new route literal isn't yet in the route-union — fall back
-    // to `as never` so the constant still gets used through a single
-    // narrowing point.
     router.push({
-      pathname: UPLOAD_MACHINE_PHOTO_PATHNAME as never,
+      pathname: UPLOAD_MACHINE_PHOTO_PATHNAME,
       params: {
         gymId,
         naverPlace,
