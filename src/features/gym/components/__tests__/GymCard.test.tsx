@@ -20,6 +20,7 @@ const baseGym: GymWithMachineCount = {
   updated_at: '2026-01-01T00:00:00Z',
   machine_count: 12,
   matched_machine_names: [],
+  cover_photo_url: null,
 };
 
 function renderCard(overrides: Partial<React.ComponentProps<typeof GymCard>> = {}) {
@@ -75,6 +76,7 @@ describe('GymCard', () => {
       gym: {
         ...baseGym,
         matched_machine_names: ['Panatta High Row', 'Hammer Strength Chest Press'],
+        cover_photo_url: null,
       },
     });
     expect(queryByTestId('gym-card-matched-machines')).toBeNull();

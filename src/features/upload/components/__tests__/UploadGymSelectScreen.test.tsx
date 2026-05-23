@@ -55,6 +55,7 @@ const SAMPLE_GYMS: GymWithMachineCount[] = [
     updated_at: '2026-01-01T00:00:00Z',
     machine_count: 5,
     matched_machine_names: [],
+    cover_photo_url: null,
   },
   {
     id: 'gym-2',
@@ -71,6 +72,7 @@ const SAMPLE_GYMS: GymWithMachineCount[] = [
     updated_at: '2026-01-01T00:00:00Z',
     machine_count: 3,
     matched_machine_names: [],
+    cover_photo_url: null,
   },
 ];
 
