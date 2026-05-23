@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS gyms (
   -- FK to users(id) added via ALTER TABLE after the users table exists below
   -- (init-test-db.sql creates gyms before users — forward FK ref disallowed).
   created_by_user_id UUID,
+  -- Phase 5 item 17 / V15: owner-only cover photo. Nullable — most gyms
+  -- will not have one for a long time; GymCard placeholder handles null.
+  cover_photo_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
