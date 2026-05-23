@@ -21,7 +21,14 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { PhotoResponse, PhotoUploadResponse, UploadBody, UploadParams } from '../model';
+import type {
+  AnalyzeForOcrOnlyBody,
+  OcrOnlyResponse,
+  PhotoResponse,
+  PhotoUploadResponse,
+  UploadBody,
+  UploadParams,
+} from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
@@ -131,6 +138,104 @@ export const useUpload = <TError = unknown, TContext = unknown>(
   TContext
 > => {
   return useMutation(getUploadMutationOptions(options), queryClient);
+};
+export type analyzeForOcrOnlyResponse200 = {
+  data: OcrOnlyResponse;
+  status: 200;
+};
+
+export type analyzeForOcrOnlyResponseSuccess = analyzeForOcrOnlyResponse200 & {
+  headers: Headers;
+};
+export type analyzeForOcrOnlyResponse = analyzeForOcrOnlyResponseSuccess;
+
+export const getAnalyzeForOcrOnlyUrl = () => {
+  return `/api/photos/ocr-only`;
+};
+
+/**
+ * Two-photo capture flow: the label image is used only for Vision OCR + brand-anchored matching, then discarded. The caller then captures the whole-machine photo and posts it through the regular /api/photos/upload endpoint.
+ * @summary Analyse a label photo for OCR suggestions without storing it
+ */
+export const analyzeForOcrOnly = async (
+  analyzeForOcrOnlyBody?: AnalyzeForOcrOnlyBody,
+  options?: RequestInit,
+): Promise<analyzeForOcrOnlyResponse> => {
+  const formData = new FormData();
+  if (analyzeForOcrOnlyBody?.image !== undefined) {
+    formData.append(`image`, analyzeForOcrOnlyBody.image);
+  }
+
+  return apiClient<analyzeForOcrOnlyResponse>(getAnalyzeForOcrOnlyUrl(), {
+    ...options,
+    method: 'POST',
+    body: formData,
+  });
+};
+
+export const getAnalyzeForOcrOnlyMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeForOcrOnly>>,
+    TError,
+    { data?: AnalyzeForOcrOnlyBody },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyzeForOcrOnly>>,
+  TError,
+  { data?: AnalyzeForOcrOnlyBody },
+  TContext
+> => {
+  const mutationKey = ['analyzeForOcrOnly'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyzeForOcrOnly>>,
+    { data?: AnalyzeForOcrOnlyBody }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return analyzeForOcrOnly(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalyzeForOcrOnlyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyzeForOcrOnly>>
+>;
+export type AnalyzeForOcrOnlyMutationBody = AnalyzeForOcrOnlyBody | undefined;
+export type AnalyzeForOcrOnlyMutationError = unknown;
+
+/**
+ * @summary Analyse a label photo for OCR suggestions without storing it
+ */
+export const useAnalyzeForOcrOnly = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof analyzeForOcrOnly>>,
+      TError,
+      { data?: AnalyzeForOcrOnlyBody },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof analyzeForOcrOnly>>,
+  TError,
+  { data?: AnalyzeForOcrOnlyBody },
+  TContext
+> => {
+  return useMutation(getAnalyzeForOcrOnlyMutationOptions(options), queryClient);
 };
 export type listPhotosResponse200 = {
   data: PhotoResponse[];

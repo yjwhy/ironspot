@@ -3,6 +3,7 @@ package com.ironspot.photo;
 import com.ironspot.common.exception.BusinessException;
 import com.ironspot.common.notification.AdminNotificationService;
 import com.ironspot.photo.dto.MachineTemplateSuggestion;
+import com.ironspot.photo.dto.OcrOnlyResponse;
 import com.ironspot.photo.dto.PhotoResponse;
 import com.ironspot.photo.dto.PhotoUploadResponse;
 import com.ironspot.photo.dto.VisionAnalysisResult;
@@ -149,6 +150,64 @@ public class PhotoService {
 
         boolean ocrSucceeded = !vision.texts().isEmpty();
         return new PhotoUploadResponse(photoId, photoUrl, suggestions, ocrSucceeded);
+    }
+
+    /**
+     * Phase 5 follow-up G (two-photo capture flow): analyse the label photo
+     * for OCR + brand recognition WITHOUT writing to Storage or DB. The
+     * caller (FE) discards the label photo locally after reading
+     * suggestions, then captures the whole-machine photo and feeds it
+     * through the standard {@link #upload} path.
+     *
+     * <p>Shares the heavy gates with {@link #upload}: per-user Vision quota
+     * (a Vision-spending request, even one whose bytes we throw away),
+     * SHA-256 dedupe cache (a retry of the same label still costs zero
+     * Vision units), SafeSearch REJECT and face-PII checks. The only
+     * difference is the absence of {@link StorageService} and
+     * {@link PhotoRepository} side-effects.
+     */
+    public OcrOnlyResponse analyzeForOcrOnly(String userId, MultipartFile file) {
+        final byte[] imageBytes;
+        try {
+            imageBytes = file.getBytes();
+        } catch (IOException e) {
+            throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
+        }
+        validateImage(file, imageBytes);
+
+        enforceVisionQuota(userId);
+
+        String imageSha256 = VisionCacheRepository.sha256(imageBytes);
+        VisionAnalysisResult vision = visionCacheRepository.findBySha256(imageSha256)
+            .map(cached -> {
+                visionCacheRepository.bumpHitCount(imageSha256);
+                log.info("Vision cache hit for ocr-only request (sha256={})", imageSha256);
+                return cached;
+            })
+            .orElseGet(() -> {
+                try {
+                    VisionAnalysisResult fresh = ocrService.analyzeImage(imageBytes);
+                    visionCacheRepository.insert(imageSha256, fresh);
+                    return fresh;
+                } catch (Exception e) {
+                    log.warn("Vision API failed on ocr-only path — failing open (not cached)", e);
+                    return VisionAnalysisResult.EMPTY;
+                }
+            });
+
+        if (vision.verdict() == SafeSearchVerdict.REJECT) {
+            throw new BusinessException("부적절한 콘텐츠로 감지되었습니다", HttpStatus.BAD_REQUEST);
+        }
+
+        if (vision.hasPii()) {
+            throw new BusinessException(
+                "얼굴이 인식된 사진은 업로드할 수 없습니다. 얼굴이 가려지도록 다시 촬영해주세요.",
+                HttpStatus.BAD_REQUEST);
+        }
+
+        List<MachineTemplateSuggestion> suggestions = fuzzyMatchService.findMatches(vision.texts());
+        boolean ocrSucceeded = !vision.texts().isEmpty();
+        return new OcrOnlyResponse(suggestions, ocrSucceeded);
     }
 
     /**
