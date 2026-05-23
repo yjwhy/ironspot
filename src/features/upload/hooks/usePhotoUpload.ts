@@ -1,7 +1,11 @@
 import { useState } from 'react';
 
-import type { MachineTemplateSuggestion, PhotoUploadResponse } from '@/shared/generated/model';
-import { useUpload } from '@/shared/generated/photos/photos';
+import type {
+  MachineTemplateSuggestion,
+  OcrOnlyResponse,
+  PhotoUploadResponse,
+} from '@/shared/generated/model';
+import { useAnalyzeForOcrOnly, useUpload } from '@/shared/generated/photos/photos';
 import { HTTPError } from '@/shared/lib/api-client';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 
@@ -15,12 +19,26 @@ export type SuggestionPreview = Pick<
 
 const UPLOAD_STARTED_PROGRESS = 0.5;
 
-interface UploadResult {
-  photoId: string;
-  photoUrl: string;
-  ocrSucceeded: boolean;
-  suggestions: SuggestionPreview[];
-}
+// Phase 5 follow-up G: photoId / photoUrl are only populated on the
+// existing-machine path (POST /api/photos/upload). The new-machine path
+// goes through /api/photos/ocr-only and leaves them undefined — the
+// whole-machine capture step later in the flow produces the real photo
+// row. Splitting the union keeps consumers explicit about which path
+// produced the result so they don't accidentally bind to a label-photo
+// id that doesn't exist on the BE.
+export type UploadResult =
+  | {
+      kind: 'bound';
+      photoId: string;
+      photoUrl: string;
+      ocrSucceeded: boolean;
+      suggestions: SuggestionPreview[];
+    }
+  | {
+      kind: 'ocrOnly';
+      ocrSucceeded: boolean;
+      suggestions: SuggestionPreview[];
+    };
 
 interface UsePhotoUploadReturn {
   upload: () => Promise<void>;
@@ -61,8 +79,9 @@ function stripScore(suggestion: MachineTemplateSuggestion): SuggestionPreview {
   };
 }
 
-function toUploadResult(data: PhotoUploadResponse): UploadResult {
+function toBoundResult(data: PhotoUploadResponse): UploadResult {
   return {
+    kind: 'bound',
     photoId: data.photoId,
     photoUrl: data.photoUrl,
     ocrSucceeded: data.ocrSucceeded,
@@ -70,16 +89,29 @@ function toUploadResult(data: PhotoUploadResponse): UploadResult {
   };
 }
 
-// Phase 5 item 11 slice 2: gymMachineId is optional. When omitted the photo
-// lands as an orphan (machine_photos.gym_machine_id = NULL) and the OCR
-// confirm screen's POST /api/gym-machines binds it to the new contribution
-// row. Existing flows (machine photo gallery, owner workflow) keep passing
-// gymMachineId and bypass the contribution path.
+function toOcrOnlyResult(data: OcrOnlyResponse): UploadResult {
+  return {
+    kind: 'ocrOnly',
+    ocrSucceeded: data.ocrSucceeded,
+    suggestions: data.suggestions.map(stripScore),
+  };
+}
+
+// Phase 5 follow-up G: split mutation by entry point.
+//
+// - `gymMachineId` set → existing-machine photo-add (gallery, owner). Use
+//   the legacy `POST /api/photos/upload` so the photo lands in
+//   machine_photos and binds to the known gym_machine row.
+// - `gymMachineId` undefined → new-machine registration. Use
+//   `POST /api/photos/ocr-only` to read suggestions without writing
+//   Storage/DB; the whole-machine capture step later in the flow does
+//   the real upload + machine creation.
 export function usePhotoUpload(
   gymMachineId: string | undefined,
   compressedUri: string,
 ): UsePhotoUploadReturn {
-  const { mutateAsync } = useUpload();
+  const { mutateAsync: uploadMutate } = useUpload();
+  const { mutateAsync: ocrOnlyMutate } = useAnalyzeForOcrOnly();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<UploadErrorState | null>(null);
@@ -92,15 +124,20 @@ export function usePhotoUpload(
     setResult(null);
 
     try {
-      const uploadResponse = await mutateAsync({
-        // Orval's UploadParams treats gymMachineId as optional; the generated
-        // URL builder skips undefined entries so the orphan path emits
-        // `/api/photos/upload` with no query string.
-        params: gymMachineId !== undefined ? { gymMachineId } : {},
-        data: { image: toRnMultipartFile(compressedUri) as unknown as Blob },
-      });
+      const imageData = {
+        image: toRnMultipartFile(compressedUri) as unknown as Blob,
+      };
 
-      setResult(toUploadResult(unwrapOrvalResponse(uploadResponse)));
+      if (gymMachineId !== undefined) {
+        const uploadResponse = await uploadMutate({
+          params: { gymMachineId },
+          data: imageData,
+        });
+        setResult(toBoundResult(unwrapOrvalResponse(uploadResponse)));
+      } else {
+        const ocrResponse = await ocrOnlyMutate({ data: imageData });
+        setResult(toOcrOnlyResult(unwrapOrvalResponse(ocrResponse)));
+      }
       setUploadProgress(1);
     } catch (error) {
       setUploadError(classifyUploadError(error));

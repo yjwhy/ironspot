@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 
-import type { PhotoUploadResponse } from '@/shared/generated/model';
-import { useUpload } from '@/shared/generated/photos/photos';
+import type { OcrOnlyResponse, PhotoUploadResponse } from '@/shared/generated/model';
+import { useAnalyzeForOcrOnly, useUpload } from '@/shared/generated/photos/photos';
 import { HTTPError } from '@/shared/lib/api-client';
 import { createQueryWrapper } from '@/test/utils/query-wrapper';
 
@@ -10,11 +10,21 @@ import { usePhotoUpload } from '../usePhotoUpload';
 
 jest.mock('@/shared/generated/photos/photos', () => ({
   useUpload: jest.fn(),
+  useAnalyzeForOcrOnly: jest.fn(),
 }));
 
 const mockMutateAsync = jest.fn();
+const mockOcrOnlyMutateAsync = jest.fn();
 const makeMockUpload = (overrides?: Partial<ReturnType<typeof useUpload>>) => ({
   mutateAsync: mockMutateAsync,
+  isPending: false,
+  isError: false,
+  isSuccess: false,
+  reset: jest.fn(),
+  ...overrides,
+});
+const makeMockOcrOnly = (overrides?: Partial<ReturnType<typeof useAnalyzeForOcrOnly>>) => ({
+  mutateAsync: mockOcrOnlyMutateAsync,
   isPending: false,
   isError: false,
   isSuccess: false,
@@ -55,6 +65,7 @@ describe('usePhotoUpload', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
+    (useAnalyzeForOcrOnly as jest.Mock).mockReturnValue(makeMockOcrOnly());
   });
 
   it('returns correct initial state', () => {
@@ -159,8 +170,12 @@ describe('usePhotoUpload', () => {
       expect(result.current.result).not.toBeNull();
     });
 
-    expect(result.current.result?.photoId).toBe('photo-123');
-    expect(result.current.result?.photoUrl).toBe('https://cdn.example.com/photo-123.jpg');
+    const finalResult = result.current.result;
+    expect(finalResult?.kind).toBe('bound');
+    if (finalResult?.kind === 'bound') {
+      expect(finalResult.photoId).toBe('photo-123');
+      expect(finalResult.photoUrl).toBe('https://cdn.example.com/photo-123.jpg');
+    }
     expect(result.current.result?.ocrSucceeded).toBe(true);
   });
 
@@ -249,8 +264,9 @@ describe('usePhotoUpload', () => {
       message: 'Quota exceeded',
     });
 
-    mockMutateAsync.mockRejectedValue(httpError);
-    (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
+    // Phase 5 follow-up G: gymMachineId === undefined now routes through
+    // /api/photos/ocr-only, so the 429 surfaces from the ocrOnly mutation.
+    mockOcrOnlyMutateAsync.mockRejectedValue(httpError);
 
     const { Wrapper } = createQueryWrapper();
     const { result } = renderHook(() => usePhotoUpload(undefined, COMPRESSED_URI), {
@@ -297,13 +313,18 @@ describe('usePhotoUpload', () => {
     expect(calls[0]?.[0].data.image.name).toBe(PHOTO_FILENAME);
   });
 
-  it('omits gymMachineId from params when undefined (orphan upload)', async () => {
-    // Phase 5 item 11 slice 2: OCR confirm screen uploads without a
-    // gym_machine_id; the contribution endpoint binds the photo afterwards.
-    // The mutation params object must not carry gymMachineId so Orval's URL
-    // builder skips it and the request lands as `/api/photos/upload`.
-    mockMutateAsync.mockResolvedValue(mockUploadResponse);
-    (useUpload as jest.Mock).mockReturnValue(makeMockUpload());
+  it('routes new-machine uploads (no gymMachineId) through ocr-only and skips storage', async () => {
+    // Phase 5 follow-up G: new-machine registration now uses
+    // /api/photos/ocr-only so the label photo doesn't reach Storage / DB.
+    // The bound /upload mutation must NOT fire on this path; the result
+    // surfaces as { kind: 'ocrOnly', ... } so downstream consumers route
+    // to the whole-machine capture step rather than trying to bind a
+    // non-existent photoId.
+    const ocrOnlyResponse: OcrOnlyResponse = {
+      suggestions: [],
+      ocrSucceeded: false,
+    };
+    mockOcrOnlyMutateAsync.mockResolvedValue(ocrOnlyResponse);
 
     const { Wrapper } = createQueryWrapper();
     const { result } = renderHook(() => usePhotoUpload(undefined, COMPRESSED_URI), {
@@ -314,13 +335,9 @@ describe('usePhotoUpload', () => {
       await result.current.upload();
     });
 
-    expect(mockMutateAsync).toHaveBeenCalledTimes(1);
-    interface UploadCallArg {
-      params: { gymMachineId?: string };
-    }
-    const calls = mockMutateAsync.mock.calls as [UploadCallArg][];
-    expect(calls[0]?.[0].params.gymMachineId).toBeUndefined();
-    expect(Object.keys(calls[0]?.[0].params ?? {})).not.toContain('gymMachineId');
+    expect(mockOcrOnlyMutateAsync).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+    expect(result.current.result?.kind).toBe('ocrOnly');
   });
 
   it('upload() clears uploadError before re-attempting', async () => {
