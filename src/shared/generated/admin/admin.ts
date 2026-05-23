@@ -35,12 +35,102 @@ import type {
   ListReportsParams,
   ModerationAnalyticsResponse,
   NlSearchAnalyticsResponse,
+  TransliterateBrandRequest,
+  TransliterateBrandResponse,
 } from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+export type transliterateResponse200 = {
+  data: TransliterateBrandResponse;
+  status: 200;
+};
+
+export type transliterateResponseSuccess = transliterateResponse200 & {
+  headers: Headers;
+};
+export type transliterateResponse = transliterateResponseSuccess;
+
+export const getTransliterateUrl = () => {
+  return `/api/admin/transliterate-brand`;
+};
+
+/**
+ * @summary Suggest the missing language side of a brand name via LLM
+ */
+export const transliterate = async (
+  transliterateBrandRequest: TransliterateBrandRequest,
+  options?: RequestInit,
+): Promise<transliterateResponse> => {
+  return apiClient<transliterateResponse>(getTransliterateUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transliterateBrandRequest),
+  });
+};
+
+export const getTransliterateMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof transliterate>>,
+    TError,
+    { data: TransliterateBrandRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof transliterate>>,
+  TError,
+  { data: TransliterateBrandRequest },
+  TContext
+> => {
+  const mutationKey = ['transliterate'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof transliterate>>,
+    { data: TransliterateBrandRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return transliterate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TransliterateMutationResult = NonNullable<Awaited<ReturnType<typeof transliterate>>>;
+export type TransliterateMutationBody = TransliterateBrandRequest;
+export type TransliterateMutationError = unknown;
+
+/**
+ * @summary Suggest the missing language side of a brand name via LLM
+ */
+export const useTransliterate = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof transliterate>>,
+      TError,
+      { data: TransliterateBrandRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof transliterate>>,
+  TError,
+  { data: TransliterateBrandRequest },
+  TContext
+> => {
+  return useMutation(getTransliterateMutationOptions(options), queryClient);
+};
 export type unbanUserResponse200 = {
   data: void;
   status: 200;
