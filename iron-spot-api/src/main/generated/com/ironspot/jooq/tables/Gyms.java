@@ -125,6 +125,11 @@ public class Gyms extends TableImpl<Record> {
     public final TableField<Record, UUID> CREATED_BY_USER_ID = createField(DSL.name("created_by_user_id"), SQLDataType.UUID, this, "");
 
     /**
+     * The column <code>public.gyms.cover_photo_url</code>.
+     */
+    public final TableField<Record, String> COVER_PHOTO_URL = createField(DSL.name("cover_photo_url"), SQLDataType.CLOB, this, "");
+
+    /**
      * The column <code>public.gyms.created_at</code>.
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");

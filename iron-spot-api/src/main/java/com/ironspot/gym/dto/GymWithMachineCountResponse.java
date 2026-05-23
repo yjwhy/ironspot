@@ -26,5 +26,11 @@ public record GymWithMachineCountResponse(
      * When no filters set, returns the gym's first 5 machines by name.
      * ADR 0022 / Task 45 Slice 45d.
      */
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<String> matchedMachineNames
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<String> matchedMachineNames,
+    /**
+     * Phase 5 item 17: owner-uploaded gym cover photo URL. Nullable for the
+     * common case (no owner has set one yet); GymCard's existing
+     * thumbnailUrl placeholder renders when this is null.
+     */
+    String coverPhotoUrl
 ) {}

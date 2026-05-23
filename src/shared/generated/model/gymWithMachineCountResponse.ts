@@ -21,4 +21,5 @@ export interface GymWithMachineCountResponse {
   updatedAt: string;
   machineCount: number;
   matchedMachineNames: string[];
+  coverPhotoUrl?: string;
 }

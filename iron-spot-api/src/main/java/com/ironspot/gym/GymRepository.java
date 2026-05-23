@@ -100,6 +100,7 @@ public class GymRepository {
                 g.ID, g.NAME, g.ADDRESS, lat, lng,
                 g.PHONE, g.OPERATING_HOURS, g.DAY_PASS_PRICE,
                 g.IS_VERIFIED, g.LAST_VERIFIED_AT, g.CREATED_AT, g.UPDATED_AT,
+                g.COVER_PHOTO_URL,
                 machineCount, matchedNamesField)
             .from(g)
             // Task 47 / ADR 0023 Q4 E3: skip soft-deleted gym_machines in search.
@@ -112,7 +113,7 @@ public class GymRepository {
             .and(templateWhereCond)
             .groupBy(g.ID, g.NAME, g.ADDRESS, g.PHONE, g.OPERATING_HOURS,
                 g.DAY_PASS_PRICE, g.IS_VERIFIED, g.LAST_VERIFIED_AT,
-                g.CREATED_AT, g.UPDATED_AT)
+                g.CREATED_AT, g.UPDATED_AT, g.COVER_PHOTO_URL)
             .having(templateHavingCond)
             .orderBy(machineCount.desc())
             .fetch(r -> {
@@ -139,7 +140,8 @@ public class GymRepository {
                     r.get(g.CREATED_AT).toInstant(),
                     r.get(g.UPDATED_AT).toInstant(),
                     Objects.requireNonNullElse(r.get(machineCount), 0).longValue(),
-                    matched
+                    matched,
+                    r.get(g.COVER_PHOTO_URL)
                 );
             });
     }
