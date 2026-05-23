@@ -11,6 +11,7 @@ import { AppText } from '@/shared/components/AppText';
 import { pressedOpacity } from '@/shared/lib/pressable';
 
 import { UPLOAD_IMAGE_FORMAT } from '../constants';
+import { PhotoGuidanceBanner, PhotoGuidanceHintStrip } from './PhotoCaptureGuidance';
 
 const COMPRESS_MAX_WIDTH = 1200;
 const COMPRESS_QUALITY = 0.8;
@@ -169,12 +170,19 @@ function CameraScreenContent({
   onCapture,
   onPickFromGallery,
 }: CameraScreenContentProps) {
+  // Guidance composition: the always-visible hint strip sits between the
+  // preview and the capture buttons so it's read just before the user
+  // commits to the shot. The first-time banner overlays the preview so
+  // returning users (banner already dismissed in MMKV) get only the strip.
   return (
     <View className="flex-1 bg-black">
       <View className="flex-1">
         <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
         {isCompressing ? <CompressingOverlay /> : null}
+        <PhotoGuidanceBanner />
       </View>
+
+      <PhotoGuidanceHintStrip />
 
       <CameraActions
         isCompressing={isCompressing}
