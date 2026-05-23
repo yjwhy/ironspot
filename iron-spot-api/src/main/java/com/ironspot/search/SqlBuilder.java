@@ -56,6 +56,7 @@ public class SqlBuilder {
                 g.ID, g.NAME, g.ADDRESS, latField, lngField,
                 g.PHONE, g.OPERATING_HOURS, g.DAY_PASS_PRICE,
                 g.IS_VERIFIED, g.LAST_VERIFIED_AT, g.CREATED_AT, g.UPDATED_AT,
+                g.COVER_PHOTO_URL,
                 machineCount, distance.as("distance"))
             .from(g)
             // Task 47 / ADR 0023 Q4 E3: skip soft-deleted gym_machines in search.
@@ -64,7 +65,7 @@ public class SqlBuilder {
             .and(filterCondition)
             .groupBy(g.ID, g.NAME, g.ADDRESS, g.PHONE, g.OPERATING_HOURS,
                 g.DAY_PASS_PRICE, g.IS_VERIFIED, g.LAST_VERIFIED_AT,
-                g.CREATED_AT, g.UPDATED_AT, g.LOCATION)
+                g.CREATED_AT, g.UPDATED_AT, g.LOCATION, g.COVER_PHOTO_URL)
             .orderBy(distance.asc())
             .limit(MAX_RESULTS)
             .fetch(r -> {
@@ -87,7 +88,8 @@ public class SqlBuilder {
                     // matched machine names 집계가 더 복잡 (compound machineFilters).
                     // 일단 빈 리스트 반환. 후속 Task 에서 NL Search 응답에도
                     // 매칭 머신 이름 노출 검토.
-                    List.of()
+                    List.of(),
+                    r.get(g.COVER_PHOTO_URL)
                 );
             });
     }
