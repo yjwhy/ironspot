@@ -60,6 +60,29 @@ public class OcrService {
 
     private static final String VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 
+    // Google-standard response field mask. Keeps the wire payload to only the
+    // fields PhotoService / PiiDetection actually read. Without this the
+    // landmarks array per face (35 fixed entries each with type + 3D
+    // position) blows the response past Spring WebClient's default 256 KiB
+    // buffer on photos with even one face — exactly the failure mode photo
+    // b1141662 hit on 2026-05-22. Listing fields explicitly is more robust
+    // than relying on `maxInMemorySize` alone because it also bounds CPU
+    // for JSON parsing and the wire bandwidth.
+    private static final String VISION_RESPONSE_FIELDS =
+        "responses("
+            + "textAnnotations(description),"
+            + "safeSearchAnnotation(adult,violence,racy),"
+            + "faceAnnotations(detectionConfidence,boundingPoly,fdBoundingPoly)"
+            + ")";
+
+    // FACE_DETECTION exists solely to drive PiiDetection.hasPii. A single
+    // recognisable face is enough to flag PII at the policy thresholds
+    // (>= 1% of image area + confidence >= 0.7), so capping at 1 face per
+    // image bounds response size without weakening the privacy check —
+    // additional faces would have to be larger and more confident than
+    // the first to flip the verdict, which is symptomatically the same.
+    private static final int FACE_DETECTION_MAX_RESULTS = 1;
+
     @SuppressWarnings("unchecked")
     public VisionAnalysisResult analyzeImage(byte[] imageBytes) {
         String base64 = Base64.getEncoder().encodeToString(imageBytes);
@@ -70,13 +93,13 @@ public class OcrService {
                 "features", List.of(
                     Map.of("type", "TEXT_DETECTION", "maxResults", 10),
                     Map.of("type", "SAFE_SEARCH_DETECTION"),
-                    Map.of("type", "FACE_DETECTION", "maxResults", 20)
+                    Map.of("type", "FACE_DETECTION", "maxResults", FACE_DETECTION_MAX_RESULTS)
                 )
             ))
         );
 
         Map<?, ?> response = webClient.post()
-            .uri(VISION_URL + "?key=" + apiKey)
+            .uri(VISION_URL + "?key=" + apiKey + "&fields=" + VISION_RESPONSE_FIELDS)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()

@@ -3,6 +3,7 @@ package com.ironspot.photo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,6 +19,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -111,6 +113,53 @@ class OcrServiceTest {
         com.ironspot.photo.dto.VisionAnalysisResult result =
             ocrService.analyzeImage("img".getBytes());
         assertThat(result.hasPii()).isFalse();
+    }
+
+    @Test
+    void requestUrlIncludesFieldsMaskToBoundResponseSize() {
+        // Locked decision (grill 2026-05-23): Vision's default response shape
+        // includes 35 landmark points per face — large enough to blow past
+        // WebClient's 256 KiB buffer. A Google-standard ?fields= mask keeps
+        // the payload to only what PiiDetection actually reads.
+        Map<String, Object> apiResponse = Map.of("responses", List.of(Map.of()));
+        when(monoResponse.block(any())).thenReturn(apiResponse);
+
+        ocrService.analyzeImage("img".getBytes());
+
+        ArgumentCaptor<String> uri = ArgumentCaptor.forClass(String.class);
+        verify(requestBodyUriSpec).uri(uri.capture());
+        String captured = uri.getValue();
+        assertThat(captured).contains("fields=");
+        assertThat(captured).contains("safeSearchAnnotation");
+        assertThat(captured).contains("textAnnotations");
+        assertThat(captured).contains("faceAnnotations");
+        // Landmark / emotion fields stay out of the response so the buffer
+        // doesn't fill on plate photos with one or two faces.
+        assertThat(captured).doesNotContain("landmarks");
+    }
+
+    @Test
+    void faceDetectionMaxResultsIsCappedAtOne() {
+        // Companion to the fields mask: PiiDetection only needs a single
+        // recognisable face to flag PII at the policy thresholds, so capping
+        // at 1 result keeps response size predictable on group photos.
+        Map<String, Object> apiResponse = Map.of("responses", List.of(Map.of()));
+        when(monoResponse.block(any())).thenReturn(apiResponse);
+
+        ocrService.analyzeImage("img".getBytes());
+
+        ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
+        verify(requestBodySpec).bodyValue(body.capture());
+        Map<?, ?> outer = (Map<?, ?>) body.getValue();
+        List<?> requests = (List<?>) outer.get("requests");
+        Map<?, ?> firstRequest = (Map<?, ?>) requests.get(0);
+        List<?> features = (List<?>) firstRequest.get("features");
+        Map<?, ?> faceDetection = features.stream()
+            .map(f -> (Map<?, ?>) f)
+            .filter(f -> "FACE_DETECTION".equals(f.get("type")))
+            .findFirst()
+            .orElseThrow();
+        assertThat(faceDetection.get("maxResults")).isEqualTo(1);
     }
 
     @Test
