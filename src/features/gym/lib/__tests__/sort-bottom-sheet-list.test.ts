@@ -22,6 +22,7 @@ function makeGym(id: string, name: string, lat: number, lng: number): GymWithMac
     updated_at: '2026-01-01T00:00:00Z',
     machine_count: 1,
     matched_machine_names: [],
+    cover_photo_url: null,
   };
 }
 

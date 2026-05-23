@@ -101,6 +101,10 @@ export interface GymWithMachineCount extends Gym {
   // sorted alphabetically. Reflects WHERE-filtered set (brand/category/template
   // filters applied). When no filters set, returns the gym's first 5 machines.
   matched_machine_names: readonly string[];
+  // Phase 5 follow-up A: owner-uploaded cover photo URL surfaced on the
+  // map/NL search response. Null when the owner has not uploaded one — the
+  // GymCard renders a placeholder in that case.
+  cover_photo_url: string | null;
 }
 
 export interface GymMachineWithDetails extends GymMachine {

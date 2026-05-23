@@ -178,6 +178,7 @@ describe('searchGymsInBounds', () => {
       updated_at: '2026-01-01T00:00:00Z',
       machine_count: 5,
       matched_machine_names: [],
+      cover_photo_url: null,
     };
     expect(result).toEqual([expected]);
   });
@@ -193,7 +194,18 @@ describe('searchGymsInBounds', () => {
         operating_hours: null,
         day_pass_price: null,
         last_verified_at: null,
+        cover_photo_url: null,
       }),
+    ]);
+  });
+
+  it('threads coverPhotoUrl through to cover_photo_url when present', async () => {
+    mockSearch.mockResolvedValue([{ ...apiGym, coverPhotoUrl: 'https://example.com/cover.jpg' }]);
+
+    const result = await searchGymsInBounds(bounds, emptyFilters);
+
+    expect(result).toEqual([
+      expect.objectContaining({ cover_photo_url: 'https://example.com/cover.jpg' }),
     ]);
   });
 

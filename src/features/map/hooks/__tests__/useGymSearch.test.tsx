@@ -72,6 +72,7 @@ describe('useGymSearch', () => {
         updated_at: '2026-01-01T00:00:00Z',
         machine_count: 3,
         matched_machine_names: [],
+        cover_photo_url: null,
       },
     ];
     const mockSearch = searchGymsInBounds as jest.MockedFunction<typeof searchGymsInBounds>;

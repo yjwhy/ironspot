@@ -122,6 +122,7 @@ describe('Database types', () => {
       updated_at: '2026-03-15',
       machine_count: 12,
       matched_machine_names: [],
+      cover_photo_url: null,
     };
     expect(gym.machine_count).toBe(12);
   });

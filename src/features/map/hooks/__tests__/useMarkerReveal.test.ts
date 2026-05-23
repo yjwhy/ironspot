@@ -19,6 +19,7 @@ const makeGym = (id: string): GymWithMachineCount => ({
   updated_at: '2026-01-01T00:00:00Z',
   machine_count: 2,
   matched_machine_names: [],
+  cover_photo_url: null,
 });
 
 const NO_GYMS: readonly GymWithMachineCount[] = [];

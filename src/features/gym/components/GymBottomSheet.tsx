@@ -238,6 +238,7 @@ function ListMode({ mode, listBottomPad }: { mode: ListMode_Props; listBottomPad
             gym={item.gym}
             distanceKm={item.distanceKm}
             index={index}
+            thumbnailUrl={item.gym.cover_photo_url}
             testID={`gym-card-${toTestSlug(item.gym.name)}`}
             onPress={() => {
               mode.onSelectGym(item.gym.id);

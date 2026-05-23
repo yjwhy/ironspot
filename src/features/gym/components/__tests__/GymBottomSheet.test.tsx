@@ -1,4 +1,5 @@
 import { fireEvent, render } from '@testing-library/react-native';
+import { Image } from 'expo-image';
 import type * as ReactType from 'react';
 
 import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
@@ -95,6 +96,7 @@ const fitnessFactory: GymWithMachineCount = {
   updated_at: '2026-01-01T00:00:00Z',
   machine_count: 12,
   matched_machine_names: [],
+  cover_photo_url: null,
 };
 
 const strengthGym: GymWithMachineCount = {
@@ -105,6 +107,7 @@ const strengthGym: GymWithMachineCount = {
   longitude: 126.9707,
   machine_count: 8,
   matched_machine_names: [],
+  cover_photo_url: null,
 };
 
 describe('GymBottomSheet (list mode)', () => {
@@ -127,6 +130,28 @@ describe('GymBottomSheet (list mode)', () => {
     );
     expect(getByText('Fitness Factory')).toBeTruthy();
     expect(getByText('Strength Gym')).toBeTruthy();
+  });
+
+  it('threads cover_photo_url through to the GymCard thumbnail', () => {
+    const withCover: GymWithMachineCount = {
+      ...fitnessFactory,
+      cover_photo_url: 'https://example.com/cover.jpg',
+    };
+    const { UNSAFE_queryAllByType } = render(
+      <GymBottomSheet
+        mode={{
+          type: 'list',
+          gyms: [withCover, strengthGym],
+          userLocation,
+          isLoading: false,
+          onSelectGym: () => undefined,
+          onClearFilters: () => undefined,
+        }}
+      />,
+    );
+    // Only the gym with a cover photo renders an Image; the other falls back
+    // to the placeholder block.
+    expect(UNSAFE_queryAllByType(Image)).toHaveLength(1);
   });
 
   it('renders haversine-derived distance for each card', () => {
