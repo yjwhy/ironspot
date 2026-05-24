@@ -114,7 +114,7 @@ Reported by the user on a physical iPhone in New Zealand: searching "강남역 �
 
 **To-do (groomed scope)**
 
-- [ ] Reproduce: dev-build the simulator with `pnpm dev:prod`, set the iOS simulator location to Auckland (`xcrun simctl location booted set -36.8485,174.7633`), search "강남역 헬스장", confirm the same zoomed-out finish. Compare against starting in Seoul.
+- [ ] Reproduce: dev-build the simulator with `pnpm dev:prod`, set the iOS simulator location to Auckland (`xcrun simctl location booted set -36.8485,174.7633`), search "강남역 헬스장", confirm the same zoomed-out finish. Compare against starting in Seoul. → **Manual device step (outstanding).** Code work landed in `d1d95cb` (see Resolution); on-device confirmation is nice-to-have but not blocking — the bbox clamp + `planNlCamera` test cases already exercise the fix algorithmically.
 - [x] Decide camera strategy. Three options to grill: (a) jump-then-animate (no-anim `setCamera` to a point near the destination then short `animateCameraTo` for the polish — bypasses the long-distance cinematic), (b) animate with explicit zoom (pass `zoom: derivedFromRadius` and accept a one-frame marker race that the existing `CAMERA_DEFER_MS` already partially mitigates), or (c) avoid animation for jumps over a threshold (e.g. > 500 km — instant snap + defer markers). → Landed in `d1d95cb` as option (c) implemented as `planNlCamera` in `src/features/map/lib/cameraUtils.ts` — long-distance jumps (>500 km) skip the cinematic by calling `setCamera` instantly then deferring marker reveal via `CAMERA_DEFER_MS`.
 - [x] Thread `resolvedLocation.radiusKm` into the zoom calculation. Rough mapping: 1 km → 15, 3 km → 13, 5 km → 12 (Web Mercator approximation). Lock the curve via Naver SDK's `fitBounds` if it accepts a centre + radius, otherwise hand-roll. → Shipped via `deriveZoomFromRadius` in `cameraUtils.ts`, consumed by `planNlCamera`. Naver SDK does not expose `fitBounds` so the closed-form `15 - log2(radiusKm)` is used per the recommended solution.
 - [x] Side concern: starting camera fallback when GPS resolves outside Korea. Today the first camera is the user's GPS, which means the rare overseas tester (e.g. the developer) sees their current country before the first NL search. Per the locked "Korean users only" scope decision (see end of section), we do not need to support overseas usage — the fix here is a clamp: if `initialLocation` falls outside the Korea bounding box (roughly lat 33–39, lng 124–132), fall back to a fixed Korean centre (서울시청 좌표) at zoom 14 so the first camera always lands on Korea and the subsequent NL search never has to cross a long-distance jump. → Shipped as `clampToKoreaBbox` in `cameraUtils.ts`.
@@ -133,6 +133,17 @@ Originally filed as a Phase 5 holding-pen item under the assumption it only hit 
 
 Treat as pre-launch hotfix: thread `radiusKm` into the zoom calculation first (closes the spec violation), then layer the long-distance `setCamera` bypass once SDK repro pins down the threshold.
 
+**Resolution (2026-05-20)**
+
+Shipped as `d1d95cb` on `main`. All three planned bullets landed in a single hotfix commit since the changes are tightly coupled and all live in one new pure-utility file:
+
+| Concern               | Implementation                                                                                                                                                                          |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Radius → zoom mapping | `deriveZoomFromRadius` in `src/features/map/lib/cameraUtils.ts` — `floor(15 − log2(radiusKm))` clamped to [10, 17]                                                                      |
+| Long-distance jumps   | `shouldBypassCinematicTransition` via haversine > 500km from GPS-anchored search origin → `setCamera` (instant) + deferred marker reveal                                                |
+| Korea-only fallback   | `clampToKoreaBbox` snaps initialLocation outside Korea bbox (lat 33–39, lng 124–132) to 서울시청 default                                                                                |
+| Integration           | `planNlCamera` orchestrates the three above; consumed by `MapScreen`. MapScreen excluded from Jest (NaverMapView SIGABRT per `lessons.md`); algorithm coverage in `cameraUtils.test.ts` |
+
 ### 14. Unregistered gym card tap routes the user to a duplicate search step
 
 **Current state**
@@ -144,7 +155,7 @@ Reported by the user during the same 2026-05-20 review on a physical iPhone. The
 - [x] Frontend: replace the `router.push('/(upload)/gym-select', ...)` in `MapScreen.handleUnregisteredPress` with a direct `useCreateGym(place)` call (Naver place fed straight into the existing mutation). → Shipped earlier as part of `978bb92` (item 14 partial), landing the user on `/(upload)/gym-select?selectedGymId=<newGymId>` while `POST /api/gym-machines` was still pending.
 - [x] On mutation success, route to `/(upload)/camera?gymId=<newGymId>` so the user lands on the camera with the new gym pre-bound. → Shipped this PR on `hotfix/phase-5-item-14a-route-to-camera`. Now that item 11 (POST `/api/gym-machines`) is fully wired through slices 1-3, the gym-select intermediate is pure friction and the camera (`UPLOAD_PHOTO_PATHNAME` = `/(upload)/photo`) accepts gymId-only callers since item 11 slice 2 — landing here flows directly into the OCR + closed-list picker (item 11 slice 3). Route param name is `gymId` (matches `UploadPhotoScreen.useLocalSearchParams`).
 - [x] Add an "undo" toast on the camera screen for ~5 s ("○○를 등록했어요 · 취소") that rolls back the gym row if tapped. Persisted state hand-over via expo-router params, not a global store. → **Shipped.** Backend in 14a (PR #142): `DELETE /api/gyms/{id}` + V9 `created_by_user_id` column + 7-case authorisation IT. Frontend in 14b: `UndoRegistrationToast` + `useUndoRegistration` hook + camera route reads new `justRegisteredGym{Id,Name}` params; MapScreen's `useCreateGym` onSuccess threads them so the toast only mounts on the unregistered-card-tap path. Reanimated slide-in/out, amber "취소" CTA, 5s setTimeout, on-success `router.replace('/')` for clean back stack, on-error burnt toast ("등록 취소 실패"). 11 new unit/component tests (frontend lint + tsc + jest 676 ✓). Visual sim check still recommended before merge — `pnpm snap` after deep-linking to camera with the new params. **Superseded by the 23a-23f refactor below (2026-05-21).**
-- [ ] Telemetry: count gym-row rollbacks per week — if > 5 % we re-add a confirmation modal. → Pending alongside the undo. **Superseded** — atomic create eliminates the rollback path so the metric becomes 0 by construction.
+- [x] Telemetry: count gym-row rollbacks per week — if > 5 % we re-add a confirmation modal. → **Superseded by the atomic-create iteration below (2026-05-21).** With no rollback path the metric is 0 by construction, so no telemetry to wire.
 
 **Iteration: atomic create on first photo, replaces the immediate-create + undo workaround (2026-05-21, slices 23a-23f)**
 
@@ -251,11 +262,11 @@ Bottom-sheet `GymCard` already accepts a `thumbnailUrl` prop (`src/features/gym/
 
 **To-do (groomed scope)**
 
-- [ ] DB: add `gyms.cover_photo_url TEXT NULL` via a new Flyway migration. Nullable — most gyms will not have one for a long time.
-- [ ] Backend: extend `GymResponse` / NL search response to surface `coverPhotoUrl`. Existing repository methods filter by `owner_id` already so the upload endpoint check is one line.
-- [ ] Owner upload screen: in the Task 47 "내 매장 관리하기" surface, add a "대표 사진" section — upload, preview, remove. Reuse the existing photo upload pipeline (Vision SafeSearch + PII check) but skip the OCR + machine-binding steps.
-- [ ] Frontend: thread `coverPhotoUrl` through `useMapSearch`, `useNlSearch`, and gym detail into `GymCard`'s existing `thumbnailUrl` prop. Placeholder stays when null.
-- [ ] Test coverage: backend IT for owner-only upload (403 for non-owner), frontend test that `GymCard` renders the placeholder when `thumbnailUrl` is null and the image when set.
+- [x] DB: add `gyms.cover_photo_url TEXT NULL` via a new Flyway migration. → V15 in `#167`.
+- [x] Backend: extend `GymResponse` / NL search response to surface `coverPhotoUrl`. → `GymWithMachineCountResponse.coverPhotoUrl` + repository SELECTs in `#172`; `GymDetailResponse.coverPhotoUrl` added in `#173` slice (e) so the owner cover screen can read current state.
+- [x] Owner upload screen: in the Task 47 "내 매장 관리하기" surface, add a "대표 사진" section — upload, preview, remove. Reuse the existing photo upload pipeline (Vision SafeSearch + PII check) but skip the OCR + machine-binding steps. → `#173` (5 slices: gate refactor + DTO + controller/service/IT + Orval regen + FE screen + entry chip).
+- [x] Frontend: thread `coverPhotoUrl` through `useMapSearch`, `useNlSearch`, and gym detail into `GymCard`'s existing `thumbnailUrl` prop. Placeholder stays when null. → `#172` FE wiring (toGymWithMachineCount → GymBottomSheet → GymCard.thumbnailUrl). Gym detail bonus: hero render in `#175`.
+- [x] Test coverage: backend IT for owner-only upload (403 for non-owner), frontend test that `GymCard` renders the placeholder when `thumbnailUrl` is null and the image when set. → 8-case `OwnerCoverPhotoIT` in `#173`; `GymCard` placeholder vs Image RTL cases in `#172`.
 
 **Recommended solution (ui-ux-pro-max review, 2026-05-20)**
 
@@ -264,6 +275,21 @@ Owner-only upload keeps every cover photo accountable to a verified business ide
 **Reason this sits in Phase 5**
 
 Depends on Task 47 owner workflow being merged + a measurable number of owners having gone through verification. Pre-launch there are zero verified owners so the feature would have no real data. Ships when owner verification volume hits double digits — until then the placeholder is the right state.
+
+**Resolution (2026-05-24)**
+
+Shipped end-to-end across four PRs targeting `main`. Original to-do scope plus the deferred GymDetail hero design pass.
+
+| PR     | Scope                                                                                                                                                                                                                                                                                                     |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `#167` | V15 migration: `gyms.cover_photo_url TEXT NULL` + init-test-db mirror. BE wiring + FE deferred to follow-up PRs.                                                                                                                                                                                          |
+| `#172` | FE wiring: `toGymWithMachineCount` maps `coverPhotoUrl ?? null` → `cover_photo_url`; `GymBottomSheet` threads to `GymCard.thumbnailUrl`. 9 fixtures + `GymCard` placeholder/Image RTL cases.                                                                                                              |
+| `#173` | 5 slices: `PhotoService.runVisionPiiGate` extraction + `GymCoverPhotoResponse` DTO + `OwnerCoverPhotoController`/`Service` + Orval regen + FE `OwnerCoverPhotoScreen` + "대표" entry chip. 8-case `OwnerCoverPhotoIT`. Adds `GymDetailResponse.coverPhotoUrl` so the owner screen can read current state. |
+| `#175` | Bonus follow-up: `GymDetail` hero (16:9 edge-to-edge, conditional on `cover_photo_url`, `expo-image` with fade-in transition, `onError` collapse). 2 new RTL cases. Beyond the original to-do — closes the deferred "GymDetail design pass" from the cover-photo follow-ups memo.                         |
+
+Design locks recorded in PR bodies (Storage layout `gym-covers/{gymId}/{uuid}.webp` in shared `machine-photos` bucket; SafeSearch QUEUE_FOR_ADMIN rejected stricter than machine photos; idempotent DELETE; per-user Vision quota counted; 2MB cap + magic-byte validation; FE crop via `expo-image-picker` `allowsEditing: true, aspect: [16, 9]` + `expo-image-manipulator` resize 1280×720 WebP 0.8).
+
+Open follow-ups (deferred polish, see `project_phase_5_followups` memory): hero title overlay (Airbnb / Naver Place scrim), parallax / shrink-on-scroll, lightbox tap, blurhash loading preview, dedicated reaper for `gym-covers/` Storage leaks.
 
 ### 18. Korean-first labelling for brands and machine templates
 
@@ -463,7 +489,7 @@ Item 18 shipped the schema + code for bilingual machine templates but deliberate
 - [x] **Korean transliteration proposal**: D5 띄어쓰기 표준형 적용 ("체스트 프레스", "랫 풀다운", "아이소 래터럴 로우"). D6 sub-line marketing names dropped from name_en/name_ko (Versa, Magnum, Eagle NX, ROC-IT, Sygnum, Hyper, V8, Discovery, Advance, On Him, MTS, Inspiration, Instinct, Leverage, EPIC, Animal, Single Stack, Diamond, SEC Plus, Master Pro, Falcon, Nautilus One, Welliv Pro, Pure Plate, Pure Kraft); movement descriptors retained (Incline / Decline / Seated / Iso-Lateral / Linear / Pendulum / Belt / 45° / Converging / Diverging).
 - [x] **V8 migration**: `iron-spot-api/src/main/resources/db/migration/V8__catalog_bulk_seed.sql` — 24 brands + 6 categories + 281 templates via `WITH catalog AS (VALUES …) JOIN brands + categories ON name`. brand/category UUIDs deterministic (Panatta b0000001 + Life Fitness b0000002 + 등 c0000001 + 가슴 c0000002 reuse legacy test-fixture UUIDs; rest b1000003..b1000024 / c1000003..c1000006); templates use `gen_random_uuid()`. `ON CONFLICT (name) DO NOTHING` for brand/category re-run safety. Verified via psql replay (V1..V8 on fresh postgis/postgis:17-3.5): 24 + 6 + 281 INSERTs apply cleanly. → Shipped slice (a) `5737b02`.
 - [x] **Test fixture impact**: none. `flyway.enabled: false` in `iron-spot-api/src/test/resources/application.yml` means V8 only applies in prod; tests use `init-test-db.sql` exclusively. Full API test suite passes unchanged with V8 in migrations dir.
-- [ ] **Picker UX validation**: with N=281 templates the TemplateStep search box is the primary entry point. ADR 0022 already designed for 200-400 envelope (`MACHINE_SECTION_ALWAYS_SHOW_SEARCH = 0` in `FilterSheet.tsx`). Carried forward as **item 23 (brand-first accordion filter UI)** because the 3-section orthogonal layout doesn't surface brand hierarchy well at N=281 — user mental model is brand-first when standing in a gym.
+- [x] **Picker UX validation**: with N=281 templates the TemplateStep search box is the primary entry point. ADR 0022 already designed for 200-400 envelope (`MACHINE_SECTION_ALWAYS_SHOW_SEARCH = 0` in `FilterSheet.tsx`). → **Carried forward and shipped via item 23 (brand-first accordion filter UI)**: the 3-section orthogonal layout was replaced with the brand-first accordion (`FilterSheetBrandAccordion`), matching user mental model when standing in a gym. ADR 0024 supersedes 0022. See item 23 below for slice breakdown.
 - [x] **NL search prompt few-shot expansion**: `prompts/search-dsl.md` rule 2 split into English-canonical / Korean-canonical lists. 15 brands added (Citadel, gym80, Booty Builder, Atlantis, Gymleco, Telju, Precor, Icarian, Star Trac, Watson, Freemotion, DRAX, Ultra Strength, LEXCO English; 뉴텍 Korean). Eleiko / Rogue removed. New few-shot pins 뉴텍 → 뉴텍 (no translation). Eval suite +1 case (8 total, 20K tokens ≈ 20% of Groq TPD). → Shipped slice (b) `8ba24cd`.
 
 **Out of scope (post-launch / Phase 6)**
