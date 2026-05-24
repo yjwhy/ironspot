@@ -12,9 +12,12 @@ describe('BrandLogo', () => {
   });
 
   it('renders monogram fallback (first nameKo char) when no asset is registered', () => {
+    // Use a synthetic UUID outside the V8 / V16 seed range so this test
+    // exercises the fallback even after BRAND_LOGOS is fully populated
+    // for the launch catalog.
     const { getByLabelText } = render(
       <BrandLogo
-        brandId="b0000001-0000-0000-0000-000000000001"
+        brandId="b9999999-0000-0000-0000-000000009999"
         brandName="Panatta"
         brandNameKo="파나타"
       />,
