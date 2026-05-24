@@ -7,6 +7,7 @@ import com.ironspot.gym.dto.GymCoverPhotoResponse;
 import com.ironspot.photo.PhotoService;
 import com.ironspot.photo.SafeSearchVerdict;
 import com.ironspot.photo.StorageService;
+import com.ironspot.photo.VisionFeature;
 import com.ironspot.photo.dto.VisionAnalysisResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -63,8 +65,14 @@ public class OwnerCoverPhotoService {
             throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
         }
 
+        // Cover photo path doesn't use OCR text, so TEXT_DETECTION is wasted
+        // compute. Drop it from the mask — saves 1 Vision billing unit per
+        // cover upload (33% reduction). SAFE_SEARCH still gates content
+        // appropriateness; FACE_DETECTION still gates PII because the cover
+        // image IS stored and publicly served via GymCard.
         VisionAnalysisResult vision = photoService.runVisionPiiGate(
-            ownerUserId.toString(), file, imageBytes);
+            ownerUserId.toString(), file, imageBytes,
+            Set.of(VisionFeature.SAFE_SEARCH_DETECTION, VisionFeature.FACE_DETECTION));
 
         // Cover photos hit every user's bottom-sheet immediately, so
         // QUEUE_FOR_ADMIN is rejected here. The machine-photo path tolerates

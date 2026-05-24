@@ -15,6 +15,7 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -160,6 +161,70 @@ class OcrServiceTest {
             .findFirst()
             .orElseThrow();
         assertThat(faceDetection.get("maxResults")).isEqualTo(1);
+    }
+
+    @Test
+    void reducedFeatureMaskDropsFaceDetectionFromRequestBodyAndFieldsMask() {
+        // ocr-only path passes Set.of(TEXT, SAFE). Verify the Vision request
+        // body lists exactly those two feature types and the ?fields= mask
+        // omits faceAnnotations — both ensure Google bills only 2 units and
+        // the response payload doesn't carry face landmarks we won't read.
+        Map<String, Object> apiResponse = Map.of("responses", List.of(Map.of()));
+        when(monoResponse.block(any())).thenReturn(apiResponse);
+
+        ocrService.analyzeImage(
+            "img".getBytes(),
+            Set.of(VisionFeature.TEXT_DETECTION, VisionFeature.SAFE_SEARCH_DETECTION));
+
+        ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
+        verify(requestBodySpec).bodyValue(body.capture());
+        Map<?, ?> outer = (Map<?, ?>) body.getValue();
+        List<?> requests = (List<?>) outer.get("requests");
+        Map<?, ?> firstRequest = (Map<?, ?>) requests.get(0);
+        List<?> features = (List<?>) firstRequest.get("features");
+        List<String> requestedTypes = features.stream()
+            .map(f -> (Map<?, ?>) f)
+            .map(f -> (String) f.get("type"))
+            .toList();
+        assertThat(requestedTypes).containsExactlyInAnyOrder("TEXT_DETECTION", "SAFE_SEARCH_DETECTION");
+
+        ArgumentCaptor<String> uri = ArgumentCaptor.forClass(String.class);
+        verify(requestBodyUriSpec).uri(uri.capture());
+        String captured = uri.getValue();
+        assertThat(captured).contains("textAnnotations");
+        assertThat(captured).contains("safeSearchAnnotation");
+        assertThat(captured).doesNotContain("faceAnnotations");
+    }
+
+    @Test
+    void reducedFeatureMaskDropsTextDetectionFromRequestBodyAndFieldsMask() {
+        // Cover photo path passes Set.of(SAFE, FACE). Mirror of the test
+        // above for the TEXT_DETECTION-dropped case.
+        Map<String, Object> apiResponse = Map.of("responses", List.of(Map.of()));
+        when(monoResponse.block(any())).thenReturn(apiResponse);
+
+        ocrService.analyzeImage(
+            "img".getBytes(),
+            Set.of(VisionFeature.SAFE_SEARCH_DETECTION, VisionFeature.FACE_DETECTION));
+
+        ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
+        verify(requestBodySpec).bodyValue(body.capture());
+        Map<?, ?> outer = (Map<?, ?>) body.getValue();
+        List<?> requests = (List<?>) outer.get("requests");
+        Map<?, ?> firstRequest = (Map<?, ?>) requests.get(0);
+        List<?> features = (List<?>) firstRequest.get("features");
+        List<String> requestedTypes = features.stream()
+            .map(f -> (Map<?, ?>) f)
+            .map(f -> (String) f.get("type"))
+            .toList();
+        assertThat(requestedTypes).containsExactlyInAnyOrder("SAFE_SEARCH_DETECTION", "FACE_DETECTION");
+
+        ArgumentCaptor<String> uri = ArgumentCaptor.forClass(String.class);
+        verify(requestBodyUriSpec).uri(uri.capture());
+        String captured = uri.getValue();
+        assertThat(captured).contains("safeSearchAnnotation");
+        assertThat(captured).contains("faceAnnotations");
+        assertThat(captured).doesNotContain("textAnnotations");
     }
 
     @Test

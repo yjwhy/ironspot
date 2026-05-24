@@ -235,7 +235,11 @@ class OwnerCoverPhotoIT extends IntegrationTestBase {
     }
 
     private void givenVisionResult(SafeSearchVerdict verdict, boolean hasPii) {
-        given(ocrService.analyzeImage(any())).willReturn(
+        // Cover photo path drops TEXT_DETECTION → calls the 2-arg
+        // analyzeImage overload with a reduced feature mask. Stub the 2-arg
+        // signature so the mock fires regardless of which features were
+        // requested.
+        given(ocrService.analyzeImage(any(), any())).willReturn(
             new VisionAnalysisResult(List.of(), verdict, hasPii));
     }
 

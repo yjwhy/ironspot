@@ -21,6 +21,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -60,21 +62,6 @@ public class OcrService {
 
     private static final String VISION_URL = "https://vision.googleapis.com/v1/images:annotate";
 
-    // Google-standard response field mask. Keeps the wire payload to only the
-    // fields PhotoService / PiiDetection actually read. Without this the
-    // landmarks array per face (35 fixed entries each with type + 3D
-    // position) blows the response past Spring WebClient's default 256 KiB
-    // buffer on photos with even one face — exactly the failure mode photo
-    // b1141662 hit on 2026-05-22. Listing fields explicitly is more robust
-    // than relying on `maxInMemorySize` alone because it also bounds CPU
-    // for JSON parsing and the wire bandwidth.
-    private static final String VISION_RESPONSE_FIELDS =
-        "responses("
-            + "textAnnotations(description),"
-            + "safeSearchAnnotation(adult,violence,racy),"
-            + "faceAnnotations(detectionConfidence,boundingPoly,fdBoundingPoly)"
-            + ")";
-
     // FACE_DETECTION exists solely to drive PiiDetection.hasPii. A single
     // recognisable face is enough to flag PII at the policy thresholds
     // (>= 1% of image area + confidence >= 0.7), so capping at 1 face per
@@ -83,23 +70,34 @@ public class OcrService {
     // the first to flip the verdict, which is symptomatically the same.
     private static final int FACE_DETECTION_MAX_RESULTS = 1;
 
-    @SuppressWarnings("unchecked")
+    /**
+     * Backward-compat entry — runs the full feature set
+     * ({@link VisionFeature#ALL}). Existing callers that want
+     * "everything Vision can tell us" stay unchanged; callers that want a
+     * narrower mask call {@link #analyzeImage(byte[], Set)} directly.
+     */
     public VisionAnalysisResult analyzeImage(byte[] imageBytes) {
+        return analyzeImage(imageBytes, VisionFeature.ALL);
+    }
+
+    @SuppressWarnings("unchecked")
+    public VisionAnalysisResult analyzeImage(byte[] imageBytes, Set<VisionFeature> features) {
+        if (features.isEmpty()) {
+            // Defensive: an empty set would still bill a request but return
+            // nothing useful. Treat as no-op.
+            return VisionAnalysisResult.EMPTY;
+        }
         String base64 = Base64.getEncoder().encodeToString(imageBytes);
 
         Map<String, Object> requestBody = Map.of(
             "requests", List.of(Map.of(
                 "image", Map.of("content", base64),
-                "features", List.of(
-                    Map.of("type", "TEXT_DETECTION", "maxResults", 10),
-                    Map.of("type", "SAFE_SEARCH_DETECTION"),
-                    Map.of("type", "FACE_DETECTION", "maxResults", FACE_DETECTION_MAX_RESULTS)
-                )
+                "features", buildFeatureList(features)
             ))
         );
 
         Map<?, ?> response = webClient.post()
-            .uri(VISION_URL + "?key=" + apiKey + "&fields=" + VISION_RESPONSE_FIELDS)
+            .uri(VISION_URL + "?key=" + apiKey + "&fields=" + buildResponseFieldsMask(features))
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
@@ -112,10 +110,47 @@ public class OcrService {
         if (responses == null || responses.isEmpty()) return VisionAnalysisResult.EMPTY;
 
         Map<?, ?> first = (Map<?, ?>) responses.get(0);
+        // Per-feature parsers degrade gracefully when their field is absent
+        // from the response (caller didn't request it) — so a reduced-feature
+        // call returns sensible defaults (empty texts, ALLOW verdict, no PII)
+        // for features the caller chose to skip.
         List<String> texts = parseTextAnnotations(first);
         SafeSearchVerdict verdict = parseSafeSearch(first);
         boolean hasPii = parseHasPii(first, imageBytes);
         return new VisionAnalysisResult(texts, verdict, hasPii);
+    }
+
+    private static List<Map<String, Object>> buildFeatureList(Set<VisionFeature> features) {
+        return features.stream()
+            .map(OcrService::featureRequest)
+            .toList();
+    }
+
+    private static Map<String, Object> featureRequest(VisionFeature feature) {
+        // Per-feature maxResults: TEXT_DETECTION caps at 10 (matches launch
+        // OCR pipeline tuning), FACE_DETECTION at 1 (PII verdict bounded by
+        // largest single face — see FACE_DETECTION_MAX_RESULTS). SAFE_SEARCH
+        // returns a single annotation so no maxResults needed.
+        return switch (feature) {
+            case TEXT_DETECTION -> Map.of("type", feature.apiType(), "maxResults", 10);
+            case SAFE_SEARCH_DETECTION -> Map.of("type", feature.apiType());
+            case FACE_DETECTION -> Map.of("type", feature.apiType(), "maxResults", FACE_DETECTION_MAX_RESULTS);
+        };
+    }
+
+    // Google-standard response field mask. Keeps the wire payload to only the
+    // fields PhotoService / PiiDetection actually read. Without this the
+    // landmarks array per face (35 fixed entries each with type + 3D
+    // position) blows the response past Spring WebClient's default 256 KiB
+    // buffer on photos with even one face — exactly the failure mode photo
+    // b1141662 hit on 2026-05-22. Listing fields explicitly is more robust
+    // than relying on `maxInMemorySize` alone because it also bounds CPU
+    // for JSON parsing and the wire bandwidth.
+    private static String buildResponseFieldsMask(Set<VisionFeature> features) {
+        String inner = features.stream()
+            .map(VisionFeature::responseField)
+            .collect(Collectors.joining(","));
+        return "responses(" + inner + ")";
     }
 
     private SafeSearchVerdict parseSafeSearch(Map<?, ?> first) {
