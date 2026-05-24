@@ -529,7 +529,10 @@ class PhotoUploadTest extends IntegrationTestBase {
     @Test
     void ocrOnlyReturnsSuggestionsWithoutStorageOrDbRow() throws Exception {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
-        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+        // ocr-only path uses the 2-arg analyzeImage with reduced mask
+        // (TEXT + SAFE, dropping FACE — see PhotoService.analyzeForOcrOnly).
+        // Stub the 2-arg overload so the mock fires regardless of mask.
+        given(ocrService.analyzeImage(any(), any())).willReturn(new VisionAnalysisResult(
             java.util.List.of("PANATTA", "HIGH", "ROW"), SafeSearchVerdict.ALLOW, false));
 
         long photoCountBefore = photoCountForUser(USER_A_ID);
@@ -574,7 +577,8 @@ class PhotoUploadTest extends IntegrationTestBase {
         // via direct INSERTs that count towards Vision-quota window. The
         // ocr-only call should then trip the same 429 the upload path does.
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalB()));
-        given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
+        // ocr-only path → 2-arg analyzeImage with reduced mask.
+        given(ocrService.analyzeImage(any(), any())).willReturn(new VisionAnalysisResult(
             java.util.List.of(), SafeSearchVerdict.ALLOW, false));
 
         int hourly = visionQuotaConfig.getHourly();
