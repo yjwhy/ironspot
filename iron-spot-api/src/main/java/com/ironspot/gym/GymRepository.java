@@ -252,4 +252,36 @@ public class GymRepository {
                 );
             });
     }
+
+    /**
+     * Phase 5 item 17 slice (c): current cover_photo_url for the gym, used by
+     * the owner upload endpoint to find the previous Storage object that
+     * needs a best-effort delete when the owner replaces the cover.
+     * {@link Optional#empty()} when the gym row doesn't exist; the inner
+     * {@link Optional} is empty when the row exists but cover_photo_url is
+     * NULL.
+     */
+    public Optional<Optional<String>> findCoverPhotoUrlByGymId(UUID gymId) {
+        return dsl.select(GYMS.COVER_PHOTO_URL)
+            .from(GYMS)
+            .where(GYMS.ID.eq(gymId))
+            .fetchOptional()
+            .map(r -> Optional.ofNullable(r.value1()));
+    }
+
+    /** Phase 5 item 17 slice (c). Returns rows updated (0 = gym not found). */
+    public int updateCoverPhotoUrl(UUID gymId, String url) {
+        return dsl.update(GYMS)
+            .set(GYMS.COVER_PHOTO_URL, url)
+            .where(GYMS.ID.eq(gymId))
+            .execute();
+    }
+
+    /** Phase 5 item 17 slice (c). Returns rows updated (0 = gym not found). */
+    public int clearCoverPhotoUrl(UUID gymId) {
+        return dsl.update(GYMS)
+            .setNull(GYMS.COVER_PHOTO_URL)
+            .where(GYMS.ID.eq(gymId))
+            .execute();
+    }
 }
