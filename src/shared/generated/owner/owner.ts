@@ -26,12 +26,14 @@ import type {
   ClaimBody,
   ClaimParams,
   Create200,
+  GymCoverPhotoResponse,
   OwnerClaimResponse,
   OwnerCreateMachineRequest,
   OwnerDispositionRequest,
   OwnerQueueItem,
   OwnerUpdateMachineRequest,
   QueueParams,
+  UploadGymCoverPhotoBody,
 } from '../model';
 
 import { apiClient } from '../../lib/api-client';
@@ -359,6 +361,197 @@ export const useVerify = <TError = unknown, TContext = unknown>(
   queryClient?: QueryClient,
 ): UseMutationResult<Awaited<ReturnType<typeof verify>>, TError, { id: string }, TContext> => {
   return useMutation(getVerifyMutationOptions(options), queryClient);
+};
+export type uploadGymCoverPhotoResponse201 = {
+  data: GymCoverPhotoResponse;
+  status: 201;
+};
+
+export type uploadGymCoverPhotoResponseSuccess = uploadGymCoverPhotoResponse201 & {
+  headers: Headers;
+};
+export type uploadGymCoverPhotoResponse = uploadGymCoverPhotoResponseSuccess;
+
+export const getUploadGymCoverPhotoUrl = (gymId: string) => {
+  return `/api/owner/gyms/${gymId}/cover-photo`;
+};
+
+/**
+ * Owner-only. Reuses the standard Vision SafeSearch + face-PII gate, but skips OCR + machine-binding. SafeSearch QUEUE_FOR_ADMIN is rejected here (stricter than machine photos) because the cover is immediately public.
+ * @summary Upload or replace the gym's cover photo
+ */
+export const uploadGymCoverPhoto = async (
+  gymId: string,
+  uploadGymCoverPhotoBody?: UploadGymCoverPhotoBody,
+  options?: RequestInit,
+): Promise<uploadGymCoverPhotoResponse> => {
+  const formData = new FormData();
+  if (uploadGymCoverPhotoBody?.image !== undefined) {
+    formData.append(`image`, uploadGymCoverPhotoBody.image);
+  }
+
+  return apiClient<uploadGymCoverPhotoResponse>(getUploadGymCoverPhotoUrl(gymId), {
+    ...options,
+    method: 'POST',
+    body: formData,
+  });
+};
+
+export const getUploadGymCoverPhotoMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadGymCoverPhoto>>,
+    TError,
+    { gymId: string; data?: UploadGymCoverPhotoBody },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadGymCoverPhoto>>,
+  TError,
+  { gymId: string; data?: UploadGymCoverPhotoBody },
+  TContext
+> => {
+  const mutationKey = ['uploadGymCoverPhoto'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadGymCoverPhoto>>,
+    { gymId: string; data?: UploadGymCoverPhotoBody }
+  > = (props) => {
+    const { gymId, data } = props ?? {};
+
+    return uploadGymCoverPhoto(gymId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadGymCoverPhotoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadGymCoverPhoto>>
+>;
+export type UploadGymCoverPhotoMutationBody = UploadGymCoverPhotoBody | undefined;
+export type UploadGymCoverPhotoMutationError = unknown;
+
+/**
+ * @summary Upload or replace the gym's cover photo
+ */
+export const useUploadGymCoverPhoto = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof uploadGymCoverPhoto>>,
+      TError,
+      { gymId: string; data?: UploadGymCoverPhotoBody },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof uploadGymCoverPhoto>>,
+  TError,
+  { gymId: string; data?: UploadGymCoverPhotoBody },
+  TContext
+> => {
+  return useMutation(getUploadGymCoverPhotoMutationOptions(options), queryClient);
+};
+export type deleteGymCoverPhotoResponse204 = {
+  data: void;
+  status: 204;
+};
+
+export type deleteGymCoverPhotoResponseSuccess = deleteGymCoverPhotoResponse204 & {
+  headers: Headers;
+};
+export type deleteGymCoverPhotoResponse = deleteGymCoverPhotoResponseSuccess;
+
+export const getDeleteGymCoverPhotoUrl = (gymId: string) => {
+  return `/api/owner/gyms/${gymId}/cover-photo`;
+};
+
+/**
+ * Owner-only. Idempotent — returns 204 even if no cover was set.
+ * @summary Clear the gym's cover photo
+ */
+export const deleteGymCoverPhoto = async (
+  gymId: string,
+  options?: RequestInit,
+): Promise<deleteGymCoverPhotoResponse> => {
+  return apiClient<deleteGymCoverPhotoResponse>(getDeleteGymCoverPhotoUrl(gymId), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDeleteGymCoverPhotoMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteGymCoverPhoto>>,
+    TError,
+    { gymId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteGymCoverPhoto>>,
+  TError,
+  { gymId: string },
+  TContext
+> => {
+  const mutationKey = ['deleteGymCoverPhoto'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteGymCoverPhoto>>,
+    { gymId: string }
+  > = (props) => {
+    const { gymId } = props ?? {};
+
+    return deleteGymCoverPhoto(gymId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteGymCoverPhotoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteGymCoverPhoto>>
+>;
+
+export type DeleteGymCoverPhotoMutationError = unknown;
+
+/**
+ * @summary Clear the gym's cover photo
+ */
+export const useDeleteGymCoverPhoto = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteGymCoverPhoto>>,
+      TError,
+      { gymId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteGymCoverPhoto>>,
+  TError,
+  { gymId: string },
+  TContext
+> => {
+  return useMutation(getDeleteGymCoverPhotoMutationOptions(options), queryClient);
 };
 export type createResponse200 = {
   data: Create200;

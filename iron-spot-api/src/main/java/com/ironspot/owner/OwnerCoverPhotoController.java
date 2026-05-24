@@ -49,6 +49,7 @@ public class OwnerCoverPhotoController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
         summary = "Upload or replace the gym's cover photo",
+        operationId = "uploadGymCoverPhoto",
         description = "Owner-only. Reuses the standard Vision SafeSearch + face-PII gate, "
             + "but skips OCR + machine-binding. SafeSearch QUEUE_FOR_ADMIN is rejected here "
             + "(stricter than machine photos) because the cover is immediately public."
@@ -78,6 +79,7 @@ public class OwnerCoverPhotoController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
         summary = "Clear the gym's cover photo",
+        operationId = "deleteGymCoverPhoto",
         description = "Owner-only. Idempotent — returns 204 even if no cover was set."
     )
     @ApiResponses({
