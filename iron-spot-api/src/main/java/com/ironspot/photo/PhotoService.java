@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -129,7 +130,17 @@ public class PhotoService {
             throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
         }
 
-        VisionAnalysisResult vision = runVisionPiiGate(userId, file, imageBytes);
+        // OCR-only path discards the image immediately after Vision returns,
+        // so FACE_DETECTION's PII rejection was informational only — nothing
+        // is ever stored. Dropping FACE saves 1 billing unit per label
+        // photo (~17% Vision cost reduction on a label-photo + machine-photo
+        // gym-machine upload). SafeSearch + TEXT still run: SafeSearch
+        // protects against processing obviously inappropriate content,
+        // TEXT is the entire point of the call.
+        VisionAnalysisResult vision = runVisionPiiGate(
+            userId, file, imageBytes,
+            Set.of(VisionFeature.TEXT_DETECTION, VisionFeature.SAFE_SEARCH_DETECTION)
+        );
 
         List<MachineTemplateSuggestion> suggestions = fuzzyMatchService.findMatches(vision.texts());
         boolean ocrSucceeded = !vision.texts().isEmpty();
@@ -155,24 +166,48 @@ public class PhotoService {
      * service class; if a fourth materialises, extract then.
      */
     public VisionAnalysisResult runVisionPiiGate(String userId, MultipartFile file, byte[] imageBytes) {
+        return runVisionPiiGate(userId, file, imageBytes, VisionFeature.ALL);
+    }
+
+    /**
+     * Same gate, but with a per-call Vision feature mask. Callers that only
+     * need a subset (e.g. ocr-only path doesn't need FACE_DETECTION, cover
+     * photo doesn't need TEXT_DETECTION) save the dropped feature's billing
+     * unit while keeping the validate / quota / cache / REJECT / PII
+     * structure identical.
+     *
+     * <p>Cache rule: READ always (a previous full-feature call may have
+     * cached a complete result that the current reduced-feature caller can
+     * reuse for free). WRITE only when {@code features.equals(ALL)} — if a
+     * reduced-feature MISS wrote its partial result back, a subsequent
+     * full-feature lookup would read the partial entry and silently lose
+     * the missing fields (e.g. lose OCR text). Cache invariant: stored
+     * entries always carry the full feature set.
+     */
+    public VisionAnalysisResult runVisionPiiGate(
+        String userId,
+        MultipartFile file,
+        byte[] imageBytes,
+        Set<VisionFeature> features
+    ) {
         validateImage(file, imageBytes);
 
-        // Per-user Vision quota: covers BOTH orphan and bound uploads since
-        // every upload spends 3 Vision units regardless of binding. Replaces
-        // the orphan-only gate from Phase 5 item 11 slice (b) — the unified
-        // gate prevents bound-upload abuse paths that were previously
-        // un-throttled.
+        // Per-user Vision quota: covers BOTH orphan and bound uploads. Cache
+        // hits also consume a slot — see enforceVisionQuota docstring for
+        // why bounding per-user uploads matters even when Vision credits
+        // are not spent.
         enforceVisionQuota(userId);
 
-        // Layer 1: Vision SafeSearch + OCR. Cache lookup first via SHA-256 of
-        // the image bytes — second + upload of the same image (retry, abuse
-        // resends) reuses the cached verdict + texts and skips the Vision
-        // API call entirely. Cache miss falls through to a fresh Vision
-        // call; failures fail-open (verdict=ALLOW, empty texts) so a Vision
-        // outage doesn't break upload, just suppresses OCR suggestions.
-        // Run before storage upload so REJECT aborts before producing an
-        // orphan file.
+        // Layer 1: Vision SafeSearch + OCR. Cache lookup first via SHA-256
+        // of the image bytes — retries / duplicate uploads reuse the cached
+        // result and skip Vision entirely. Cache miss falls through to a
+        // fresh Vision call with the caller's feature mask; failures
+        // fail-open (verdict=ALLOW, empty texts) so an outage doesn't
+        // break upload, just suppresses suggestions. Cache writes are
+        // gated to full-feature responses so partial results never poison
+        // future full-feature lookups (see method-level Javadoc).
         String imageSha256 = VisionCacheRepository.sha256(imageBytes);
+        boolean cacheWriteAllowed = features.equals(VisionFeature.ALL);
         VisionAnalysisResult vision = visionCacheRepository.findBySha256(imageSha256)
             .map(cached -> {
                 visionCacheRepository.bumpHitCount(imageSha256);
@@ -184,8 +219,17 @@ public class PhotoService {
             })
             .orElseGet(() -> {
                 try {
-                    VisionAnalysisResult fresh = ocrService.analyzeImage(imageBytes);
-                    visionCacheRepository.insert(imageSha256, fresh);
+                    // Full-feature path goes through the 1-arg overload so
+                    // callers that historically targeted "the default Vision
+                    // call" (including existing test mocks) still match.
+                    // Reduced-feature path goes through the 2-arg overload
+                    // with an explicit mask.
+                    VisionAnalysisResult fresh = cacheWriteAllowed
+                        ? ocrService.analyzeImage(imageBytes)
+                        : ocrService.analyzeImage(imageBytes, features);
+                    if (cacheWriteAllowed) {
+                        visionCacheRepository.insert(imageSha256, fresh);
+                    }
                     return fresh;
                 } catch (Exception e) {
                     log.warn("Vision API failed — failing open (not cached)", e);
@@ -197,6 +241,12 @@ public class PhotoService {
             throw new BusinessException("부적절한 콘텐츠로 감지되었습니다", HttpStatus.BAD_REQUEST);
         }
 
+        // hasPii is meaningful only when FACE_DETECTION was requested. For
+        // reduced-feature callers that dropped FACE (e.g. ocr-only path)
+        // hasPii is false by parser default — the rejection branch becomes
+        // a no-op, intentionally. Privacy invariant still holds: any
+        // surface that stores an image (upload, cover) keeps FACE in its
+        // mask, so PII rejection is unchanged on those paths.
         if (vision.hasPii()) {
             throw new BusinessException(
                 "얼굴이 인식된 사진은 업로드할 수 없습니다. 얼굴이 가려지도록 다시 촬영해주세요.",
