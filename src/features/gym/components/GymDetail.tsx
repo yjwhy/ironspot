@@ -1,7 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { UPLOAD_METHOD_CHOICE_PATHNAME } from '@/features/upload/constants';
@@ -26,19 +27,45 @@ interface GymDetailProps {
 
 export function GymDetail({ gym, onPressMachine }: GymDetailProps) {
   const { data, isPending, isError } = useGymMachines(gym.id);
+  const [heroFailed, setHeroFailed] = useState(false);
+
+  const heroUrl = gym.cover_photo_url;
+  const showHero = heroUrl !== null && !heroFailed;
 
   return (
     <View className="flex-1 bg-bg-base">
-      <View className="flex-1 gap-4 p-4">
-        <GymHeader gym={gym} />
-        <GymOwnerEntry gymId={gym.id} gymName={gym.name} />
-        <MachinesBody
-          data={data}
-          isPending={isPending}
-          isError={isError}
-          onPressMachine={onPressMachine}
-        />
-      </View>
+      <ScrollView contentContainerClassName="pb-24">
+        {showHero ? (
+          // bg-bg-muted is the solid colour visible during expo-image's
+          // 200ms fade-in transition — avoids a "white flash before image
+          // appears" on slow networks without needing a blurhash.
+          <View
+            className="w-full bg-bg-muted"
+            style={{ aspectRatio: 16 / 9 }}
+            accessibilityLabel={`${gym.name} 대표 사진`}
+          >
+            <Image
+              source={{ uri: heroUrl }}
+              contentFit="cover"
+              transition={200}
+              onError={() => {
+                setHeroFailed(true);
+              }}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </View>
+        ) : null}
+        <View className="gap-4 p-4">
+          <GymHeader gym={gym} />
+          <GymOwnerEntry gymId={gym.id} gymName={gym.name} />
+          <MachinesBody
+            data={data}
+            isPending={isPending}
+            isError={isError}
+            onPressMachine={onPressMachine}
+          />
+        </View>
+      </ScrollView>
       <AddPhotoFab gymId={gym.id} />
     </View>
   );
