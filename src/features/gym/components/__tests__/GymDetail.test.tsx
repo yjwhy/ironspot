@@ -208,6 +208,24 @@ describe('GymDetail', () => {
     });
   });
 
+  it('renders the inline "기구 추가" button between owner entry and machine list', () => {
+    // Follow-up to FAB visibility: when GymDetail renders inside the
+    // half-open GymBottomSheet snap, the absolute-positioned FAB is below
+    // the visible viewport. This inline button stays in the natural
+    // reading flow so the add-machine affordance is always discoverable.
+    const { getByRole } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
+    expect(getByRole('button', { name: '기구 추가' })).toBeTruthy();
+  });
+
+  it('routes the inline "기구 추가" tap to the same gymId-bound upload flow as the FAB', () => {
+    const { getByRole } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
+    fireEvent.press(getByRole('button', { name: '기구 추가' }));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: UPLOAD_METHOD_CHOICE_PATHNAME,
+      params: { gymId: 'g-1' },
+    });
+  });
+
   it('omits the cover photo hero when cover_photo_url is null', () => {
     const { queryByLabelText } = render(
       <GymDetail gym={baseGym} onPressMachine={() => undefined} />,
