@@ -1,5 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
+import type RnModule from 'react-native';
 
 import { UPLOAD_METHOD_CHOICE_PATHNAME } from '@/features/upload/constants';
 import type { Gym, GymMachineWithDetails } from '@/shared/types/database';
@@ -11,6 +12,14 @@ import { GymDetail } from '../GymDetail';
 jest.mock('expo-router', () => ({
   router: { push: jest.fn() },
 }));
+
+// Phase 5 follow-up: hero uses expo-image which is a native module — stub
+// with a plain View so render assertions can target it without booting the
+// real image pipeline.
+jest.mock('expo-image', () => {
+  const rn = jest.requireActual<typeof RnModule>('react-native');
+  return { Image: rn.View };
+});
 
 // Phase 5 item 15a: GymDetail FAB requires auth on tap to gate the upload
 // flow at the same point as the existing MachinePhotoGalleryScreen FAB.
@@ -197,5 +206,22 @@ describe('GymDetail', () => {
       pathname: UPLOAD_METHOD_CHOICE_PATHNAME,
       params: { gymId: 'g-1' },
     });
+  });
+
+  it('omits the cover photo hero when cover_photo_url is null', () => {
+    const { queryByLabelText } = render(
+      <GymDetail gym={baseGym} onPressMachine={() => undefined} />,
+    );
+    expect(queryByLabelText('Fitness Factory 대표 사진')).toBeNull();
+  });
+
+  it('renders the cover photo hero when cover_photo_url is set', () => {
+    const { getByLabelText } = render(
+      <GymDetail
+        gym={{ ...baseGym, cover_photo_url: 'https://example.com/cover.webp' }}
+        onPressMachine={() => undefined}
+      />,
+    );
+    expect(getByLabelText('Fitness Factory 대표 사진')).toBeTruthy();
   });
 });
