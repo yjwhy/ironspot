@@ -35,7 +35,17 @@ public class StorageService {
         // land under `orphan/<userId>/` so the cleanup job can purge them by
         // uploader when a contribution is never finalised.
         String prefix = gymMachineId != null ? gymMachineId.toString() : ORPHAN_PREFIX + "/" + userId;
-        String path = prefix + "/" + filename;
+        return uploadToPath(imageBytes, prefix + "/" + filename);
+    }
+
+    /**
+     * Phase 5 item 17 slice (c): upload bytes to an arbitrary path within
+     * {@link #BUCKET}. The owner cover-photo upload uses {@code
+     * gym-covers/<gymId>/<uuid>.webp} which doesn't fit the {@link #upload}
+     * gym-machine / orphan layout. Same public-URL contract — callers
+     * can derive the same path back via {@link #extractStoragePath}.
+     */
+    public String uploadToPath(byte[] imageBytes, String path) {
         webClient.put()
             .uri(supabaseUrl + "/storage/v1/object/" + BUCKET + "/" + path)
             .header(HttpHeaders.AUTHORIZATION, "Bearer " + serviceRoleKey)
@@ -43,7 +53,7 @@ public class StorageService {
             .bodyValue(imageBytes)
             .retrieve()
             .bodyToMono(String.class)
-            // HTTP 4xx/5xx propagates as WebClientResponseException — PhotoService catches all exceptions
+            // HTTP 4xx/5xx propagates as WebClientResponseException — callers catch all exceptions
             .block(Duration.ofSeconds(15));
         return supabaseUrl + "/storage/v1/object/public/" + BUCKET + "/" + path;
     }

@@ -137,19 +137,24 @@ public class PhotoService {
     }
 
     /**
-     * Phase 5 item 17 prep: shared Vision SafeSearch + face-PII gate used by
-     * {@link #upload}, {@link #analyzeForOcrOnly}, and (slice c) the owner
-     * cover-photo upload. Runs validate → per-user quota → SHA-256 cache
-     * lookup → Vision call (failing open on outage) → SafeSearch REJECT and
-     * face-PII rejections. Returns the analysis result; suggestions
-     * generation + Storage / DB writes stay with the caller.
+     * Phase 5 item 17: shared Vision SafeSearch + face-PII gate used by
+     * {@link #upload}, {@link #analyzeForOcrOnly}, and the owner cover-photo
+     * upload (see {@code OwnerCoverPhotoService}). Runs validate → per-user
+     * quota → SHA-256 cache lookup → Vision call (failing open on outage) →
+     * SafeSearch REJECT and face-PII rejections. Returns the analysis result;
+     * suggestions generation + Storage / DB writes stay with the caller.
      *
      * <p>Centralising the gate ensures a future PII / SafeSearch rule
      * tweak applies to every upload path uniformly — the single source of
      * truth eliminates "did we forget to re-check the cover-photo path"
      * risk for security-critical checks.
+     *
+     * <p>Public so {@code OwnerCoverPhotoService} (different package) can
+     * call into it directly without a transitive {@code @Service} extraction
+     * — the third caller doesn't yet justify promoting this to its own
+     * service class; if a fourth materialises, extract then.
      */
-    private VisionAnalysisResult runVisionPiiGate(String userId, MultipartFile file, byte[] imageBytes) {
+    public VisionAnalysisResult runVisionPiiGate(String userId, MultipartFile file, byte[] imageBytes) {
         validateImage(file, imageBytes);
 
         // Per-user Vision quota: covers BOTH orphan and bound uploads since
