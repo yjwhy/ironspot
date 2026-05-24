@@ -30,6 +30,11 @@ export interface Gym {
   last_verified_at: string | null;
   created_at: string;
   updated_at: string;
+  // Phase 5 item 17: owner-uploaded cover photo URL. Null when no owner has
+  // uploaded one — surfaces of this type render a placeholder. Lives on the
+  // base Gym (not just GymWithMachineCount) because gym detail surfaces
+  // (owner cover-photo screen) also need the current cover.
+  cover_photo_url: string | null;
 }
 
 export interface Brand {
@@ -101,10 +106,7 @@ export interface GymWithMachineCount extends Gym {
   // sorted alphabetically. Reflects WHERE-filtered set (brand/category/template
   // filters applied). When no filters set, returns the gym's first 5 machines.
   matched_machine_names: readonly string[];
-  // Phase 5 follow-up A: owner-uploaded cover photo URL surfaced on the
-  // map/NL search response. Null when the owner has not uploaded one — the
-  // GymCard renders a placeholder in that case.
-  cover_photo_url: string | null;
+  // cover_photo_url inherited from Gym (Phase 5 item 17).
 }
 
 export interface GymMachineWithDetails extends GymMachine {
