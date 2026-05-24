@@ -5,16 +5,20 @@ import { AppText } from './AppText';
 /**
  * Brand logo with monogram fallback.
  *
- * The {@link BRAND_LOGOS} map starts empty so every brand renders a
- * neutral monogram (first character of `nameKo` on a hashed palette colour)
- * until a curated PNG/SVG is added. To switch a brand from monogram to
- * its real logo, drop the asset into `src/assets/brand-logos/{brandId}.png`
- * (or any image format expo-image-resolver supports) and register it:
+ * The {@link BRAND_LOGOS} map maps brand UUIDs (V8 / V16 seed) to
+ * curated PNG assets under `assets/brand-logos/` (project root, matching
+ * the existing `assets/photo-guidance-example.png` location). Brands
+ * without a mapped asset fall back to a neutral monogram (first
+ * character of `nameKo` on a hashed palette colour) — useful for newly
+ * promoted brands before their PNG lands.
+ *
+ * To register a new brand asset:
+ *
+ * 1. Drop `<slug>.png` into `assets/brand-logos/`.
+ * 2. Add one entry below keyed by the brand UUID:
  *
  * ```ts
- * export const BRAND_LOGOS: Record<string, ImageSourcePropType> = {
- *   'b0000001-0000-0000-0000-000000000001': require('@/assets/brand-logos/panatta.png'),
- * };
+ * 'b1000027-0000-0000-0000-000000000027': require('../../../assets/brand-logos/<slug>.png') as ImageSourcePropType,
  * ```
  *
  * The next render automatically picks up the bitmap. No code change at
@@ -95,7 +99,62 @@ function monogramChar(brandNameKo: string, brandName: string): string {
  * `iron-spot-api/.../V8__catalog_bulk_seed.sql`). Add new entries as
  * curated assets land in `src/assets/brand-logos/`.
  */
-export const BRAND_LOGOS: Record<string, ImageSourcePropType> = {};
+export const BRAND_LOGOS: Record<string, ImageSourcePropType> = {
+  // V8 seed (24)
+  'b0000001-0000-0000-0000-000000000001':
+    require('../../../assets/brand-logos/panatta.png') as ImageSourcePropType,
+  'b0000002-0000-0000-0000-000000000002':
+    require('../../../assets/brand-logos/life-fitness.png') as ImageSourcePropType,
+  'b1000003-0000-0000-0000-000000000003':
+    require('../../../assets/brand-logos/hammer-strength.png') as ImageSourcePropType,
+  'b1000004-0000-0000-0000-000000000004':
+    require('../../../assets/brand-logos/technogym.png') as ImageSourcePropType,
+  'b1000005-0000-0000-0000-000000000005':
+    require('../../../assets/brand-logos/hoist.png') as ImageSourcePropType,
+  'b1000006-0000-0000-0000-000000000006':
+    require('../../../assets/brand-logos/cybex.png') as ImageSourcePropType,
+  'b1000007-0000-0000-0000-000000000007':
+    require('../../../assets/brand-logos/matrix.png') as ImageSourcePropType,
+  'b1000008-0000-0000-0000-000000000008':
+    require('../../../assets/brand-logos/nautilus.png') as ImageSourcePropType,
+  'b1000009-0000-0000-0000-000000000009':
+    require('../../../assets/brand-logos/prime.png') as ImageSourcePropType,
+  'b1000010-0000-0000-0000-000000000010':
+    require('../../../assets/brand-logos/citadel-strength.png') as ImageSourcePropType,
+  'b1000011-0000-0000-0000-000000000011':
+    require('../../../assets/brand-logos/gym80.png') as ImageSourcePropType,
+  'b1000012-0000-0000-0000-000000000012':
+    require('../../../assets/brand-logos/booty-builder.png') as ImageSourcePropType,
+  'b1000013-0000-0000-0000-000000000013':
+    require('../../../assets/brand-logos/atlantis.png') as ImageSourcePropType,
+  'b1000014-0000-0000-0000-000000000014':
+    require('../../../assets/brand-logos/gymleco.png') as ImageSourcePropType,
+  'b1000015-0000-0000-0000-000000000015':
+    require('../../../assets/brand-logos/telju.png') as ImageSourcePropType,
+  'b1000016-0000-0000-0000-000000000016':
+    require('../../../assets/brand-logos/precor.png') as ImageSourcePropType,
+  'b1000017-0000-0000-0000-000000000017':
+    require('../../../assets/brand-logos/icarian.png') as ImageSourcePropType,
+  'b1000018-0000-0000-0000-000000000018':
+    require('../../../assets/brand-logos/star-trac.png') as ImageSourcePropType,
+  'b1000019-0000-0000-0000-000000000019':
+    require('../../../assets/brand-logos/watson.png') as ImageSourcePropType,
+  'b1000020-0000-0000-0000-000000000020':
+    require('../../../assets/brand-logos/freemotion.png') as ImageSourcePropType,
+  'b1000021-0000-0000-0000-000000000021':
+    require('../../../assets/brand-logos/newtech.png') as ImageSourcePropType,
+  'b1000022-0000-0000-0000-000000000022':
+    require('../../../assets/brand-logos/drax.png') as ImageSourcePropType,
+  'b1000023-0000-0000-0000-000000000023':
+    require('../../../assets/brand-logos/ultra-strength.png') as ImageSourcePropType,
+  'b1000024-0000-0000-0000-000000000024':
+    require('../../../assets/brand-logos/lexco.png') as ImageSourcePropType,
+  // V16 expansion (2)
+  'b1000025-0000-0000-0000-000000000025':
+    require('../../../assets/brand-logos/arsenal.png') as ImageSourcePropType,
+  'b1000026-0000-0000-0000-000000000026':
+    require('../../../assets/brand-logos/repcon.png') as ImageSourcePropType,
+};
 
 export function BrandLogo({
   brandId,
