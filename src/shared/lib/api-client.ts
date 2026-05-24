@@ -22,8 +22,10 @@ export { HTTPError, TimeoutError };
 // call still hit the 7s timeout that previously matched the 10s ky
 // timeout. Subsequent calls reuse the warm pool and finish in 1-3s,
 // so the generous 30s never trips on the happy path.
+// ky 2.x renamed `prefixUrl` to `prefix`; behaviour is the same for our
+// configuration (single base URL, no leading-slash inputs).
 const _ky = ky.create({
-  prefixUrl: API_URL,
+  prefix: API_URL,
   timeout: 30_000,
 });
 
@@ -49,7 +51,7 @@ export async function apiClient<T>(url: string, options?: RequestInit): Promise<
   const kyOptions = options as Options | undefined;
 
   try {
-    return await _ky(sanitisedUrl, { ...kyOptions, headers }).json<T>();
+    return await parseResponse<T>(_ky(sanitisedUrl, { ...kyOptions, headers }));
   } catch (err: unknown) {
     if (err instanceof HTTPError && err.response.status === 401) {
       // Guest users (no initial token) hit 401 because the endpoint
@@ -70,8 +72,22 @@ export async function apiClient<T>(url: string, options?: RequestInit): Promise<
         throw err;
       }
       headers.set('Authorization', `Bearer ${newToken}`);
-      return await _ky(sanitisedUrl, { ...kyOptions, headers }).json<T>();
+      return await parseResponse<T>(_ky(sanitisedUrl, { ...kyOptions, headers }));
     }
     throw err;
   }
+}
+
+// ky 2.x's `.json()` shortcut throws on 204 / empty bodies instead of
+// returning an empty string (ky 1.x behaviour). Every DELETE endpoint in
+// the BE returns 204 — `.json<void>()` from a generated Orval caller
+// would now throw instead of resolving to undefined. Use the underlying
+// Response and short-circuit on 204 / empty content-length to preserve
+// the pre-2.x contract for void-returning operations.
+async function parseResponse<T>(promise: Promise<Response>): Promise<T> {
+  const response = await promise;
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return undefined as T;
+  }
+  return (await response.json()) as T;
 }
