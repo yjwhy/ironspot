@@ -8,6 +8,7 @@ import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { UPLOAD_METHOD_CHOICE_PATHNAME } from '@/features/upload/constants';
 import { AccentChip } from '@/shared/components/AccentChip';
 import { AppText } from '@/shared/components/AppText';
+import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Skeleton } from '@/shared/components/Skeleton';
 import { formatVerifiedDate } from '@/shared/lib/format';
@@ -58,6 +59,7 @@ export function GymDetail({ gym, onPressMachine }: GymDetailProps) {
         <View className="gap-4 p-4">
           <GymHeader gym={gym} />
           <GymOwnerEntry gymId={gym.id} gymName={gym.name} />
+          <AddMachineRow gymId={gym.id} />
           <MachinesBody
             data={data}
             isPending={isPending}
@@ -177,4 +179,30 @@ function AddPhotoFab({ gymId }: AddPhotoFabProps) {
       />
     </Pressable>
   );
+}
+
+interface AddMachineRowProps {
+  gymId: string;
+}
+
+/**
+ * Inline "기구 추가" CTA between {@link GymOwnerEntry} and {@link MachinesBody}.
+ *
+ * Mirrors {@link AddPhotoFab}'s navigation (UPLOAD_METHOD_CHOICE_PATHNAME)
+ * but lives in the natural reading flow so it stays visible even when
+ * `GymDetail` renders inside the half-open `GymBottomSheet` snap state.
+ * The floating FAB stays as a redundant entry point for full-screen
+ * users; this inline row is the primary discoverable affordance.
+ */
+function AddMachineRow({ gymId }: AddMachineRowProps) {
+  const requireAuth = useRequireAuth();
+  function handlePress() {
+    requireAuth(function navigateToUpload() {
+      router.push({
+        pathname: UPLOAD_METHOD_CHOICE_PATHNAME,
+        params: { gymId },
+      });
+    });
+  }
+  return <Button label="기구 추가" onPress={handlePress} variant="primary" />;
 }
