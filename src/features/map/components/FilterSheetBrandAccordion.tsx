@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AppText } from '@/shared/components/AppText';
+import { BrandLogo } from '@/shared/components/BrandLogo';
 import { formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
@@ -92,6 +93,12 @@ export function FilterSheetBrandAccordion({
                 name={isExpanded ? 'expand-more' : 'chevron-right'}
                 size={20}
                 color={colors.text.secondary}
+              />
+              <BrandLogo
+                brandId={group.brand.id}
+                brandName={group.brand.name}
+                brandNameKo={group.brand.nameKo}
+                size="md"
               />
               <AppText className="flex-1 text-body-md font-medium text-text-primary">
                 {formatBrandLabel(group.brand)}

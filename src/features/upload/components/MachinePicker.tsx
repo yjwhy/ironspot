@@ -6,6 +6,7 @@ import { useBrands } from '@/features/map/hooks/useBrands';
 import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
 import { AppText } from '@/shared/components/AppText';
+import { BrandLogo } from '@/shared/components/BrandLogo';
 import { Chip } from '@/shared/components/Chip';
 import { brandShortName, formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
@@ -190,6 +191,12 @@ function BrandStep({
               style={pressedOpacity}
               className={selectedRowClass(isSelected)}
             >
+              <BrandLogo
+                brandId={brand.id}
+                brandName={brand.name}
+                brandNameKo={brand.nameKo}
+                size="md"
+              />
               <AppText className="text-body text-text-primary">{formatBrandLabel(brand)}</AppText>
             </Pressable>
           );
