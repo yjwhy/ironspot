@@ -119,4 +119,18 @@ describe('UploadCropScreen', () => {
       }),
     );
   });
+
+  it('renders four corner resize handles on the crop rectangle', async () => {
+    // Real device testing 2026-05-25: fixed-size pan-only rectangle was too
+    // restrictive for plate frames that don't fit 16:9. Each corner now
+    // mounts an independent Pan gesture for free-aspect resize.
+    render(<UploadCropScreen />);
+    await waitFor(function loaded() {
+      expect(screen.getByTestId('upload-crop-rect')).toBeTruthy();
+    });
+    expect(screen.getByTestId('upload-crop-handle-tl')).toBeTruthy();
+    expect(screen.getByTestId('upload-crop-handle-tr')).toBeTruthy();
+    expect(screen.getByTestId('upload-crop-handle-bl')).toBeTruthy();
+    expect(screen.getByTestId('upload-crop-handle-br')).toBeTruthy();
+  });
 });

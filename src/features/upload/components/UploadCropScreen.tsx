@@ -11,18 +11,24 @@ import { pressedOpacity } from '@/shared/lib/pressable';
 
 // Initial crop rectangle covers the centre 70 % of the image preview so the
 // user normally only needs a small adjustment to bracket the plate. The
-// rectangle's screen size is fixed (no resize handles in this MVP); pan
-// alone moves it across the image. If the plate doesn't fit the rectangle,
-// the user can skip the crop entirely and rely on brand-anchored matching
-// to discard background tokens.
+// rectangle's initial aspect is 16:9 (most gym plates are wider than tall),
+// but the four corner handles let the user freely resize either axis after
+// the initial state — follow-up to PR #176's pan-only MVP, requested
+// during real device testing 2026-05-25.
 const INITIAL_CROP_RATIO = 0.7;
+const INITIAL_ASPECT_W = 16;
+const INITIAL_ASPECT_H = 9;
 
-// 16:9 aspect for the crop overlay. Most gym plates are wider than tall
-// (e.g. the Hammer Strength plate shown in the F-step guidance image).
-// A 16:9 rectangle approximates that geometry and gives the user a sane
-// default rather than forcing them to draw a free-shape every time.
-const CROP_ASPECT_W = 16;
-const CROP_ASPECT_H = 9;
+// Minimum crop rectangle size in screen pixels. Below this the corner
+// handles get too small to touch reliably and the OCR window shrinks so
+// far that brand-anchored matching's keyword surface drops to noise.
+const MIN_RECT_SIZE = 80;
+
+// Touch target for corner handles. Visible 24 px white square; the
+// 6 px negative inset extends the hit area outward so users can grab
+// the corner without pixel-perfect aim.
+const HANDLE_SIZE = 24;
+const HANDLE_HIT_INSET = -6;
 
 interface ImageLayout {
   width: number;
@@ -134,7 +140,7 @@ export function UploadCropScreen() {
 
       <View className="absolute inset-x-0 bottom-0 gap-3 bg-black/70 px-6 pb-10 pt-4">
         <AppText className="text-center text-body-sm text-white/80">
-          사각형을 라벨 위로 옮기고 자르기를 눌러주세요
+          모서리를 잡고 라벨 크기에 맞게 조절한 뒤 자르기를 눌러주세요
         </AppText>
         <Pressable
           testID="upload-crop-skip"
@@ -156,56 +162,154 @@ interface CropOverlayProps {
   onCommitRect: (rect: { x: number; y: number; width: number; height: number }) => void;
 }
 
-// Pan-only crop rectangle. Size is computed once from the image layout and
-// the 16:9 aspect ratio; the rectangle simply translates across the image
-// under the user's finger. A "자르기" button at the rectangle's bottom-left
-// commits the current position to the parent so the heavy ImageManipulator
-// work runs on the JS thread.
+// Free-resize crop rectangle. Body pan moves the whole rectangle; four
+// corner handles independently resize toward / away from the opposite
+// edge. The initial state is 70 % width × 16:9 height (the geometry of
+// a typical gym plate), but the user can freely deform either axis.
 function CropOverlay({ imageLayout, onCommitRect }: CropOverlayProps) {
-  const cropWidth = imageLayout.width * INITIAL_CROP_RATIO;
-  const cropHeight = (cropWidth * CROP_ASPECT_H) / CROP_ASPECT_W;
-  // Clamp height to image bounds in case 16:9 of the image's width
-  // exceeds its height (very wide image).
-  const clampedHeight = Math.min(cropHeight, imageLayout.height * INITIAL_CROP_RATIO);
-  const initialX = (imageLayout.width - cropWidth) / 2;
-  const initialY = (imageLayout.height - clampedHeight) / 2;
+  const initialW = imageLayout.width * INITIAL_CROP_RATIO;
+  const initialHRaw = (initialW * INITIAL_ASPECT_H) / INITIAL_ASPECT_W;
+  const initialH = Math.min(initialHRaw, imageLayout.height * INITIAL_CROP_RATIO);
+  const initialX = (imageLayout.width - initialW) / 2;
+  const initialY = (imageLayout.height - initialH) / 2;
 
-  const offsetX = useSharedValue(initialX);
-  const offsetY = useSharedValue(initialY);
+  // Rectangle state — x/y are the top-left in rendered-image coordinates;
+  // w/h are screen-pixel dimensions. All four are animated shared values
+  // so resize gestures update them on the UI thread.
+  const x = useSharedValue(initialX);
+  const y = useSharedValue(initialY);
+  const w = useSharedValue(initialW);
+  const h = useSharedValue(initialH);
+
+  // Gesture-session snapshots. Each Pan captures all four state values
+  // onBegin so the worklet can compute the next state from the gesture's
+  // total translation rather than incremental deltas (incremental deltas
+  // drift on cancelled gestures).
   const startX = useSharedValue(initialX);
   const startY = useSharedValue(initialY);
+  const startW = useSharedValue(initialW);
+  const startH = useSharedValue(initialH);
 
-  const panGesture = Gesture.Pan()
-    .onBegin(function captureStart() {
-      'worklet';
-      startX.value = offsetX.value;
-      startY.value = offsetY.value;
-    })
+  function snapshot() {
+    'worklet';
+    startX.value = x.value;
+    startY.value = y.value;
+    startW.value = w.value;
+    startH.value = h.value;
+  }
+
+  // Body pan: translate the rectangle as a whole, size unchanged.
+  const bodyPan = Gesture.Pan()
+    .onBegin(snapshot)
     .onUpdate(function follow(event) {
       'worklet';
-      const next = startX.value + event.translationX;
-      const nextY = startY.value + event.translationY;
-      offsetX.value = clamp(next, 0, imageLayout.width - cropWidth);
-      offsetY.value = clamp(nextY, 0, imageLayout.height - clampedHeight);
+      const nx = startX.value + event.translationX;
+      const ny = startY.value + event.translationY;
+      x.value = clamp(nx, 0, imageLayout.width - w.value);
+      y.value = clamp(ny, 0, imageLayout.height - h.value);
     });
 
-  const animatedStyle = useAnimatedStyle(function rect() {
+  // Corner handles: each handle adjusts two edges. Constraints:
+  //   * width / height >= MIN_RECT_SIZE so the handles stay grabbable.
+  //   * Rectangle stays fully inside the rendered image bounds.
+  // Each branch computes the new width / height first (clamped) and then
+  // derives x / y from the start anchor's opposite edge so the edge the
+  // user isn't dragging stays fixed exactly where it was.
+  const tlPan = Gesture.Pan()
+    .onBegin(snapshot)
+    .onUpdate(function tl(event) {
+      'worklet';
+      const newW = clamp(
+        startW.value - event.translationX,
+        MIN_RECT_SIZE,
+        startX.value + startW.value,
+      );
+      const newH = clamp(
+        startH.value - event.translationY,
+        MIN_RECT_SIZE,
+        startY.value + startH.value,
+      );
+      x.value = startX.value + startW.value - newW;
+      y.value = startY.value + startH.value - newH;
+      w.value = newW;
+      h.value = newH;
+    });
+
+  const trPan = Gesture.Pan()
+    .onBegin(snapshot)
+    .onUpdate(function tr(event) {
+      'worklet';
+      const newW = clamp(
+        startW.value + event.translationX,
+        MIN_RECT_SIZE,
+        imageLayout.width - startX.value,
+      );
+      const newH = clamp(
+        startH.value - event.translationY,
+        MIN_RECT_SIZE,
+        startY.value + startH.value,
+      );
+      y.value = startY.value + startH.value - newH;
+      w.value = newW;
+      h.value = newH;
+    });
+
+  const blPan = Gesture.Pan()
+    .onBegin(snapshot)
+    .onUpdate(function bl(event) {
+      'worklet';
+      const newW = clamp(
+        startW.value - event.translationX,
+        MIN_RECT_SIZE,
+        startX.value + startW.value,
+      );
+      const newH = clamp(
+        startH.value + event.translationY,
+        MIN_RECT_SIZE,
+        imageLayout.height - startY.value,
+      );
+      x.value = startX.value + startW.value - newW;
+      w.value = newW;
+      h.value = newH;
+    });
+
+  const brPan = Gesture.Pan()
+    .onBegin(snapshot)
+    .onUpdate(function br(event) {
+      'worklet';
+      const newW = clamp(
+        startW.value + event.translationX,
+        MIN_RECT_SIZE,
+        imageLayout.width - startX.value,
+      );
+      const newH = clamp(
+        startH.value + event.translationY,
+        MIN_RECT_SIZE,
+        imageLayout.height - startY.value,
+      );
+      w.value = newW;
+      h.value = newH;
+    });
+
+  // Rectangle animated style — position via translate, size via
+  // width/height. Reanimated handles all four channels on the UI thread
+  // so gesture latency stays under a frame.
+  const rectStyle = useAnimatedStyle(function rect() {
     return {
-      transform: [{ translateX: offsetX.value }, { translateY: offsetY.value }],
+      transform: [{ translateX: x.value }, { translateY: y.value }],
+      width: w.value,
+      height: h.value,
     };
   });
 
   function handleCommit() {
     onCommitRect({
-      x: offsetX.value,
-      y: offsetY.value,
-      width: cropWidth,
-      height: clampedHeight,
+      x: x.value,
+      y: y.value,
+      width: w.value,
+      height: h.value,
     });
   }
-
-  // Pressable.onPress fires on the JS thread already, so the commit
-  // handler can be wired directly without a worklet bridge.
 
   return (
     <View
@@ -218,20 +322,22 @@ function CropOverlay({ imageLayout, onCommitRect }: CropOverlayProps) {
       }}
       pointerEvents="box-none"
     >
-      <GestureDetector gesture={panGesture}>
+      <GestureDetector gesture={bodyPan}>
         <Animated.View
           testID="upload-crop-rect"
           style={[
             {
               position: 'absolute',
-              width: cropWidth,
-              height: clampedHeight,
               borderColor: 'white',
               borderWidth: 2,
             },
-            animatedStyle,
+            rectStyle,
           ]}
         >
+          <CornerHandle gesture={tlPan} testID="upload-crop-handle-tl" position="tl" />
+          <CornerHandle gesture={trPan} testID="upload-crop-handle-tr" position="tr" />
+          <CornerHandle gesture={blPan} testID="upload-crop-handle-bl" position="bl" />
+          <CornerHandle gesture={brPan} testID="upload-crop-handle-br" position="br" />
           <Pressable
             testID="upload-crop-confirm"
             accessibilityRole="button"
@@ -244,6 +350,53 @@ function CropOverlay({ imageLayout, onCommitRect }: CropOverlayProps) {
         </Animated.View>
       </GestureDetector>
     </View>
+  );
+}
+
+interface CornerHandleProps {
+  gesture: ReturnType<typeof Gesture.Pan>;
+  testID: string;
+  position: 'tl' | 'tr' | 'bl' | 'br';
+}
+
+/**
+ * Corner resize handle. The visible white square sits at the rectangle's
+ * corner; the hit area extends {@link HANDLE_HIT_INSET} pixels outward via
+ * negative absolute insets so the user can grab the corner without
+ * pixel-perfect aim. Each corner mounts a dedicated {@link Gesture.Pan}
+ * so the parent body-pan doesn't compete with the resize.
+ */
+function CornerHandle({ gesture, testID, position }: CornerHandleProps) {
+  const cornerStyle = (() => {
+    switch (position) {
+      case 'tl':
+        return { top: HANDLE_HIT_INSET, left: HANDLE_HIT_INSET };
+      case 'tr':
+        return { top: HANDLE_HIT_INSET, right: HANDLE_HIT_INSET };
+      case 'bl':
+        return { bottom: HANDLE_HIT_INSET, left: HANDLE_HIT_INSET };
+      case 'br':
+        return { bottom: HANDLE_HIT_INSET, right: HANDLE_HIT_INSET };
+    }
+  })();
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View
+        testID={testID}
+        style={[
+          {
+            position: 'absolute',
+            width: HANDLE_SIZE,
+            height: HANDLE_SIZE,
+            backgroundColor: 'white',
+            borderWidth: 2,
+            borderColor: 'rgba(0,0,0,0.4)',
+          },
+          cornerStyle,
+        ]}
+      />
+    </GestureDetector>
   );
 }
 
