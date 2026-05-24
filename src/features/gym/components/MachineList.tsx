@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 
 import { ReportReasonSheet } from '@/features/photo/components/ReportReasonSheet';
 import { AppText } from '@/shared/components/AppText';
+import { BrandLogo } from '@/shared/components/BrandLogo';
 import { toTestSlug } from '@/shared/lib/format';
 import { formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
@@ -54,9 +55,17 @@ export function MachineList({ machines, onPressMachine }: MachineListProps) {
               className="flex-row items-center justify-between"
               style={pressedOpacity}
             >
-              <AppText accessibilityRole="header" className="text-heading-sm text-text-primary">
-                {brandLabel}
-              </AppText>
+              <View className="flex-row items-center gap-2 flex-1">
+                <BrandLogo
+                  brandId={group.brand.id}
+                  brandName={group.brand.name}
+                  brandNameKo={group.brand.nameKo}
+                  size="sm"
+                />
+                <AppText accessibilityRole="header" className="text-heading-sm text-text-primary">
+                  {brandLabel}
+                </AppText>
+              </View>
               <MaterialIcons
                 name={isCollapsed ? 'expand-more' : 'expand-less'}
                 size={20}
