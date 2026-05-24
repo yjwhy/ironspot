@@ -74,56 +74,11 @@ public class PhotoService {
         } catch (IOException e) {
             throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
         }
-        validateImage(file, imageBytes);
 
-        // Per-user Vision quota: covers BOTH orphan and bound uploads since
-        // every upload spends 3 Vision units regardless of binding. Replaces
-        // the orphan-only gate from Phase 5 item 11 slice (b) — the unified
-        // gate prevents bound-upload abuse paths that were previously
-        // un-throttled.
-        enforceVisionQuota(userId);
+        VisionAnalysisResult vision = runVisionPiiGate(userId, file, imageBytes);
 
         UUID photoId = UUID.randomUUID();
         String filename = photoId + ".webp";
-
-        // Layer 1: Vision SafeSearch + OCR. Cache lookup first via SHA-256 of
-        // the image bytes — second + upload of the same image (retry, abuse
-        // resends) reuses the cached verdict + texts and skips the Vision
-        // API call entirely. Cache miss falls through to a fresh Vision
-        // call; failures fail-open (verdict=ALLOW, empty texts) so a Vision
-        // outage doesn't break upload, just suppresses OCR suggestions.
-        // Run before storage upload so REJECT aborts before producing an
-        // orphan file.
-        String imageSha256 = VisionCacheRepository.sha256(imageBytes);
-        VisionAnalysisResult vision = visionCacheRepository.findBySha256(imageSha256)
-            .map(cached -> {
-                visionCacheRepository.bumpHitCount(imageSha256);
-                // INFO so cache effectiveness is observable in Render logs
-                // without enabling DEBUG. Low cardinality (one line per
-                // cache hit) so noise stays bounded.
-                log.info("Vision cache hit for photo {} (sha256={})", photoId, imageSha256);
-                return cached;
-            })
-            .orElseGet(() -> {
-                try {
-                    VisionAnalysisResult fresh = ocrService.analyzeImage(imageBytes);
-                    visionCacheRepository.insert(imageSha256, fresh);
-                    return fresh;
-                } catch (Exception e) {
-                    log.warn("Vision API failed for photo {} — failing open (not cached)", photoId, e);
-                    return VisionAnalysisResult.EMPTY;
-                }
-            });
-
-        if (vision.verdict() == SafeSearchVerdict.REJECT) {
-            throw new BusinessException("부적절한 콘텐츠로 감지되었습니다", HttpStatus.BAD_REQUEST);
-        }
-
-        if (vision.hasPii()) {
-            throw new BusinessException(
-                "얼굴이 인식된 사진은 업로드할 수 없습니다. 얼굴이 가려지도록 다시 촬영해주세요.",
-                HttpStatus.BAD_REQUEST);
-        }
 
         String photoUrl;
         try {
@@ -173,15 +128,53 @@ public class PhotoService {
         } catch (IOException e) {
             throw new BusinessException("이미지를 읽을 수 없습니다", HttpStatus.BAD_REQUEST);
         }
+
+        VisionAnalysisResult vision = runVisionPiiGate(userId, file, imageBytes);
+
+        List<MachineTemplateSuggestion> suggestions = fuzzyMatchService.findMatches(vision.texts());
+        boolean ocrSucceeded = !vision.texts().isEmpty();
+        return new OcrOnlyResponse(suggestions, ocrSucceeded);
+    }
+
+    /**
+     * Phase 5 item 17 prep: shared Vision SafeSearch + face-PII gate used by
+     * {@link #upload}, {@link #analyzeForOcrOnly}, and (slice c) the owner
+     * cover-photo upload. Runs validate → per-user quota → SHA-256 cache
+     * lookup → Vision call (failing open on outage) → SafeSearch REJECT and
+     * face-PII rejections. Returns the analysis result; suggestions
+     * generation + Storage / DB writes stay with the caller.
+     *
+     * <p>Centralising the gate ensures a future PII / SafeSearch rule
+     * tweak applies to every upload path uniformly — the single source of
+     * truth eliminates "did we forget to re-check the cover-photo path"
+     * risk for security-critical checks.
+     */
+    private VisionAnalysisResult runVisionPiiGate(String userId, MultipartFile file, byte[] imageBytes) {
         validateImage(file, imageBytes);
 
+        // Per-user Vision quota: covers BOTH orphan and bound uploads since
+        // every upload spends 3 Vision units regardless of binding. Replaces
+        // the orphan-only gate from Phase 5 item 11 slice (b) — the unified
+        // gate prevents bound-upload abuse paths that were previously
+        // un-throttled.
         enforceVisionQuota(userId);
 
+        // Layer 1: Vision SafeSearch + OCR. Cache lookup first via SHA-256 of
+        // the image bytes — second + upload of the same image (retry, abuse
+        // resends) reuses the cached verdict + texts and skips the Vision
+        // API call entirely. Cache miss falls through to a fresh Vision
+        // call; failures fail-open (verdict=ALLOW, empty texts) so a Vision
+        // outage doesn't break upload, just suppresses OCR suggestions.
+        // Run before storage upload so REJECT aborts before producing an
+        // orphan file.
         String imageSha256 = VisionCacheRepository.sha256(imageBytes);
         VisionAnalysisResult vision = visionCacheRepository.findBySha256(imageSha256)
             .map(cached -> {
                 visionCacheRepository.bumpHitCount(imageSha256);
-                log.info("Vision cache hit for ocr-only request (sha256={})", imageSha256);
+                // INFO so cache effectiveness is observable in Render logs
+                // without enabling DEBUG. Low cardinality (one line per
+                // cache hit) so noise stays bounded.
+                log.info("Vision cache hit (sha256={})", imageSha256);
                 return cached;
             })
             .orElseGet(() -> {
@@ -190,7 +183,7 @@ public class PhotoService {
                     visionCacheRepository.insert(imageSha256, fresh);
                     return fresh;
                 } catch (Exception e) {
-                    log.warn("Vision API failed on ocr-only path — failing open (not cached)", e);
+                    log.warn("Vision API failed — failing open (not cached)", e);
                     return VisionAnalysisResult.EMPTY;
                 }
             });
@@ -205,9 +198,7 @@ public class PhotoService {
                 HttpStatus.BAD_REQUEST);
         }
 
-        List<MachineTemplateSuggestion> suggestions = fuzzyMatchService.findMatches(vision.texts());
-        boolean ocrSucceeded = !vision.texts().isEmpty();
-        return new OcrOnlyResponse(suggestions, ocrSucceeded);
+        return vision;
     }
 
     /**
