@@ -68,7 +68,7 @@ export function UploadPhotoScreen() {
         }
       }
       router.push({
-        pathname: '/(upload)/confirm',
+        pathname: '/(upload)/crop',
         params: { gymMachineId, gymId, compressedUri, naverPlace },
       });
     } catch {
