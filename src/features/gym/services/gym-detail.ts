@@ -57,6 +57,7 @@ function toGym(r: GymDetailResponse): Gym {
     last_verified_at: r.lastVerifiedAt ?? null,
     created_at: r.createdAt,
     updated_at: r.updatedAt,
+    cover_photo_url: r.coverPhotoUrl ?? null,
   };
 }
 

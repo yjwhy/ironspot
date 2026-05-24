@@ -17,5 +17,6 @@ public record GymDetailResponse(
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean isVerified,
     Instant lastVerifiedAt,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant updatedAt,
+    String coverPhotoUrl
 ) {}

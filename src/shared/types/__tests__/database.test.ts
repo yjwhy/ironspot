@@ -30,6 +30,7 @@ describe('Database types', () => {
       last_verified_at: '2026-03-15',
       created_at: '2026-03-15',
       updated_at: '2026-03-15',
+      cover_photo_url: null,
     };
     expect(gym.phone).toBeNull();
     expect(gym.latitude).toBe(37.5);

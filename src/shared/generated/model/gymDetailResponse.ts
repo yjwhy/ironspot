@@ -19,4 +19,5 @@ export interface GymDetailResponse {
   lastVerifiedAt?: string;
   createdAt: string;
   updatedAt: string;
+  coverPhotoUrl?: string;
 }

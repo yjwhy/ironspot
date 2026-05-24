@@ -111,6 +111,16 @@ function OwnedGymRow({ gym }: { gym: OwnedGym }) {
             <AppText className="text-body-sm text-text-primary">사진</AppText>
           </Pressable>
         </Link>
+        <Link href={{ pathname: '/owner/cover/[gym]', params: { gym: gym.gymId } }} asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${gym.gymName} 대표 사진`}
+            style={pressedOpacity}
+            className="flex-1 rounded-md bg-bg-base py-2 items-center"
+          >
+            <AppText className="text-body-sm text-text-primary">대표</AppText>
+          </Pressable>
+        </Link>
       </View>
     </View>
   );

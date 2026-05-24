@@ -231,7 +231,8 @@ public class GymRepository {
         return dsl.select(
                 g.ID, g.NAME, g.ADDRESS, lat, lng,
                 g.PHONE, g.OPERATING_HOURS, g.DAY_PASS_PRICE,
-                g.IS_VERIFIED, g.LAST_VERIFIED_AT, g.CREATED_AT, g.UPDATED_AT)
+                g.IS_VERIFIED, g.LAST_VERIFIED_AT, g.CREATED_AT, g.UPDATED_AT,
+                g.COVER_PHOTO_URL)
             .from(g)
             .where(g.ID.eq(id))
             .fetchOptional(r -> {
@@ -248,7 +249,8 @@ public class GymRepository {
                     Objects.requireNonNullElse(r.get(g.IS_VERIFIED), false),
                     lastVerified != null ? lastVerified.toInstant() : null,
                     r.get(g.CREATED_AT).toInstant(),
-                    r.get(g.UPDATED_AT).toInstant()
+                    r.get(g.UPDATED_AT).toInstant(),
+                    r.get(g.COVER_PHOTO_URL)
                 );
             });
     }
