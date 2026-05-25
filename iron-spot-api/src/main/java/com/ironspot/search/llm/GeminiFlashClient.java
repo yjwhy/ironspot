@@ -67,12 +67,16 @@ public class GeminiFlashClient implements LlmClient {
             throw new LlmException(LlmException.Kind.TRANSPORT, "GEMINI_API_KEY not configured");
         }
 
+        // Security task #68: cap output tokens. See GroqLlamaClient for the
+        // same rationale; Gemini Flash Lite has a comparably small free-tier
+        // quota and the SearchDsl response is bounded.
         Map<String, Object> body = Map.of(
             "contents", List.of(Map.of("parts", List.of(Map.of("text", userQuery)))),
             "systemInstruction", Map.of("parts", List.of(Map.of("text", systemPrompt))),
             "generationConfig", Map.of(
                 "temperature", 0.0,
-                "responseMimeType", "application/json"
+                "responseMimeType", "application/json",
+                "maxOutputTokens", 512
             )
         );
 
