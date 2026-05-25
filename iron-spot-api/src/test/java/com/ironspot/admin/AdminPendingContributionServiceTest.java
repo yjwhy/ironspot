@@ -156,6 +156,37 @@ class AdminPendingContributionServiceTest {
     }
 
     @Test
+    void promote_existingTemplate_400WhenExtraneousFieldPresent() {
+        // Security task #27: existingTemplate must only carry templateId. A
+        // payload that *also* sets a new brand name signals the client picked
+        // the wrong kind — refuse rather than silently dropping the field.
+        givenPendingExists();
+        PromoteContributionRequest extraNewBrand = new PromoteContributionRequest(
+            "existingTemplate", templateId, null, "Stray Brand", null, null, null, null, null);
+        assertBadRequest(() -> service.promote(gymMachineId, extraNewBrand));
+        verify(machineRepository, never()).templateExistsAndApproved(any());
+    }
+
+    @Test
+    void promote_newTemplate_400WhenTemplateIdAlsoPresent() {
+        givenPendingExists();
+        PromoteContributionRequest extraTemplateId = new PromoteContributionRequest(
+            "newTemplate", templateId, brandId, null, null, "Lat Pulldown", "랫 풀다운", "pin", categoryId);
+        assertBadRequest(() -> service.promote(gymMachineId, extraTemplateId));
+        verify(brandRepository, never()).existsById(any());
+    }
+
+    @Test
+    void promote_newBrandAndTemplate_400WhenBrandIdAlsoPresent() {
+        givenPendingExists();
+        PromoteContributionRequest extraBrandId = new PromoteContributionRequest(
+            "newBrandAndTemplate", null, brandId, "NewBrand", "신규 브랜드",
+            "Custom Press", "커스텀 프레스", "plate", categoryId);
+        assertBadRequest(() -> service.promote(gymMachineId, extraBrandId));
+        verify(brandRepository, never()).create(any(), any());
+    }
+
+    @Test
     void promote_400WhenKindUnknown() {
         givenPendingExists();
         PromoteContributionRequest req = new PromoteContributionRequest(

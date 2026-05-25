@@ -79,6 +79,16 @@ public class AdminPendingContributionService {
     }
 
     private UUID resolveExistingTemplate(PromoteContributionRequest req) {
+        // Security task #27: enforce branch-shape. existingTemplate must ONLY
+        // carry templateId — any other field set means the client picked the
+        // wrong kind for what they actually want to do, and we refuse rather
+        // than silently dropping the extra payload.
+        requireAbsent(req.brandId(), "brandId");
+        requireAbsent(req.newBrandName(), "newBrandName");
+        requireAbsent(req.newBrandNameKo(), "newBrandNameKo");
+        requireAbsent(req.nameEn(), "nameEn");
+        requireAbsent(req.nameKo(), "nameKo");
+        requireAbsent(req.loadingType(), "loadingType");
         UUID templateId = requirePresent(req.templateId(), "templateId");
         if (!machineRepository.templateExistsAndApproved(templateId)) {
             throw new BusinessException(
@@ -88,6 +98,11 @@ public class AdminPendingContributionService {
     }
 
     private UUID resolveNewTemplate(PromoteContributionRequest req) {
+        // Security task #27: newTemplate uses brandId; reject newBrand* +
+        // templateId so the catalog stays consistent with the kind.
+        requireAbsent(req.templateId(), "templateId");
+        requireAbsent(req.newBrandName(), "newBrandName");
+        requireAbsent(req.newBrandNameKo(), "newBrandNameKo");
         UUID brandId = requirePresent(req.brandId(), "brandId");
         TemplateFields tpl = requireTemplateFields(req);
         if (!brandRepository.existsById(brandId)) {
@@ -98,6 +113,11 @@ public class AdminPendingContributionService {
     }
 
     private UUID resolveNewBrandAndTemplate(PromoteContributionRequest req) {
+        // Security task #27: newBrandAndTemplate creates both; reject brandId
+        // + templateId so the catalog never sees an "old brand under a new
+        // brand label" mismatch.
+        requireAbsent(req.templateId(), "templateId");
+        requireAbsent(req.brandId(), "brandId");
         String brandName = requirePresentString(req.newBrandName(), "newBrandName");
         String brandNameKo = requirePresentString(req.newBrandNameKo(), "newBrandNameKo");
         TemplateFields tpl = requireTemplateFields(req);
@@ -127,6 +147,15 @@ public class AdminPendingContributionService {
                 "필수 필드가 누락됐어요: " + fieldName, HttpStatus.BAD_REQUEST);
         }
         return value;
+    }
+
+    private void requireAbsent(Object value, String fieldName) {
+        boolean blank = value == null
+            || (value instanceof String s && s.isBlank());
+        if (!blank) {
+            throw new BusinessException(
+                "이 kind에서는 사용할 수 없는 필드입니다: " + fieldName, HttpStatus.BAD_REQUEST);
+        }
     }
 
     private String requirePresentString(String value, String fieldName) {
