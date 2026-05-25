@@ -4,13 +4,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OwnerMachineForm } from '@/features/owner/components/OwnerMachineForm';
 import { useListMachines } from '@/shared/generated/machines/machines';
+import { ownerMachineDetailParams, parseRouteParams } from '@/shared/lib/deeplink-params';
 
 export default function OwnerMachineEditRoute() {
-  const params = useLocalSearchParams<{ gym: string; id: string }>();
+  // Security task #35: Zod-validate UUIDs at the route boundary.
+  const parsed = parseRouteParams(ownerMachineDetailParams, useLocalSearchParams());
   const router = useRouter();
-  const machinesQuery = useListMachines(params.gym);
+  const machinesQuery = useListMachines(parsed?.gym ?? '');
 
-  const machine = machinesQuery.data?.data.find((m) => m.id === params.id);
+  const machine = machinesQuery.data?.data.find((m) => m.id === parsed?.id);
 
   if (machinesQuery.isLoading || machine === undefined) {
     return (
@@ -28,7 +30,7 @@ export default function OwnerMachineEditRoute() {
 
   return (
     <OwnerMachineForm
-      gymId={params.gym}
+      gymId={parsed?.gym ?? ''}
       initial={{ id: machine.id, templateId: machine.templateId, quantity: machine.quantity }}
       onDone={() => {
         router.back();
