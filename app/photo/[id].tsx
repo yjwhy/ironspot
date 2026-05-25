@@ -1,10 +1,10 @@
 import { useLocalSearchParams } from 'expo-router';
 
 import { PhotoDetailScreen } from '@/features/photo/components/PhotoDetailScreen';
+import { parseRouteParams, photoRouteParams } from '@/shared/lib/deeplink-params';
 
 export default function PhotoDetailRoute() {
-  const params = useLocalSearchParams<{ id?: string; machineId?: string }>();
-  const photoId = typeof params.id === 'string' ? params.id : undefined;
-  const machineId = typeof params.machineId === 'string' ? params.machineId : undefined;
-  return <PhotoDetailScreen photoId={photoId} machineId={machineId} />;
+  // Security task #35: Zod-validate UUIDs at the route boundary.
+  const parsed = parseRouteParams(photoRouteParams, useLocalSearchParams());
+  return <PhotoDetailScreen photoId={parsed?.id} machineId={parsed?.machineId} />;
 }
