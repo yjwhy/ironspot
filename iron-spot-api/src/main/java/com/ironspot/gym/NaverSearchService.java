@@ -59,8 +59,18 @@ public class NaverSearchService {
      */
     @Cacheable("naverPlaces")
     public List<NaverPlaceResult> search(String query) {
+        // Security task #76: sanitise the query before it leaves our process.
+        // Two reasons:
+        //   1. The LLM-produced Location.NamedPlace.name lands here, so a
+        //      prompt-injected control / bidi / zero-width payload would
+        //      otherwise reach Naver's audit log verbatim.
+        //   2. The cache key is the (cleaned) query string; sanitisation also
+        //      improves @Cacheable hit rate by collapsing zero-width variants.
+        // Length cap mirrors Location.NamedPlace.MAX_NAME_LENGTH.
+        String safeQuery = sanitiseQuery(query);
+
         URI uri = UriComponentsBuilder.fromUriString(NAVER_LOCAL_URL)
-            .queryParam("query", query)
+            .queryParam("query", safeQuery)
             .queryParam("display", DEFAULT_DISPLAY)
             .queryParam("start", 1)
             .queryParam("sort", "random")
@@ -122,9 +132,33 @@ public class NaverSearchService {
         return new NaverPlaceResult(id, name, displayRoadAddress, address, latitude, longitude, phone, category);
     }
 
+    /**
+     * Security task #76: replace the previous "&lt;/?b&gt;-only" stripper. Naver
+     * Local API mostly returns &lt;b&gt; for query highlights but is not
+     * contractually limited to that tag; a stray &lt;script&gt; or javascript:
+     * URI in a vendor-submitted name field would survive the old regex and
+     * land in the dashboard (admin web UI). htmlUnescape covers HTML entity
+     * decoding so {@code &amp;#x3C;script&amp;#x3E;} cannot smuggle a tag past
+     * the strip.
+     */
     private static String stripHtml(String value) {
         if (value == null) return "";
-        return HTML_BOLD_TAG.matcher(value).replaceAll("");
+        String unescaped = org.springframework.web.util.HtmlUtils.htmlUnescape(value);
+        return unescaped.replaceAll("<[^>]+>", "");
+    }
+
+    /**
+     * NFC-normalise + {@code \p{C}} strip + 60-char cap. Matches the
+     * {@link com.ironspot.search.dsl.Location} NamedPlace bounds so the LLM
+     * cannot smuggle anything outbound that the DSL layer already rejected.
+     */
+    static String sanitiseQuery(String query) {
+        if (query == null) return "";
+        String stripped = java.text.Normalizer
+            .normalize(query, java.text.Normalizer.Form.NFC)
+            .replaceAll("\\p{C}", "")
+            .trim();
+        return stripped.length() > 60 ? stripped.substring(0, 60) : stripped;
     }
 
     private static String asString(Object value) {
