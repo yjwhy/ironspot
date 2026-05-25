@@ -174,6 +174,11 @@ CREATE TABLE IF NOT EXISTS vision_cache (
   hit_count    INTEGER NOT NULL DEFAULT 0
 );
 
+-- V18 mirror: created_at index supporting the daily prune job (deletes
+-- rows older than 90 days).
+CREATE INDEX IF NOT EXISTS idx_vision_cache_created_at
+  ON vision_cache (created_at);
+
 CREATE TABLE IF NOT EXISTS photo_votes (
   user_id UUID REFERENCES users(id),
   photo_id UUID REFERENCES machine_photos(id),
