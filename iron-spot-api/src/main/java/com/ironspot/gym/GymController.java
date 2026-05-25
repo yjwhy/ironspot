@@ -91,7 +91,7 @@ public class GymController {
         @AuthenticationPrincipal UserPrincipal principal,
         @RequestParam @NotBlank @Size(max = 100) String query
     ) {
-        return gymService.searchNaverPlaces(query);
+        return gymService.searchNaverPlaces(query, principal.getUserId());
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)

@@ -22,6 +22,7 @@ public class GymService {
 
     private final GymRepository gymRepository;
     private final NaverSearchService naverSearchService;
+    private final NaverSearchQuotaService naverSearchQuotaService;
 
     public List<GymWithMachineCountResponse> searchInBounds(GymSearchRequest request) {
         return gymRepository.searchInBounds(request);
@@ -31,7 +32,13 @@ public class GymService {
         return gymRepository.findById(id);
     }
 
-    public List<NaverPlaceResult> searchNaverPlaces(String query) {
+    /**
+     * Security task #26: enforce per-user daily cap before the Naver call.
+     * A compromised or scripted client otherwise drains the shared Naver
+     * free-tier quota (25K/day) and locks every other user out.
+     */
+    public List<NaverPlaceResult> searchNaverPlaces(String query, String userId) {
+        naverSearchQuotaService.enforce(userId);
         return naverSearchService.search(query);
     }
 
