@@ -1,0 +1,32 @@
+-- =========================================================================
+-- V18 — Security tasks #30 + #31 + #75: retention + PII hardening
+-- =========================================================================
+--
+-- Three related retention concerns rolled into one migration so the on-call
+-- cognitive load is "one history row" not three.
+--
+-- 1. Task #30 + #75 — vision_cache lifecycle
+--    Add a created_at index so the daily prune job
+--    (VisionCachePruneJob, same PR) can sweep "rows older than 90 days"
+--    without scanning the whole table.
+--
+--    A GENERATED expires_at column would be cleaner but PostgreSQL
+--    refuses {@code created_at + INTERVAL '90 days'} as a STORED
+--    generation expression (TIMESTAMPTZ + INTERVAL is STABLE, not
+--    IMMUTABLE — session timezone could change the result). The Java
+--    side carries the 90-day arithmetic instead.
+--
+--    The texts_json sanitisation (\p{C} strip on insert) is enforced
+--    in VisionCacheRepository.serialiseTexts in the same PR.
+--
+-- 2. Task #31 — nl_search_log raw_query 30-day redact
+--    Schema-side no-op. NlSearchLogRetentionJob.redactOldRawQueries
+--    replaces raw_query with '[redacted]' for rows older than 30 days
+--    while keeping normalised_query + counts. Hard delete at 90 days
+--    remains in the same job.
+--
+-- Idempotency: CREATE INDEX IF NOT EXISTS.
+-- =========================================================================
+
+CREATE INDEX IF NOT EXISTS idx_vision_cache_created_at
+  ON vision_cache (created_at);
