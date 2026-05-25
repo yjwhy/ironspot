@@ -14,6 +14,13 @@ spring:
       maximum-pool-size: 3
       minimum-idle: 1
 
+security:
+  # Fixture JWKS URL for IT — JwtDecoder bean is mocked via @MockitoBean in
+  # every controller test, so the URL is never fetched. AuthConfig validates
+  # the URL format at bean creation (must end with /.well-known/jwks.json,
+  # used to derive the iss validator) which this placeholder satisfies.
+  supabase-jwks-url: https://test-project.supabase.co/auth/v1/.well-known/jwks.json
+
 supabase:
   url: http://localhost:54321
   service-role-key: test-service-role-key
