@@ -97,6 +97,58 @@ class AdminNotificationServiceTest {
             .contains("3 pending reports");
     }
 
+    // Security task #12 — Slack-boundary sanitisation. The defensive layer
+    // applies to every notify* call; tests below pin the rules without
+    // standing up the full HTTP chain.
+
+    @Test
+    void sanitiseForSlack_preservesPlainAscii() {
+        assertThat(AdminNotificationService.sanitiseForSlack("hello world"))
+            .isEqualTo("hello world");
+    }
+
+    @Test
+    void sanitiseForSlack_preservesHangul() {
+        assertThat(AdminNotificationService.sanitiseForSlack("어드민 검토"))
+            .isEqualTo("어드민 검토");
+    }
+
+    @Test
+    void sanitiseForSlack_dropsControlChars() {
+        assertThat(AdminNotificationService.sanitiseForSlack("hello\tworld"))
+            .isEqualTo("helloworld");
+    }
+
+    @Test
+    void sanitiseForSlack_dropsBidiOverride() {
+        // U+202E is a control / format codepoint; \p{C} catches it.
+        assertThat(AdminNotificationService.sanitiseForSlack("hello‮world"))
+            .isEqualTo("helloworld");
+    }
+
+    @Test
+    void sanitiseForSlack_neutralisesAngleBrackets() {
+        // Slack's mrkdwn auto-link parser turns <https://evil/> into a
+        // clickable link. Replacing the ASCII brackets with full-width visual
+        // equivalents preserves readability for the admin but disarms the
+        // auto-linker.
+        assertThat(AdminNotificationService.sanitiseForSlack("see <https://evil/> now"))
+            .isEqualTo("see 〈https://evil/〉 now");
+    }
+
+    @Test
+    void sanitiseForSlack_capsLength() {
+        String big = "a".repeat(2000);
+        String out = AdminNotificationService.sanitiseForSlack(big);
+        assertThat(out).hasSize(1501);
+        assertThat(out).endsWith("…");
+    }
+
+    @Test
+    void sanitiseForSlack_acceptsNull() {
+        assertThat(AdminNotificationService.sanitiseForSlack(null)).isEqualTo("");
+    }
+
     @Test
     void postsSafeSearchQueueWithVerdict() {
         ReflectionTestUtils.setField(service, "webhookUrl", WEBHOOK_URL);
