@@ -29,8 +29,9 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.password", postgres::getPassword);
         // NimbusJwtDecoder lazily fetches the JWKS on first decode, so a dummy
         // URL is fine here — every IT mocks JwtValidator so the decoder is never
-        // called. Only Spring bean construction needs the property to be present.
+        // called. The URL MUST end with /.well-known/jwks.json because AuthConfig
+        // derives the iss validator from it at bean creation time.
         registry.add("security.supabase-jwks-url",
-            () -> "http://127.0.0.1:1/jwks-not-used-in-tests");
+            () -> "http://127.0.0.1:1/auth/v1/.well-known/jwks.json");
     }
 }
