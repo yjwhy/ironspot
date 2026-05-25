@@ -6,6 +6,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Security task #47: explicitly scope the default GITHUB_TOKEN to read-only
+# at the workflow level. Without this the org-default applies, which is
+# read-write — a compromised action could then create commits / branches /
+# PRs. Jobs can opt back into write where needed (none required today).
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}

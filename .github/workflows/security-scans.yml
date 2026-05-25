@@ -1,0 +1,76 @@
+name: Security scans
+
+# Security task #50: SAST + secret scan + dependency review gate on every
+# PR. CodeQL covers Java + JavaScript / TypeScript, gitleaks covers
+# committed secrets, and dependency-review-action blocks vulnerable deps
+# from being merged.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Weekly full scan on main so a CVE published after a green merge is
+    # still surfaced. UTC because GitHub cron does not accept Asia/Seoul.
+    - cron: '17 3 * * 1'
+
+# Workflow-level read-only token; jobs that need more (CodeQL needs
+# security-events write) opt back in.
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [java-kotlin, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ matrix.language }}'
+
+  gitleaks:
+    name: gitleaks (secret scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    # GitHub action-only, no language matrix; uses the dependency graph
+    # already populated by Dependabot. Blocks merges that introduce
+    # known-vulnerable transitive deps.
+    if: github.event_name == 'pull_request'
+    name: dependency review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
