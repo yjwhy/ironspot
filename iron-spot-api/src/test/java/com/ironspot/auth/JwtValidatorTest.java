@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -20,13 +21,15 @@ import static org.mockito.Mockito.mock;
 
 /**
  * Drives JwtValidator's lift logic (sub → UserPrincipal) with a mocked
- * {@link JwtDecoder}. Crypto verification itself is Nimbus's responsibility
- * and is exercised end-to-end through AdminControllerIT / UserControllerTest,
- * which {@code @MockitoBean} JwtValidator and don't need real tokens.
+ * {@link JwtDecoder}. Crypto verification (signature, exp, iss) is Nimbus's
+ * responsibility and is exercised end-to-end through AdminControllerIT /
+ * UserControllerTest, which {@code @MockitoBean} JwtValidator and don't need
+ * real tokens. The aud claim is enforced here at the application layer.
  */
 class JwtValidatorTest {
 
     private static final String TEST_USER_ID = "550e8400-e29b-41d4-a716-446655440000";
+    private static final List<String> AUTHENTICATED = List.of("authenticated");
 
     private JwtDecoder decoder;
     private UserRepository userRepository;
@@ -93,10 +96,40 @@ class JwtValidatorTest {
         assertThat(validator.validate("token")).isEmpty();
     }
 
+    @Test
+    void tokenWithMissingAudienceReturnsEmpty() {
+        given(decoder.decode(anyString()))
+            .willReturn(buildJwt(TEST_USER_ID, "u@x.com", null));
+
+        assertThat(validator.validate("token")).isEmpty();
+    }
+
+    @Test
+    void tokenWithWrongAudienceReturnsEmpty() {
+        given(decoder.decode(anyString()))
+            .willReturn(buildJwt(TEST_USER_ID, "u@x.com", List.of("service_role")));
+
+        assertThat(validator.validate("token")).isEmpty();
+    }
+
+    @Test
+    void tokenWithAuthenticatedAndExtraAudiencesIsAccepted() {
+        given(decoder.decode(anyString()))
+            .willReturn(buildJwt(TEST_USER_ID, "u@x.com",
+                List.of("authenticated", "https://other.example")));
+
+        assertThat(validator.validate("token")).isPresent();
+    }
+
     private static Jwt buildJwt(String sub, String email) {
+        return buildJwt(sub, email, AUTHENTICATED);
+    }
+
+    private static Jwt buildJwt(String sub, String email, List<String> audiences) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("sub", sub);
         if (email != null) claims.put("email", email);
+        if (audiences != null) claims.put("aud", audiences);
         return new Jwt(
             "header.payload.signature",
             Instant.now(),

@@ -345,3 +345,35 @@ INSERT INTO machine_photos(id, gym_machine_id, user_id, photo_url, is_blinded)
     'https://example.com/photos/blinded.jpg',
     TRUE
   );
+
+-- V17 mirror: deny-by-default RLS. See V17__enable_rls_deny_default.sql for
+-- full rationale. Testcontainers default user is superuser (BYPASSRLS), so
+-- IT continues to read/write all rows. This ALTER block guards against a
+-- future regression where the IT DB user loses BYPASSRLS — the database
+-- then fails closed instead of silently bypassing the production policy.
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users FORCE ROW LEVEL SECURITY;
+ALTER TABLE gym_owners ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gym_owners FORCE ROW LEVEL SECURITY;
+ALTER TABLE moderation_audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE moderation_audit_log FORCE ROW LEVEL SECURITY;
+ALTER TABLE machine_photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE machine_photos FORCE ROW LEVEL SECURITY;
+ALTER TABLE photo_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE photo_votes FORCE ROW LEVEL SECURITY;
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reports FORCE ROW LEVEL SECURITY;
+ALTER TABLE nl_search_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE nl_search_log FORCE ROW LEVEL SECURITY;
+ALTER TABLE vision_cache ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vision_cache FORCE ROW LEVEL SECURITY;
+ALTER TABLE gyms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gyms FORCE ROW LEVEL SECURITY;
+ALTER TABLE gym_machines ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gym_machines FORCE ROW LEVEL SECURITY;
+ALTER TABLE brands ENABLE ROW LEVEL SECURITY;
+ALTER TABLE brands FORCE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories FORCE ROW LEVEL SECURITY;
+ALTER TABLE machine_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE machine_templates FORCE ROW LEVEL SECURITY;
