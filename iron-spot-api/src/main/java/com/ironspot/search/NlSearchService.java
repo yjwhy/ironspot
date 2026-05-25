@@ -160,7 +160,14 @@ public class NlSearchService {
         crumb.setCategory("nl_search");
         crumb.setMessage("NL search " + outcome);
         crumb.setLevel("success".equals(outcome) ? SentryLevel.INFO : SentryLevel.WARNING);
-        crumb.setData("input", input);
+        // Security task #45: Sentry is a third-party SaaS. raw user input would
+        // otherwise carry uninterned PII (addresses, employer names) outside
+        // the PIPA-controlled boundary. Normalise (lowercase + collapse
+        // whitespace + strip punctuation) then truncate to 50 chars so the
+        // breadcrumb retains its analytic value (cohort patterns) without
+        // surfacing the raw query.
+        crumb.setData("input", com.ironspot.common.text.SafeEcho.truncate(
+            input == null ? "" : Normaliser.normalise(input), 50));
         crumb.setData("filter_count", dsl != null ? dsl.machineFilters().size() : 0);
         crumb.setData("total_count", totalCount != null ? totalCount : 0);
         crumb.setData("duration_ms", durationMs);

@@ -53,7 +53,13 @@ public class NlSearchEmptyResultReporter {
         }
 
         if (reportedInWindow.putIfAbsent(query, Boolean.TRUE) == null) {
-            Sentry.captureMessage("nl_search_empty_result", scope -> scope.setExtra("query", query));
+            // Security task #45: same as recordBreadcrumb — never ship raw user
+            // query to Sentry. The normalised + truncated form keeps the
+            // empty-result analytic value (which queries fail most often) while
+            // dropping PII that would otherwise cross the PIPA boundary.
+            String safe = com.ironspot.common.text.SafeEcho.truncate(
+                com.ironspot.search.Normaliser.normalise(query), 50);
+            Sentry.captureMessage("nl_search_empty_result", scope -> scope.setExtra("query", safe));
         }
     }
 }

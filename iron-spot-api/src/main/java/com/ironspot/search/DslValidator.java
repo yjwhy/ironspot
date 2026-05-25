@@ -3,6 +3,7 @@ package com.ironspot.search;
 import com.ironspot.brand.BrandRepository;
 import com.ironspot.category.CategoryRepository;
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.common.text.SafeEcho;
 import com.ironspot.photo.FuzzyMatchService;
 import com.ironspot.search.dsl.MachineFilter;
 import com.ironspot.search.dsl.SearchDsl;
@@ -36,14 +37,14 @@ public class DslValidator {
         UUID brandId = f.brand() != null
             ? brandRepository.findIdByNameOrKoFuzzy(f.brand())
                 .orElseThrow(() -> new BusinessException(
-                    "'" + f.brand() + "' 브랜드는 등록되지 않았어요. (예: Panatta, Technogym, Cybex)",
+                    "'" + SafeEcho.sanitise(f.brand()) + "' 브랜드는 등록되지 않았어요. (예: Panatta, Technogym, Cybex)",
                     HttpStatus.BAD_REQUEST))
             : null;
 
         UUID categoryId = f.category() != null
             ? categoryRepository.findIdByNameIgnoreCase(f.category())
                 .orElseThrow(() -> new BusinessException(
-                    "'" + f.category() + "' 카테고리는 등록되지 않았어요. (예: Chest, Back, Legs, Shoulders)",
+                    "'" + SafeEcho.sanitise(f.category()) + "' 카테고리는 등록되지 않았어요. (예: Chest, Back, Legs, Shoulders)",
                     HttpStatus.BAD_REQUEST))
             : null;
 
@@ -58,7 +59,7 @@ public class DslValidator {
         List<UUID> ids = fuzzyMatchService.findTemplateIds(machineName, brandId, categoryId);
         if (ids.isEmpty()) {
             throw new BusinessException(
-                "'" + machineName + "' 머신을 찾지 못했어요. 다른 이름으로 시도해주세요.",
+                "'" + SafeEcho.sanitise(machineName) + "' 머신을 찾지 못했어요. 다른 이름으로 시도해주세요.",
                 HttpStatus.BAD_REQUEST);
         }
         return ids;
