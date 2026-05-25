@@ -4,14 +4,18 @@
 package com.ironspot.jooq.tables;
 
 
+import com.ironspot.jooq.Indexes;
 import com.ironspot.jooq.Keys;
 import com.ironspot.jooq.Public;
 
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.Index;
 import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.PlainSQL;
@@ -114,6 +118,11 @@ public class VisionCache extends TableImpl<Record> {
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.IDX_VISION_CACHE_CREATED_AT);
     }
 
     @Override
