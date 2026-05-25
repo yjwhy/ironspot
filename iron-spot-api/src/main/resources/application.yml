@@ -13,14 +13,19 @@ spring:
     username: ${DATABASE_USERNAME:}
     password: ${DATABASE_PASSWORD:}
   cache:
-    # Caffeine in-memory cache used for Naver 지역검색 results (F7 NL search
-    # Naver merge). 60s TTL plus 500 entry cap protects the 25K/day Naver
-    # free-tier quota from being burned by repeated identical search bar
-    # queries while still picking up new places within a minute.
+    # Caffeine in-memory caches.
+    # - naverPlaces (Phase 1 F7 NL search Naver merge): protects the 25K/day
+    #   Naver free-tier quota from repeated identical search bar queries.
+    # - authContext (Security task #24): collapses the per-request DB lookup
+    #   in JwtAuthenticationFilter to one hit per user per minute. Bans are
+    #   still propagated within a minute by TTL and immediately by
+    #   @CacheEvict on markBanned/markUnbanned/markDeleted/promoteToOwner.
+    # Both share the spec for simplicity: 2000 entries is a generous cap for
+    # the active-users-per-minute footprint of either cache.
     type: caffeine
-    cache-names: naverPlaces
+    cache-names: naverPlaces, authContext
     caffeine:
-      spec: maximumSize=500,expireAfterWrite=60s
+      spec: maximumSize=2000,expireAfterWrite=60s
   flyway:
     # Task 47 / ADR 0023 — DB schema migrations via Flyway Community.
     # Prod has been running with manual SQL migrations since Phase 1; baseline-on-migrate
