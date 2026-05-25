@@ -60,6 +60,10 @@ public class GroqLlamaClient implements LlmClient {
         if (apiKey == null || apiKey.isBlank()) {
             throw new LlmException(LlmException.Kind.TRANSPORT, "GROQ_API_KEY not configured");
         }
+        // Security task #68: cap completion tokens so a prompt-injected query
+        // like "explain every gym in Korea in valid JSON" cannot blow through
+        // the Groq free-tier TPD (100k/day). The largest legitimate SearchDsl
+        // response is ~250 tokens; 512 leaves comfortable headroom.
         Map<String, Object> body = Map.of(
             "model", MODEL,
             "messages", List.of(
@@ -67,7 +71,8 @@ public class GroqLlamaClient implements LlmClient {
                 Map.of("role", "user", "content", userQuery)
             ),
             "response_format", Map.of("type", "json_object"),
-            "temperature", 0.0
+            "temperature", 0.0,
+            "max_tokens", 512
         );
 
         Map<?, ?> response;
