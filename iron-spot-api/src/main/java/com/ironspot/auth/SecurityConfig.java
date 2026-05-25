@@ -33,6 +33,33 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Security task #32: make the default Spring Security response
+            // headers explicit. Without `.headers(...)` the defaults are still
+            // applied, but they're invisible to a reviewer skimming
+            // SecurityConfig and disappear silently if a future migration
+            // changes the chain. The four we care about:
+            //   - X-Content-Type-Options: nosniff
+            //     Browsers can't override our Content-Type with their MIME-
+            //     sniffer. Hardens any image / JSON response that flows
+            //     through the BE (signed-URL photos go direct to Supabase,
+            //     which sets nosniff itself).
+            //   - X-Frame-Options: DENY
+            //     We never embed our API responses in an iframe; deny stops
+            //     a clickjacking attempt that wraps our JSON or any future
+            //     HTML surface.
+            //   - Strict-Transport-Security
+            //     Render serves TLS on every path; HSTS pins the browser to
+            //     HTTPS for a year.
+            //   - Cache-Control: no-store on authenticated responses
+            //     Default Spring Security policy. Keeps JWT-derived data
+            //     out of shared HTTP caches.
+            .headers(h -> h
+                .contentTypeOptions(c -> {})
+                .frameOptions(f -> f.deny())
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31_536_000L))
+                .cacheControl(c -> {}))
             .exceptionHandling(eh -> eh.authenticationEntryPoint(unauthorizedEntryPoint()))
             .authorizeHttpRequests(auth -> auth
                 // Security task #20: every GET under /api/gyms requires auth so
