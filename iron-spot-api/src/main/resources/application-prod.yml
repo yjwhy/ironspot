@@ -16,3 +16,37 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+      # Security task #22: cap per-statement / lock / idle-in-transaction time so a
+      # single runaway PostGIS query or stuck transaction cannot pin a pool slot for
+      # 30+ seconds and starve the rest of the API. Postgres cancels the offending
+      # statement on timeout; Hikari then returns the connection to the pool cleanly.
+      # Values are conservative for launch traffic; revisit once we have real query
+      # latency p99 data from Sentry.
+      #   statement_timeout=15000 — 15s max per SQL statement
+      #   lock_timeout=5000       — 5s max waiting for a row / table lock
+      #   idle_in_transaction_session_timeout=30000 — 30s before aborting an idle tx
+      # Passed through the postgres JDBC driver via the `options` startup parameter so
+      # the settings apply to every connection without per-statement code changes.
+      # tcpKeepAlive=true survives Render's NAT idle disconnect.
+      data-source-properties:
+        options: '-c statement_timeout=15000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=30000'
+        tcpKeepAlive: true
+
+# Security task #52: disable swagger-ui and the runtime OpenAPI JSON endpoint in prod.
+# SpecExportTest in CI still publishes openapi.json to the repo for Orval client
+# generation, so the spec is not lost. This only removes runtime exposure of admin
+# endpoints + DTO schemas to unauthenticated reconnaissance scans.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Security task #51: stop /actuator/info contributing the `info.*` env subtree.
+# Currently we only define info.app.version, but disabling the contributor makes
+# regression-by-accident impossible (a future `info.api-key=${SOME_SECRET}` would
+# silently leak otherwise because /actuator/info is permitAll).
+management:
+  info:
+    env:
+      enabled: false
