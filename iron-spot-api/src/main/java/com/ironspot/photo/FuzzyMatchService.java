@@ -204,7 +204,18 @@ public class FuzzyMatchService {
     // Target-side tokens (curated catalog text) are not filtered — they are
     // clean by construction and removing tokens there would lose precision.
     private Set<String> meaningfulTokens(String text) {
-        Set<String> raw = tokenize(text);
+        // Security task #74: NFC-normalise + strip \p{C} (Cc / Cf / Cs / Co /
+        // Cn) before tokenising. Without NFC, two visually identical OCR
+        // strings ("Hammer Strength" vs "Hammer​ Strength" with embedded
+        // ZWSP) would tokenise differently and miss the catalog row. Without
+        // the \p{C} strip an adversarial label embedded with U+202E RTL
+        // override could fool the brand-anchor logic by visually impersonating
+        // a known brand while not equality-matching anything.
+        String safeText = text == null
+            ? ""
+            : java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFC)
+                .replaceAll("\\p{C}", "");
+        Set<String> raw = tokenize(safeText);
         Set<String> kept = new HashSet<>();
         for (String token : raw) {
             if (isMeaningfulToken(token)) kept.add(token);
