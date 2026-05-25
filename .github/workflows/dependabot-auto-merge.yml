@@ -1,0 +1,37 @@
+name: Dependabot auto-merge
+
+# Security task #48: enforce the "auto-merge patch/minor + github-actions"
+# policy from CLAUDE.md so backlog patches do not wait for human attention.
+# Major bumps still require explicit approval (Dependabot only marks them
+# `version-update:semver-major`).
+
+on: pull_request_target
+
+permissions:
+  # The default GITHUB_TOKEN inside pull_request_target gets the org-default
+  # privileges. Scope down to the two writes we actually need.
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Approve + enable squash auto-merge for safe bumps
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor' ||
+          steps.meta.outputs.package-ecosystem == 'github-actions'
+        run: |
+          gh pr review --approve "$PR_URL"
+          gh pr merge --auto --squash --delete-branch "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
