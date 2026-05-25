@@ -5,6 +5,7 @@ import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useBrands } from '@/features/map/hooks/useBrands';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
 import { AppText } from '@/shared/components/AppText';
+import { BrandLogo } from '@/shared/components/BrandLogo';
 import { Button } from '@/shared/components/Button';
 import type { BrandResponse, MachineTemplateResponse } from '@/shared/generated/model';
 import { formatBrandLabel } from '@/shared/lib/format-brand-label';
@@ -86,6 +87,18 @@ function BrandStep({ brands, pick, onPick }: BrandStepProps) {
         }}
         emptyMessage="검색 결과가 없어요"
         proposeNew={proposeNew}
+        renderLeading={function renderBrandLogo(row) {
+          const brand = brands.find((b) => b.id === row.id);
+          if (brand === undefined) return null;
+          return (
+            <BrandLogo
+              brandId={brand.id}
+              brandName={brand.name}
+              brandNameKo={brand.nameKo}
+              size="md"
+            />
+          );
+        }}
       />
     </View>
   );

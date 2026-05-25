@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import type { ReactNode } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
@@ -35,6 +36,12 @@ interface SearchableListProps {
   onSelectRow: (rowId: string) => void;
   emptyMessage: string;
   proposeNew: ProposeNewRow | null;
+  /**
+   * Optional leading element rendered before each row's label. The brand
+   * step uses this to drop a `BrandLogo` next to the label; the template
+   * step leaves it undefined so rows stay label-only.
+   */
+  renderLeading?: (row: SearchableRow) => ReactNode;
 }
 
 export function SearchableList({
@@ -47,6 +54,7 @@ export function SearchableList({
   onSelectRow,
   emptyMessage,
   proposeNew,
+  renderLeading,
 }: SearchableListProps) {
   const hasRows = rows.length > 0;
   return (
@@ -79,6 +87,7 @@ export function SearchableList({
                 style={pressedOpacity}
                 className={selectedRowClass(isSelected)}
               >
+                {renderLeading?.(row)}
                 <AppText className="text-body text-text-primary">{row.label}</AppText>
               </Pressable>
             );

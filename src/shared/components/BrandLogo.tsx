@@ -100,16 +100,22 @@ function monogramChar(brandNameKo: string, brandName: string): string {
  * curated assets land in `src/assets/brand-logos/`.
  */
 export const BRAND_LOGOS: Record<string, ImageSourcePropType> = {
-  // V8 seed (24)
-  'b0000001-0000-0000-0000-000000000001':
+  // V8 seed (24). The first 5 brands carry prod-actual UUIDs that differ
+  // from the V8 INSERT VALUES: prod had been seeded earlier with the
+  // `b001b001-*` family, and V8's `ON CONFLICT (name) DO NOTHING` preserved
+  // those existing rows rather than overwriting. V14 already references
+  // `b001b001-...-000000000002` for Hammer Strength, confirming the
+  // discrepancy. Keying the map by prod-actual UUIDs (verified via GET
+  // /api/brands on 2026-05-25) so the bitmap branch fires for these brands.
+  'b001b001-0000-0000-0000-000000000001':
     require('../../../assets/brand-logos/panatta.png') as ImageSourcePropType,
-  'b0000002-0000-0000-0000-000000000002':
-    require('../../../assets/brand-logos/life-fitness.png') as ImageSourcePropType,
-  'b1000003-0000-0000-0000-000000000003':
+  'b001b001-0000-0000-0000-000000000002':
     require('../../../assets/brand-logos/hammer-strength.png') as ImageSourcePropType,
-  'b1000004-0000-0000-0000-000000000004':
+  'b001b001-0000-0000-0000-000000000003':
+    require('../../../assets/brand-logos/life-fitness.png') as ImageSourcePropType,
+  'b001b001-0000-0000-0000-000000000004':
     require('../../../assets/brand-logos/technogym.png') as ImageSourcePropType,
-  'b1000005-0000-0000-0000-000000000005':
+  'b001b001-0000-0000-0000-000000000005':
     require('../../../assets/brand-logos/hoist.png') as ImageSourcePropType,
   'b1000006-0000-0000-0000-000000000006':
     require('../../../assets/brand-logos/cybex.png') as ImageSourcePropType,
