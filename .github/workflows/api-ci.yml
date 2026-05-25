@@ -6,6 +6,11 @@ on:
   pull_request:
     paths: ['iron-spot-api/**']
 
+# Security task #47: workflow-scoped read-only GITHUB_TOKEN. See ci.yml for
+# the same rationale.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

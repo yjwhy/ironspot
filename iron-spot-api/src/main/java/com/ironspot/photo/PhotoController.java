@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -30,6 +31,7 @@ import java.util.UUID;
 public class PhotoController {
 
     private final PhotoService photoService;
+    private final UploadRateGate uploadRateGate;
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
@@ -43,6 +45,7 @@ public class PhotoController {
     })
     public PhotoUploadResponse upload(
         @AuthenticationPrincipal UserPrincipal principal,
+        HttpServletRequest request,
         @RequestParam("image") MultipartFile image,
         // Phase 5 item 11 slice 2: gymMachineId is optional. When omitted the
         // photo lands as an orphan (machine_photos.gym_machine_id = NULL) and
@@ -51,6 +54,7 @@ public class PhotoController {
         // gallery, owner workflow) keep passing the id.
         @RequestParam(value = "gymMachineId", required = false) UUID gymMachineId
     ) {
+        uploadRateGate.enforce(request);
         return photoService.upload(principal.getUserId(), image, gymMachineId);
     }
 
@@ -75,8 +79,10 @@ public class PhotoController {
     })
     public OcrOnlyResponse analyzeForOcrOnly(
         @AuthenticationPrincipal UserPrincipal principal,
+        HttpServletRequest request,
         @RequestParam("image") MultipartFile image
     ) {
+        uploadRateGate.enforce(request);
         return photoService.analyzeForOcrOnly(principal.getUserId(), image);
     }
 

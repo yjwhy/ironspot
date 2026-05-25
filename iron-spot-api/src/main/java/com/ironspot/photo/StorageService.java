@@ -1,14 +1,20 @@
 package com.ironspot.photo;
 
+import com.ironspot.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StorageService {
@@ -22,6 +28,18 @@ public class StorageService {
     private final WebClient webClient;
 
     private static final String BUCKET = "machine-photos";
+
+    /**
+     * Security task #9: signed-URL TTL when the bucket is private.
+     *
+     * <p>365 days keeps existing photos viewable for a long time without a
+     * refresh job. Supabase enforces no upper cap on expiresIn so this is
+     * comfortably within bounds. When this TTL eventually elapses the URL
+     * stops working and the photo will need a re-mint; until we add a
+     * refresh background job, the per-photo URL stays stable long enough
+     * to dwarf any realistic browse session.
+     */
+    private static final int SIGNED_URL_TTL_SECONDS = 365 * 24 * 60 * 60;
     // Phase 5 item 11 slice 2: storage-path prefix for orphan uploads
     // (machine_photos.gym_machine_id IS NULL). Named constant so the reaper
     // (slice e) can search the same string without a typo silently missing
@@ -55,7 +73,56 @@ public class StorageService {
             .bodyToMono(String.class)
             // HTTP 4xx/5xx propagates as WebClientResponseException — callers catch all exceptions
             .block(Duration.ofSeconds(15));
-        return supabaseUrl + "/storage/v1/object/public/" + BUCKET + "/" + path;
+        // Security task #9: mint a signed URL now that the bucket is private
+        // (the old public URL returns 401). Stored verbatim in photo_url so
+        // existing response paths stay unchanged.
+        return createSignedUrl(path);
+    }
+
+    /**
+     * Security task #9: mint a Supabase Storage signed URL for the given
+     * bucket-relative path. The signed URL embeds an HMAC-signed JWT that
+     * Supabase Storage validates on each request; the bucket no longer has
+     * to be {@code public: true} for the client to load the image.
+     *
+     * <p>The Supabase response carries a path-relative URL
+     * ({@code /storage/v1/object/sign/<bucket>/<path>?token=…}) which we
+     * concatenate with the project base URL so callers get a fully-qualified
+     * URL fit for {@code <Image source=…>} without further rewriting.
+     */
+    public String createSignedUrl(String path) {
+        Map<?, ?> response;
+        try {
+            response = webClient.post()
+                .uri(supabaseUrl + "/storage/v1/object/sign/" + BUCKET + "/" + path)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + serviceRoleKey)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .bodyValue(Map.of("expiresIn", SIGNED_URL_TTL_SECONDS))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block(Duration.ofSeconds(10));
+        } catch (RuntimeException e) {
+            log.warn("Supabase signed-URL mint failed for path={}: {}", path, e.getMessage());
+            throw new BusinessException(
+                "이미지 URL을 생성하지 못했습니다",
+                HttpStatus.BAD_GATEWAY);
+        }
+        if (response == null) {
+            throw new BusinessException(
+                "이미지 URL 응답이 비어 있습니다",
+                HttpStatus.BAD_GATEWAY);
+        }
+        // Supabase emits the key as `signedURL` (capital URL); older docs
+        // mention `signedUrl`. Accept either to survive minor server-side
+        // breakage. Tested via integration with prod Supabase 2026-05.
+        Object signed = response.get("signedURL");
+        if (signed == null) signed = response.get("signedUrl");
+        if (!(signed instanceof String url) || url.isBlank()) {
+            throw new BusinessException(
+                "이미지 URL 응답 형식이 예상과 다릅니다",
+                HttpStatus.BAD_GATEWAY);
+        }
+        return supabaseUrl + url;
     }
 
     /**
@@ -88,9 +155,9 @@ public class StorageService {
         int idx = photoUrl.indexOf(marker);
         if (idx < 0) return null;
         int start = idx + marker.length();
-        // Defensive against future signed-URL shapes that append a query
-        // string — Supabase would treat `path.webp?token=…` as a different
-        // key and silently return 200-not-found.
+        // Strip the `?token=…` query string the signed-URL pattern appends so
+        // Supabase doesn't treat `path.webp?token=…` as a different key on
+        // delete and silently return 200-not-found.
         int q = photoUrl.indexOf('?', start);
         return q < 0 ? photoUrl.substring(start) : photoUrl.substring(start, q);
     }
