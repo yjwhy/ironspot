@@ -31,8 +31,15 @@ public class LocationResolver {
     private ResolvedLocation geocode(Location.NamedPlace place) {
         List<NaverPlaceResult> results = naverSearchService.search(place.name());
         if (results.isEmpty()) {
+            // Security task #77: do NOT echo place.name() back. A prompt
+            // injection that successfully exfiltrates part of the system
+            // prompt into Location.NamedPlace.name would otherwise surface
+            // that fragment in the response body via this error message.
+            // The Location compact constructor (task #21 / #41) already caps
+            // the name at MAX_NAME_LENGTH; this complements it on the output
+            // side.
             throw new BusinessException(
-                "'" + place.name() + "' 위치를 찾을 수 없어요. 정확한 지명을 입력해주세요.",
+                "해당 위치를 찾을 수 없어요. 정확한 지명을 입력해주세요.",
                 HttpStatus.BAD_REQUEST);
         }
         NaverPlaceResult top = results.get(0);

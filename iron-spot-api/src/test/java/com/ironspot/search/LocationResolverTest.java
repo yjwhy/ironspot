@@ -72,6 +72,9 @@ class LocationResolverTest {
 
         assertThatThrownBy(() -> resolver.resolve(place, 0.0, 0.0))
             .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("랑가");
+            // Security task #77: error message must NOT echo place.name() back
+            // (was "'<name>' 위치를 찾을 수 없어요" — exfiltration channel for a
+            // prompt-injected place name). Anchor on the generic canonical text.
+            .hasMessageContaining("위치를 찾을 수 없어요");
     }
 }
