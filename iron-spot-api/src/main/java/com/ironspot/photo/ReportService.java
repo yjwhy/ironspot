@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -61,6 +62,21 @@ public class ReportService {
         if (!PHOTO_REASONS.contains(request.reason())) {
             throw new BusinessException(
                 "사진에 사용할 수 없는 신고 사유입니다", HttpStatus.BAD_REQUEST);
+        }
+
+        // Security task #25: verify the photo exists and is still visible
+        // before doing any further work. Without this, a hand-crafted UUID
+        // for a deleted / non-existent photo flows into insertOrEscalate ->
+        // FK violation -> 500 + Sentry alarm spam (anyone can DoS the
+        // observability pipeline). Re-reporting an already blinded photo is
+        // a no-op (silently idempotent) so the UI does not need a special
+        // case for it.
+        Optional<Boolean> blinded = photoRepository.findIsBlinded(photoId);
+        if (blinded.isEmpty()) {
+            throw new BusinessException("신고할 사진을 찾을 수 없어요.", HttpStatus.NOT_FOUND);
+        }
+        if (blinded.get()) {
+            return;
         }
 
         if (photoRepository.isOwner(photoId, userUuid)) {

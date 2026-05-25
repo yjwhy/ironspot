@@ -84,6 +84,20 @@ public class PhotoRepository {
             .execute();
     }
 
+    /**
+     * Security task #25: lookup the {@code is_blinded} flag without pulling the
+     * rest of the photo row. {@code Optional.empty()} means the photoId does
+     * not exist in the table; a present {@code Boolean} carries the blind state.
+     * Used by {@link ReportService} to fail-fast on hand-crafted UUIDs before
+     * an INSERT FK violation reaches the Sentry breadcrumb pipeline.
+     */
+    public Optional<Boolean> findIsBlinded(UUID photoId) {
+        return dsl.select(MACHINE_PHOTOS.IS_BLINDED)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .fetchOptional(r -> Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.IS_BLINDED), false));
+    }
+
     public Optional<PhotoResponse> findById(UUID photoId) {
         return dsl.select(
                 MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
