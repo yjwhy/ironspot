@@ -192,7 +192,7 @@ describe('LoginScreen — OAuth flow', () => {
     });
   });
 
-  it('falls back to setSession when the callback carries access/refresh tokens (implicit flow)', async () => {
+  it('rejects implicit-flow callbacks as a custom-scheme hijack vector (security #16)', async () => {
     getWebBrowserMock().openAuthSessionAsync.mockResolvedValueOnce({
       type: 'success',
       url: IMPLICIT_CALLBACK_URL,
@@ -202,14 +202,13 @@ describe('LoginScreen — OAuth flow', () => {
       fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
     });
     await waitFor(() => {
-      expect(getSupabaseMock().auth.setSession).toHaveBeenCalledWith({
-        access_token: 'AAA',
-        refresh_token: 'BBB',
-      });
+      expect(getBurntMock().toast).toHaveBeenCalledWith(
+        expect.objectContaining({ preset: 'error' }),
+      );
     });
-    await waitFor(() => {
-      expect(onAuthenticated).toHaveBeenCalledTimes(1);
-    });
+    expect(getSupabaseMock().auth.setSession).not.toHaveBeenCalled();
+    expect(getSupabaseMock().auth.exchangeCodeForSession).not.toHaveBeenCalled();
+    expect(onAuthenticated).not.toHaveBeenCalled();
   });
 
   it('stays silent (no toast, no auth) when the user cancels the WebBrowser', async () => {
