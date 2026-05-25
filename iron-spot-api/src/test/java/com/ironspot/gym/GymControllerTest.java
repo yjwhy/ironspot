@@ -105,6 +105,30 @@ class GymControllerTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    // ─── GET /api/gyms auth gate (security task #20) ──────────────────────────
+
+    @Test
+    void searchAnonymousReturnsUnauthorized() {
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/gyms/search?minLat=37.0&maxLat=37.5&minLng=127.0&maxLng=127.5",
+            HttpMethod.GET,
+            new HttpEntity<>(new HttpHeaders()),
+            String.class
+        );
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void getByIdAnonymousReturnsUnauthorized() {
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/gyms/a0000001-0000-0000-0000-000000000001",
+            HttpMethod.GET,
+            new HttpEntity<>(new HttpHeaders()),
+            String.class
+        );
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
     // ─── POST /api/gyms auth gate + dedup ──────────────────────────────────────
 
     @Test
