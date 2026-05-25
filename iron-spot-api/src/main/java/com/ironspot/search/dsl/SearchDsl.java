@@ -20,6 +20,16 @@ public record SearchDsl(
     public static final Set<String> ALLOWED_ERRORS =
         Set.of("gym search only", "invalid input");
 
+    /**
+     * Security task #42: hard cap on the LLM-emitted filter array. The
+     * gym search jOOQ builder creates one EXISTS subquery per filter and
+     * resolves each through the brand / category catalogs (DslValidator);
+     * an LLM that emits 100 filters under prompt injection would freeze
+     * the Hikari pool. Five filters comfortably covers the longest real
+     * search query ("파나타 하이로우 + 해머스트렝스 시티드로우 + ...").
+     */
+    public static final int MAX_MACHINE_FILTERS = 5;
+
     public SearchDsl {
         if (error != null) {
             // Trim is the only normalisation we apply — preserves the contract
@@ -36,6 +46,11 @@ public record SearchDsl(
         } else {
             if (location == null) {
                 throw new IllegalArgumentException("non-error response requires a location");
+            }
+            int count = machineFilters == null ? 0 : machineFilters.size();
+            if (count > MAX_MACHINE_FILTERS) {
+                throw new IllegalArgumentException(
+                    "too many machineFilters (max " + MAX_MACHINE_FILTERS + ", got " + count + ")");
             }
             machineFilters = machineFilters == null ? List.of() : List.copyOf(machineFilters);
         }

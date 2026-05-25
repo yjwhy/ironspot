@@ -97,4 +97,35 @@ class LocationTest {
         assertThatThrownBy(() -> new Location.NamedPlace("강남역", null, 0.0))
             .isInstanceOf(IllegalArgumentException.class);
     }
+
+    // Security task #41 — NAME_PATTERN
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+        "강남역",
+        "강남역 1번 출구",
+        "Stamford (Connecticut)",
+        "Yongsan-gu",
+        "서울특별시 중구 명동"
+    })
+    void namedPlaceAcceptsRealisticLandmarks(String name) {
+        Location.NamedPlace place = new Location.NamedPlace(name, null, 1.0);
+        assertThat(place.name()).isEqualTo(name);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+        "<script>",
+        "강남역;DROP",
+        "강남역/etc",
+        "강남역\"injected",
+        "강남역'injected",
+        "강남역&amp",
+        "강남역\n역삼"
+    })
+    void namedPlaceRejectsInjectedCharacters(String hostile) {
+        assertThatThrownBy(() -> new Location.NamedPlace(hostile, null, 1.0))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("disallowed characters");
+    }
 }
