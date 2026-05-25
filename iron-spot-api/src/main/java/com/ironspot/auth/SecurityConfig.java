@@ -35,9 +35,14 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(eh -> eh.authenticationEntryPoint(unauthorizedEntryPoint()))
             .authorizeHttpRequests(auth -> auth
-                // Order matters: specific authenticated routes must precede the public wildcard.
+                // Security task #20: every GET under /api/gyms requires auth so
+                // anonymous scraping cannot pull the full gym dataset (name,
+                // address, phone, price, location). places-search line is now
+                // redundant with the wildcard but kept explicit for review-time
+                // discoverability — matches the pattern below for /api/_admin
+                // and /api/search/natural.
                 .requestMatchers(HttpMethod.GET, "/api/gyms/places-search").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/gyms/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/gyms/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/brands").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/machine-templates").permitAll()
