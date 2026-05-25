@@ -4,6 +4,8 @@ import com.ironspot.admin.dto.AdminUserSummary;
 import com.ironspot.auth.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
@@ -37,6 +39,16 @@ public class UserRepository {
             });
     }
 
+    /**
+     * Security task #24: read-through cache for the per-request auth context
+     * lookup. Without this, every authenticated request burnt one DB round
+     * trip in {@link JwtAuthenticationFilter}; a Caffeine-backed
+     * @Cacheable with a 60s TTL collapses repeats to one DB hit per user
+     * per minute while keeping bans propagated within a minute (with explicit
+     * eviction on {@link #markBanned}/{@link #markUnbanned}/{@link #markDeleted}
+     * making bans effective immediately for that user).
+     */
+    @Cacheable("authContext")
     public Optional<UserAuthContext> findAuthContext(String id) {
         return dsl.select(USERS.ROLE, USERS.BANNED_AT)
             .from(USERS)
@@ -45,6 +57,7 @@ public class UserRepository {
             .fetchOptional(r -> new UserAuthContext(r.get(USERS.ROLE), r.get(USERS.BANNED_AT)));
     }
 
+    @CacheEvict(value = "authContext", key = "#id")
     public int markBanned(String id) {
         return dsl.update(USERS)
             .set(USERS.BANNED_AT, OffsetDateTime.now())
@@ -54,6 +67,7 @@ public class UserRepository {
             .execute();
     }
 
+    @CacheEvict(value = "authContext", key = "#id")
     public int markUnbanned(String id) {
         return dsl.update(USERS)
             .setNull(USERS.BANNED_AT)
@@ -104,6 +118,7 @@ public class UserRepository {
             .execute();
     }
 
+    @CacheEvict(value = "authContext", key = "#userId")
     public int markDeleted(String userId) {
         return dsl.update(USERS)
             .set(USERS.DELETED_AT, OffsetDateTime.now())
@@ -117,6 +132,7 @@ public class UserRepository {
      * elevated privileges; owner is not a higher tier than admin). Idempotent:
      * already-owner rows match the WHERE filter on role='user' and return 0.
      */
+    @CacheEvict(value = "authContext", key = "#userId.toString()")
     public int promoteToOwner(UUID userId) {
         return dsl.update(USERS)
             .set(USERS.ROLE, "owner")
