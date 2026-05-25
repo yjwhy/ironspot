@@ -46,8 +46,28 @@ RUN ./gradlew --no-daemon bootJar -x generateJooq -x test
 # Runtime: slim JRE-only image. Same target as the original Dockerfile.
 FROM eclipse-temurin:25-jre-alpine AS runtime
 WORKDIR /app
-COPY --from=builder /build/build/libs/*.jar app.jar
+
+# Security task #18: run as a non-root user. eclipse-temurin alpine images default
+# to root, which makes any RCE or jar-loading exploit a host-namespace escape risk.
+# Use a fixed numeric UID (10001) so platform-side filesystem ACLs and Render's audit
+# logs see a stable, non-privileged identity. wget exists in alpine base for the
+# HEALTHCHECK so we do not need to apk-add anything.
+RUN addgroup -S app && adduser -S -G app -u 10001 -h /app app
+
+COPY --from=builder --chown=app:app /build/build/libs/*.jar app.jar
+USER app
+
 EXPOSE 8080
+
+# Container-level liveness probe. Render uses its own HTTP health check at the
+# platform layer, but the Docker HEALTHCHECK is the source of truth for local
+# docker-compose, any future Kubernetes / Nomad migration, and `docker ps` status.
+# /actuator/health is permitAll in SecurityConfig and returns 200 once Spring is
+# ready. 30s interval × 5s timeout × 3 retries × 60s start-period covers JVM warm-up
+# on the Render free tier (cold-pool to ready ~30-45s).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8080/actuator/health || exit 1
+
 # JVM flags tuned for Render free web service (512MB container, 0.1 vCPU shared).
 #   MaxRAMPercentage=70 — leave headroom for Tomcat / Netty / native memory, glibc
 #     allocator overhead, and Render's own sidecar processes inside the 512MB cap.
