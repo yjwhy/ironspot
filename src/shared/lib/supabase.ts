@@ -45,6 +45,13 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+      // Security task #16: PKCE only. The implicit flow (access_token in
+      // URL fragment) is vulnerable to custom-scheme hijack — a malicious
+      // app that also registers ironspot:// could intercept the callback
+      // and get a usable session immediately. PKCE callbacks carry a
+      // short-lived `code` that is worthless without the `code_verifier`
+      // that only this app instance has in memory.
+      flowType: 'pkce',
     },
   },
 );

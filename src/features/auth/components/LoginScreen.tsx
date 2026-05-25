@@ -28,7 +28,9 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
 
   /**
    * Drives the OAuth flow end-to-end: signInWithOAuth → WebBrowser → callback parse
-   * → exchangeCodeForSession (PKCE) or setSession (implicit) → onAuthenticated().
+   * → exchangeCodeForSession (PKCE only) → onAuthenticated(). Implicit-flow
+   * callbacks are rejected at the parser (security #16) so an intercepted
+   * custom-scheme callback cannot setSession with whatever the URL handed us.
    *
    * User-cancelled WebBrowser sessions (`result.type !== 'success'`) return silently —
    * no toast, no Sentry, no onAuthenticated. Every other failure goes through `catch`
@@ -54,15 +56,10 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
           if (exchangeError) throw exchangeError;
           break;
         }
-        case 'implicit': {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: parsed.accessToken,
-            refresh_token: parsed.refreshToken,
-          });
-          if (sessionError) throw sessionError;
-          break;
-        }
         case 'invalid':
+          // Security task #16: implicit_flow_rejected lands here too. The
+          // implicit branch is gone; any hash-fragment callback is treated
+          // as a potential custom-scheme hijack and rejected.
           throw new Error(`OAuth callback invalid: ${parsed.reason}`);
       }
 
