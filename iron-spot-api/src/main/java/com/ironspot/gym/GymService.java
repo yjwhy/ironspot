@@ -45,12 +45,32 @@ public class GymService {
      */
     @Transactional
     public GymDetailResponse createFromNaverPlaces(CreateGymRequest req, UUID creatorUserId) {
-        UUID gymId = gymRepository.findIdByNaverPlaceId(req.naverPlaceId())
-            .orElseGet(() -> {
-                UUID newId = UUID.randomUUID();
-                gymRepository.insertFromNaverPlaces(newId, req, creatorUserId);
-                return newId;
-            });
+        // Security task #33: SELECT-then-INSERT race. Two concurrent
+        // requests with the same naver_place_id both observe an empty
+        // SELECT, both attempt INSERT, the second hits the partial
+        // UNIQUE index gyms_naver_place_id_key and raised
+        // DataIntegrityViolationException → bubbled up as a 500 (visible
+        // to the user). Catch the race and degrade to the standard
+        // "row already exists" lookup path so the loser sees the same
+        // 200 response as the winner.
+        UUID gymId;
+        try {
+            gymId = gymRepository.findIdByNaverPlaceId(req.naverPlaceId())
+                .orElseGet(() -> {
+                    UUID newId = UUID.randomUUID();
+                    gymRepository.insertFromNaverPlaces(newId, req, creatorUserId);
+                    return newId;
+                });
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // DuplicateKeyException is the specific subclass Spring raises for
+            // partial UNIQUE-index violations; DataIntegrityViolationException
+            // is the supertype that covers both DuplicateKey and other
+            // schema-level failures. Catching the supertype is intentional —
+            // if the same naver_place_id is the cause we recover; any other
+            // integrity error rethrows after we double-check the lookup.
+            gymId = gymRepository.findIdByNaverPlaceId(req.naverPlaceId())
+                .orElseThrow(() -> e);
+        }
         return gymRepository.findById(gymId).orElseThrow();
     }
 
