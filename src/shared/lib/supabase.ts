@@ -1,68 +1,38 @@
 import { createClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
 import { MMKV } from 'react-native-mmkv';
 
 import { env } from './env';
 
-// Security task #14 — Supabase session is sensitive: the JWT lets anyone
-// who reads it impersonate the user for ~1h, and the refresh token can
-// mint new JWTs indefinitely until logout. MMKV stores values in
-// plaintext under the app's sandboxed data directory; on iOS a backed-
-// up device or a jailbroken phone exposes that directory in clear. On
-// Android the data is similarly exposed to a rooted phone or to
-// allowBackup adb pulls.
+// Security task #14 — Supabase session is sensitive: the JWT can
+// impersonate the user for ~1h and the refresh token mints new JWTs
+// until logout. The plan is to move the session into expo-secure-store
+// (iOS Keychain / Android Keystore) which is hardware-backed and
+// excluded from device backups, instead of MMKV's plaintext on-disk
+// storage.
 //
-// expo-secure-store moves the session to:
-//   - iOS Keychain (kSecAttrAccessibleAfterFirstUnlock)
-//   - Android Keystore + EncryptedSharedPreferences
-// Both back the value with hardware-backed encryption and exclude it
-// from iCloud / device backups.
+// Status: blocked on a dev-client rebuild. expo-secure-store's native
+// module ('ExpoSecureStore') is missing from the current dev client,
+// so even `import * as SecureStore from 'expo-secure-store'` throws
+// at module-init time and crashes login. The package stays installed
+// (see package.json + expo-build-properties already wires native
+// modules). Once a new dev client is built (pnpm expo prebuild +
+// pnpm expo run:ios, or EAS build) the import resolves and the
+// secure-store swap below can re-land. See the audit doc
+// (docs/security/audit-2026-05.md) #14 section for the secure-store
+// adapter code we wrote and reverted.
 //
-// Runtime fallback: expo-secure-store is a native module. The dev
-// client must be rebuilt (pnpm expo prebuild + rebuild, or EAS build)
-// before the native bridge resolves; until then SecureStore.* throws
-// "Cannot find native module 'ExpoSecureStore'" at the first call.
-// We catch that, log once, and fall through to an in-memory MMKV
-// adapter so the app keeps booting. The next dev / production build
-// auto-promotes to SecureStore.
+// Until then we ship MMKV with a clear "not hardware-backed" note so
+// no one assumes the prior swap is live.
 
-const mmkvStorage = new MMKV({ id: 'supabase-auth' });
-let nativeModuleWarned = false;
+const storage = new MMKV({ id: 'supabase-auth' });
 
-function warnNativeMissing(): void {
-  if (nativeModuleWarned) return;
-  nativeModuleWarned = true;
-  console.warn(
-    '[security #14] expo-secure-store native module unavailable — ' +
-      'falling back to MMKV. Rebuild the dev client to pick up the secure ' +
-      'native storage.',
-  );
-}
-
-const supabaseStorage = {
-  async getItem(key: string): Promise<string | null> {
-    try {
-      return await SecureStore.getItemAsync(key);
-    } catch {
-      warnNativeMissing();
-      return mmkvStorage.getString(key) ?? null;
-    }
+const mmkvStorage = {
+  getItem: (key: string) => storage.getString(key) ?? null,
+  setItem: (key: string, value: string) => {
+    storage.set(key, value);
   },
-  async setItem(key: string, value: string): Promise<void> {
-    try {
-      await SecureStore.setItemAsync(key, value);
-    } catch {
-      warnNativeMissing();
-      mmkvStorage.set(key, value);
-    }
-  },
-  async removeItem(key: string): Promise<void> {
-    try {
-      await SecureStore.deleteItemAsync(key);
-    } catch {
-      warnNativeMissing();
-      mmkvStorage.delete(key);
-    }
+  removeItem: (key: string) => {
+    storage.delete(key);
   },
 };
 
@@ -71,7 +41,7 @@ export const supabase = createClient(
   env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   {
     auth: {
-      storage: supabaseStorage,
+      storage: mmkvStorage,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
