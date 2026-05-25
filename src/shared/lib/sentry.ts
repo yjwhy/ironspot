@@ -1,5 +1,7 @@
 import * as Sentry from '@sentry/react-native';
 
+import { scrubBreadcrumb, scrubErrorEvent } from './sentry-scrub';
+
 // Empty / undefined DSN → init skipped entirely so dev environments emit zero Sentry traffic
 // without manual setup. Mirrors the server-side SentryConfig contract. Kept out of env.ts's
 // Zod schema because that schema throws at module load for missing required vars — DSN is
@@ -25,6 +27,14 @@ export function initSentry(): void {
     environment: __DEV__ ? 'development' : 'production',
     enableNativeFramesTracking: !__DEV__,
     tracesSampleRate: __DEV__ ? 1.0 : 0.1,
+    // Security task #37: scrub Authorization headers, sensitive query-param values
+    // (token, access_token, code, …), and user email/ip before events / breadcrumbs
+    // leave the device. See sentry-scrub.ts for the redaction policy.
+    beforeSend: scrubErrorEvent,
+    beforeBreadcrumb: scrubBreadcrumb,
+    // sendDefaultPii defaults to false on @sentry/react-native; making it explicit so a
+    // future SDK default flip doesn't silently start sending IP / cookies.
+    sendDefaultPii: false,
   });
 }
 
