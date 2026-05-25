@@ -16,8 +16,11 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Looks up the missing language side of a brand name via Gemini Flash.
@@ -39,6 +42,60 @@ public class AdminBrandTransliterateService {
     static final Duration TIMEOUT = Duration.ofSeconds(15);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /**
+     * Security task #43: per-process call cap. ADMIN role already gates the
+     * endpoint but a compromised admin session could otherwise drain Gemini
+     * Flash Lite's free-tier daily quota in seconds. 50 / hour and 200 /
+     * day matches the audit recommendation and is well above expected
+     * legitimate admin use (one promote per pending contribution, typically
+     * <30 / day across all admins).
+     */
+    static final int HOURLY_CAP = 50;
+    static final int DAILY_CAP = 200;
+    private static final long HOUR_MS = 60 * 60 * 1000L;
+    private static final long DAY_MS = 24 * HOUR_MS;
+
+    private final AtomicInteger hourlyCount = new AtomicInteger(0);
+    private final AtomicLong hourlyWindowMs = new AtomicLong(System.currentTimeMillis());
+    private final AtomicInteger dailyCount = new AtomicInteger(0);
+    private final AtomicLong dailyWindowMs = new AtomicLong(System.currentTimeMillis());
+
+    /**
+     * Security task #67: locked launch reference. If Gemini returns a
+     * mapping for one of these 24 brands the service cross-checks against
+     * this map and rejects any divergence. A prompt injection that flips
+     * "Hammer Strength" to anything other than "해머 스트렝스" therefore
+     * cannot land in the catalog. Source: prompts/brand-transliterate.md.
+     * Keep this in sync with that file (a future PR could enforce that via
+     * a unit test parsing the markdown table).
+     */
+    static final Map<String, String> LOCKED_EN_TO_KO = Map.ofEntries(
+        Map.entry("hammer strength", "해머 스트렝스"),
+        Map.entry("life fitness", "라이프 피트니스"),
+        Map.entry("technogym", "테크노짐"),
+        Map.entry("panatta", "파나타"),
+        Map.entry("hoist", "호이스트"),
+        Map.entry("cybex", "사이벡스"),
+        Map.entry("precor", "프리코"),
+        Map.entry("star trac", "스타 트랙"),
+        Map.entry("matrix", "매트릭스"),
+        Map.entry("freemotion", "프리모션"),
+        Map.entry("nautilus", "노틸러스"),
+        Map.entry("icarian", "이카리안"),
+        Map.entry("booty builder", "부티 빌더"),
+        Map.entry("atlantis", "아틀란티스"),
+        Map.entry("gym80", "gym80"),
+        Map.entry("drax", "디랙스"),
+        Map.entry("lexco", "렉스코"),
+        Map.entry("watson", "왓슨"),
+        Map.entry("citadel", "시타델"),
+        Map.entry("prime", "프라임"),
+        Map.entry("telju", "텔유"),
+        Map.entry("ultra strength", "울트라 스트렝스"),
+        Map.entry("gymleco", "짐레코"),
+        Map.entry("뉴텍", "뉴텍")
+    );
 
     private final WebClient webClient;
     private final String apiKey;
@@ -74,6 +131,7 @@ public class AdminBrandTransliterateService {
             sanitiseInputString(request.name()),
             sanitiseInputString(request.nameKo()));
         validateExactlyOneSidePopulated(request);
+        enforceQuota();
 
         if (apiKey == null || apiKey.isBlank()) {
             throw new BusinessException(
@@ -106,7 +164,73 @@ public class AdminBrandTransliterateService {
                 HttpStatus.BAD_GATEWAY);
         }
 
-        return parseModelOutput(apiResponse);
+        TransliterateBrandResponse modelOutput = parseModelOutput(apiResponse);
+        return enforceLockedReference(modelOutput);
+    }
+
+    /**
+     * Security task #43: rolling per-process hourly + daily counter. The
+     * AtomicInteger / AtomicLong pair gives a lock-free fast path; the
+     * worst-case race lets a couple of extra calls through at the window
+     * boundary which is fine for an attacker-rate-limit (not a correctness
+     * invariant).
+     */
+    private void enforceQuota() {
+        long now = System.currentTimeMillis();
+        rollWindow(hourlyWindowMs, hourlyCount, now, HOUR_MS);
+        rollWindow(dailyWindowMs, dailyCount, now, DAY_MS);
+        if (hourlyCount.incrementAndGet() > HOURLY_CAP
+            || dailyCount.incrementAndGet() > DAILY_CAP) {
+            log.warn("AdminBrandTransliterate quota exceeded at {}", Instant.ofEpochMilli(now));
+            throw new BusinessException(
+                "AI 제안 호출 한도를 초과했어요. 잠시 후 다시 시도해주세요",
+                HttpStatus.TOO_MANY_REQUESTS);
+        }
+    }
+
+    private static void rollWindow(AtomicLong windowStart, AtomicInteger counter, long now, long windowMs) {
+        long start = windowStart.get();
+        if (now - start > windowMs && windowStart.compareAndSet(start, now)) {
+            counter.set(0);
+        }
+    }
+
+    /**
+     * Security task #67: locked launch catalog cross-check. If either side
+     * of the request matches one of the 24 reference brands (case-
+     * insensitive on EN), the response's other side MUST match the locked
+     * value. A prompt injection that flips Cybex → "사이벡스‮" or
+     * "Hammer Strength" → "해킹됨" therefore reaches an "AI 응답 형식이
+     * 올바르지 않아요" 502 instead of polluting the catalog.
+     */
+    TransliterateBrandResponse enforceLockedReference(TransliterateBrandResponse out) {
+        if (out == null || out.name() == null || out.nameKo() == null) {
+            return out;
+        }
+        String enKey = out.name().toLowerCase();
+        String expectedKo = LOCKED_EN_TO_KO.get(enKey);
+        if (expectedKo != null && !expectedKo.equals(out.nameKo())) {
+            log.warn("Gemini transliterate diverged from locked mapping: en={} got={} expected={}",
+                out.name(), out.nameKo(), expectedKo);
+            throw new BusinessException(
+                "AI 응답이 등록된 매핑과 달라요. 관리자에게 보고해주세요",
+                HttpStatus.BAD_GATEWAY);
+        }
+        // Reverse direction: Korean side matches a locked entry → EN must
+        // match the same row.
+        String expectedEn = LOCKED_EN_TO_KO.entrySet().stream()
+            .filter(e -> e.getValue().equals(out.nameKo()))
+            .map(Map.Entry::getKey)
+            .findFirst()
+            .orElse(null);
+        if (expectedEn != null && !expectedEn.equalsIgnoreCase(out.name())) {
+            log.warn("Gemini transliterate diverged from locked mapping (KO-side): ko={} got={} expected={}",
+                out.nameKo(), out.name(), expectedEn);
+            throw new BusinessException(
+                "AI 응답이 등록된 매핑과 달라요. 관리자에게 보고해주세요",
+                HttpStatus.BAD_GATEWAY);
+        }
+        return out;
     }
 
     private void validateExactlyOneSidePopulated(TransliterateBrandRequest req) {
