@@ -1,5 +1,4 @@
 import { render } from '@testing-library/react-native';
-import React from 'react';
 
 import { GymMarkerView, MARKER_SIZE_DEFAULT, MARKER_SIZE_SELECTED } from '../GymMarkerView';
 

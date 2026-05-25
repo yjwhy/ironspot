@@ -1,5 +1,4 @@
 import { render } from '@testing-library/react-native';
-import React from 'react';
 
 import { UNREGISTERED_MARKER_SIZE, UnregisteredMarkerView } from '../UnregisteredMarkerView';
 
