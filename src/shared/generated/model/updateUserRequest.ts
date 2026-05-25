@@ -10,6 +10,7 @@ export interface UpdateUserRequest {
   /**
    * @minLength 2
    * @maxLength 20
+   * @pattern ^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9 _\-]+$
    */
   nickname: string;
 }
