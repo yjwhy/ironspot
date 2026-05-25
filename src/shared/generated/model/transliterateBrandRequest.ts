@@ -7,8 +7,16 @@
  */
 
 export interface TransliterateBrandRequest {
-  /** English brand name. Provide this OR nameKo, not both. */
+  /**
+   * English brand name. Provide this OR nameKo, not both.
+   * @minLength 0
+   * @maxLength 80
+   */
   name?: string;
-  /** Korean brand name. Provide this OR name, not both. */
+  /**
+   * Korean brand name. Provide this OR name, not both.
+   * @minLength 0
+   * @maxLength 80
+   */
   nameKo?: string;
 }
