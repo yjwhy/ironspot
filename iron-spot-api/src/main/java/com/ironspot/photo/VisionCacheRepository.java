@@ -92,8 +92,24 @@ public class VisionCacheRepository {
     }
 
     private String serialiseTexts(List<String> texts) {
+        // Security task #75: sanitise + cap each OCR token before it lands
+        // in the cache. Without this a hostile label crafted with control /
+        // bidi / zero-width characters survives in vision_cache.texts_json
+        // forever (cached by sha256) and gets re-served on every dedup hit,
+        // turning a one-shot stored prompt injection into an ambient sink.
+        // Cap per token at 100 chars + max 100 tokens — real OCR plates are
+        // well under these limits, so genuine cache content is unaffected.
+        List<String> safe = texts == null ? List.of() : texts.stream()
+            .filter(java.util.Objects::nonNull)
+            .map(t -> java.text.Normalizer
+                .normalize(t, java.text.Normalizer.Form.NFC)
+                .replaceAll("\\p{C}", ""))
+            .filter(t -> !t.isBlank())
+            .map(t -> t.length() > 100 ? t.substring(0, 100) : t)
+            .limit(100)
+            .toList();
         try {
-            return OBJECT_MAPPER.writeValueAsString(texts);
+            return OBJECT_MAPPER.writeValueAsString(safe);
         } catch (JsonProcessingException e) {
             log.warn("Failed to serialise OCR texts for cache; falling back to empty array", e);
             return "[]";
