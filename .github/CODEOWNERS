@@ -1,0 +1,26 @@
+# Security-sensitive paths that demand explicit review on every PR.
+# Format: <pattern> <reviewers...>
+#
+# GitHub honours the LAST matching pattern (top-to-bottom), so order
+# specific paths AFTER generic ones if you ever add a wildcard above.
+
+# LLM prompt assets — quietly deleting "reject SQL keywords" from rule 8
+# in search-dsl.md silently weakens the prompt-injection guardrail at
+# runtime. Force the repo owner to ack every change here.
+# Security task #78.
+iron-spot-api/src/main/resources/prompts/                              @yjwhy
+iron-spot-api/src/main/resources/prompts/search-dsl.md                 @yjwhy
+iron-spot-api/src/main/resources/prompts/brand-transliterate.md        @yjwhy
+
+# Production yml — same logic for swagger/actuator/CORS toggles.
+iron-spot-api/src/main/resources/application-prod.yml                  @yjwhy
+
+# Flyway migrations — every prod schema change must be acked.
+iron-spot-api/src/main/resources/db/migration/                         @yjwhy
+
+# Security config — auth, security filter chain, JWT decoder wiring.
+iron-spot-api/src/main/java/com/ironspot/auth/                         @yjwhy
+
+# CI workflows — protect against silent permissions widening.
+.github/workflows/                                                     @yjwhy
+.github/CODEOWNERS                                                     @yjwhy
