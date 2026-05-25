@@ -43,6 +43,14 @@
       ],
       "@sentry/react-native/expo",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": false
+          }
+        }
+      ],
+      [
         "expo-speech-recognition",
         {
           "microphonePermission": "자연어 검색에서 음성 입력을 받기 위해 마이크 접근이 필요합니다. 녹음은 저장되지 않습니다.",

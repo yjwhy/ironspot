@@ -6,7 +6,8 @@ import { Image, Pressable, ScrollView, View } from 'react-native';
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
 import { useCreateGymMachine } from '@/shared/generated/machines/machines';
-import type { CreateGymMachineRequest, CreateGymRequest } from '@/shared/generated/model';
+import type { CreateGymMachineRequest } from '@/shared/generated/model';
+import { parseNaverPlaceParam } from '@/shared/lib/naver-place-schema';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { templateDisplayName } from '@/shared/lib/template-display-name';
@@ -273,43 +274,10 @@ function selectionFields(
   return null;
 }
 
-/**
- * Phase 5 item 23 slice d: parse the JSON-serialised UnregisteredPlace that
- * MapScreen pushes onto the route param. Returns the shape required by the
- * backend's `naverPlace` contract (CreateGymRequest), or null if the param
- * is absent, malformed, or missing a required field — falling back to the
- * legacy gymId path keeps the FE safe against route-corruption edge cases.
- */
-function parseNaverPlaceParam(raw: string | undefined): CreateGymRequest | null {
-  if (raw === undefined || raw.length === 0) return null;
-  try {
-    const parsed = JSON.parse(raw) as Partial<{
-      naverPlaceId: string;
-      name: string;
-      address: string;
-      latitude: number;
-      longitude: number;
-    }>;
-    if (
-      typeof parsed.naverPlaceId !== 'string' ||
-      typeof parsed.name !== 'string' ||
-      typeof parsed.address !== 'string' ||
-      typeof parsed.latitude !== 'number' ||
-      typeof parsed.longitude !== 'number'
-    ) {
-      return null;
-    }
-    return {
-      naverPlaceId: parsed.naverPlaceId,
-      name: parsed.name,
-      address: parsed.address,
-      latitude: parsed.latitude,
-      longitude: parsed.longitude,
-    };
-  } catch {
-    return null;
-  }
-}
+// Security task #36: parse helper moved to shared/lib/naver-place-schema.ts so the
+// upload entry and the machine-photo route share a strict Zod validator (length
+// caps, control-char rejection, Korea coordinate range). See parseNaverPlaceParam
+// import above.
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
