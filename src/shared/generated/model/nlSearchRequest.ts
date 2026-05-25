@@ -11,6 +11,7 @@ export interface NlSearchRequest {
    * Korean natural language gym search query
    * @minLength 0
    * @maxLength 200
+   * @pattern ^[^\p{C}]+$
    */
   query: string;
   /**
