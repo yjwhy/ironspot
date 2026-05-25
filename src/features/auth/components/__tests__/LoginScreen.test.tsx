@@ -1,6 +1,8 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 
+import { createQueryWrapper } from '@/test/utils/query-wrapper';
+
 import { AUTH_REDIRECT_URL } from '../../constants';
 import { LoginScreen } from '../LoginScreen';
 
@@ -90,11 +92,35 @@ afterEach(() => {
 });
 
 function renderLoginScreen({ onBrowseAsGuest = jest.fn(), onAuthenticated = jest.fn() } = {}) {
+  // Security task #17: LoginScreen now mounts the orval-generated
+  // useRecordConsent hook which requires a QueryClientProvider in the
+  // tree. Wrap each render in a fresh client so concurrent tests don't
+  // share mutation cache.
+  const { Wrapper } = createQueryWrapper();
   return {
     onBrowseAsGuest,
     onAuthenticated,
-    ...render(<LoginScreen onBrowseAsGuest={onBrowseAsGuest} onAuthenticated={onAuthenticated} />),
+    ...render(
+      <Wrapper>
+        <LoginScreen onBrowseAsGuest={onBrowseAsGuest} onAuthenticated={onAuthenticated} />
+      </Wrapper>,
+    ),
   };
+}
+
+function tapConsentCheckbox(
+  getByTestId: (
+    id: string,
+  ) => ReturnType<typeof renderLoginScreen>['getByTestId'] extends (id: string) => infer R
+    ? R
+    : never,
+) {
+  // Security task #17: every OAuth-driven test path needs the consent
+  // checkbox ticked first or the OAuth button stays disabled. Wrapped
+  // in act() because the toggle triggers a state update.
+  act(() => {
+    fireEvent.press(getByTestId('login-consent-checkbox'));
+  });
 }
 
 describe('LoginScreen — rendering', () => {
@@ -145,7 +171,8 @@ describe('LoginScreen — rendering', () => {
 
 describe('LoginScreen — OAuth flow', () => {
   it('calls signInWithOAuth with skipBrowserRedirect when a provider button is pressed', async () => {
-    const { getByRole } = renderLoginScreen();
+    const { getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
     act(() => {
       fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
     });
@@ -166,7 +193,8 @@ describe('LoginScreen — OAuth flow', () => {
           : provider === 'kakao'
             ? 'Kakao로 계속하기'
             : 'Apple로 계속하기';
-      const { getByRole } = renderLoginScreen();
+      const { getByRole, getByTestId } = renderLoginScreen();
+      tapConsentCheckbox(getByTestId);
       act(() => {
         fireEvent.press(getByRole('button', { name: label }));
       });
@@ -180,7 +208,8 @@ describe('LoginScreen — OAuth flow', () => {
   );
 
   it('exchanges the PKCE code for a session on success', async () => {
-    const { onAuthenticated, getByRole } = renderLoginScreen();
+    const { onAuthenticated, getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
     act(() => {
       fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
     });
@@ -197,7 +226,8 @@ describe('LoginScreen — OAuth flow', () => {
       type: 'success',
       url: IMPLICIT_CALLBACK_URL,
     });
-    const { onAuthenticated, getByRole } = renderLoginScreen();
+    const { onAuthenticated, getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
     act(() => {
       fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
     });
@@ -213,7 +243,8 @@ describe('LoginScreen — OAuth flow', () => {
 
   it('stays silent (no toast, no auth) when the user cancels the WebBrowser', async () => {
     getWebBrowserMock().openAuthSessionAsync.mockResolvedValueOnce({ type: 'cancel' });
-    const { onAuthenticated, getByRole } = renderLoginScreen();
+    const { onAuthenticated, getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
     act(() => {
       fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
     });
@@ -231,7 +262,8 @@ describe('LoginScreen — OAuth flow', () => {
       data: { url: null },
       error: null,
     });
-    const { getByRole } = renderLoginScreen();
+    const { getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
     act(() => {
       fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
     });
@@ -249,7 +281,8 @@ describe('LoginScreen — OAuth flow', () => {
       type: 'success',
       url: 'ironspot://auth/callback?error=access_denied',
     });
-    const { onAuthenticated, getByRole } = renderLoginScreen();
+    const { onAuthenticated, getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
     act(() => {
       fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
     });
@@ -266,7 +299,8 @@ describe('LoginScreen — OAuth flow', () => {
     getSupabaseMock().auth.exchangeCodeForSession.mockResolvedValueOnce({
       error: new Error('exchange failed'),
     });
-    const { onAuthenticated, getByRole } = renderLoginScreen();
+    const { onAuthenticated, getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
     act(() => {
       fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
     });
@@ -285,7 +319,8 @@ describe('LoginScreen — OAuth flow', () => {
       data: { url: null },
       error: oauthError,
     });
-    const { getByRole } = renderLoginScreen();
+    const { getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
     act(() => {
       fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
     });

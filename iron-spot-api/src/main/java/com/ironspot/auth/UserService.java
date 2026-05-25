@@ -36,6 +36,22 @@ public class UserService {
         return userRepository.findById(userId).orElseThrow();
     }
 
+    /**
+     * Security task #17 — record PIPA active-consent on the user row.
+     * Idempotent: a later consent (e.g. policy re-version) overwrites
+     * the timestamp + version with the newer values, and the previous
+     * record is retained only in the moderation audit log if we add it
+     * there in a future task.
+     */
+    @Transactional
+    public UserResponse recordConsent(String userId, String version) {
+        int rows = userRepository.recordConsent(userId, version);
+        if (rows == 0) {
+            throw new BusinessException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND);
+        }
+        return userRepository.findById(userId).orElseThrow();
+    }
+
     @Transactional
     public void deleteAccount(String userId) {
         userRepository.anonymizePhotos(userId);

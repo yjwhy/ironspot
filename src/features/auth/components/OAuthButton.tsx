@@ -10,6 +10,12 @@ interface OAuthButtonProps {
   label: string;
   onPress: () => void;
   loading?: boolean;
+  /**
+   * Disables the press handler (independent of loading). LoginScreen uses
+   * this to gate the OAuth flow behind the PIPA consent checkbox (security
+   * task #17).
+   */
+  disabled?: boolean;
   testID?: string;
 }
 
@@ -57,13 +63,15 @@ export function OAuthButton({
   label,
   onPress,
   loading = false,
+  disabled = false,
   testID,
 }: OAuthButtonProps) {
   const style = PROVIDER_STYLES[provider];
+  const inactive = loading || disabled;
   const containerClass = [
     'h-12 px-6 rounded-md flex-row items-center justify-center',
     style.containerClass,
-    loading && 'opacity-50',
+    inactive && 'opacity-50',
   ]
     .filter(Boolean)
     .join(' ');
@@ -71,11 +79,11 @@ export function OAuthButton({
   return (
     <Pressable
       onPress={onPress}
-      disabled={loading}
+      disabled={inactive}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled: loading, busy: loading }}
+      accessibilityState={{ disabled: inactive, busy: loading }}
       className={containerClass}
     >
       {loading ? (

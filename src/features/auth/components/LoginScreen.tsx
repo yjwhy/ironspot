@@ -6,13 +6,19 @@ import { Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
+import { useRecordConsent } from '@/shared/generated/users/users';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { captureError } from '@/shared/lib/sentry';
 import { supabase } from '@/shared/lib/supabase';
 import { colors } from '@/shared/theme/tokens';
 
 import { OAuthButton } from './OAuthButton';
-import { AUTH_REDIRECT_URL, PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../constants';
+import {
+  AUTH_REDIRECT_URL,
+  CONSENT_VERSION,
+  PRIVACY_POLICY_URL,
+  TERMS_OF_SERVICE_URL,
+} from '../constants';
 import { parseAuthCallback } from '../lib/parseAuthCallback';
 
 interface LoginScreenProps {
@@ -25,6 +31,11 @@ type LoadingProvider = OAuthProvider | null;
 
 export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenProps) {
   const [loading, setLoading] = useState<LoadingProvider>(null);
+  // Security task #17: active PIPA consent gate. Both checkboxes must be
+  // ticked before any OAuth button is enabled — disclosure-only text is
+  // not sufficient under PIPA Article 22 for the audit trail.
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const { mutateAsync: recordConsent } = useRecordConsent();
 
   /**
    * Drives the OAuth flow end-to-end: signInWithOAuth → WebBrowser → callback parse
@@ -63,6 +74,17 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
           throw new Error(`OAuth callback invalid: ${parsed.reason}`);
       }
 
+      // Security task #17: record the active-consent the user gave at the
+      // gate. Best-effort — a record failure (network, BE down) does not
+      // block onAuthenticated() because the gate has already enforced the
+      // consent client-side. The next /me fetch will re-attempt on the
+      // FE side via the consent-version reconciliation hook (future).
+      try {
+        await recordConsent({ data: { version: CONSENT_VERSION } });
+      } catch (consentErr) {
+        captureError(consentErr);
+      }
+
       onAuthenticated();
     } catch (err) {
       captureError(err);
@@ -83,7 +105,7 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
       </View>
 
       <View className="gap-3">
-        <PolicyDisclosure />
+        <ConsentCheckbox checked={consentAccepted} onToggle={setConsentAccepted} />
 
         <OAuthButton
           provider="google"
@@ -92,6 +114,7 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
             void handleOAuthLogin('google');
           }}
           loading={loading === 'google'}
+          disabled={!consentAccepted}
         />
         <OAuthButton
           provider="kakao"
@@ -100,6 +123,7 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
             void handleOAuthLogin('kakao');
           }}
           loading={loading === 'kakao'}
+          disabled={!consentAccepted}
         />
         {Platform.OS === 'ios' ? (
           <OAuthButton
@@ -109,6 +133,7 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
               void handleOAuthLogin('apple');
             }}
             loading={loading === 'apple'}
+            disabled={!consentAccepted}
           />
         ) : null}
         <Pressable
@@ -133,11 +158,40 @@ function openTermsOfService() {
   void WebBrowser.openBrowserAsync(TERMS_OF_SERVICE_URL);
 }
 
-function PolicyDisclosure() {
+interface ConsentCheckboxProps {
+  checked: boolean;
+  onToggle: (next: boolean) => void;
+}
+
+function ConsentCheckbox({ checked, onToggle }: ConsentCheckboxProps) {
+  // Security task #17: PIPA Article 22 requires active consent at signup.
+  // The checkbox must be a positive action — pre-checked or "by signing up
+  // you agree" disclosure-only patterns don't satisfy the active-consent
+  // standard. Tapping anywhere on the row toggles to keep the hit target
+  // generous; the inner links are tappable for the policy text without
+  // toggling the checkbox.
   return (
-    <View className="items-center px-2 pb-1">
-      <AppText className="text-body-sm text-text-tertiary text-center">
-        회원가입 시{' '}
+    <Pressable
+      testID="login-consent-checkbox"
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      accessibilityLabel="이용약관 및 개인정보처리방침 동의"
+      onPress={() => {
+        onToggle(!checked);
+      }}
+      style={pressedOpacity}
+      className="flex-row items-start gap-3 px-2 pb-1"
+    >
+      <View
+        className={
+          checked
+            ? 'mt-0.5 h-5 w-5 items-center justify-center rounded border-2 border-accent bg-accent'
+            : 'mt-0.5 h-5 w-5 items-center justify-center rounded border-2 border-border bg-bg-base'
+        }
+      >
+        {checked ? <MaterialIcons name="check" size={14} color="white" /> : null}
+      </View>
+      <AppText className="flex-1 text-body-sm text-text-secondary">
         <AppText
           className="underline text-text-secondary"
           onPress={openPrivacyPolicy}
@@ -155,8 +209,8 @@ function PolicyDisclosure() {
         >
           이용약관
         </AppText>
-        에 동의합니다
+        에 동의합니다 (필수)
       </AppText>
-    </View>
+    </Pressable>
   );
 }

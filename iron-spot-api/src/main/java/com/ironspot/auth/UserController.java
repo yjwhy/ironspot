@@ -1,5 +1,6 @@
 package com.ironspot.auth;
 
+import com.ironspot.auth.dto.RecordConsentRequest;
 import com.ironspot.auth.dto.UpdateUserRequest;
 import com.ironspot.auth.dto.UserResponse;
 import com.ironspot.photo.PhotoService;
@@ -48,6 +49,21 @@ public class UserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMe(@AuthenticationPrincipal UserPrincipal principal) {
         userService.deleteAccount(principal.getUserId());
+    }
+
+    @Operation(
+        summary = "Record PIPA active-consent (security #17)",
+        description = "Called by the app right after OAuth success when the user has actively "
+            + "checked the consent boxes on LoginScreen. Writes the policy version + timestamp "
+            + "to users.consent_accepted_at / consent_version. Idempotent: a later call "
+            + "overwrites with the newer version."
+    )
+    @PostMapping(value = "/me/consent", produces = MediaType.APPLICATION_JSON_VALUE)
+    public UserResponse recordConsent(
+        @AuthenticationPrincipal UserPrincipal principal,
+        @Valid @RequestBody RecordConsentRequest request
+    ) {
+        return userService.recordConsent(principal.getUserId(), request.version());
     }
 
     @Operation(summary = "List photos uploaded by the current user (newest first, excludes blinded)")
