@@ -43,6 +43,15 @@ public class GymRepository {
      */
     private static final int MATCHED_MACHINES_LIMIT = 5;
 
+    /**
+     * Security task #21: hard cap on rows returned by searchInBounds. Pairs
+     * with {@link GymSearchRequest#isBboxBounded} (bbox edge ≤ 1°). Mirrors the
+     * NL search side ({@code SqlBuilder.MAX_RESULTS = 50}). Even with a valid
+     * 1° × 1° bbox, the gym density in central Seoul is well below 50, so this
+     * cap only affects scrape-style queries.
+     */
+    private static final int MAX_RESULTS = 50;
+
     public List<GymWithMachineCountResponse> searchInBounds(GymSearchRequest req) {
         Gyms g = GYMS.as("g");
         GymMachines gm = GYM_MACHINES.as("gm");
@@ -116,6 +125,7 @@ public class GymRepository {
                 g.CREATED_AT, g.UPDATED_AT, g.COVER_PHOTO_URL)
             .having(templateHavingCond)
             .orderBy(machineCount.desc())
+            .limit(MAX_RESULTS)
             .fetch(r -> {
                 OffsetDateTime lastVerified = r.get(g.LAST_VERIFIED_AT);
                 String[] rawNames = r.get(matchedNamesField);
