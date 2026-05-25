@@ -1,38 +1,43 @@
 import { createClient } from '@supabase/supabase-js';
-import { MMKV } from 'react-native-mmkv';
+import * as SecureStore from 'expo-secure-store';
 
 import { env } from './env';
 
-// Security task #14 — Supabase session is sensitive: the JWT can
-// impersonate the user for ~1h and the refresh token mints new JWTs
-// until logout. The plan is to move the session into expo-secure-store
-// (iOS Keychain / Android Keystore) which is hardware-backed and
-// excluded from device backups, instead of MMKV's plaintext on-disk
-// storage.
+// Security task #14 — Supabase session lives in the OS secure enclave
+// instead of MMKV's plaintext on-disk storage.
 //
-// Status: blocked on a dev-client rebuild. expo-secure-store's native
-// module ('ExpoSecureStore') is missing from the current dev client,
-// so even `import * as SecureStore from 'expo-secure-store'` throws
-// at module-init time and crashes login. The package stays installed
-// (see package.json + expo-build-properties already wires native
-// modules). Once a new dev client is built (pnpm expo prebuild +
-// pnpm expo run:ios, or EAS build) the import resolves and the
-// secure-store swap below can re-land. See the audit doc
-// (docs/security/audit-2026-05.md) #14 section for the secure-store
-// adapter code we wrote and reverted.
+// Why this matters: the JWT can impersonate the user for ~1h and the
+// refresh token mints new JWTs indefinitely until logout. MMKV stores
+// values in plaintext under the app's sandboxed data directory; on iOS
+// a backed-up device or a jailbroken phone exposes that directory in
+// clear, and on Android a rooted phone or allowBackup adb pull does
+// the same.
 //
-// Until then we ship MMKV with a clear "not hardware-backed" note so
-// no one assumes the prior swap is live.
+// expo-secure-store moves the session to:
+//   - iOS Keychain (kSecAttrAccessibleAfterFirstUnlock)
+//   - Android Keystore + EncryptedSharedPreferences
+// Both back the value with hardware-backed encryption (Secure Enclave /
+// StrongBox where available) and exclude it from iCloud / device
+// backups.
+//
+// Native-module dependency: this import requires that expo-secure-store
+// be linked into the running app binary. The dev client and EAS builds
+// pick it up via the expo-build-properties plugin in app.json. The
+// "Cannot find native module 'ExpoSecureStore'" error indicates an old
+// dev client that predates the prebuild — rebuild with
+// `pnpm expo prebuild --clean && pnpm expo run:ios`.
 
-const storage = new MMKV({ id: 'supabase-auth' });
-
-const mmkvStorage = {
-  getItem: (key: string) => storage.getString(key) ?? null,
-  setItem: (key: string, value: string) => {
-    storage.set(key, value);
+const secureStorageAdapter = {
+  // Supabase's SupportedStorage interface accepts async returns, so we
+  // hand back the expo-secure-store promises directly.
+  getItem(key: string): Promise<string | null> {
+    return SecureStore.getItemAsync(key);
   },
-  removeItem: (key: string) => {
-    storage.delete(key);
+  async setItem(key: string, value: string): Promise<void> {
+    await SecureStore.setItemAsync(key, value);
+  },
+  async removeItem(key: string): Promise<void> {
+    await SecureStore.deleteItemAsync(key);
   },
 };
 
@@ -41,7 +46,7 @@ export const supabase = createClient(
   env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   {
     auth: {
-      storage: mmkvStorage,
+      storage: secureStorageAdapter,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
