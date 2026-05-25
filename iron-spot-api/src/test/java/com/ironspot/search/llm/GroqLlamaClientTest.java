@@ -222,6 +222,32 @@ class GroqLlamaClientTest {
         assertThat(mapped.kind()).isEqualTo(LlmException.Kind.TRANSPORT);
     }
 
+    // Security tasks #69, #73
+
+    @Test
+    void parseContentStripsCodeFenceAroundJson() {
+        String fenced = "```json\n"
+            + "{\"location\":{\"type\":\"current\",\"radiusKm\":1.0},\"machineFilters\":[],\"error\":null}\n"
+            + "```";
+
+        SearchDsl dsl = GroqLlamaClient.parseContent(groqResponse(fenced), new com.fasterxml.jackson.databind.ObjectMapper());
+        assertThat(dsl.location()).isInstanceOf(com.ironspot.search.dsl.Location.Current.class);
+    }
+
+    @Test
+    void stripCodeFenceLeavesPlainJsonUnchanged() {
+        String plain = "{\"location\":null}";
+        assertThat(GroqLlamaClient.stripCodeFence(plain)).isEqualTo(plain);
+    }
+
+    @Test
+    void parseContentRejectsUnknownProperty() {
+        String contentWithExtra = "{\"location\":null,\"machineFilters\":[],\"error\":null,\"_admin_override\":true}";
+
+        org.junit.jupiter.api.Assertions.assertThrows(LlmException.class,
+            () -> GroqLlamaClient.parseContent(groqResponse(contentWithExtra), GroqLlamaClient.MAPPER));
+    }
+
     // ---- helpers ----
 
     private static final String MODEL = "llama-3.3-70b-versatile";

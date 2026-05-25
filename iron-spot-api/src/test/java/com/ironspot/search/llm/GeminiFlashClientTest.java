@@ -241,6 +241,46 @@ class GeminiFlashClientTest {
         assertThat(mapped.kind()).isEqualTo(LlmException.Kind.TRANSPORT);
     }
 
+    // Security tasks #64, #69, #73
+
+    @Test
+    void parseContentRejectsBlockedPrompt() {
+        Map<String, Object> response = Map.of(
+            "promptFeedback", Map.of("blockReason", "SAFETY")
+        );
+
+        org.junit.jupiter.api.Assertions.assertThrows(LlmException.class,
+            () -> GeminiFlashClient.parseContent(response, new ObjectMapper()));
+    }
+
+    @Test
+    void parseContentRejectsCandidateWithSafetyFinishReason() {
+        Map<String, Object> response = Map.of(
+            "candidates", List.of(Map.of("finishReason", "SAFETY"))
+        );
+
+        org.junit.jupiter.api.Assertions.assertThrows(LlmException.class,
+            () -> GeminiFlashClient.parseContent(response, new ObjectMapper()));
+    }
+
+    @Test
+    void parseContentStripsCodeFenceAroundJson() {
+        String fenced = "```json\n"
+            + "{\"location\":{\"type\":\"current\",\"radiusKm\":1.0},\"machineFilters\":[],\"error\":null}\n"
+            + "```";
+        Map<String, Object> response = geminiResponse(fenced);
+
+        SearchDsl dsl = GeminiFlashClient.parseContent(response, new ObjectMapper());
+        assertThat(dsl.location()).isInstanceOf(Location.Current.class);
+        assertThat(dsl.machineFilters()).isEmpty();
+    }
+
+    @Test
+    void stripCodeFenceLeavesPlainJsonUnchanged() {
+        String plain = "{\"location\":null}";
+        assertThat(GeminiFlashClient.stripCodeFence(plain)).isEqualTo(plain);
+    }
+
     private static final String MODEL = "gemini-flash-lite-latest";
 
     private static Map<String, Object> geminiResponse(String text) {
