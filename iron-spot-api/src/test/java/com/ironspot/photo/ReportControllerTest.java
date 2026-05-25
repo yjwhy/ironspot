@@ -87,6 +87,39 @@ class ReportControllerTest extends IntegrationTestBase {
         assertThat(reportCount(PHOTO_ID)).isZero();
     }
 
+    // 2b. Hand-crafted photoId → 404 (security task #25)
+
+    @Test
+    void nonexistentPhotoReportReturns404() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principal(USER_B_ID)));
+        UUID missing = UUID.fromString("00000000-0000-0000-0000-000000000099");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/" + missing + "/reports",
+            HttpMethod.POST, jsonRequest("{\"reason\":\"INAPPROPRIATE\"}", "token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(reportCount(missing)).isZero();
+    }
+
+    // 2c. Reporting an already-blinded photo is a no-op (security task #25)
+
+    @Test
+    void blindedPhotoReportIsNoOpAndDoesNotConsumeCap() {
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principal(USER_B_ID)));
+        // Pre-blind the test photo via the repository helper invoked by admin.
+        jdbcTemplate.update("UPDATE machine_photos SET is_blinded = true WHERE id = ?", PHOTO_ID);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/photos/" + PHOTO_ID + "/reports",
+            HttpMethod.POST, jsonRequest("{\"reason\":\"INAPPROPRIATE\"}", "token"), String.class);
+
+        // Controller-side this is a successful no-op (200 / 204).
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        // No report row inserted (cap not consumed, no Sentry breadcrumb spam).
+        assertThat(reportCount(PHOTO_ID)).isZero();
+    }
+
     // 3. Single general report does not blind
 
     @Test
