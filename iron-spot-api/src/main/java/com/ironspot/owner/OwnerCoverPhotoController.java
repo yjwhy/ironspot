@@ -38,7 +38,12 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping(value = "/api/owner/gyms/{gymId}/cover-photo", produces = MediaType.APPLICATION_JSON_VALUE)
-@PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+// Security task #29: OWNER only. ADMIN previously granted by hasAnyRole was a
+// dead allow-list because OwnerCoverPhotoService.requireActiveOwner still
+// rejects admins who are not the active owner of {gymId}. The ADMIN clause
+// risked a regression if a future PR removed that service-level check, so we
+// strip it here. Admin moderation goes through /api/admin/** instead.
+@PreAuthorize("hasRole('OWNER')")
 @RequiredArgsConstructor
 @Tag(name = "owner")
 public class OwnerCoverPhotoController {
