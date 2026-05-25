@@ -35,7 +35,10 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping(value = "/api/owner", produces = MediaType.APPLICATION_JSON_VALUE)
-@PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+// Security task #29: OWNER only. Service layer (isActiveOwner / requireActiveOwner)
+// already rejects admins who are not active owners of the target gym, so the
+// hasAnyRole ADMIN clause was a dead allow-list. Admin moderation uses /api/admin/**.
+@PreAuthorize("hasRole('OWNER')")
 @RequiredArgsConstructor
 @Tag(name = "owner")
 public class OwnerReportController {

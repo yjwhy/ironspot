@@ -1,6 +1,7 @@
 package com.ironspot.search.llm;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ironspot.search.dsl.SearchDsl;
 import io.netty.handler.timeout.ReadTimeoutException;
@@ -31,7 +32,15 @@ public class GeminiFlashClient implements LlmClient {
     static final String MODEL = "gemini-flash-lite-latest";
     static final Duration TIMEOUT = Duration.ofSeconds(15);
 
-    static final ObjectMapper MAPPER = new ObjectMapper();
+    /**
+     * Security task #73: explicit FAIL_ON_UNKNOWN_PROPERTIES /
+     * FAIL_ON_INVALID_SUBTYPE so a prompt-injected response containing an
+     * unknown {@code Location.type} or an extra schema field fails closed
+     * at deserialise rather than silently mapping to a default.
+     */
+    static final ObjectMapper MAPPER = new ObjectMapper()
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
+        .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, true);
 
     private final WebClient webClient;
     private final String apiKey;
@@ -103,11 +112,39 @@ public class GeminiFlashClient implements LlmClient {
         if (response == null) {
             throw new LlmException(LlmException.Kind.INVALID_RESPONSE, "Gemini returned empty response");
         }
+
+        // Security task #64: catch prompt-level safety blocks before the
+        // candidates check. Gemini returns promptFeedback.blockReason when the
+        // INPUT (not the output) trips a safety filter. Without this branch we
+        // fall into "candidates missing" which masks the real cause and lets a
+        // crafted query suppress every NL search response (DoS via SAFETY).
+        Object promptFeedback = response.get("promptFeedback");
+        if (promptFeedback instanceof Map<?, ?> pf) {
+            Object blockReason = pf.get("blockReason");
+            if (blockReason != null) {
+                throw new LlmException(LlmException.Kind.INVALID_RESPONSE,
+                    "Gemini blocked prompt: " + blockReason);
+            }
+        }
+
         List<?> candidates = (List<?>) response.get("candidates");
         if (candidates == null || candidates.isEmpty()) {
             throw new LlmException(LlmException.Kind.INVALID_RESPONSE, "Gemini response missing 'candidates'");
         }
         Map<?, ?> firstCandidate = (Map<?, ?>) candidates.get(0);
+
+        // Security task #64: candidate-level safety block. STOP and MAX_TOKENS
+        // are the only "normal" finish reasons; SAFETY / BLOCKLIST /
+        // PROHIBITED_CONTENT / OTHER all mean the generation was suppressed
+        // mid-stream and the parts array will be empty or absent. Distinguish
+        // these from a genuine empty-content bug so operators see the real
+        // cause in the LlmException message.
+        Object finishReason = firstCandidate.get("finishReason");
+        if (finishReason != null && !"STOP".equals(finishReason) && !"MAX_TOKENS".equals(finishReason)) {
+            throw new LlmException(LlmException.Kind.INVALID_RESPONSE,
+                "Gemini blocked candidate: finishReason=" + finishReason);
+        }
+
         Map<?, ?> content = (Map<?, ?>) firstCandidate.get("content");
         if (content == null) {
             throw new LlmException(LlmException.Kind.INVALID_RESPONSE, "Gemini candidate missing 'content'");
@@ -124,13 +161,37 @@ public class GeminiFlashClient implements LlmClient {
         if (!(text instanceof String textStr) || textStr.isBlank()) {
             throw new LlmException(LlmException.Kind.INVALID_RESPONSE, "Gemini part has no text");
         }
+
+        // Security task #69: same fence-stripping as the Groq client. Gemini's
+        // responseMimeType=application/json usually prevents fences but does not
+        // guarantee it.
+        String json = stripCodeFence(textStr);
         try {
-            return mapper.readValue(textStr, SearchDsl.class);
+            return mapper.readValue(json, SearchDsl.class);
         } catch (JsonProcessingException e) {
-            throw new LlmException(LlmException.Kind.INVALID_RESPONSE, "Gemini returned non-JSON content: " + truncate(textStr), e);
+            throw new LlmException(LlmException.Kind.INVALID_RESPONSE, "Gemini returned non-JSON content: " + truncate(json), e);
         } catch (IllegalArgumentException e) {
             throw new LlmException(LlmException.Kind.INVALID_RESPONSE, "Gemini DSL invariant violation: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Security task #69: tolerate ```json ... ``` markdown code fences on the
+     * LLM response. Identical to GroqLlamaClient.stripCodeFence — duplicated
+     * intentionally; sharing via a static util class is the only alternative,
+     * and 12 lines does not justify a new file.
+     */
+    static String stripCodeFence(String s) {
+        String trimmed = s.trim();
+        if (!trimmed.startsWith("```")) {
+            return trimmed;
+        }
+        int newline = trimmed.indexOf('\n');
+        trimmed = newline >= 0 ? trimmed.substring(newline + 1) : trimmed.substring(3);
+        if (trimmed.endsWith("```")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 3);
+        }
+        return trimmed.trim();
     }
 
     private static boolean isTimeout(Throwable t) {
