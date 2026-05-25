@@ -64,6 +64,15 @@ public class AdminBrandTransliterateService {
     }
 
     public TransliterateBrandResponse transliterate(TransliterateBrandRequest request) {
+        // Security task #65: indirect prompt injection chain
+        // (OCR → admin transliterate). The promote form pre-fills these
+        // fields from OcrService output, so a label crafted with control /
+        // bidi / zero-width payload would otherwise reach the Gemini system
+        // prompt verbatim. NFC + \p{C} strip at the service entry plugs
+        // that channel before everything downstream.
+        request = new TransliterateBrandRequest(
+            sanitiseInputString(request.name()),
+            sanitiseInputString(request.nameKo()));
         validateExactlyOneSidePopulated(request);
 
         if (apiKey == null || apiKey.isBlank()) {
@@ -166,11 +175,56 @@ public class AdminBrandTransliterateService {
                 "AI 응답 형식이 올바르지 않아요", HttpStatus.BAD_GATEWAY);
         }
         try {
-            return MAPPER.readValue(textJson, TransliterateBrandResponse.class);
+            TransliterateBrandResponse raw = MAPPER.readValue(textJson, TransliterateBrandResponse.class);
+            // Security task #66: scrub control / format / bidi codepoints out
+            // of the model output before it reaches the admin promote form +
+            // BrandRepository.create. \p{C} strip removes NUL, BEL, RLO, ZWJ,
+            // BOM, etc.; the 80-char cap mirrors TransliterateBrandRequest.
+            return new TransliterateBrandResponse(
+                sanitiseModelString(raw.name(), 80),
+                sanitiseModelString(raw.nameKo(), 80));
         } catch (IOException e) {
             log.warn("Gemini brand transliterate returned non-JSON text: {}", textJson);
             throw new BusinessException(
                 "AI 응답을 해석하지 못했어요", HttpStatus.BAD_GATEWAY);
         }
+    }
+
+    /**
+     * Security task #65: sanitiser for admin-side input that may have been
+     * pre-filled from OcrService output. Returns null when the value
+     * sanitises to blank — preserves the "exactly one of name / nameKo"
+     * downstream contract.
+     */
+    static String sanitiseInputString(String s) {
+        if (s == null) return null;
+        String t = java.text.Normalizer
+            .normalize(s, java.text.Normalizer.Form.NFC)
+            .replaceAll("\\p{C}", "");
+        return t.isBlank() ? null : t;
+    }
+
+    /**
+     * Security task #66: sanitiser for LLM-emitted strings that flow into
+     * persisted catalog rows. Mirrors {@code SafeEcho.sanitise} but uses
+     * NFC normalisation and a Latin / Hangul / digit / space / hyphen
+     * whitelist so a homoglyph payload (Cyrillic 'а' for Latin 'a') is
+     * rejected rather than silently saved.
+     */
+    static String sanitiseModelString(String s, int max) {
+        if (s == null) return null;
+        String trimmed = java.text.Normalizer
+            .normalize(s, java.text.Normalizer.Form.NFC)
+            .replaceAll("\\p{C}", "");
+        if (trimmed.length() > max) {
+            trimmed = trimmed.substring(0, max);
+        }
+        // After the strip, reject the row entirely if it became empty —
+        // the model evidently produced only control characters.
+        if (trimmed.isBlank()) {
+            throw new BusinessException(
+                "AI 응답이 비어있어요", HttpStatus.BAD_GATEWAY);
+        }
+        return trimmed;
     }
 }
