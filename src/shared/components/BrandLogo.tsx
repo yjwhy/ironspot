@@ -39,14 +39,28 @@ interface BrandLogoProps {
 }
 
 // Per-surface footprints. sm fits MachineList rows / GymCard chips,
-// md fits FilterSheet brand rows / MachinePicker brand step, lg is a
-// future-proof bucket (e.g. brand detail screen). Keeping the size set
-// closed forces consumers to extend this enum rather than sprinkle
-// magic numbers across call sites.
-const SIZE_PX: Record<BrandLogoSize, number> = {
+// md fits FilterSheet brand rows / MachinePicker brand step / manual-
+// input brand step, lg is a future-proof bucket (e.g. brand detail
+// screen). Keeping the size set closed forces consumers to extend this
+// enum rather than sprinkle magic numbers across call sites.
+//
+// Frame is rectangular (~1.6:1) not square — gym-equipment brand logos
+// are almost universally horizontal (Matrix 4.95:1, Freemotion ~4:1,
+// Citadel ~3.5:1). A square frame with `contentFit: contain` shrinks
+// wide logos to a tiny vertical sliver (28px wide × 5-10px tall on
+// Matrix), making them unreadable. Widening the frame to 1.6× height
+// gives wide logos 70 % more visible area while preserving label-start
+// alignment (frame width is identical for both bitmap + monogram
+// modes — see render below).
+const FRAME_HEIGHT_PX: Record<BrandLogoSize, number> = {
   sm: 20,
   md: 28,
   lg: 40,
+};
+const FRAME_WIDTH_PX: Record<BrandLogoSize, number> = {
+  sm: 32,
+  md: 48,
+  lg: 64,
 };
 
 const FONT_SIZE_PX: Record<BrandLogoSize, number> = {
@@ -163,7 +177,8 @@ export function BrandLogo({
   size = 'md',
   testID,
 }: BrandLogoProps) {
-  const px = SIZE_PX[size];
+  const width = FRAME_WIDTH_PX[size];
+  const height = FRAME_HEIGHT_PX[size];
   const asset = BRAND_LOGOS[brandId];
 
   if (asset !== undefined) {
@@ -173,7 +188,7 @@ export function BrandLogo({
         resizeMode="contain"
         accessibilityLabel={`${brandName} 로고`}
         testID={testID}
-        style={{ width: px, height: px, borderRadius: 4 }}
+        style={{ width, height, borderRadius: 4 }}
       />
     );
   }
@@ -186,8 +201,8 @@ export function BrandLogo({
       accessibilityLabel={`${brandName} 로고 자리 (${char})`}
       testID={testID}
       style={{
-        width: px,
-        height: px,
+        width,
+        height,
         borderRadius: 4,
         backgroundColor: colour,
         alignItems: 'center',
