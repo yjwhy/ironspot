@@ -23,20 +23,40 @@ public class UserRepository {
     private final DSLContext dsl;
 
     public Optional<UserResponse> findById(String id) {
-        return dsl.select(USERS.ID, USERS.EMAIL, USERS.NICKNAME, USERS.CREATED_AT, USERS.ROLE)
+        return dsl.select(
+                USERS.ID, USERS.EMAIL, USERS.NICKNAME, USERS.CREATED_AT, USERS.ROLE,
+                USERS.CONSENT_ACCEPTED_AT, USERS.CONSENT_VERSION)
             .from(USERS)
             .where(USERS.ID.eq(UUID.fromString(id)))
             .and(USERS.DELETED_AT.isNull())
             .fetchOptional(r -> {
                 OffsetDateTime createdAt = r.get(USERS.CREATED_AT);
+                OffsetDateTime consentAt = r.get(USERS.CONSENT_ACCEPTED_AT);
                 return UserResponse.builder()
                     .id(r.get(USERS.ID).toString())
                     .email(r.get(USERS.EMAIL))
                     .nickname(r.get(USERS.NICKNAME))
                     .createdAt(createdAt != null ? createdAt.toString() : null)
                     .role(r.get(USERS.ROLE))
+                    .consentAcceptedAt(consentAt != null ? consentAt.toString() : null)
+                    .consentVersion(r.get(USERS.CONSENT_VERSION))
                     .build();
             });
+    }
+
+    /**
+     * Security task #17 — write the PIPA consent timestamp + the policy
+     * version the user actively agreed to. Returns the row count so the
+     * service can detect "user not found" without a second SELECT.
+     */
+    public int recordConsent(String userId, String version) {
+        return dsl.update(USERS)
+            .set(USERS.CONSENT_ACCEPTED_AT, OffsetDateTime.now())
+            .set(USERS.CONSENT_VERSION, version)
+            .set(USERS.UPDATED_AT, OffsetDateTime.now())
+            .where(USERS.ID.eq(UUID.fromString(userId)))
+            .and(USERS.DELETED_AT.isNull())
+            .execute();
     }
 
     /**

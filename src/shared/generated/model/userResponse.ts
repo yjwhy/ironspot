@@ -13,4 +13,8 @@ export interface UserResponse {
   nickname?: string;
   createdAt?: string;
   role?: UserResponseRole;
+  /** PIPA consent timestamp (ISO-8601). Null if not yet recorded. */
+  consentAcceptedAt?: string;
+  /** Policy bundle version the user accepted. Null if not yet recorded. */
+  consentVersion?: string;
 }

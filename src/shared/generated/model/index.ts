@@ -74,6 +74,7 @@ export * from './promoteContributionRequestLoadingType';
 export * from './promoteContributionResponse';
 export * from './queueParams';
 export * from './quotaInfo';
+export * from './recordConsentRequest';
 export * from './resolvedLocation';
 export * from './searchParams';
 export * from './searchPlacesParams';

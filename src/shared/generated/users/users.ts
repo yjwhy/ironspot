@@ -21,7 +21,12 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { PhotoResponse, UpdateUserRequest, UserResponse } from '../model';
+import type {
+  PhotoResponse,
+  RecordConsentRequest,
+  UpdateUserRequest,
+  UserResponse,
+} from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
@@ -281,6 +286,95 @@ export const useDeleteMe = <TError = unknown, TContext = unknown>(
   queryClient?: QueryClient,
 ): UseMutationResult<Awaited<ReturnType<typeof deleteMe>>, TError, void, TContext> => {
   return useMutation(getDeleteMeMutationOptions(options), queryClient);
+};
+export type recordConsentResponse200 = {
+  data: UserResponse;
+  status: 200;
+};
+
+export type recordConsentResponseSuccess = recordConsentResponse200 & {
+  headers: Headers;
+};
+export type recordConsentResponse = recordConsentResponseSuccess;
+
+export const getRecordConsentUrl = () => {
+  return `/api/users/me/consent`;
+};
+
+/**
+ * Called by the app right after OAuth success when the user has actively checked the consent boxes on LoginScreen. Writes the policy version + timestamp to users.consent_accepted_at / consent_version. Idempotent: a later call overwrites with the newer version.
+ * @summary Record PIPA active-consent (security #17)
+ */
+export const recordConsent = async (
+  recordConsentRequest: RecordConsentRequest,
+  options?: RequestInit,
+): Promise<recordConsentResponse> => {
+  return apiClient<recordConsentResponse>(getRecordConsentUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(recordConsentRequest),
+  });
+};
+
+export const getRecordConsentMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordConsent>>,
+    TError,
+    { data: RecordConsentRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recordConsent>>,
+  TError,
+  { data: RecordConsentRequest },
+  TContext
+> => {
+  const mutationKey = ['recordConsent'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recordConsent>>,
+    { data: RecordConsentRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return recordConsent(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecordConsentMutationResult = NonNullable<Awaited<ReturnType<typeof recordConsent>>>;
+export type RecordConsentMutationBody = RecordConsentRequest;
+export type RecordConsentMutationError = unknown;
+
+/**
+ * @summary Record PIPA active-consent (security #17)
+ */
+export const useRecordConsent = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof recordConsent>>,
+      TError,
+      { data: RecordConsentRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof recordConsent>>,
+  TError,
+  { data: RecordConsentRequest },
+  TContext
+> => {
+  return useMutation(getRecordConsentMutationOptions(options), queryClient);
 };
 export type getMyVotesResponse200 = {
   data: PhotoResponse[];

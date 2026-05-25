@@ -108,6 +108,16 @@ public class Users extends TableImpl<Record> {
     public final TableField<Record, OffsetDateTime> NL_SEARCH_COUNT_RESET_AT = createField(DSL.name("nl_search_count_reset_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
 
     /**
+     * The column <code>public.users.consent_accepted_at</code>.
+     */
+    public final TableField<Record, OffsetDateTime> CONSENT_ACCEPTED_AT = createField(DSL.name("consent_accepted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
+
+    /**
+     * The column <code>public.users.consent_version</code>.
+     */
+    public final TableField<Record, String> CONSENT_VERSION = createField(DSL.name("consent_version"), SQLDataType.CLOB, this, "");
+
+    /**
      * The column <code>public.users.created_at</code>.
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
@@ -186,7 +196,7 @@ public class Users extends TableImpl<Record> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IDX_USERS_ROLE);
+        return Arrays.asList(Indexes.IDX_USERS_CONSENT_VERSION, Indexes.IDX_USERS_ROLE);
     }
 
     @Override

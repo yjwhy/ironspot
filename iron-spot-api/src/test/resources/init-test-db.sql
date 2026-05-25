@@ -89,11 +89,16 @@ CREATE TABLE IF NOT EXISTS users (
   deleted_at TIMESTAMPTZ,
   nl_search_count_month INT NOT NULL DEFAULT 0,
   nl_search_count_reset_at TIMESTAMPTZ,
+  -- Security task #17 / V19: PIPA active-consent record. Mirrors the prod
+  -- migration so IT exercises the same shape.
+  consent_accepted_at TIMESTAMPTZ,
+  consent_version TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role) WHERE role = 'admin';
+CREATE INDEX IF NOT EXISTS idx_users_consent_version ON users(consent_version) WHERE consent_version IS NOT NULL;
 
 -- Phase 5 item 14 / V9: gyms.created_by_user_id FK (mirror of V9 migration
 -- — declared via ALTER because gyms is created before users above).
