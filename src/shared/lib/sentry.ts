@@ -1,14 +1,25 @@
 import * as Sentry from '@sentry/react-native';
+import { z } from 'zod';
 
-import { env } from './env';
 import { scrubBreadcrumb, scrubErrorEvent } from './sentry-scrub';
 
-// Security E6: DSN now flows through env.ts's Zod schema as an optional
-// `z.string().url().optional()` field. Empty / undefined → init skipped
-// (mirrors the server-side SentryConfig fail-open contract). Malformed
-// URL fails at env.ts module load with a clear error rather than crashing
-// Sentry.init at the first capture.
-const DSN = env.EXPO_PUBLIC_SENTRY_DSN;
+// Security E6: validate DSN with Zod at module load. Inline (rather than
+// env.ts) because env.ts uses `process.env.X` (typed `any` in CI without
+// expo-env.d.ts) and adding an optional Zod field there would trip
+// `no-unsafe-assignment` in the safeParse object literal. The narrowing
+// pattern below has been the file's convention since Task 31; the
+// addition is the `.url()` validation that fails the build (well, the
+// module load) on a malformed DSN rather than crashing Sentry.init at
+// the first capture.
+const rawDSN: unknown = process.env.EXPO_PUBLIC_SENTRY_DSN;
+const dsnInput = typeof rawDSN === 'string' && rawDSN.length > 0 ? rawDSN : undefined;
+const dsnParse = z.string().url().optional().safeParse(dsnInput);
+if (!dsnParse.success) {
+  throw new Error(
+    `Invalid EXPO_PUBLIC_SENTRY_DSN: ${dsnParse.error.errors.map((e) => e.message).join(', ')}`,
+  );
+}
+const DSN = dsnParse.data;
 
 let initialised = false;
 
