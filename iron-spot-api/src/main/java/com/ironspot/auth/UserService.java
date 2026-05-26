@@ -8,6 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -27,13 +30,43 @@ public class UserService {
             });
     }
 
+    /**
+     * Security B5: anti-impersonation reserved nicknames. Anyone editing a
+     * profile is blocked from claiming an admin/system handle in either
+     * English or Korean. NFC + lowercase before comparing so "ADMIN",
+     * "ａｄｍｉｎ" (full-width), and "admin" all reject identically.
+     *
+     * <p>We intentionally don't add a partial UNIQUE INDEX on lower(nickname)
+     * yet — that would require a Flyway migration with a backfill story for
+     * legacy duplicate nicknames. Reserved-list closes the highest-value
+     * impersonation vector (admin/moderator) without touching the schema.
+     */
+    private static final Set<String> RESERVED_NICKNAMES = Set.of(
+        "admin", "administrator", "moderator", "mod", "support", "system",
+        "root", "owner", "official", "staff", "ironspot",
+        "운영자", "관리자", "어드민", "고객센터", "공식", "지원팀"
+    );
+
     @Transactional
     public UserResponse updateNickname(String userId, String nickname) {
+        rejectReservedNickname(nickname);
         int rows = userRepository.updateNickname(userId, nickname);
         if (rows == 0) {
             throw new BusinessException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND);
         }
         return userRepository.findById(userId).orElseThrow();
+    }
+
+    private static void rejectReservedNickname(String nickname) {
+        if (nickname == null) return;
+        String normalised = Normalizer.normalize(nickname, Normalizer.Form.NFC)
+            .trim()
+            .toLowerCase(Locale.ROOT);
+        if (RESERVED_NICKNAMES.contains(normalised)) {
+            throw new BusinessException(
+                "사용할 수 없는 닉네임입니다",
+                HttpStatus.BAD_REQUEST);
+        }
     }
 
     /**

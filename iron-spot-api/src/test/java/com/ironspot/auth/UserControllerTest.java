@@ -154,17 +154,23 @@ class UserControllerTest extends IntegrationTestBase {
             "/api/users/me", HttpMethod.DELETE, bearerRequest(null), Void.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-        // Row should still exist (analytics retains it for 90 days) but with
-        // user_id NULLed so it no longer ties back to the deleted user.
+        // Security B8: row still exists for analytics retention but both the
+        // user_id link AND the raw_query body must be wiped at delete time
+        // (not only at the 30-day retention sweep) so a deleted user's
+        // queries cannot be re-linked via content matching during that
+        // window.
         Integer rowsByUser = dsl.fetchCount(NL_SEARCH_LOG, NL_SEARCH_LOG.USER_ID.eq(userUuid));
         Integer rowsByRaw = dsl.fetchCount(NL_SEARCH_LOG,
             NL_SEARCH_LOG.RAW_QUERY.eq("ANON-DEL-IT-사전 데이터"));
+        Integer rowsByRedacted = dsl.fetchCount(NL_SEARCH_LOG,
+            NL_SEARCH_LOG.RAW_QUERY.eq("[redacted-on-delete]"));
         assertThat(rowsByUser).as("user_id must be NULLed post-delete").isZero();
-        assertThat(rowsByRaw).as("row itself must survive (retention is 90 days)").isEqualTo(1);
+        assertThat(rowsByRaw).as("raw_query must be redacted at delete time").isZero();
+        assertThat(rowsByRedacted).as("redacted row survives retention window").isGreaterThanOrEqualTo(1);
 
         // Cleanup
         dsl.deleteFrom(NL_SEARCH_LOG)
-            .where(NL_SEARCH_LOG.RAW_QUERY.eq("ANON-DEL-IT-사전 데이터"))
+            .where(NL_SEARCH_LOG.RAW_QUERY.eq("[redacted-on-delete]"))
             .execute();
     }
 
