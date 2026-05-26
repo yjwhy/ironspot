@@ -112,7 +112,12 @@ public class PhotoService {
         }
 
         boolean ocrSucceeded = !vision.texts().isEmpty();
-        return new PhotoUploadResponse(photoId, photoUrl, suggestions, ocrSucceeded);
+        return new PhotoUploadResponse(
+            photoId,
+            photoUrl,
+            PhotoUploadResponse.proxyPathFor(photoId),
+            suggestions,
+            ocrSucceeded);
     }
 
     /**
