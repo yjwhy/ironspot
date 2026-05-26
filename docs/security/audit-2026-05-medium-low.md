@@ -155,7 +155,7 @@ Polymorphic via `target_type` but no referential integrity. **Fix:** trigger-enf
 
 Supabase Auth enforces in `auth.users`, but the public mirror can drift. **Fix:** `CREATE UNIQUE INDEX users_email_active_uniq ON users(lower(email)) WHERE deleted_at IS NULL`. **Effort:** S.
 
-### 🟢 D3. `vision_cache` has no DB-side expiry CHECK
+### ✅ D3. `vision_cache` has no DB-side expiry CHECK
 
 Retention is purely Java-side; if the job fails silently rows live forever. **Fix:** `pg_cron` extension or trigger as a backstop. **Effort:** M.
 
