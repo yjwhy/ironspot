@@ -42,10 +42,14 @@ class UserControllerTest extends IntegrationTestBase {
 
     @Test
     void getMeCreatesAndReturnsUserOnFirstVisit() {
+        // Security D2: init-test-db.sql seeds `test@example.com` for
+        // user d0000001. The "first visit" path here MUST use a unique
+        // email so the new INSERT doesn't collide with the seeded row
+        // on the partial UNIQUE INDEX users_email_active_uniq.
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(
             UserPrincipal.builder()
                 .userId("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
-                .email("test@example.com")
+                .email("first-visit@example.com")
                 .build()));
 
         ResponseEntity<String> response = restTemplate.exchange(
@@ -53,7 +57,7 @@ class UserControllerTest extends IntegrationTestBase {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
-            .contains("test@example.com")
+            .contains("first-visit@example.com")
             .contains("\"role\":\"user\"");
     }
 

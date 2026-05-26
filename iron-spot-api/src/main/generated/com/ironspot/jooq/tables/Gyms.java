@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
@@ -257,6 +258,13 @@ public class Gyms extends TableImpl<Record> {
             _gymOwners = new GymOwnersPath(this, null, Keys.GYM_OWNERS__GYM_OWNERS_GYM_ID_FKEY.getInverseKey());
 
         return _gymOwners;
+    }
+
+    @Override
+    public List<Check<Record>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("gyms_naver_place_id_shape_check"), "(((naver_place_id IS NULL) OR (naver_place_id ~ '^[0-9]+$'::text) OR (naver_place_id ~ '^synthetic_[0-9a-f]{16}$'::text)))", true)
+        );
     }
 
     @Override
