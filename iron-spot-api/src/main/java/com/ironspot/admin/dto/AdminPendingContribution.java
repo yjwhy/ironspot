@@ -33,6 +33,9 @@ public record AdminPendingContribution(
     @Schema(description = "Bound photo URL when the user uploaded one; null when the contribution has no photo yet")
     String photoUrl,
 
+    @Schema(description = "Security A3 Phase 2c: relative photo-proxy path for the bound photo. Prefer over photoUrl. Null when the contribution has no photo yet.")
+    String contentPath,
+
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     OffsetDateTime createdAt
 ) {

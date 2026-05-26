@@ -27,11 +27,13 @@ public class PhotoRepository {
     private PhotoResponse toPhotoResponse(Record r) {
         OffsetDateTime createdAt = r.get(MACHINE_PHOTOS.CREATED_AT);
         OffsetDateTime verifiedByOwnerAt = r.get(MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT);
+        UUID id = r.get(MACHINE_PHOTOS.ID);
         return new PhotoResponse(
-            r.get(MACHINE_PHOTOS.ID),
+            id,
             r.get(MACHINE_PHOTOS.GYM_MACHINE_ID),
             r.get(MACHINE_PHOTOS.USER_ID),
             r.get(MACHINE_PHOTOS.PHOTO_URL),
+            PhotoProxyPath.forPhoto(id),
             Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.UPVOTE_COUNT), 0),
             createdAt != null ? createdAt.toInstant() : null,
             verifiedByOwnerAt != null ? verifiedByOwnerAt.toInstant() : null
@@ -153,6 +155,7 @@ public class PhotoRepository {
                 r.get(MACHINE_PHOTOS.GYM_MACHINE_ID),
                 r.get(MACHINE_PHOTOS.USER_ID),
                 r.get(MACHINE_PHOTOS.PHOTO_URL),
+                PhotoProxyPath.forPhoto(r.get(MACHINE_PHOTOS.ID)),
                 Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.UPVOTE_COUNT), 0),
                 r.get(MACHINE_PHOTOS.CREATED_AT),
                 Boolean.TRUE.equals(r.get(MACHINE_PHOTOS.IS_BLINDED))

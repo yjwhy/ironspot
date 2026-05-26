@@ -224,6 +224,7 @@ public class ReportRepository {
             .fetch(r -> new AdminQueuePhotoSummary(
                 r.get(MACHINE_PHOTOS.ID),
                 r.get(MACHINE_PHOTOS.PHOTO_URL),
+                PhotoProxyPath.forPhoto(r.get(MACHINE_PHOTOS.ID)),
                 r.get(pendingCount),
                 r.get(oldestReportAt),
                 r.get(topReason)

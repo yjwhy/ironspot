@@ -115,7 +115,7 @@ public class PhotoService {
         return new PhotoUploadResponse(
             photoId,
             photoUrl,
-            PhotoUploadResponse.proxyPathFor(photoId),
+            PhotoProxyPath.forPhoto(photoId),
             suggestions,
             ocrSucceeded);
     }

@@ -21,6 +21,7 @@ function makePhoto(overrides: Partial<PhotoResponse> = {}): PhotoResponse {
     gymMachineId: 'machine-1',
     userId: 'user-1',
     photoUrl: 'https://example.com/p.jpg',
+    contentPath: '/api/photos/photo-1/content',
     upvoteCount: 5,
     createdAt: '2026-04-01T00:00:00Z',
     ...overrides,

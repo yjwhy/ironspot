@@ -15,5 +15,7 @@ export interface AdminPendingContribution {
   freeFormName: string;
   /** Bound photo URL when the user uploaded one; null when the contribution has no photo yet */
   photoUrl?: string;
+  /** Security A3 Phase 2c: relative photo-proxy path for the bound photo. Prefer over photoUrl. Null when the contribution has no photo yet. */
+  contentPath?: string;
   createdAt: string;
 }

@@ -11,6 +11,8 @@ export interface PhotoResponse {
   gymMachineId: string;
   userId: string;
   photoUrl: string;
+  /** Security A3 Phase 2c: relative photo-proxy path. Prefer this over photoUrl — the proxy mints short-TTL signed URLs at request time. */
+  contentPath: string;
   upvoteCount: number;
   createdAt: string;
   /** Set when an active owner of this photo's gym has marked it as verified (Task 47 / ADR 0023 Q5 T1+T2). Null otherwise. */
