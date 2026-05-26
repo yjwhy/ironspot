@@ -210,6 +210,20 @@ If a path fails to deliver: check the Render env (`SLACK_ADMIN_WEBHOOK_URL` pres
 
 Fill in `TBD` once the team / on-call schedule is decided.
 
+### Slack webhook rotation procedure (Security K3)
+
+Slack incoming webhooks are bearer-equivalent secrets. The 90-day cadence above is the floor; rotate immediately on any of: maintainer offboarding, GitHub repository visibility change, Slack workspace audit log surfacing the URL, accidental commit / paste into a non-private channel.
+
+Steps (all 3 webhooks: `SLACK_DEPLOY_WEBHOOK_URL`, `SLACK_ADMIN_WEBHOOK_URL`, `SLACK_PRODUCT_WEBHOOK_URL`):
+
+1. Slack → `iron-spot` workspace → Apps → **Incoming Webhooks** → find the entry for the channel (`#ironspot-deploy`, `#ironspot-moderation`, `#ironspot-product`). Hit **Revoke**, then **Add to Slack** again on the same channel. Copy the fresh URL.
+2. GitHub → repo Settings → Secrets and variables → Actions → update the corresponding secret with the new URL.
+3. Render Dashboard → ironspot service → Environment → update the env var (BE webhooks live there, not in GitHub Actions). Trigger a redeploy so the BE picks up the new URL.
+4. Smoke-test each channel by running `gh workflow run deploy-notify.yml` (deploy hook) and `POST /api/_admin/slack-smoke?path=admin` / `?path=product` (admin + product hooks — see "Slack 3-path smoke" above).
+5. Record the rotation date in the table above so the next 90-day window starts from today.
+
+Long-term replacement: migrate to the Slack GitHub App (`slackapi/slack-github-action` with a workspace-installed bot token) — bot tokens carry workspace audit trail and can be revoked centrally instead of per-channel. Out of scope for the security backlog; track as a Phase 6+ ops follow-up.
+
 ## pg_cron jobs (Security D3)
 
 `pg_cron` was enabled on the Supabase project on 2026-05-26 (Database → Extensions → pg_cron → Enable, schema `pg_catalog`). The extension is a backstop for Java-side scheduled jobs: if a Spring `@Scheduled` task silently dies (Hikari exhaustion, OOM, missed timer fire), the Postgres-side cron keeps housekeeping running.
@@ -237,6 +251,8 @@ SELECT cron.unschedule('<jobname>');
 ```
 
 `cron.unschedule` requires the same operator privilege as the original `cron.schedule` call. Flyway migrations never call either function (Flyway runs as a non-superuser on Supabase) — DB-side scheduling stays a manual operator step recorded in migration files only as informational `SELECT` notes (see `V25__pg_cron_vision_cache_prune.sql`).
+
+> > > > > > > origin/main
 
 ## LLM eval workflow (Groq free-tier budgeting)
 

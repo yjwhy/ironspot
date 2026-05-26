@@ -323,7 +323,7 @@ Duplicates A1 (same finding from PI lens — query string credentials leak via p
 
 `security-scans.yml:76`. Moderate-severity CVEs merge silently. **Fix:** `fail-on-severity: moderate` + `comment-summary-in-pr: on-failure`. **Effort:** S.
 
-### 🟡 K3. Slack webhook URL has no rotation policy
+### ✅ K3. Slack webhook URL has no rotation policy
 
 `deploy-notify.yml:25,49,160`. Bearer-equivalent secret with no documented rotation cadence. **Fix:** switch to Slack GitHub App (`slackapi/slack-github-action` with bot token) or document rotation. **Effort:** M.
 
