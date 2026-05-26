@@ -84,10 +84,10 @@ class OwnerDispositionIT extends IntegrationTestBase {
 
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            GYM_ID, UUID.fromString(OWNER_ID), "h-owner");
+            GYM_ID, UUID.fromString(OWNER_ID), "00000000000000000000000000000000000000000000000000000000000000d0");
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "h-other");
+            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "00000000000000000000000000000000000000000000000000000000000000d1");
     }
 
     @AfterEach

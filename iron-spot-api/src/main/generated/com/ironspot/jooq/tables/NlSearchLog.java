@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
@@ -197,6 +198,13 @@ public class NlSearchLog extends TableImpl<Record> {
             _users = new UsersPath(this, Keys.NL_SEARCH_LOG__NL_SEARCH_LOG_USER_ID_FKEY, null);
 
         return _users;
+    }
+
+    @Override
+    public List<Check<Record>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("nl_search_log_outcome_length_ck"), "((char_length(outcome) <= 64))", true)
+        );
     }
 
     @Override

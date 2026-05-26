@@ -79,10 +79,10 @@ class OwnerQueueIT extends IntegrationTestBase {
         // Owner: GYM_ID; Other owner: OTHER_GYM_ID
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            GYM_ID, UUID.fromString(OWNER_ID), "hash-owner");
+            GYM_ID, UUID.fromString(OWNER_ID), "0000000000000000000000000000000000000000000000000000000000000a01");
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "hash-other-owner");
+            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "0000000000000000000000000000000000000000000000000000000000000a02");
     }
 
     @AfterEach
