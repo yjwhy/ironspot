@@ -224,6 +224,36 @@ Steps (all 3 webhooks: `SLACK_DEPLOY_WEBHOOK_URL`, `SLACK_ADMIN_WEBHOOK_URL`, `S
 
 Long-term replacement: migrate to the Slack GitHub App (`slackapi/slack-github-action` with a workspace-installed bot token) — bot tokens carry workspace audit trail and can be revoked centrally instead of per-channel. Out of scope for the security backlog; track as a Phase 6+ ops follow-up.
 
+## pg_cron jobs (Security D3)
+
+`pg_cron` was enabled on the Supabase project on 2026-05-26 (Database → Extensions → pg_cron → Enable, schema `pg_catalog`). The extension is a backstop for Java-side scheduled jobs: if a Spring `@Scheduled` task silently dies (Hikari exhaustion, OOM, missed timer fire), the Postgres-side cron keeps housekeeping running.
+
+### Active jobs
+
+```sql
+SELECT jobname, schedule, command, active FROM cron.job ORDER BY jobid;
+```
+
+| `jobname`                  | `schedule`                           | Backs up                                                               |
+| -------------------------- | ------------------------------------ | ---------------------------------------------------------------------- |
+| `vision-cache-prune-daily` | `15 4 * * *` (04:15 UTC = 13:15 KST) | `VisionCacheCleanupJob` — drops `vision_cache` rows older than 90 days |
+
+### Adding a new job
+
+1. Open Supabase SQL Editor → New query.
+2. `SELECT cron.schedule('<jobname>', '<cron>', $$<SQL>$$);` — returns the new `jobid`.
+3. Record the row in the table above in the same PR that introduces the matching Java fallback (if any).
+
+### Disabling / unscheduling
+
+```sql
+SELECT cron.unschedule('<jobname>');
+```
+
+`cron.unschedule` requires the same operator privilege as the original `cron.schedule` call. Flyway migrations never call either function (Flyway runs as a non-superuser on Supabase) — DB-side scheduling stays a manual operator step recorded in migration files only as informational `SELECT` notes (see `V25__pg_cron_vision_cache_prune.sql`).
+
+> > > > > > > origin/main
+
 ## LLM eval workflow (Groq free-tier budgeting)
 
 `.github/workflows/llm-eval.yml` runs `EvalSuiteTest` against the real Groq API on PRs that touch the LLM stack (`prompts/`, `search/llm/**`, `search/dsl/**`, `SqlBuilder.java`, `DslValidator.java`, `search/eval/**`, `resources/eval/**`) and on manual `workflow_dispatch`.
