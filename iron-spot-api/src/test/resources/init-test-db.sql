@@ -431,3 +431,18 @@ CREATE INDEX IF NOT EXISTS idx_users_pending_deletion
     ON users (deleted_at)
     WHERE deleted_at IS NOT NULL
       AND deletion_finalized_at IS NULL;
+
+-- Security D2 + C4 (V24 mirror): DB-side LOW hardening.
+--   D2 — partial UNIQUE on lower(email) for non-deleted users.
+--   C4 — CHECK constraint distinguishing real vs synthetic naver_place_id.
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_active_uniq
+    ON users (lower(email))
+    WHERE deleted_at IS NULL;
+
+ALTER TABLE gyms
+    ADD CONSTRAINT gyms_naver_place_id_shape_check
+    CHECK (
+        naver_place_id IS NULL
+        OR naver_place_id ~ '^[0-9]+$'
+        OR naver_place_id ~ '^synthetic_[0-9a-f]{16}$'
+    );
