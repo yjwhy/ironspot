@@ -243,7 +243,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 `GroqLlamaClient.java:71`, `GeminiFlashClient.java:74`. `NlSearchRequest.query` capped at 200 but the LLM clients re-accept any String. **Fix:** add guard at top of each `parse(String)`. **Effort:** S.
 
-### 🟡 G3. `OcrService.readImagePixelCount` exposes ImageIO
+### ✅ G3. `OcrService.readImagePixelCount` exposes ImageIO
 
 `OcrService.java:181-197`. JDK ImageIO is a known image-bomb vector. **Fix:** wrap with hard time budget + reject declared dimensions > ~100 MP before allocation. **Effort:** M.
 
