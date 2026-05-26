@@ -4,6 +4,7 @@ import { ImageManipulator } from 'expo-image-manipulator';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, View } from 'react-native';
+import { z } from 'zod';
 
 import { AppText } from '@/shared/components/AppText';
 import { useCreateGymMachine } from '@/shared/generated/machines/machines';
@@ -13,7 +14,6 @@ import { parseNaverPlaceParam } from '@/shared/lib/naver-place-schema';
 import { unwrapOrvalResponse } from '@/shared/lib/orval-response';
 import { pressedOpacity } from '@/shared/lib/pressable';
 
-import type { MachinePickerSelection } from './MachinePicker';
 import { PHOTO_FILENAME, PHOTO_MIME_TYPE, UPLOAD_IMAGE_FORMAT } from '../constants';
 
 // Phase 5 follow-up G whole-machine capture step. Common terminus for both
@@ -58,17 +58,22 @@ type SubmittableSelection =
   | { kind: 'template'; templateId: string }
   | { kind: 'freeForm'; text: string };
 
+// Security E7: validate the deep-link selection JSON with Zod before
+// trusting it. Previously a malformed `templateId` (non-UUID) or 5MB
+// `text` would flow straight to the BE; with this schema both fields are
+// shape- + size-checked at the FE boundary so the BE receives only
+// well-formed payloads even if the link came from outside the app.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const submittableSelectionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('template'), templateId: z.string().regex(UUID_PATTERN) }),
+  z.object({ kind: z.literal('freeForm'), text: z.string().min(1).max(100) }),
+]);
+
 function parseSelection(raw: string | undefined): SubmittableSelection | null {
   if (raw === undefined || raw.length === 0) return null;
   try {
-    const parsed = JSON.parse(raw) as MachinePickerSelection;
-    if (parsed.kind === 'template' && typeof parsed.templateId === 'string') {
-      return { kind: 'template', templateId: parsed.templateId };
-    }
-    if (parsed.kind === 'freeForm' && typeof parsed.text === 'string') {
-      return { kind: 'freeForm', text: parsed.text };
-    }
-    return null;
+    const parsed = submittableSelectionSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }
