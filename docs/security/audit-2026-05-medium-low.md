@@ -211,7 +211,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 `OwnerCoverPhotoScreen.tsx:34-35`. `fetch().blob()` drops WebP MIME on iOS. **Fix:** build blob with explicit `type: 'image/webp'` or use FormData. **Effort:** S.
 
-### 🟢 F2. `console.warn` in production upload path
+### ✅ F2. `console.warn` in production upload path
 
 `UploadPhotoScreen.tsx:67`. Banned by CLAUDE.md. **Fix:** guard with `__DEV__`. **Effort:** S.
 
@@ -227,7 +227,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 `shared/lib/directions.ts:99-102`. 200-char name builds 1KB+ URL; nmap rejects. **Fix:** truncate to 60 chars. **Effort:** S.
 
-### 🟢 F6. Auth refresh has no retry budget
+### ✅ F6. Auth refresh has no retry budget
 
 `api-client.ts:68-75`. Single attempt, no backoff. Flaky networks → hard logout. **Fix:** single retry with 1s backoff on transport-level failures. **Effort:** S.
 
@@ -327,7 +327,7 @@ Duplicates A1 (same finding from PI lens — query string credentials leak via p
 
 `deploy-notify.yml:25,49,160`. Bearer-equivalent secret with no documented rotation cadence. **Fix:** switch to Slack GitHub App (`slackapi/slack-github-action` with bot token) or document rotation. **Effort:** M.
 
-### 🟡 K4. Naver Maps client_id committed to app.json
+### ✅ K4. Naver Maps client_id committed to app.json
 
 `app.json:42`. Hardcoded in source — no per-env rotation. **Fix:** `app.config.ts` reading `EXPO_PUBLIC_NAVER_MAPS_CLIENT_ID` via EAS secrets. **Effort:** S.
 
