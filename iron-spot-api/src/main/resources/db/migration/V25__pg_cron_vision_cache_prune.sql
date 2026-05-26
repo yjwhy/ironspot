@@ -1,0 +1,21 @@
+-- Security D3: backstop the Java `VisionCacheCleanupJob` (Phase 4 #30)
+-- with a pg_cron daily sweep. The Java job remains the primary
+-- pruner — pg_cron only catches the case where the Spring scheduled
+-- task silently fails (Hikari pool exhaustion, JVM heap pressure,
+-- etc.) and rows never get cleaned.
+--
+-- pg_cron extension MUST be enabled via the Supabase dashboard BEFORE
+-- this migration runs (Database → Extensions → search pg_cron →
+-- enable). Activation was performed manually 2026-05-26.
+--
+-- We do NOT call `cron.schedule(...)` here because Flyway runs as a
+-- non-superuser role on Supabase and `cron.schedule` requires
+-- ownership of the `cron.job` table. The schedule itself is created
+-- via the SQL Editor by an operator with elevated privileges (see
+-- docs/harness/operations.md §pg_cron jobs).
+--
+-- This migration is intentionally a no-op SELECT — its only purpose
+-- is to record in `flyway_schema_history` that the D3 mitigation
+-- went live on the same deploy as V24's D2/C4 hardening.
+
+SELECT 'Security D3 — pg_cron vision-cache-prune-daily scheduled manually 2026-05-26' AS note;
