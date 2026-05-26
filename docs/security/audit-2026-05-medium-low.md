@@ -299,7 +299,7 @@ Backup snapshot during the 30-day window persists every user's raw search text i
 
 ## §J. PI LOW (3)
 
-### 🟢 J1. Sentry email mask keeps 2 chars of local part
+### ✅ J1. Sentry email mask keeps 2 chars of local part
 
 `sentry-scrub.ts:76-83`. `yj***` uniquely identifies a tester pool member. **Fix:** mask to 1 char or HMAC the entire email. **Effort:** S.
 

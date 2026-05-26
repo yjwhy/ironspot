@@ -52,12 +52,19 @@ describe('scrubHeaders', () => {
 });
 
 describe('maskEmail', () => {
-  it('keeps the first 2 chars of the local part', () => {
-    expect(maskEmail('yongjun@generatezero.com')).toBe('yo***');
+  it('keeps only the first char of the local part', () => {
+    expect(maskEmail('yongjun@generatezero.com')).toBe('y***');
   });
 
   it('handles short local parts', () => {
     expect(maskEmail('a@b.com')).toBe('a***');
+  });
+
+  it('masks Apple relay-domain emails to a single char (Security J1)', () => {
+    // privaterelay.appleid.com local-parts are high-entropy random strings;
+    // keeping more than 1 char of a hash gives a Sentry-visible fingerprint
+    // that can be cross-referenced.
+    expect(maskEmail('a1b2c3d4@privaterelay.appleid.com')).toBe('a***');
   });
 
   it('leaves non-email strings unchanged', () => {
@@ -87,7 +94,7 @@ describe('scrubErrorEvent', () => {
       user: { id: 'u1', email: 'yongjun@generatezero.com', ip_address: '1.2.3.4' },
     } as ErrorEvent;
     const out = scrubErrorEvent(event, hint);
-    expect(out?.user?.email).toBe('yo***');
+    expect(out?.user?.email).toBe('y***');
     expect(out?.user?.ip_address).toBe('[Filtered]');
     expect(out?.user?.id).toBe('u1');
   });
