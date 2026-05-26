@@ -43,7 +43,7 @@ Remaining by effort: ~5 × S (L1, L2, L4, K4, F2 no-op verify), ~12 × M (design
 
 `StorageService.upload` returns a 365-day signed URL which is persisted in `machine_photos.photo_url`. A DB leak / backup dump / Sentry capture hands over a year-long bearer credential per photo. **Fix:** store only the bucket-relative path; mint a short-TTL (15-60 min) signed URL at response time. **Effort:** L.
 
-### 🟡 A4. No re-auth or grace window on account deletion
+### ✅ A4. No re-auth or grace window on account deletion
 
 `UserService.deleteAccount` runs on a single valid JWT — a stolen token (or borrowed unlocked phone) nukes the account instantly. PIPA "right to erasure" expects intent confirmation. **Fix:** require ≤5min re-auth challenge, log to `moderation_audit_log`. **Effort:** M.
 

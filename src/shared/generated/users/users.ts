@@ -244,7 +244,8 @@ export const getDeleteMeUrl = () => {
 };
 
 /**
- * @summary Delete current user account
+ * Security A4: marks the account as pending deletion. The grace window (default 7 days, configurable via ironspot.account-deletion.grace-window-days) lets the user log back in and POST /api/users/me/cancel-deletion to abort. Content anonymisation runs at the end of the grace window via AccountDeletionFinaliserJob — not immediately, so a stolen-token attacker cannot nuke the account before the real user notices.
+ * @summary Request account deletion (starts 7-day grace window)
  */
 export const deleteMe = async (options?: RequestInit): Promise<deleteMeResponse> => {
   return apiClient<deleteMeResponse>(getDeleteMeUrl(), {
@@ -276,7 +277,7 @@ export type DeleteMeMutationResult = NonNullable<Awaited<ReturnType<typeof delet
 export type DeleteMeMutationError = unknown;
 
 /**
- * @summary Delete current user account
+ * @summary Request account deletion (starts 7-day grace window)
  */
 export const useDeleteMe = <TError = unknown, TContext = unknown>(
   options?: {
@@ -375,6 +376,79 @@ export const useRecordConsent = <TError = unknown, TContext = unknown>(
   TContext
 > => {
   return useMutation(getRecordConsentMutationOptions(options), queryClient);
+};
+export type cancelMyDeletionResponse200 = {
+  data: UserResponse;
+  status: 200;
+};
+
+export type cancelMyDeletionResponseSuccess = cancelMyDeletionResponse200 & {
+  headers: Headers;
+};
+export type cancelMyDeletionResponse = cancelMyDeletionResponseSuccess;
+
+export const getCancelMyDeletionUrl = () => {
+  return `/api/users/me/cancel-deletion`;
+};
+
+/**
+ * Security A4: clears users.deleted_at so the account becomes fully active again. Returns 410 Gone if the grace window has already expired and the row has been finalised — the content is anonymised at that point and there is nothing left to revive.
+ * @summary Cancel a pending account deletion (within the grace window)
+ */
+export const cancelMyDeletion = async (
+  options?: RequestInit,
+): Promise<cancelMyDeletionResponse> => {
+  return apiClient<cancelMyDeletionResponse>(getCancelMyDeletionUrl(), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getCancelMyDeletionMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelMyDeletion>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiClient>;
+}): UseMutationOptions<Awaited<ReturnType<typeof cancelMyDeletion>>, TError, void, TContext> => {
+  const mutationKey = ['cancelMyDeletion'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelMyDeletion>>, void> = () => {
+    return cancelMyDeletion(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelMyDeletionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelMyDeletion>>
+>;
+
+export type CancelMyDeletionMutationError = unknown;
+
+/**
+ * @summary Cancel a pending account deletion (within the grace window)
+ */
+export const useCancelMyDeletion = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof cancelMyDeletion>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof cancelMyDeletion>>, TError, void, TContext> => {
+  return useMutation(getCancelMyDeletionMutationOptions(options), queryClient);
 };
 export type getMyVotesResponse200 = {
   data: PhotoResponse[];

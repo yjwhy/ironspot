@@ -22,7 +22,11 @@ public class UserService {
 
     @Transactional
     public UserResponse getOrCreate(UserPrincipal principal) {
-        return userRepository.findById(principal.getUserId())
+        // Security A4: check the grace-aware lookup first so a user
+        // logging in during their 7-day deletion grace window sees the
+        // original row + `deletionRequestedAt` flag instead of silently
+        // getting a fresh account on top of the pending row.
+        return userRepository.findByIdAllowingGrace(principal.getUserId())
             .orElseGet(() -> {
                 String defaultNickname = "헬스인_" + principal.getUserId().substring(0, 6);
                 userRepository.insert(principal.getUserId(), principal.getEmail(), defaultNickname);
@@ -85,14 +89,55 @@ public class UserService {
         return userRepository.findById(userId).orElseThrow();
     }
 
+    /**
+     * Security A4: account-deletion grace window. The request marks
+     * deleted_at but DOES NOT anonymise content yet; the finaliser job
+     * does that 7 days later. Within those 7 days the user can log in
+     * and call {@link #cancelDeletion}.
+     *
+     * <p>Idempotent: a second call during the grace window matches the
+     * UPDATE filter (deleted_at IS NULL) and returns 0 rows, which we
+     * treat as a no-op — the row already carries the original deletion
+     * timestamp so the grace clock isn't reset.
+     */
     @Transactional
     public void deleteAccount(String userId) {
-        userRepository.anonymizePhotos(userId);
-        userRepository.deleteVotes(userId);
-        nlSearchLogRepository.anonymise(UUID.fromString(userId));
         int rows = userRepository.markDeleted(userId);
         if (rows == 0) {
-            throw new BusinessException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND);
+            // Either the user doesn't exist (404) or the row is already in
+            // the grace window (no-op). Distinguish via a final findById
+            // so the contract stays exactly: 404 on unknown user, 200 on
+            // either fresh-or-redundant deletion request.
+            boolean exists = userRepository.findByIdAllowingGrace(userId).isPresent();
+            if (!exists) {
+                throw new BusinessException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND);
+            }
         }
+    }
+
+    /**
+     * Security A4: clears a pending deletion within the grace window.
+     * Refuses to revive a row that has already been finalised — that's
+     * a 410 Gone because the content is anonymised and the row is a
+     * tombstone at that point.
+     */
+    @Transactional
+    public UserResponse cancelDeletion(String userId) {
+        int rows = userRepository.cancelDeletion(userId);
+        if (rows == 0) {
+            // Either no pending deletion to cancel (already active or
+            // never deleted), or the grace window already expired.
+            // Surface as 410 if finalised, 404 otherwise — the
+            // findByIdAllowingGrace lookup tells us.
+            boolean inGrace = userRepository.findByIdAllowingGrace(userId).isPresent();
+            if (!inGrace) {
+                throw new BusinessException(
+                    "삭제 절차가 이미 완료되어 복구할 수 없습니다",
+                    HttpStatus.GONE);
+            }
+            // inGrace but cancelDeletion returned 0 → already active.
+            // Idempotent: return the live row.
+        }
+        return userRepository.findById(userId).orElseThrow();
     }
 }

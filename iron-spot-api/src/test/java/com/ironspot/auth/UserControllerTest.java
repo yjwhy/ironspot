@@ -154,18 +154,33 @@ class UserControllerTest extends IntegrationTestBase {
             "/api/users/me", HttpMethod.DELETE, bearerRequest(null), Void.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-        // Security B8: row still exists for analytics retention but both the
-        // user_id link AND the raw_query body must be wiped at delete time
-        // (not only at the 30-day retention sweep) so a deleted user's
-        // queries cannot be re-linked via content matching during that
-        // window.
+        // Security A4: deletion REQUEST alone does not anonymise — the
+        // 7-day grace window lets the user cancel. Anonymisation runs
+        // in the finaliser when the window expires. So immediately
+        // after DELETE the nl_search_log row is unchanged.
         Integer rowsByUser = dsl.fetchCount(NL_SEARCH_LOG, NL_SEARCH_LOG.USER_ID.eq(userUuid));
         Integer rowsByRaw = dsl.fetchCount(NL_SEARCH_LOG,
             NL_SEARCH_LOG.RAW_QUERY.eq("ANON-DEL-IT-사전 데이터"));
+        assertThat(rowsByUser).as("user_id stays linked during grace window").isEqualTo(1);
+        assertThat(rowsByRaw).as("raw_query stays intact during grace window").isEqualTo(1);
+
+        // Simulate an expired grace window by backdating deleted_at and
+        // running the finaliser directly. After this, the B8 contract
+        // ("raw_query wiped + user_id NULLed") holds.
+        dsl.update(com.ironspot.jooq.Tables.USERS)
+            .set(com.ironspot.jooq.Tables.USERS.DELETED_AT,
+                java.time.OffsetDateTime.now().minus(java.time.Duration.ofDays(8)))
+            .where(com.ironspot.jooq.Tables.USERS.ID.eq(userUuid))
+            .execute();
+        finaliserJob.finaliseExpiredDeletions();
+
+        Integer rowsByUserAfter = dsl.fetchCount(NL_SEARCH_LOG, NL_SEARCH_LOG.USER_ID.eq(userUuid));
+        Integer rowsByRawAfter = dsl.fetchCount(NL_SEARCH_LOG,
+            NL_SEARCH_LOG.RAW_QUERY.eq("ANON-DEL-IT-사전 데이터"));
         Integer rowsByRedacted = dsl.fetchCount(NL_SEARCH_LOG,
             NL_SEARCH_LOG.RAW_QUERY.eq("[redacted-on-delete]"));
-        assertThat(rowsByUser).as("user_id must be NULLed post-delete").isZero();
-        assertThat(rowsByRaw).as("raw_query must be redacted at delete time").isZero();
+        assertThat(rowsByUserAfter).as("user_id NULLed post-finalisation").isZero();
+        assertThat(rowsByRawAfter).as("raw_query redacted post-finalisation").isZero();
         assertThat(rowsByRedacted).as("redacted row survives retention window").isGreaterThanOrEqualTo(1);
 
         // Cleanup
@@ -175,6 +190,7 @@ class UserControllerTest extends IntegrationTestBase {
     }
 
     @Autowired private DSLContext dsl;
+    @Autowired private AccountDeletionFinaliserJob finaliserJob;
 
     private HttpEntity<Void> bearerRequest(HttpHeaders extra) {
         HttpHeaders headers = new HttpHeaders();

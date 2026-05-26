@@ -41,6 +41,7 @@ public class Indexes {
     public static final Index IDX_MACHINE_PHOTOS_ORPHAN_USER_CREATED = Internal.createIndex(DSL.name("idx_machine_photos_orphan_user_created"), MachinePhotos.MACHINE_PHOTOS, new OrderField[] { MachinePhotos.MACHINE_PHOTOS.USER_ID, MachinePhotos.MACHINE_PHOTOS.CREATED_AT }, false);
     public static final Index IDX_MACHINE_PHOTOS_USER_CREATED = Internal.createIndex(DSL.name("idx_machine_photos_user_created"), MachinePhotos.MACHINE_PHOTOS, new OrderField[] { MachinePhotos.MACHINE_PHOTOS.USER_ID, MachinePhotos.MACHINE_PHOTOS.CREATED_AT }, false);
     public static final Index IDX_USERS_CONSENT_VERSION = Internal.createIndex(DSL.name("idx_users_consent_version"), Users.USERS, new OrderField[] { Users.USERS.CONSENT_VERSION }, false);
+    public static final Index IDX_USERS_PENDING_DELETION = Internal.createIndex(DSL.name("idx_users_pending_deletion"), Users.USERS, new OrderField[] { Users.USERS.DELETED_AT }, false);
     public static final Index IDX_USERS_ROLE = Internal.createIndex(DSL.name("idx_users_role"), Users.USERS, new OrderField[] { Users.USERS.ROLE }, false);
     public static final Index IDX_VISION_CACHE_CREATED_AT = Internal.createIndex(DSL.name("idx_vision_cache_created_at"), VisionCache.VISION_CACHE, new OrderField[] { VisionCache.VISION_CACHE.CREATED_AT }, false);
     public static final Index NL_SEARCH_LOG_CREATED_AT_IDX = Internal.createIndex(DSL.name("nl_search_log_created_at_idx"), NlSearchLog.NL_SEARCH_LOG, new OrderField[] { NlSearchLog.NL_SEARCH_LOG.CREATED_AT }, false);

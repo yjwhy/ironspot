@@ -44,11 +44,31 @@ public class UserController {
         return userService.updateNickname(principal.getUserId(), request.nickname());
     }
 
-    @Operation(summary = "Delete current user account")
+    @Operation(
+        summary = "Request account deletion (starts 7-day grace window)",
+        description = "Security A4: marks the account as pending deletion. The grace window "
+            + "(default 7 days, configurable via ironspot.account-deletion.grace-window-days) "
+            + "lets the user log back in and POST /api/users/me/cancel-deletion to abort. "
+            + "Content anonymisation runs at the end of the grace window via "
+            + "AccountDeletionFinaliserJob — not immediately, so a stolen-token attacker "
+            + "cannot nuke the account before the real user notices."
+    )
     @DeleteMapping("/me")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMe(@AuthenticationPrincipal UserPrincipal principal) {
         userService.deleteAccount(principal.getUserId());
+    }
+
+    @Operation(
+        summary = "Cancel a pending account deletion (within the grace window)",
+        description = "Security A4: clears users.deleted_at so the account becomes fully "
+            + "active again. Returns 410 Gone if the grace window has already expired "
+            + "and the row has been finalised — the content is anonymised at that point "
+            + "and there is nothing left to revive."
+    )
+    @PostMapping(value = "/me/cancel-deletion", produces = MediaType.APPLICATION_JSON_VALUE)
+    public UserResponse cancelMyDeletion(@AuthenticationPrincipal UserPrincipal principal) {
+        return userService.cancelDeletion(principal.getUserId());
     }
 
     @Operation(

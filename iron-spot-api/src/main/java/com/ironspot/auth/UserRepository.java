@@ -45,6 +45,89 @@ public class UserRepository {
     }
 
     /**
+     * Security A4: same projection as {@link #findById} but also matches
+     * rows in the grace window (deleted_at set, deletion_finalized_at
+     * NULL). Used by {@code UserService.getOrCreate} so a user who hits
+     * /api/users/me during their grace window sees their own row + the
+     * "deletion pending" flag instead of silently re-creating an
+     * active account on top of their pending-deletion row.
+     *
+     * <p>Excludes terminally finalised rows (both timestamps set) — the
+     * row is effectively a tombstone at that point and the caller should
+     * insert a fresh user record if needed.
+     */
+    public Optional<UserResponse> findByIdAllowingGrace(String id) {
+        return dsl.select(
+                USERS.ID, USERS.EMAIL, USERS.NICKNAME, USERS.CREATED_AT, USERS.ROLE,
+                USERS.CONSENT_ACCEPTED_AT, USERS.CONSENT_VERSION,
+                USERS.DELETED_AT, USERS.DELETION_FINALIZED_AT)
+            .from(USERS)
+            .where(USERS.ID.eq(UUID.fromString(id)))
+            .and(USERS.DELETION_FINALIZED_AT.isNull())
+            .fetchOptional(r -> {
+                OffsetDateTime createdAt = r.get(USERS.CREATED_AT);
+                OffsetDateTime consentAt = r.get(USERS.CONSENT_ACCEPTED_AT);
+                OffsetDateTime deletedAt = r.get(USERS.DELETED_AT);
+                return UserResponse.builder()
+                    .id(r.get(USERS.ID).toString())
+                    .email(r.get(USERS.EMAIL))
+                    .nickname(r.get(USERS.NICKNAME))
+                    .createdAt(createdAt != null ? createdAt.toString() : null)
+                    .role(r.get(USERS.ROLE))
+                    .consentAcceptedAt(consentAt != null ? consentAt.toString() : null)
+                    .consentVersion(r.get(USERS.CONSENT_VERSION))
+                    .deletionRequestedAt(deletedAt != null ? deletedAt.toString() : null)
+                    .build();
+            });
+    }
+
+    /**
+     * Security A4: clear deleted_at when the user cancels their pending
+     * deletion within the grace window. Idempotent on already-active
+     * rows (returns 0). Refuses to revive a row that has already been
+     * finalised — the WHERE clause filters deletion_finalized_at IS NULL.
+     */
+    @CacheEvict(value = "authContext", key = "#userId")
+    public int cancelDeletion(String userId) {
+        return dsl.update(USERS)
+            .setNull(USERS.DELETED_AT)
+            .where(USERS.ID.eq(UUID.fromString(userId)))
+            .and(USERS.DELETED_AT.isNotNull())
+            .and(USERS.DELETION_FINALIZED_AT.isNull())
+            .execute();
+    }
+
+    /**
+     * Security A4: row IDs whose grace window has expired and whose
+     * content still needs to be anonymised. The daily finaliser job
+     * uses this; the partial index
+     * {@code idx_users_pending_deletion} keeps the scan cheap.
+     */
+    public java.util.List<String> findExpiredGraceUserIds(OffsetDateTime cutoff) {
+        return dsl.select(USERS.ID)
+            .from(USERS)
+            .where(USERS.DELETED_AT.isNotNull())
+            .and(USERS.DELETED_AT.lt(cutoff))
+            .and(USERS.DELETION_FINALIZED_AT.isNull())
+            .fetch(r -> r.get(USERS.ID).toString());
+    }
+
+    /**
+     * Security A4: stamp the finalised marker after the content has
+     * been anonymised. Re-running on an already-finalised row is a
+     * no-op (WHERE filters deletion_finalized_at IS NULL).
+     */
+    @CacheEvict(value = "authContext", key = "#userId")
+    public int markDeletionFinalized(String userId) {
+        return dsl.update(USERS)
+            .set(USERS.DELETION_FINALIZED_AT, OffsetDateTime.now())
+            .where(USERS.ID.eq(UUID.fromString(userId)))
+            .and(USERS.DELETED_AT.isNotNull())
+            .and(USERS.DELETION_FINALIZED_AT.isNull())
+            .execute();
+    }
+
+    /**
      * Security task #17 — write the PIPA consent timestamp + the policy
      * version the user actively agreed to. Returns the row count so the
      * service can detect "user not found" without a second SELECT.
