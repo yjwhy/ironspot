@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 
+import { useNetworkStatus } from './useNetworkStatus';
 import { API_URL } from '../lib/api-base-url';
 
 // Render free-tier instances spin down after ~15 min of inactivity and the
@@ -21,27 +22,41 @@ const KEEP_WARM_TIMEOUT_MS = 8_000;
 const HEALTH_PATH = '/actuator/health';
 
 export function useKeepBackendWarm(): void {
-  useEffect(function pingHealthOnMount() {
-    const controller = new AbortController();
-    const timer = setTimeout(function timeoutAbort() {
-      controller.abort();
-    }, KEEP_WARM_TIMEOUT_MS);
+  const { isOnline } = useNetworkStatus();
 
-    fetch(`${API_URL}${HEALTH_PATH}`, {
-      method: 'GET',
-      signal: controller.signal,
-    })
-      .catch(function swallow() {
-        // Keep-warm is best-effort. A failed ping has no UX consequence —
-        // the next real request retries through the normal apiClient path.
+  // Security E2: gate on network status so the ping doesn't fire on
+  // app launch when the user is offline. Offline launches were the
+  // most common source of the swallowed `TypeError: Network request
+  // failed` that showed up in Sentry's beforeBreadcrumb queue — gating
+  // here keeps the ping fire-and-forget while removing the bogus
+  // breadcrumb noise. Re-fires automatically when connectivity returns
+  // because the effect depends on `isOnline`.
+  useEffect(
+    function pingHealthOnMount() {
+      if (!isOnline) return;
+
+      const controller = new AbortController();
+      const timer = setTimeout(function timeoutAbort() {
+        controller.abort();
+      }, KEEP_WARM_TIMEOUT_MS);
+
+      fetch(`${API_URL}${HEALTH_PATH}`, {
+        method: 'GET',
+        signal: controller.signal,
       })
-      .finally(function clear() {
-        clearTimeout(timer);
-      });
+        .catch(function swallow() {
+          // Keep-warm is best-effort. A failed ping has no UX consequence —
+          // the next real request retries through the normal apiClient path.
+        })
+        .finally(function clear() {
+          clearTimeout(timer);
+        });
 
-    return function cancelOnUnmount() {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, []);
+      return function cancelOnUnmount() {
+        clearTimeout(timer);
+        controller.abort();
+      };
+    },
+    [isOnline],
+  );
 }
