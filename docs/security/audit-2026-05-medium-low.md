@@ -103,11 +103,11 @@ Caffeine in-process means Render redeploy / cold restart wipes all windows. **Fi
 
 `UserRepository.updateNickname:119-126`. Two users can share `"운영자"` or `"admin"`. **Fix:** reserved-list check or partial UNIQUE INDEX on `lower(nickname)`. **Effort:** S.
 
-### 🟢 B6. NTS API key in URL query string
+### ✅ B6. NTS API key in URL query string
 
 `BusinessRegistryClient.java:93-94`. Same risk class as A1. **Fix:** move to header or request body. **Effort:** S.
 
-### 🟢 B7. BusinessException messages leak business state
+### 🚫 B7. BusinessException messages leak business state
 
 E.g. "이 매장은 이미 다른 사업자가 소유 인증을 마쳤어요" confirms ownership state to a probe. **Fix:** map sensitive-state messages to generic "권한이 없습니다", log precise reason server-side. **Effort:** M.
 
