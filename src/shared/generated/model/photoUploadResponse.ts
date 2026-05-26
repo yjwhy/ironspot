@@ -10,6 +10,8 @@ import type { MachineTemplateSuggestion } from './machineTemplateSuggestion';
 export interface PhotoUploadResponse {
   photoId: string;
   photoUrl: string;
+  /** Relative API path for the photo proxy endpoint. Prefer this over photoUrl — the proxy mints short-TTL signed URLs at request time. */
+  contentPath: string;
   suggestions: MachineTemplateSuggestion[];
   /** true if OCR text extraction succeeded and produced suggestions; false if OCR failed or produced no usable text */
   ocrSucceeded: boolean;
