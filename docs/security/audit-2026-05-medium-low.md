@@ -187,7 +187,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 `parseAuthCallback.ts:23-44` extracts `code` from any URL without verifying scheme/host match. PKCE keeps this safe today, but the parser is the only validation point. **Fix:** reject when `protocol + host` differs from `AUTH_REDIRECT_URL`. **Effort:** S.
 
-### 🟡 E4. apiClient swallows refresh failure into a 401
+### ✅ E4. apiClient swallows refresh failure into a 401
 
 `src/shared/lib/api-client.ts:56-78`. Callers can't distinguish "no session" vs "expired during use" — can't deterministically clear stale tokens. **Fix:** throw `SessionExpiredError` subclass on refresh-then-retry failure, top-level handler calls `signOut()`. **Effort:** S.
 
