@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,9 +58,14 @@ public class UploadRateGate {
 
     private final int rpmCap;
     private final Cache<String, AtomicInteger> ipCounters;
+    private final com.ironspot.common.ratelimit.ClientIpResolver clientIpResolver;
 
-    public UploadRateGate(@Value("${photo.upload.rpm-cap-per-ip:30}") int rpmCap) {
+    public UploadRateGate(
+        @Value("${photo.upload.rpm-cap-per-ip:30}") int rpmCap,
+        com.ironspot.common.ratelimit.ClientIpResolver clientIpResolver
+    ) {
         this.rpmCap = rpmCap;
+        this.clientIpResolver = clientIpResolver;
         this.ipCounters = Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofSeconds(60))
             .maximumSize(50_000)
@@ -69,7 +73,7 @@ public class UploadRateGate {
     }
 
     public void enforce(HttpServletRequest request) {
-        String ip = resolveIp(request);
+        String ip = clientIpResolver.resolve(request);
         AtomicInteger counter = ipCounters.get(ip, k -> new AtomicInteger(0));
         int used = counter.incrementAndGet();
         if (used > rpmCap) {
@@ -80,23 +84,8 @@ public class UploadRateGate {
         }
     }
 
-    /**
-     * Picks the left-most non-empty token from X-Forwarded-For when present,
-     * else falls back to the socket remote address. Render's edge sets the
-     * header on every request; local dev sees the loopback socket address.
-     */
-    public static String resolveIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(forwarded)) {
-            int comma = forwarded.indexOf(',');
-            String first = (comma == -1 ? forwarded : forwarded.substring(0, comma)).trim();
-            if (!first.isEmpty()) {
-                return first;
-            }
-        }
-        String remote = request.getRemoteAddr();
-        return remote == null ? "unknown" : remote;
-    }
+    // Security A2: IP resolution moved to ClientIpResolver. The hop-count
+    // heuristic there guards against rotating-X-Forwarded-For spoofing.
 
     int peek(String ip) {
         AtomicInteger counter = ipCounters.getIfPresent(ip);

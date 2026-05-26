@@ -111,6 +111,14 @@ gemini:
   api-key: ${GEMINI_API_KEY:}
 
 ironspot:
+  # Security A2: number of trusted reverse-proxy hops in front of the
+  # Spring container. Render-only deployment: 1 (Render's edge appends a
+  # single X-Forwarded-For entry). If Cloudflare lands in front of Render
+  # later, set IRONSPOT_TRUSTED_PROXY_HOPS=2 — no code change needed.
+  # ClientIpResolver only trusts X-Forwarded-For when the chain length
+  # matches; spoofed extra entries cause a fallback to the socket peer,
+  # which protects per-IP rate-limit counters.
+  trusted-proxy-hops: ${IRONSPOT_TRUSTED_PROXY_HOPS:1}
   slack:
     admin-webhook-url: ${SLACK_ADMIN_WEBHOOK_URL:}
     smoke:

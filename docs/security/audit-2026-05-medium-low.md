@@ -35,7 +35,7 @@ Remaining by effort: ~5 × S (L1, L2, L4, K4, F2 no-op verify), ~12 × M (design
 
 `iron-spot-api/src/main/java/com/ironspot/photo/OcrService.java:100`. `VISION_URL + "?key=" + apiKey` puts the key in the URL, which lands in `WebClientResponseException` messages, Sentry breadcrumbs, intermediate proxy logs. `AdminBrandTransliterateService` already uses the `x-goog-api-key` header. **Fix:** switch to header. **Effort:** S.
 
-### 🟡 A2. X-Forwarded-For trusted unconditionally
+### ✅ A2. X-Forwarded-For trusted unconditionally
 
 `UploadRateGate.resolveIp` (shared by `GlobalRateLimitFilter`, etc.) takes the leftmost X-Forwarded-For without validating that the immediate remote address is Render's proxy. A client setting the header to a rotating value bypasses per-IP RPM caps. **Fix:** trust only when remote addr matches Render's proxy CIDR list, or use Spring's `ForwardedHeaderFilter` with `trustedProxies`. **Effort:** M.
 

@@ -23,7 +23,7 @@ class GlobalRateLimitFilterTest {
 
     @BeforeEach
     void setup() {
-        filter = new GlobalRateLimitFilter(3);
+        filter = new GlobalRateLimitFilter(3, new ClientIpResolver(1));
         chain = mock(FilterChain.class);
     }
 
@@ -100,9 +100,26 @@ class GlobalRateLimitFilterTest {
     }
 
     @Test
-    void forwardedForHeader_keysOnLeftMost() throws Exception {
+    void forwardedForHeader_spoofedChainFallsBackToRemoteAddr() throws Exception {
+        // Security A2: chain length 2 with trustedProxyHops=1 means the
+        // leftmost entry is attacker-controlled. The filter now distrusts
+        // the header and keys on the socket peer instead, so a rotating
+        // X-Forwarded-For can't bypass the per-IP RPM cap.
         MockHttpServletRequest req = apiReq("10.0.0.1");
         req.addHeader("X-Forwarded-For", "8.8.8.8, 10.0.0.1");
+        for (int i = 0; i < 3; i++) {
+            filter.doFilter(req, new MockHttpServletResponse(), chain);
+        }
+        assertThat(filter.peek("8.8.8.8")).isEqualTo(0);
+        assertThat(filter.peek("10.0.0.1")).isEqualTo(3);
+    }
+
+    @Test
+    void forwardedForHeader_singleHopTrusted() throws Exception {
+        // Legitimate Render-only request: edge proxy sets X-Forwarded-For
+        // with a single entry → trust it as the real client IP.
+        MockHttpServletRequest req = apiReq("10.0.0.1");
+        req.addHeader("X-Forwarded-For", "8.8.8.8");
         for (int i = 0; i < 3; i++) {
             filter.doFilter(req, new MockHttpServletResponse(), chain);
         }
