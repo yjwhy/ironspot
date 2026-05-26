@@ -10,22 +10,22 @@ Severity: 🟡 MEDIUM, 🟢 LOW. Effort: S (≤1h), M (≤½ day), L (≤full da
 
 **42 / 61 shipped.** PRs #236-#256 landed the autonomous quick wins.
 
-| Section       | Total | Closed | Remaining                               |
-| ------------- | ----- | ------ | --------------------------------------- |
-| §A BE MEDIUM  | 12    | 7      | A2, A3, A4, A5, A12                     |
-| §B BE LOW     | 10    | 6      | B1, B4, B6, B7                          |
-| §C DB MEDIUM  | 4     | 3      | C4                                      |
-| §D DB LOW     | 6     | 2      | D1, D2, D3, D4                          |
-| §E APP MEDIUM | 7     | 3      | E1, E2, E3, E4                          |
-| §F APP LOW    | 6     | 3      | F1, F2 (no-op), F6                      |
-| §G AI MEDIUM  | 6     | 5      | G3                                      |
-| §H AI LOW     | 5     | 4      | H1 (already covered by WebClientConfig) |
-| §I PI MEDIUM  | 2     | 0      | I1, I2                                  |
-| §J PI LOW     | 3     | 1      | J1, J2                                  |
-| §K CI MEDIUM  | 7     | 5      | K3, K4                                  |
-| §L CI LOW     | 6     | 3      | L1, L2, L4                              |
+| Section       | Total | Closed | Remaining           |
+| ------------- | ----- | ------ | ------------------- |
+| §A BE MEDIUM  | 12    | 7      | A2, A3, A4, A5, A12 |
+| §B BE LOW     | 10    | 6      | B1, B4, B6, B7      |
+| §C DB MEDIUM  | 4     | 3      | C4                  |
+| §D DB LOW     | 6     | 2      | D1, D2, D3, D4      |
+| §E APP MEDIUM | 7     | 3      | E1, E2, E3, E4      |
+| §F APP LOW    | 6     | 3      | F1, F2 (no-op), F6  |
+| §G AI MEDIUM  | 6     | 5      | G3                  |
+| §H AI LOW     | 5     | 5      | (all done)          |
+| §I PI MEDIUM  | 2     | 0      | I1, I2              |
+| §J PI LOW     | 3     | 1      | J1, J2              |
+| §K CI MEDIUM  | 7     | 5      | K3, K4              |
+| §L CI LOW     | 6     | 6      | (all done)          |
 
-Remaining by effort: ~5 × S (L1, L2, L4, K4, F2 no-op verify), ~12 × M (design decisions or refactors), 2 × L (A3 Storage TTL, B1 Redis migration).
+Remaining by effort: ~12 × M (design decisions or refactors), 2 × L (A3 Storage TTL, B1 Redis migration). (Outstanding S items are now down to B6/B7-style judgement-call deferrals.)
 
 ---
 
@@ -263,9 +263,9 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 ## §H. AI LOW (5)
 
-### 🟢 H1. LLM clients' WebClient `maxInMemorySize` not pinned
+### ✅ H1. LLM clients' WebClient `maxInMemorySize` not pinned
 
-Cap is sent upstream but ObjectMapper accepts any response body. Default `maxInMemorySize` is 256 KiB. **Fix:** pin `ExchangeStrategies.builder().codecs(...)` explicitly. **Effort:** S.
+Cap is sent upstream but ObjectMapper accepts any response body. Default `maxInMemorySize` is 256 KiB. **Fix:** pin `ExchangeStrategies.builder().codecs(...)` explicitly. **Verified no-op:** `LlmClientConfig` injects the shared `WebClient` bean produced by `WebClientConfig.webClient()`, which already pins `maxInMemorySize` via `ExchangeStrategies.builder().codecs(...)`. GroqLlamaClient + GeminiFlashClient both reuse that bean (no `WebClient.builder().build()` of their own), so the cap is already in effect. No code change required.
 
 ### ✅ H2. `FallbackLlmClient` swallows INVALID_RESPONSE without breadcrumb
 
@@ -347,11 +347,11 @@ Duplicates A1 (same finding from PI lens — query string credentials leak via p
 
 ## §L. CI LOW (6)
 
-### 🟢 L1. EvalSuiteTest exposes GROQ + GEMINI keys to whole job
+### ✅ L1. EvalSuiteTest exposes GROQ + GEMINI keys to whole job
 
 `llm-eval.yml:58-62`. Step-level env shared with later `upload-artifact` step. **Fix:** split into 2 jobs (eval with secrets, upload without). **Effort:** S.
 
-### 🟢 L2. Shell interpolation risk in deploy-notify jq calls
+### ✅ L2. Shell interpolation risk in deploy-notify jq calls
 
 `deploy-notify.yml:28,40-45`. Today safe via `--arg`, but a future refactor that drops it becomes a shell-injection sink. **Fix:** add comment marking inputs untrusted + wrap with `toJSON(...)`. **Effort:** S.
 
@@ -359,7 +359,7 @@ Duplicates A1 (same finding from PI lens — query string credentials leak via p
 
 `api-ci.yml:32`, `llm-eval.yml:52`. Poisoned `gradle-wrapper.jar` runs with full build privileges. **Fix:** pass `validate-wrappers: true` to `gradle/actions/setup-gradle`. **Effort:** S.
 
-### 🟢 L4. keep-warm cron pings prod with token-bearing runner
+### ✅ L4. keep-warm cron pings prod with token-bearing runner
 
 `keep-warm.yml:22-30`. Unused but issued `GITHUB_TOKEN`; curl with no `--max-redirs`. **Fix:** `permissions: {}` + curl hardening, or remove workflow (UptimeRobot covers). **Effort:** S.
 
