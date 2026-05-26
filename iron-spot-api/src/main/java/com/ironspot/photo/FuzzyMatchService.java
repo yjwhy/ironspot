@@ -188,7 +188,12 @@ public class FuzzyMatchService {
     }
 
     private double bestMonolingualScore(Set<String> input, MachineTemplateSummary t) {
-        double enScore = jaccardSimilarity(input, tokenize(t.nameEn().toLowerCase(Locale.ROOT)));
+        // Security H5: a future catalog row could be Korean-only (nameEn
+        // empty) — match the existing nameKo null guard so the call site
+        // doesn't NPE on a legitimate row.
+        double enScore = (t.nameEn() == null || t.nameEn().isBlank())
+            ? 0.0
+            : jaccardSimilarity(input, tokenize(t.nameEn().toLowerCase(Locale.ROOT)));
         if (t.nameKo() == null || t.nameKo().isBlank()) return enScore;
         double koScore = jaccardSimilarity(input, tokenize(t.nameKo().toLowerCase(Locale.ROOT)));
         return Math.max(enScore, koScore);

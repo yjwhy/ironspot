@@ -29,6 +29,13 @@ public class NlSearchEmptyResultReporter {
 
     private static final long WINDOW_MS = 6 * 60 * 1000;
 
+    // Security G4: cap the de-dup map at 1000 distinct normalised keys per
+    // 6-minute window so an adversary cannot grow the heap by minting
+    // thousands of unique raw queries. Beyond the cap we still capture the
+    // current key (so the message lands) but stop tracking new keys — the
+    // next window's clear() resets the slot.
+    private static final int MAX_TRACKED_KEYS = 1000;
+
     private final Clock clock;
 
     private volatile long windowStartMs;
@@ -52,14 +59,26 @@ public class NlSearchEmptyResultReporter {
             }
         }
 
-        if (reportedInWindow.putIfAbsent(query, Boolean.TRUE) == null) {
-            // Security task #45: same as recordBreadcrumb — never ship raw user
-            // query to Sentry. The normalised + truncated form keeps the
-            // empty-result analytic value (which queries fail most often) while
-            // dropping PII that would otherwise cross the PIPA boundary.
-            String safe = com.ironspot.common.text.SafeEcho.truncate(
-                com.ironspot.search.Normaliser.normalise(query), 50);
-            Sentry.captureMessage("nl_search_empty_result", scope -> scope.setExtra("query", safe));
+        // Security G4: key on the normalised + truncated form so two raw
+        // queries that map to the same normalised string only emit one
+        // Sentry event (the previous code keyed on the raw query, which an
+        // adversary could perturb to mint unbounded distinct entries).
+        String key = com.ironspot.common.text.SafeEcho.truncate(
+            com.ironspot.search.Normaliser.normalise(query), 50);
+
+        boolean alreadySeen = reportedInWindow.containsKey(key);
+        if (!alreadySeen && reportedInWindow.size() >= MAX_TRACKED_KEYS) {
+            // Window is full — emit but don't insert. The next clear() in
+            // ~6min frees the table.
+            Sentry.captureMessage("nl_search_empty_result", scope -> scope.setExtra("query", key));
+            return;
+        }
+        if (reportedInWindow.putIfAbsent(key, Boolean.TRUE) == null) {
+            // Security task #45: never ship raw user query to Sentry. The
+            // normalised + truncated form keeps the empty-result analytic
+            // value (which queries fail most often) while dropping PII
+            // that would otherwise cross the PIPA boundary.
+            Sentry.captureMessage("nl_search_empty_result", scope -> scope.setExtra("query", key));
         }
     }
 }

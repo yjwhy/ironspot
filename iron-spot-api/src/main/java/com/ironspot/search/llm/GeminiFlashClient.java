@@ -66,6 +66,12 @@ public class GeminiFlashClient implements LlmClient {
         if (apiKey == null || apiKey.isBlank()) {
             throw new LlmException(LlmException.Kind.TRANSPORT, "GEMINI_API_KEY not configured");
         }
+        // Security G2: defense in depth — re-cap at the LLM boundary so a
+        // caller that bypasses NlSearchRequest can't drain Gemini quota.
+        if (userQuery != null && userQuery.length() > 200) {
+            throw new LlmException(LlmException.Kind.INVALID_RESPONSE,
+                "userQuery exceeds 200 char boundary cap");
+        }
 
         // Security task #68: cap output tokens. See GroqLlamaClient for the
         // same rationale; Gemini Flash Lite has a comparably small free-tier

@@ -49,7 +49,22 @@ public class VisionCacheRepository {
         this.dsl = dsl;
     }
 
+    /**
+     * Security H4: defense in depth. Callers today (PhotoService,
+     * BusinessRegistrationVerifier) already cap upload size at 2 MB through
+     * Spring multipart limits, but a future caller skipping the controller
+     * could hand us an unbounded byte[] and pay the CPU + memory cost of
+     * digesting it. Refuse anything larger than 4 MB (2× the controller
+     * cap — leaves room for OCR-only label photos that arrive base64-decoded
+     * inside JSON without halving the legitimate ceiling).
+     */
+    private static final int MAX_DIGEST_INPUT = 4 * 1024 * 1024;
+
     public static String sha256(byte[] imageBytes) {
+        if (imageBytes != null && imageBytes.length > MAX_DIGEST_INPUT) {
+            throw new IllegalArgumentException(
+                "imageBytes exceeds sha256 input cap (" + imageBytes.length + " > " + MAX_DIGEST_INPUT + ")");
+        }
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             return HexFormat.of().formatHex(md.digest(imageBytes));
