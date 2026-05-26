@@ -47,7 +47,7 @@ Remaining by effort: ~5 × S (L1, L2, L4, K4, F2 no-op verify), ~12 × M (design
 
 `UserService.deleteAccount` runs on a single valid JWT — a stolen token (or borrowed unlocked phone) nukes the account instantly. PIPA "right to erasure" expects intent confirmation. **Fix:** require ≤5min re-auth challenge, log to `moderation_audit_log`. **Effort:** M.
 
-### 🟡 A5. Unsalted SHA-256 of 사업자번호
+### ✅ A5. Unsalted SHA-256 of 사업자번호
 
 `BusinessRegistrationVerifier.java:151-160`. 10-digit business number has ~33 bits of entropy — a precomputed rainbow table of all 10^10 SHA-256 values fits in ~640 GB and reverses every hash in milliseconds. **Fix:** HMAC-SHA256 with a server-side pepper, or Argon2id with per-row salt. **Effort:** M.
 

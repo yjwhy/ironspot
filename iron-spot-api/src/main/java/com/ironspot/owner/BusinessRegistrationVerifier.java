@@ -1,15 +1,20 @@
 package com.ironspot.owner;
 
+import com.ironspot.common.exception.BusinessException;
 import com.ironspot.owner.dto.BusinessRegistrationOcr;
 import com.ironspot.owner.dto.VerificationResult;
 import com.ironspot.photo.OcrService;
 import com.ironspot.photo.dto.VisionAnalysisResult;
-import lombok.RequiredArgsConstructor;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
@@ -45,11 +50,51 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class BusinessRegistrationVerifier {
 
     private final OcrService ocrService;
     private final BusinessRegistryClient registryClient;
+
+    /**
+     * Security A5: server-side pepper for HMAC-SHA256 over the
+     * 사업자등록번호. Required at runtime — the {@code @PostConstruct}
+     * validator below fails the application boot if it is missing or
+     * obviously too short to provide useful entropy. The pepper lives
+     * in Render env / Supabase secrets only — it must not appear in
+     * the database, the codebase, or Sentry breadcrumbs.
+     */
+    private final String hashPepper;
+
+    public BusinessRegistrationVerifier(
+        OcrService ocrService,
+        BusinessRegistryClient registryClient,
+        @Value("${ironspot.business-number.hash-pepper:}") String hashPepper
+    ) {
+        this.ocrService = ocrService;
+        this.registryClient = registryClient;
+        this.hashPepper = hashPepper;
+    }
+
+    @PostConstruct
+    void validatePepper() {
+        if (hashPepper == null || hashPepper.isBlank()) {
+            throw new IllegalStateException(
+                "IRONSPOT_BUSINESS_HASH_PEPPER is not configured. "
+                    + "Required to hash 사업자번호; otherwise a DB dump would "
+                    + "expose every owner's 사업자번호 to a ~640GB rainbow "
+                    + "table attack against the raw SHA-256.");
+        }
+        if (hashPepper.length() < 32) {
+            // 256 bits of entropy = 32 bytes; require at least that many
+            // characters (base64-encoded random data is the recommended
+            // format → 32 chars covers 192 bits which is the practical
+            // floor for HMAC keys).
+            throw new IllegalStateException(
+                "IRONSPOT_BUSINESS_HASH_PEPPER must be at least 32 characters "
+                    + "(got " + hashPepper.length() + "). Generate via "
+                    + "`openssl rand -base64 48`.");
+        }
+    }
 
     /**
      * 10-digit 사업자번호. Accepts hyphenated form (xxx-xx-xxxxx) or plain (xxxxxxxxxx).
@@ -104,7 +149,7 @@ public class BusinessRegistrationVerifier {
                 ocr);
         }
 
-        String hash = sha256Hex(ocr.businessNumber());
+        String hash = hashBusinessNumber(ocr.businessNumber());
         return new VerificationResult.Verified(hash, ocr);
     }
 
@@ -148,14 +193,39 @@ public class BusinessRegistrationVerifier {
         return m.find() ? extractor.apply(m) : null;
     }
 
-    static String sha256Hex(String input) {
+    /**
+     * Security A5: HMAC-SHA256 over (pepper, 사업자번호).
+     *
+     * <p>Why HMAC rather than plain SHA-256(pepper || input):
+     * <ul>
+     *   <li>HMAC is the standard construction for keyed hashes; it resists
+     *       the length-extension attack that plain {@code SHA-256(k || m)}
+     *       is theoretically vulnerable to.</li>
+     *   <li>The output is the same 32 bytes / 64 hex chars as the previous
+     *       raw SHA-256, so the {@code C3} CHECK constraint
+     *       {@code business_number_hash ~ '^[0-9a-f]{64}$'} keeps holding
+     *       without a schema change.</li>
+     * </ul>
+     *
+     * <p>If the pepper ever needs to rotate, that becomes a forced
+     * re-verification of all active owners (each row's hash needs
+     * recomputing with the new pepper, which requires the original
+     * 사업자번호 — that data is gone). For now the policy is "don't
+     * rotate", documented in the audit doc.
+     */
+    public String hashBusinessNumber(String businessNumber) {
         try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(hashPepper.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hash = mac.doFinal(businessNumber.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException ex) {
-            // SHA-256 is required by every JVM since Java 1.4.2. Never thrown in practice.
-            throw new IllegalStateException("SHA-256 not available", ex);
+        } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
+            // HmacSHA256 is required by every JVM since Java 1.4.2; the
+            // pepper is non-empty by @PostConstruct invariant. Never
+            // thrown in practice.
+            throw new BusinessException(
+                "서버 설정 오류로 owner 인증을 진행할 수 없어요",
+                HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

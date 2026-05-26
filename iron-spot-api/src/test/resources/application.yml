@@ -48,3 +48,10 @@ springdoc:
 # indirectly by every IT in the suite booting successfully with this value present.
 dashboard:
   password: test-dashboard-password
+
+# Security A5: deterministic test pepper so OwnerClaimIT can produce
+# expected HMAC outputs. 64 base64 chars = 256 bits, satisfies the
+# @PostConstruct length floor. NOT a real secret — IT-only fixture.
+ironspot:
+  business-number:
+    hash-pepper: test-pepper-ironspot-business-number-hash-must-be-32-chars-or-more

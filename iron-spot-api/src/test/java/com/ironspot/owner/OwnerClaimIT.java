@@ -44,6 +44,10 @@ class OwnerClaimIT extends IntegrationTestBase {
 
     @Autowired private TestRestTemplate restTemplate;
     @Autowired private JdbcTemplate jdbcTemplate;
+    // Security A5: hashBusinessNumber is an instance method now (HMAC
+    // needs the @Value-injected pepper). Autowire the real bean so
+    // tests produce the exact hash the production code path computes.
+    @Autowired private com.ironspot.owner.BusinessRegistrationVerifier hashVerifier;
     @MockitoBean private JwtValidator jwtValidator;
     @MockitoBean private OcrService ocrService;
     @MockitoBean private BusinessRegistryClient registryClient;
@@ -169,7 +173,7 @@ class OwnerClaimIT extends IntegrationTestBase {
         jdbcTemplate.update(
             "INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
             UUID.fromString(existingOwnerId), "first@example.com", "첫오너");
-        String existingHash = com.ironspot.owner.BusinessRegistrationVerifier.sha256Hex("1234567890");
+        String existingHash = hashVerifier.hashBusinessNumber("1234567890");
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
             GYM_ID, UUID.fromString(existingOwnerId), existingHash);
@@ -199,7 +203,7 @@ class OwnerClaimIT extends IntegrationTestBase {
         jdbcTemplate.update(
             "INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
             UUID.fromString(existingOwnerId), "first@example.com", "기존오너");
-        String differentHash = com.ironspot.owner.BusinessRegistrationVerifier.sha256Hex("0000000000");
+        String differentHash = hashVerifier.hashBusinessNumber("0000000000");
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
             GYM_ID, UUID.fromString(existingOwnerId), differentHash);
