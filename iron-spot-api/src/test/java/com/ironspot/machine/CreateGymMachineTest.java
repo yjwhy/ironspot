@@ -316,7 +316,9 @@ class CreateGymMachineTest extends IntegrationTestBase {
         // init-test-db.sql — NlSearchControllerIT.genericQueryDedupsAlready
         // RegisteredNaverPlace runs UPDATE WHERE name='테스트 헬스장' and
         // would match both rows on a unique-naver_place_id constraint.
-        String fakePlaceId = "naverPlace-" + UUID.randomUUID();
+        // Security C4: pure-digit Naver-ID format passes the CHECK
+        // constraint gyms_naver_place_id_shape_check.
+        String fakePlaceId = "3" + System.nanoTime();
         String body = """
             {
               "naverPlace": {
@@ -361,7 +363,7 @@ class CreateGymMachineTest extends IntegrationTestBase {
               "gymId":"%s",
               "naverPlace": {
                 "name":"X","address":"X","latitude":37.5,"longitude":127.0,
-                "naverPlaceId":"x-place"
+                "naverPlaceId":"9999999999"
               },
               "templateId":"%s"
             }

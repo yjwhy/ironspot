@@ -146,7 +146,9 @@ class GymControllerTest extends IntegrationTestBase {
 
     @Test
     void createGymInsertsNewRowAndReturnsIt() {
-        String placeId = "naver-controller-" + UUID.randomUUID();
+        // Security C4: pure-digit Naver-ID format passes the CHECK
+        // constraint gyms_naver_place_id_shape_check.
+        String placeId = "4" + System.nanoTime();
         ResponseEntity<GymDetailResponse> response = restTemplate.exchange(
             "/api/gyms",
             HttpMethod.POST,
@@ -162,7 +164,8 @@ class GymControllerTest extends IntegrationTestBase {
 
     @Test
     void createGymIsIdempotentOnNaverPlaceId() {
-        String placeId = "naver-dedup-controller-" + UUID.randomUUID();
+        // Security C4: pure-digit Naver-ID format passes the CHECK constraint.
+        String placeId = "5" + System.nanoTime();
         ResponseEntity<GymDetailResponse> first = restTemplate.exchange(
             "/api/gyms",
             HttpMethod.POST,

@@ -50,16 +50,21 @@ class OwnerQueueIT extends IntegrationTestBase {
     void setUp() {
         jdbcTemplate.update("INSERT INTO users(id, email, nickname, role) VALUES (?, ?, ?, 'owner') "
                 + "ON CONFLICT (id) DO UPDATE SET role = 'owner', banned_at = NULL",
-            UUID.fromString(OWNER_ID), "owner@example.com", "오너");
+            UUID.fromString(OWNER_ID), "owner-queue-it@example.com", "오너");
         jdbcTemplate.update("INSERT INTO users(id, email, nickname, role) VALUES (?, ?, ?, 'owner') "
                 + "ON CONFLICT (id) DO UPDATE SET role = 'owner', banned_at = NULL",
-            UUID.fromString(OTHER_OWNER_ID), "other-owner@example.com", "다른오너");
+            UUID.fromString(OTHER_OWNER_ID), "other-owner-queue-it@example.com", "다른오너");
         jdbcTemplate.update("INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) "
                 + "ON CONFLICT (id) DO UPDATE SET banned_at = NULL",
-            UUID.fromString(REPORTER_ID), "reporter@example.com", "신고자");
+            UUID.fromString(REPORTER_ID), "reporter-queue-it@example.com", "신고자");
         jdbcTemplate.update("INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) "
                 + "ON CONFLICT (id) DO UPDATE SET role = 'user', banned_at = NULL",
-            UUID.fromString(REGULAR_ID), "regular@example.com", "일반유저");
+            // Security D2: partial UNIQUE on lower(email) means two ITs
+            // can't share the same email across different user IDs.
+            // OwnerQueueIT's REGULAR_ID (d0000164) differs from
+            // AdminControllerIT's (d0000077) — class-scoped email avoids
+            // the cross-test collision.
+            UUID.fromString(REGULAR_ID), "regular-owner-queue@example.com", "일반유저");
 
         jdbcTemplate.update("DELETE FROM reports");
         jdbcTemplate.update("DELETE FROM gym_owners");

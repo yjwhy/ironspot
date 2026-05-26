@@ -139,7 +139,7 @@ E.g. "이 매장은 이미 다른 사업자가 소유 인증을 마쳤어요" co
 
 Column accepts any string. A buggy refactor could persist the raw 사업자번호. **Fix:** `CHECK (business_number_hash ~ '^[0-9a-f]{64}$')`. **Effort:** S.
 
-### 🟡 C4. `gyms.naver_place_id` UNIQUE mixes real + synthetic
+### ✅ C4. `gyms.naver_place_id` UNIQUE mixes real + synthetic
 
 Real Naver IDs and `synthetic_<...>` IDs share the same uniqueness namespace. Collision merges separate gyms. **Fix:** separate column or explicit CHECK distinguishing the two. **Effort:** S.
 
@@ -151,7 +151,7 @@ Real Naver IDs and `synthetic_<...>` IDs share the same uniqueness namespace. Co
 
 Polymorphic via `target_type` but no referential integrity. **Fix:** trigger-enforced check or partial CHECK pinning target_types. **Effort:** M.
 
-### 🟢 D2. `users.email` has no UNIQUE constraint
+### ✅ D2. `users.email` has no UNIQUE constraint
 
 Supabase Auth enforces in `auth.users`, but the public mirror can drift. **Fix:** `CREATE UNIQUE INDEX users_email_active_uniq ON users(lower(email)) WHERE deleted_at IS NULL`. **Effort:** S.
 

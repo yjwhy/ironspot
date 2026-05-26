@@ -23,7 +23,9 @@ class GymCreateFromNaverTest extends IntegrationTestBase {
 
     @Test
     void createFromNaverPlacesInsertsNewGymWhenPlaceIdNotFound() {
-        String uniquePlaceId = "naver-test-" + UUID.randomUUID();
+        // Security C4: real Naver IDs are pure digits; CHECK constraint
+        // gyms_naver_place_id_shape_check rejects mixed-format strings.
+        String uniquePlaceId = "1" + System.nanoTime();
         CreateGymRequest req = new CreateGymRequest(
             "에어짐 강남",
             "서울특별시 강남구 테헤란로 1",
@@ -46,7 +48,8 @@ class GymCreateFromNaverTest extends IntegrationTestBase {
 
     @Test
     void createFromNaverPlacesReturnsExistingGymWhenPlaceIdAlreadyExists() {
-        String reusedPlaceId = "naver-dedup-" + UUID.randomUUID();
+        // Security C4: pure-digit Naver-ID format (see uniquePlaceId above).
+        String reusedPlaceId = "2" + System.nanoTime();
         CreateGymRequest first = new CreateGymRequest(
             "동네짐",
             "서울특별시 어딘가 1",
