@@ -14,6 +14,24 @@
       "env": {
         "EXPO_PUBLIC_SENTRY_SMOKE": "true"
       }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle",
+        "credentialsSource": "remote"
+      },
+      "ios": {
+        "buildConfiguration": "Release",
+        "credentialsSource": "remote"
+      },
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "channel": "production"
     }
+  },
+  "submit": {
+    "production": {}
   }
 }
