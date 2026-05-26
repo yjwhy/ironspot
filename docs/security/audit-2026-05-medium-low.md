@@ -10,22 +10,22 @@ Severity: 🟡 MEDIUM, 🟢 LOW. Effort: S (≤1h), M (≤½ day), L (≤full da
 
 **42 / 61 shipped.** PRs #236-#256 landed the autonomous quick wins.
 
-| Section       | Total | Closed | Remaining                               |
-| ------------- | ----- | ------ | --------------------------------------- |
-| §A BE MEDIUM  | 12    | 7      | A2, A3, A4, A5, A12                     |
-| §B BE LOW     | 10    | 6      | B1, B4, B6, B7                          |
-| §C DB MEDIUM  | 4     | 3      | C4                                      |
-| §D DB LOW     | 6     | 2      | D1, D2, D3, D4                          |
-| §E APP MEDIUM | 7     | 3      | E1, E2, E3, E4                          |
-| §F APP LOW    | 6     | 3      | F1, F2 (no-op), F6                      |
-| §G AI MEDIUM  | 6     | 5      | G3                                      |
-| §H AI LOW     | 5     | 4      | H1 (already covered by WebClientConfig) |
-| §I PI MEDIUM  | 2     | 0      | I1, I2                                  |
-| §J PI LOW     | 3     | 1      | J1, J2                                  |
-| §K CI MEDIUM  | 7     | 5      | K3, K4                                  |
-| §L CI LOW     | 6     | 3      | L1, L2, L4                              |
+| Section       | Total | Closed | Remaining           |
+| ------------- | ----- | ------ | ------------------- |
+| §A BE MEDIUM  | 12    | 7      | A2, A3, A4, A5, A12 |
+| §B BE LOW     | 10    | 6      | B1, B4, B6, B7      |
+| §C DB MEDIUM  | 4     | 3      | C4                  |
+| §D DB LOW     | 6     | 2      | D1, D2, D3, D4      |
+| §E APP MEDIUM | 7     | 3      | E1, E2, E3, E4      |
+| §F APP LOW    | 6     | 3      | F1, F2 (no-op), F6  |
+| §G AI MEDIUM  | 6     | 5      | G3                  |
+| §H AI LOW     | 5     | 5      | (all done)          |
+| §I PI MEDIUM  | 2     | 0      | I1, I2              |
+| §J PI LOW     | 3     | 1      | J1, J2              |
+| §K CI MEDIUM  | 7     | 5      | K3, K4              |
+| §L CI LOW     | 6     | 6      | (all done)          |
 
-Remaining by effort: ~5 × S (L1, L2, L4, K4, F2 no-op verify), ~12 × M (design decisions or refactors), 2 × L (A3 Storage TTL, B1 Redis migration).
+Remaining by effort: ~12 × M (design decisions or refactors), 2 × L (A3 Storage TTL, B1 Redis migration). (Outstanding S items are now down to B6/B7-style judgement-call deferrals.)
 
 ---
 
@@ -39,7 +39,7 @@ Remaining by effort: ~5 × S (L1, L2, L4, K4, F2 no-op verify), ~12 × M (design
 
 `UploadRateGate.resolveIp` (shared by `GlobalRateLimitFilter`, etc.) takes the leftmost X-Forwarded-For without validating that the immediate remote address is Render's proxy. A client setting the header to a rotating value bypasses per-IP RPM caps. **Fix:** trust only when remote addr matches Render's proxy CIDR list, or use Spring's `ForwardedHeaderFilter` with `trustedProxies`. **Effort:** M.
 
-### 🟡 A3 (Phase 1 ✅, Phase 2 pending). Signed Storage URL stored verbatim in DB
+### 🟡 A3 (Phase 1 ✅, Phase 2a ✅, Phase 2b pending). Signed Storage URL stored verbatim in DB
 
 `StorageService.upload` returns a 365-day signed URL which is persisted in `machine_photos.photo_url`. A DB leak / backup dump / Sentry capture hands over a year-long bearer credential per photo. **Fix:** store only the bucket-relative path; mint a short-TTL (15-60 min) signed URL at response time. **Effort:** L.
 
@@ -155,7 +155,7 @@ Polymorphic via `target_type` but no referential integrity. **Fix:** trigger-enf
 
 Supabase Auth enforces in `auth.users`, but the public mirror can drift. **Fix:** `CREATE UNIQUE INDEX users_email_active_uniq ON users(lower(email)) WHERE deleted_at IS NULL`. **Effort:** S.
 
-### 🟢 D3. `vision_cache` has no DB-side expiry CHECK
+### ✅ D3. `vision_cache` has no DB-side expiry CHECK
 
 Retention is purely Java-side; if the job fails silently rows live forever. **Fix:** `pg_cron` extension or trigger as a backstop. **Effort:** M.
 
@@ -175,19 +175,19 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 ## §E. APP MEDIUM (7)
 
-### 🟡 E1. Recent-searches MMKV stores raw queries in plaintext
+### ✅ E1. Recent-searches MMKV stores raw queries in plaintext
 
 `src/features/search/lib/recent-storage.ts:9-39`. Same plaintext-on-disk concern as #14. **Fix:** move to expo-secure-store, or normalise + truncate before persisting + add TTL. **Effort:** S.
 
-### 🟡 E2. `useKeepBackendWarm` bypasses api-client
+### ✅ E2. `useKeepBackendWarm` bypasses api-client
 
 `src/shared/hooks/useKeepBackendWarm.ts:30-33`. Raw fetch against `${API_URL}/actuator/health` skips auth-injection, scrubber, and retry policy. **Fix:** route through helper, gate on `useNetworkStatus`, add jittered backoff. **Effort:** S.
 
-### 🟡 E3. OAuth callback parser doesn't verify origin
+### ✅ E3. OAuth callback parser doesn't verify origin
 
 `parseAuthCallback.ts:23-44` extracts `code` from any URL without verifying scheme/host match. PKCE keeps this safe today, but the parser is the only validation point. **Fix:** reject when `protocol + host` differs from `AUTH_REDIRECT_URL`. **Effort:** S.
 
-### 🟡 E4. apiClient swallows refresh failure into a 401
+### ✅ E4. apiClient swallows refresh failure into a 401
 
 `src/shared/lib/api-client.ts:56-78`. Callers can't distinguish "no session" vs "expired during use" — can't deterministically clear stale tokens. **Fix:** throw `SessionExpiredError` subclass on refresh-then-retry failure, top-level handler calls `signOut()`. **Effort:** S.
 
@@ -207,7 +207,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 ## §F. APP LOW (6)
 
-### 🟢 F1. Owner cover blob fetch loses MIME on iOS
+### ✅ F1. Owner cover blob fetch loses MIME on iOS
 
 `OwnerCoverPhotoScreen.tsx:34-35`. `fetch().blob()` drops WebP MIME on iOS. **Fix:** build blob with explicit `type: 'image/webp'` or use FormData. **Effort:** S.
 
@@ -243,7 +243,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 `GroqLlamaClient.java:71`, `GeminiFlashClient.java:74`. `NlSearchRequest.query` capped at 200 but the LLM clients re-accept any String. **Fix:** add guard at top of each `parse(String)`. **Effort:** S.
 
-### 🟡 G3. `OcrService.readImagePixelCount` exposes ImageIO
+### ✅ G3. `OcrService.readImagePixelCount` exposes ImageIO
 
 `OcrService.java:181-197`. JDK ImageIO is a known image-bomb vector. **Fix:** wrap with hard time budget + reject declared dimensions > ~100 MP before allocation. **Effort:** M.
 
@@ -263,9 +263,9 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 ## §H. AI LOW (5)
 
-### 🟢 H1. LLM clients' WebClient `maxInMemorySize` not pinned
+### ✅ H1. LLM clients' WebClient `maxInMemorySize` not pinned
 
-Cap is sent upstream but ObjectMapper accepts any response body. Default `maxInMemorySize` is 256 KiB. **Fix:** pin `ExchangeStrategies.builder().codecs(...)` explicitly. **Effort:** S.
+Cap is sent upstream but ObjectMapper accepts any response body. Default `maxInMemorySize` is 256 KiB. **Fix:** pin `ExchangeStrategies.builder().codecs(...)` explicitly. **Verified no-op:** `LlmClientConfig` injects the shared `WebClient` bean produced by `WebClientConfig.webClient()`, which already pins `maxInMemorySize` via `ExchangeStrategies.builder().codecs(...)`. GroqLlamaClient + GeminiFlashClient both reuse that bean (no `WebClient.builder().build()` of their own), so the cap is already in effect. No code change required.
 
 ### ✅ H2. `FallbackLlmClient` swallows INVALID_RESPONSE without breadcrumb
 
@@ -299,7 +299,7 @@ Backup snapshot during the 30-day window persists every user's raw search text i
 
 ## §J. PI LOW (3)
 
-### 🟢 J1. Sentry email mask keeps 2 chars of local part
+### ✅ J1. Sentry email mask keeps 2 chars of local part
 
 `sentry-scrub.ts:76-83`. `yj***` uniquely identifies a tester pool member. **Fix:** mask to 1 char or HMAC the entire email. **Effort:** S.
 
@@ -323,7 +323,7 @@ Duplicates A1 (same finding from PI lens — query string credentials leak via p
 
 `security-scans.yml:76`. Moderate-severity CVEs merge silently. **Fix:** `fail-on-severity: moderate` + `comment-summary-in-pr: on-failure`. **Effort:** S.
 
-### 🟡 K3. Slack webhook URL has no rotation policy
+### ✅ K3. Slack webhook URL has no rotation policy
 
 `deploy-notify.yml:25,49,160`. Bearer-equivalent secret with no documented rotation cadence. **Fix:** switch to Slack GitHub App (`slackapi/slack-github-action` with bot token) or document rotation. **Effort:** M.
 
@@ -347,11 +347,11 @@ Duplicates A1 (same finding from PI lens — query string credentials leak via p
 
 ## §L. CI LOW (6)
 
-### 🟢 L1. EvalSuiteTest exposes GROQ + GEMINI keys to whole job
+### ✅ L1. EvalSuiteTest exposes GROQ + GEMINI keys to whole job
 
 `llm-eval.yml:58-62`. Step-level env shared with later `upload-artifact` step. **Fix:** split into 2 jobs (eval with secrets, upload without). **Effort:** S.
 
-### 🟢 L2. Shell interpolation risk in deploy-notify jq calls
+### ✅ L2. Shell interpolation risk in deploy-notify jq calls
 
 `deploy-notify.yml:28,40-45`. Today safe via `--arg`, but a future refactor that drops it becomes a shell-injection sink. **Fix:** add comment marking inputs untrusted + wrap with `toJSON(...)`. **Effort:** S.
 
@@ -359,7 +359,7 @@ Duplicates A1 (same finding from PI lens — query string credentials leak via p
 
 `api-ci.yml:32`, `llm-eval.yml:52`. Poisoned `gradle-wrapper.jar` runs with full build privileges. **Fix:** pass `validate-wrappers: true` to `gradle/actions/setup-gradle`. **Effort:** S.
 
-### 🟢 L4. keep-warm cron pings prod with token-bearing runner
+### ✅ L4. keep-warm cron pings prod with token-bearing runner
 
 `keep-warm.yml:22-30`. Unused but issued `GITHUB_TOKEN`; curl with no `--max-redirs`. **Fix:** `permissions: {}` + curl hardening, or remove workflow (UptimeRobot covers). **Effort:** S.
 

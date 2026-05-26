@@ -113,6 +113,9 @@ beforeEach(() => {
     isError: false,
   });
   global.fetch = jest.fn().mockResolvedValue({
+    // Security F1: compressCover now reads arrayBuffer() and re-wraps with
+    // an explicit MIME because iOS fetch().blob() returns Blob.type==''.
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
     blob: () => Promise.resolve(new Blob(['fake'], { type: 'image/webp' })),
   });
 });
