@@ -166,7 +166,7 @@ public class GymOwners extends TableImpl<Record> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IDX_GYM_OWNERS_GYM_ACTIVE, Indexes.IDX_GYM_OWNERS_USER_ACTIVE);
+        return Arrays.asList(Indexes.IDX_GYM_OWNERS_BUSINESS_HASH, Indexes.IDX_GYM_OWNERS_GYM_ACTIVE, Indexes.IDX_GYM_OWNERS_USER_ACTIVE);
     }
 
     @Override
