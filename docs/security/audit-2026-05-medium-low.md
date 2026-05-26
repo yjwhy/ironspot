@@ -75,7 +75,7 @@ Remaining by effort: ~5 × S (L1, L2, L4, K4, F2 no-op verify), ~12 × M (design
 
 `NaverSearchService.java:188-196`. Two genuinely different gyms with identical road address + name (chain branches with no road suffix) collide on `synthetic_<sha16>`. Silent merge symptom. **Fix:** include lat/lng in digest input, or reject results without real Naver id. **Effort:** S.
 
-### 🟡 A12. Co-owner claim race (no FOR UPDATE)
+### ✅ A12. Co-owner claim race (no FOR UPDATE)
 
 `OwnerService.java:78-90`. `existingBusinessHashForGym` (SELECT) and `insertActive` (INSERT) are in the same `@Transactional` but the SELECT is not `FOR UPDATE`. Two parallel claims with different business hashes both pass, both insert. **Fix:** `FOR UPDATE` or partial UNIQUE INDEX with dispute-on-violation. **Effort:** M.
 
@@ -95,7 +95,7 @@ Caffeine in-process means Render redeploy / cold restart wipes all windows. **Fi
 
 `PhotoService:340,349,358`, `NaverSearchQuotaService:74`, `UploadRateGate:76`, `GlobalRateLimitFilter:97`. PIPA conservatively treats account identifiers as personal data. **Fix:** truncate to first 8 chars or HMAC with daily-rotating pepper. **Effort:** S.
 
-### 🟢 B4. `matchesGymName` substring too permissive
+### ✅ B4. `matchesGymName` substring too permissive
 
 `BusinessRegistrationVerifier.java:126-132`. `a.contains(b) || b.contains(a)` lets a 사업자 with short 상호 `"강남"` claim ownership of any gym containing `"강남"`. **Fix:** token-set Jaccard ≥ 0.7 after normalisation, or fall to Disputed. **Effort:** M.
 
