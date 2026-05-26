@@ -65,7 +65,15 @@ export async function apiClient<T>(url: string, options?: RequestInit): Promise<
       if (!token) {
         throw err;
       }
-      await supabase.auth.refreshSession();
+      // Security F6: single retry with 1s backoff. supabase.auth.refreshSession
+      // can fail with a transient network error (intermittent DNS, flaky
+      // Wi-Fi captive portal) — without this retry the user gets
+      // hard-logged-out for a transport blip. One retry is enough for the
+      // common flake; a longer ladder would mask real "refresh token
+      // revoked" outcomes where the auth server returns 4xx (which doesn't
+      // throw, so it never reaches this catch — only transport failures
+      // do).
+      await refreshSessionWithRetry();
       const { data: refreshed } = await supabase.auth.getSession();
       const newToken = refreshed.session?.access_token;
       if (!newToken) {
@@ -84,6 +92,28 @@ export async function apiClient<T>(url: string, options?: RequestInit): Promise<
 // would now throw instead of resolving to undefined. Use the underlying
 // Response and short-circuit on 204 / empty content-length to preserve
 // the pre-2.x contract for void-returning operations.
+// Security F6: small wrapper around supabase.auth.refreshSession with a
+// single 1s-backoff retry. The Supabase auth-js SDK throws on transport
+// failures (fetch reject) but resolves with `{ error }` on application
+// failures like "refresh token revoked" — only the transport path is
+// retried here; an explicit auth-server "no" still surfaces as a single
+// failure so the caller can sign the user out.
+async function refreshSessionWithRetry(): Promise<void> {
+  try {
+    await supabase.auth.refreshSession();
+    return;
+  } catch (firstAttemptError) {
+    if (__DEV__) {
+      console.warn(
+        '[api-client] refreshSession first attempt failed, retrying in 1s',
+        firstAttemptError,
+      );
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+    await supabase.auth.refreshSession();
+  }
+}
+
 async function parseResponse<T>(promise: Promise<Response>): Promise<T> {
   const response = await promise;
   if (response.status === 204 || response.headers.get('content-length') === '0') {
