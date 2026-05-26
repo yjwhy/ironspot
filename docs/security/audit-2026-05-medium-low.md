@@ -183,7 +183,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 `src/shared/hooks/useKeepBackendWarm.ts:30-33`. Raw fetch against `${API_URL}/actuator/health` skips auth-injection, scrubber, and retry policy. **Fix:** route through helper, gate on `useNetworkStatus`, add jittered backoff. **Effort:** S.
 
-### 🟡 E3. OAuth callback parser doesn't verify origin
+### ✅ E3. OAuth callback parser doesn't verify origin
 
 `parseAuthCallback.ts:23-44` extracts `code` from any URL without verifying scheme/host match. PKCE keeps this safe today, but the parser is the only validation point. **Fix:** reject when `protocol + host` differs from `AUTH_REDIRECT_URL`. **Effort:** S.
 
