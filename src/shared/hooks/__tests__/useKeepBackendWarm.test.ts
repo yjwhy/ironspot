@@ -2,6 +2,18 @@ import { renderHook } from '@testing-library/react-native';
 
 import { useKeepBackendWarm } from '../useKeepBackendWarm';
 
+// Security E2: hook now gates on useNetworkStatus. Stub NetInfo so the
+// network-status hook initialises with the default `online: true` and
+// doesn't try to subscribe to a real NetInfo listener under Jest.
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: {
+    addEventListener: jest.fn(() => () => {
+      // unsubscribe no-op
+    }),
+  },
+}));
+
 interface FetchStub {
   installPending: () => void;
   installRejecting: (error: Error) => void;
