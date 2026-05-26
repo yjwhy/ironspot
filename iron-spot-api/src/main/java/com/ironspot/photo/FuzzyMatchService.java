@@ -199,8 +199,18 @@ public class FuzzyMatchService {
         return Math.max(enScore, koScore);
     }
 
+    // Security H3: split on whitespace OR Unicode punctuation so tokens
+    // like "Panatta·하이로우" (interpunct), "Hammer-Strength" (hyphen — kept
+    // intentionally because compound brand names rely on it), "선드러그/짐"
+    // (slash) decompose properly. Without this, the matcher saw the whole
+    // glued string as a single token and missed otherwise-valid catalog
+    // rows. Hyphen stays bound because brand names like "Hammer-Strength"
+    // are spelled as one canonical token in the catalog.
+    private static final java.util.regex.Pattern TOKEN_SPLIT =
+        java.util.regex.Pattern.compile("[\\s\\p{Punct}&&[^-]]+");
+
     private Set<String> tokenize(String text) {
-        return new HashSet<>(Arrays.asList(text.split("\\s+")));
+        return new HashSet<>(Arrays.asList(TOKEN_SPLIT.split(text)));
     }
 
     // OCR text on a real gym plate is mostly model numbers, weight units, URLs
