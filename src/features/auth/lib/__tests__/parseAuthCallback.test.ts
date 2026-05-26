@@ -44,4 +44,27 @@ describe('parseAuthCallback', () => {
       reason: 'missing_tokens',
     });
   });
+
+  // Security E3: origin mismatch — even with a well-formed code, refuse
+  // anything not on the protocol+host pair we declared in OAuth.
+  it('rejects callbacks on a different protocol (https vs ironspot://)', () => {
+    expect(parseAuthCallback('https://auth/callback?code=abc')).toEqual({
+      kind: 'invalid',
+      reason: 'origin_mismatch',
+    });
+  });
+
+  it('rejects callbacks on a different host (ironspot://evil)', () => {
+    expect(parseAuthCallback('ironspot://evil/callback?code=abc')).toEqual({
+      kind: 'invalid',
+      reason: 'origin_mismatch',
+    });
+  });
+
+  it('rejects callbacks on the http variant of our scheme (downgrade attempt)', () => {
+    expect(parseAuthCallback('http://auth/callback?code=abc')).toEqual({
+      kind: 'invalid',
+      reason: 'origin_mismatch',
+    });
+  });
 });
