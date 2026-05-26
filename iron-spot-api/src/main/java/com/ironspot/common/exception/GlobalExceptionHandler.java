@@ -34,19 +34,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleBind(BindException e) {
-        String message = e.getBindingResult().getFieldErrors().stream()
+        // Security B2: avoid echoing DTO field names back to the client.
+        // The detailed field info is still in the server log so debugging
+        // is unchanged; the response keeps a generic Korean message that
+        // doesn't help an API fuzzer enumerate request shape.
+        String detail = e.getBindingResult().getFieldErrors().stream()
                 .map(f -> f.getField() + ": " + f.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-        return new ErrorResponse(message);
+        log.warn("Bind validation failed: {}", detail);
+        return new ErrorResponse("유효하지 않은 입력값입니다");
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleConstraintViolation(ConstraintViolationException e) {
-        String message = e.getConstraintViolations().stream()
+        // Security B2: same rationale as handleBind — generic client message,
+        // detailed violation in the server log.
+        String detail = e.getConstraintViolations().stream()
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                 .collect(Collectors.joining(", "));
-        return new ErrorResponse(message);
+        log.warn("Constraint violation: {}", detail);
+        return new ErrorResponse("유효하지 않은 입력값입니다");
     }
 
     // Without this handler Spring Boot 4's NoResourceFoundException bubbles up to handleUnexpected
