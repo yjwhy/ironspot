@@ -5,6 +5,8 @@ import org.jooq.DSLContext;
 import org.jooq.JSONB;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 import static com.ironspot.jooq.Tables.MODERATION_AUDIT_LOG;
@@ -46,5 +48,25 @@ public class ModerationAuditLogRepository {
                 .and(MODERATION_AUDIT_LOG.ACTION.eq(action))
                 .and(MODERATION_AUDIT_LOG.TARGET_TYPE.eq(targetType))
                 .and(MODERATION_AUDIT_LOG.TARGET_ID.eq(targetId)));
+    }
+
+    /**
+     * Security B1: count a user's audit rows for the given actions since a
+     * cutoff. {@link OwnerClaimQuotaService} uses this to enforce the
+     * owner-claim daily cap from a durable source — every claim that
+     * passes the quota gate writes exactly one audit row
+     * (owner_granted / owner_disputed / owner_failed), so the row count is
+     * the claim count. Unlike the previous in-process Caffeine counter,
+     * this survives a Render redeploy / cold restart, closing the
+     * deploy-timing window where an attacker could reset their quota.
+     */
+    public int countByUserAndActionsSince(UUID userId, Set<String> actions, OffsetDateTime since) {
+        Integer count = dsl.selectCount()
+            .from(MODERATION_AUDIT_LOG)
+            .where(MODERATION_AUDIT_LOG.USER_ID.eq(userId))
+            .and(MODERATION_AUDIT_LOG.ACTION.in(actions))
+            .and(MODERATION_AUDIT_LOG.CREATED_AT.ge(since))
+            .fetchOne(0, Integer.class);
+        return count == null ? 0 : count;
     }
 }

@@ -83,9 +83,9 @@ Remaining by effort: ~12 × M (design decisions or refactors), 2 × L (A3 Storag
 
 ## §B. BE LOW (10)
 
-### 🟢 B1. In-memory rate-limit counters reset on deploy
+### ✅ B1. In-memory rate-limit counters reset on deploy
 
-Caffeine in-process means Render redeploy / cold restart wipes all windows. **Fix:** persist to Postgres `rate_limit_buckets` table or Redis. **Effort:** L.
+Caffeine in-process means Render redeploy / cold restart wipes all windows. **Fix:** persist to Postgres `rate_limit_buckets` table or Redis. **Effort:** L. **Shipped (cost-0, surgical):** the 60s-window per-request gates (`GlobalRateLimitFilter`, `UploadRateGate`) stay in-process by design (a DB hit on every `/api/**` request costs more than the ≤60s deploy-reset window saves on a single Render instance); `NlSearchQuotaService` + `PhotoService.enforceVisionQuota` were already DB-backed. The only genuinely exposed window was `OwnerClaimQuotaService` (24h cap gating Vision cost via the A6 owner-claim OCR path) — rewired to count `moderation_audit_log` rows instead of Caffeine, so a deploy can no longer reset it. No new table, no Redis add-on.
 
 ### ✅ B2. BindException leaks DTO field names
 
