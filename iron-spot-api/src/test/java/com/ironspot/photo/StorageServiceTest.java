@@ -74,11 +74,14 @@ class StorageServiceTest {
         UUID userId = UUID.randomUUID();
         String filename = "photo.webp";
 
-        String result = storageService.upload("fake-image".getBytes(), gymMachineId, userId, filename);
+        StorageService.UploadResult result = storageService.upload("fake-image".getBytes(), gymMachineId, userId, filename);
 
         // Security task #9: bucket is private; upload returns a signed URL
         // minted by Supabase, not the legacy /public/ shape.
-        assertThat(result).isEqualTo(SUPABASE_URL + SIGNED_PATH);
+        assertThat(result.signedUrl()).isEqualTo(SUPABASE_URL + SIGNED_PATH);
+        // Security A3: bucket-relative path is exposed separately so the
+        // proxy endpoint can mint a fresh short-TTL URL on demand.
+        assertThat(result.path()).isEqualTo(gymMachineId + "/" + filename);
     }
 
     @Test
@@ -90,13 +93,15 @@ class StorageServiceTest {
         UUID userId = UUID.randomUUID();
         String filename = "photo.webp";
 
-        String result = storageService.upload("fake-image".getBytes(), null, userId, filename);
+        StorageService.UploadResult result = storageService.upload("fake-image".getBytes(), null, userId, filename);
 
         // The signed URL value is identical to the bound-upload case here
         // because the mock returns the same SIGNED_PATH regardless of input
         // (real Supabase keys the token to the path; we exercise the
         // signed-URL-returning behaviour, not Supabase's signing).
-        assertThat(result).isEqualTo(SUPABASE_URL + SIGNED_PATH);
+        assertThat(result.signedUrl()).isEqualTo(SUPABASE_URL + SIGNED_PATH);
+        // Orphan path: prefix follows orphan/<userId>/<filename>.
+        assertThat(result.path()).isEqualTo("orphan/" + userId + "/" + filename);
     }
 
     @Test

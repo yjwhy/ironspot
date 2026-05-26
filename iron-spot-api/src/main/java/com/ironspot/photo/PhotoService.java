@@ -82,18 +82,24 @@ public class PhotoService {
         UUID photoId = UUID.randomUUID();
         String filename = photoId + ".webp";
 
-        String photoUrl;
+        StorageService.UploadResult uploadResult;
         try {
-            photoUrl = storageService.upload(imageBytes, gymMachineId, UUID.fromString(userId), filename);
+            uploadResult = storageService.upload(imageBytes, gymMachineId, UUID.fromString(userId), filename);
         } catch (Exception e) {
             log.error("Storage upload failed for photo {}: {}", photoId, e.getMessage());
             throw new BusinessException("사진 업로드에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+        String photoUrl = uploadResult.signedUrl();
+        String storagePath = uploadResult.path();
 
         boolean queueForAdmin = vision.verdict() == SafeSearchVerdict.QUEUE_FOR_ADMIN;
         List<MachineTemplateSuggestion> suggestions = fuzzyMatchService.findMatches(vision.texts());
         try {
-            photoRepository.insert(photoId, gymMachineId, userId, photoUrl, queueForAdmin);
+            // Security A3: persist storagePath alongside the long-TTL URL.
+            // Phase 1 keeps photo_url for backward compat; Phase 2 will
+            // switch response DTOs to emit a proxy URL backed by
+            // storage_path.
+            photoRepository.insert(photoId, gymMachineId, userId, photoUrl, storagePath, queueForAdmin);
         } catch (DataIntegrityViolationException e) {
             // Bound upload pointed at a non-existent gym_machine_id. Orphan
             // uploads (gymMachineId == null) cannot hit this branch because

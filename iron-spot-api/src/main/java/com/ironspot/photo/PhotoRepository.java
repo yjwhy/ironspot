@@ -74,12 +74,24 @@ public class PhotoRepository {
             .collect(Collectors.groupingBy(PhotoResponse::gymMachineId));
     }
 
-    public void insert(UUID photoId, UUID gymMachineId, String userId, String photoUrl, boolean isBlinded) {
+    public void insert(
+        UUID photoId,
+        UUID gymMachineId,
+        String userId,
+        String photoUrl,
+        String storagePath,
+        boolean isBlinded
+    ) {
+        // Security A3: storagePath is the bucket-relative key. Phase 1
+        // writes both photo_url (long-TTL URL, backward compat) and
+        // storage_path (path-only, fuel for the future short-TTL proxy
+        // endpoint). Phase 2 will drop photo_url from the response DTO.
         dsl.insertInto(MACHINE_PHOTOS)
             .set(MACHINE_PHOTOS.ID, photoId)
             .set(MACHINE_PHOTOS.GYM_MACHINE_ID, gymMachineId)
             .set(MACHINE_PHOTOS.USER_ID, UUID.fromString(userId))
             .set(MACHINE_PHOTOS.PHOTO_URL, photoUrl)
+            .set(MACHINE_PHOTOS.STORAGE_PATH, storagePath)
             .set(MACHINE_PHOTOS.IS_BLINDED, isBlinded)
             .execute();
     }
@@ -96,6 +108,22 @@ public class PhotoRepository {
             .from(MACHINE_PHOTOS)
             .where(MACHINE_PHOTOS.ID.eq(photoId))
             .fetchOptional(r -> Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.IS_BLINDED), false));
+    }
+
+    /**
+     * Security A3: drive the photo proxy endpoint. Returns the
+     * bucket-relative path + the blinded flag in one round-trip so the
+     * controller can decide 302 vs 410 (blinded) without two queries.
+     */
+    public record PhotoStorageRef(String storagePath, boolean isBlinded) {}
+
+    public Optional<PhotoStorageRef> findStorageRef(UUID photoId) {
+        return dsl.select(MACHINE_PHOTOS.STORAGE_PATH, MACHINE_PHOTOS.IS_BLINDED)
+            .from(MACHINE_PHOTOS)
+            .where(MACHINE_PHOTOS.ID.eq(photoId))
+            .fetchOptional(r -> new PhotoStorageRef(
+                r.get(MACHINE_PHOTOS.STORAGE_PATH),
+                Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.IS_BLINDED), false)));
     }
 
     public Optional<PhotoResponse> findById(UUID photoId) {
