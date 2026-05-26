@@ -173,4 +173,36 @@ class BusinessRegistrationVerifierTest {
         assertThat(BusinessRegistrationVerifier.matchesGymName("㈜분당짐", "분당짐")).isTrue();
         assertThat(BusinessRegistrationVerifier.matchesGymName("분당짐", "강남짐")).isFalse();
     }
+
+    @Test
+    void matchesGymNameRejectsShortBusinessNameSubstring() {
+        // Security B4: a 사업자 with short 상호 "강남" must not be able to
+        // wildcard-match any gym whose name happens to contain "강남".
+        assertThat(BusinessRegistrationVerifier.matchesGymName("강남", "강남헬스장")).isFalse();
+        assertThat(BusinessRegistrationVerifier.matchesGymName("강남헬스장", "강남")).isFalse();
+    }
+
+    @Test
+    void matchesGymNameRejectsChainBranchSuffix() {
+        // Different chain branches should escalate to admin review,
+        // not auto-approve via prefix containment.
+        assertThat(BusinessRegistrationVerifier.matchesGymName("분당짐", "분당짐 강남점")).isFalse();
+    }
+
+    @Test
+    void matchesGymNameAcceptsCorpFormPrefixAfterNormalisation() {
+        // Unit-test the helper directly (verifyToleratesCorpFormPrefix covers
+        // this at the verify() level). Jaccard = 1.0 after normalisation.
+        assertThat(BusinessRegistrationVerifier.matchesGymName("주식회사 분당짐", "분당짐")).isTrue();
+    }
+
+    @Test
+    void matchesGymNameAcceptsNfcDecomposedHangul() {
+        // NFC normalisation: 분당짐 in NFD (decomposed jamo) must still
+        // collapse to the NFC form before bigram tokenisation.
+        String composed = "분당짐";
+        String decomposed = java.text.Normalizer.normalize(composed, java.text.Normalizer.Form.NFD);
+        assertThat(decomposed).isNotEqualTo(composed); // sanity — different code-units
+        assertThat(BusinessRegistrationVerifier.matchesGymName(decomposed, composed)).isTrue();
+    }
 }
