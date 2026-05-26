@@ -19,11 +19,13 @@
 --    The texts_json sanitisation (\p{C} strip on insert) is enforced
 --    in VisionCacheRepository.serialiseTexts in the same PR.
 --
--- 2. Task #31 — nl_search_log raw_query 30-day redact
+-- 2. Task #31 / security I1 — nl_search_log raw_query redact + retention
 --    Schema-side no-op. NlSearchLogRetentionJob.redactOldRawQueries
---    replaces raw_query with '[redacted]' for rows older than 30 days
---    while keeping normalised_query + counts. Hard delete at 90 days
---    remains in the same job.
+--    replaces raw_query with '[redacted]' while keeping normalised_query +
+--    counts; the same job hard-deletes the whole row past the retention
+--    window. Windows shortened under I1: redact 30d→7d, delete 90d→30d, so
+--    a backup snapshot holds plaintext search text for at most 30 days (the
+--    analytics window) rather than 90. See NlSearchLogRetentionJob javadoc.
 --
 -- Idempotency: CREATE INDEX IF NOT EXISTS.
 -- =========================================================================

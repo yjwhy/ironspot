@@ -906,6 +906,19 @@ class AdminControllerIT extends IntegrationTestBase {
     }
 
     @Test
+    void nlSearchAnalytics90dPeriodReturns400() {
+        // Security I1: 90d was dropped from the allowlist — nl_search_log rows
+        // are hard-deleted at 30d, so a 90d window would silently be ≤30d.
+        mockPrincipal(ADMIN_ID, "admin");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/admin/nl-search-analytics?period=90d",
+            HttpMethod.GET, bearerRequest("token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
     void moderationAnalyticsAsAdminReturnsShape() {
         mockPrincipal(ADMIN_ID, "admin");
 

@@ -9,7 +9,7 @@ import type { NlSearchAnalyticsResponsePeriod } from './nlSearchAnalyticsRespons
 import type { TopQuery } from './topQuery';
 
 export interface NlSearchAnalyticsResponse {
-  /** Echo of the requested period */
+  /** Echo of the requested period (90d dropped per security I1 — rows hard-deleted at 30d) */
   period: NlSearchAnalyticsResponsePeriod;
   /** Total NL search invocations in the period (excludes quota-rejected 429s) */
   totalQueries: number;

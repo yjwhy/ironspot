@@ -7,7 +7,7 @@
  */
 
 /**
- * Echo of the requested period
+ * Echo of the requested period (90d dropped per security I1 — rows hard-deleted at 30d)
  */
 export type NlSearchAnalyticsResponsePeriod =
   (typeof NlSearchAnalyticsResponsePeriod)[keyof typeof NlSearchAnalyticsResponsePeriod];
@@ -15,5 +15,4 @@ export type NlSearchAnalyticsResponsePeriod =
 export const NlSearchAnalyticsResponsePeriod = {
   '7d': '7d',
   '30d': '30d',
-  '90d': '90d',
 } as const;

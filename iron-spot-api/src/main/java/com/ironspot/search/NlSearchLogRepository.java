@@ -61,7 +61,7 @@ public class NlSearchLogRepository {
     public NlSearchAnalyticsResponse analytics(String periodLabel, int periodDays, int topN) {
         // Java-side cutoff for type safety + DSL consistency. JVM/Postgres
         // clock drift is NTP-bounded to milliseconds — irrelevant for
-        // 7/30/90-day analytics windows.
+        // 7/30-day analytics windows.
         java.time.OffsetDateTime cutoff = java.time.OffsetDateTime.now().minusDays(periodDays);
 
         var totals = dsl.select(

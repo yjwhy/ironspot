@@ -10,8 +10,8 @@ import java.util.List;
  * hypothesis H2 measurement enablement).
  */
 public record NlSearchAnalyticsResponse(
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, allowableValues = {"7d", "30d", "90d"},
-        description = "Echo of the requested period")
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, allowableValues = {"7d", "30d"},
+        description = "Echo of the requested period (90d dropped per security I1 — rows hard-deleted at 30d)")
     String period,
 
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Total NL search invocations in the period (excludes quota-rejected 429s)")
