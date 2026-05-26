@@ -47,7 +47,14 @@ export function ErrorBoundary({
       FallbackComponent={FallbackComponent}
       onReset={onReset}
       onError={(error, info) => {
-        console.error('[ErrorBoundary] Uncaught render error:', error, info.componentStack);
+        // Security F3: component stacks can include user-supplied props
+        // (gym names, photos, search terms). Restrict the verbose console
+        // dump to __DEV__ so production logs / device logcat never see
+        // them. Sentry capture stays unaffected (it's plumbed via the
+        // host onError handler downstream).
+        if (__DEV__) {
+          console.error('[ErrorBoundary] Uncaught render error:', error, info.componentStack);
+        }
         onError?.(error, info);
       }}
     >
