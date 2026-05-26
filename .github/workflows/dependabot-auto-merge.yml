@@ -17,6 +17,15 @@ jobs:
   auto-merge:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    # Security K1: this workflow runs in `pull_request_target` context,
+    # so the GITHUB_TOKEN holds the base repo's write privileges AND a
+    # future `actions/checkout` step could be tricked into pulling an
+    # attacker's PR HEAD into a privileged runner (the "pwn-request"
+    # pattern). Do NOT add `actions/checkout` here. Every step below
+    # must be a GitHub API call that operates on the PR by number only,
+    # never on its tree contents. If a future maintainer needs to read
+    # PR file changes, do it via `gh pr view <pr#> --json files` against
+    # the base ref — never via a workspace checkout.
     steps:
       - name: Fetch Dependabot metadata
         id: meta

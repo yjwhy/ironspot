@@ -5,25 +5,25 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: "09:00"
+      time: '09:00'
       timezone: Pacific/Auckland
     open-pull-requests-limit: 5
     labels:
       - dependencies
       - api
     commit-message:
-      prefix: "chore(api)"
+      prefix: 'chore(api)'
       include: scope
     groups:
       spring:
         patterns:
-          - "org.springframework*"
-          - "io.spring.*"
+          - 'org.springframework*'
+          - 'io.spring.*'
       testing:
         patterns:
-          - "org.junit*"
-          - "org.mockito*"
-          - "io.mockk*"
+          - 'org.junit*'
+          - 'org.mockito*'
+          - 'io.mockk*'
         update-types:
           - minor
           - patch
@@ -33,40 +33,40 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: "09:00"
+      time: '09:00'
       timezone: Pacific/Auckland
     open-pull-requests-limit: 5
     labels:
       - dependencies
       - app
     commit-message:
-      prefix: "chore(app)"
+      prefix: 'chore(app)'
       include: scope
     groups:
       expo:
         patterns:
-          - "expo"
-          - "expo-*"
-          - "@expo/*"
+          - 'expo'
+          - 'expo-*'
+          - '@expo/*'
       react-native:
         patterns:
-          - "react"
-          - "react-dom"
-          - "react-native"
-          - "react-native-*"
-          - "@react-native/*"
+          - 'react'
+          - 'react-dom'
+          - 'react-native'
+          - 'react-native-*'
+          - '@react-native/*'
       testing:
         patterns:
-          - "jest"
-          - "jest-*"
-          - "@testing-library/*"
-          - "ts-jest"
+          - 'jest'
+          - 'jest-*'
+          - '@testing-library/*'
+          - 'ts-jest'
         update-types:
           - minor
           - patch
       types:
         patterns:
-          - "@types/*"
+          - '@types/*'
         update-types:
           - minor
           - patch
@@ -76,19 +76,39 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: "09:00"
+      time: '09:00'
       timezone: Pacific/Auckland
     open-pull-requests-limit: 5
     labels:
       - dependencies
       - ci
     commit-message:
-      prefix: "chore(ci)"
+      prefix: 'chore(ci)'
       include: scope
     groups:
       actions:
         patterns:
-          - "*"
+          - '*'
         update-types:
           - minor
           - patch
+
+  # Security K6: Docker base images for iron-spot-api never auto-bumped
+  # → CVE-laden layers sit unpatched. Weekly cadence matches the rest
+  # of the ecosystems. Pinning to digests (K5, separate PR) is the
+  # companion control.
+  - package-ecosystem: docker
+    directory: /iron-spot-api
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Pacific/Auckland
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - api
+      - docker
+    commit-message:
+      prefix: 'chore(api)'
+      include: scope
