@@ -408,3 +408,9 @@ ALTER TABLE gym_owners
 ALTER TABLE nl_search_log
     ADD CONSTRAINT nl_search_log_outcome_length_ck
         CHECK (char_length(outcome) <= 64);
+
+-- Security LOW batch8 (V21 mirror): defensive partial index on
+-- gym_owners.business_number_hash. D2 deferred — see V21 comment.
+CREATE INDEX IF NOT EXISTS idx_gym_owners_business_hash
+    ON gym_owners (business_number_hash)
+    WHERE revoked_at IS NULL;
