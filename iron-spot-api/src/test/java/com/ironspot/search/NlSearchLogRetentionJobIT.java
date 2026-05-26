@@ -26,19 +26,26 @@ class NlSearchLogRetentionJobIT extends IntegrationTestBase {
     @BeforeEach
     @AfterEach
     void cleanup() {
+        // Match on normalised_query too: the redact test rewrites raw_query to
+        // '[redacted]', so a raw_query-only filter would leak that row.
         dsl.deleteFrom(NL_SEARCH_LOG)
-            .where(NL_SEARCH_LOG.RAW_QUERY.like(MARKER_PREFIX + "%"))
+            .where(NL_SEARCH_LOG.RAW_QUERY.like(MARKER_PREFIX + "%")
+                .or(NL_SEARCH_LOG.NORMALISED_QUERY.like(MARKER_PREFIX.toLowerCase() + "%")))
             .execute();
     }
 
     @Test
-    void deletesRowsOlderThan90DaysAndKeepsRecent() {
-        // Two rows clearly past the 90-day boundary (91 + 200 days old) and two
-        // clearly inside it (recent + 89 days old). Verifies both the cut-off
+    void deletesRowsOlderThan30DaysAndKeepsRecent() {
+        // Security I1: hard-delete window shortened 90d → 30d so a backup
+        // snapshot can hold a user's normalised_query (plaintext, kept for
+        // the 30-day analytics window) for at most 30 days, not 90.
+        //
+        // Two rows clearly past the 30-day boundary (31 + 200 days old) and two
+        // clearly inside it (recent + 29 days old). Verifies both the cut-off
         // direction and that "boundary" rows on the safe side survive.
         insertRow(MARKER_PREFIX + "ancient-200d", daysAgo(200));
-        insertRow(MARKER_PREFIX + "expired-91d", daysAgo(91));
-        insertRow(MARKER_PREFIX + "boundary-89d", daysAgo(89));
+        insertRow(MARKER_PREFIX + "expired-31d", daysAgo(31));
+        insertRow(MARKER_PREFIX + "boundary-29d", daysAgo(29));
         insertRow(MARKER_PREFIX + "fresh-now", OffsetDateTime.now(ZoneOffset.UTC));
 
         job.pruneOldRows();
@@ -49,10 +56,44 @@ class NlSearchLogRetentionJobIT extends IntegrationTestBase {
             .fetch(NL_SEARCH_LOG.RAW_QUERY);
 
         assertThat(survivors)
-            .as("rows older than 90 days should be deleted")
+            .as("rows older than 30 days should be deleted")
             .containsExactlyInAnyOrder(
-                MARKER_PREFIX + "boundary-89d",
+                MARKER_PREFIX + "boundary-29d",
                 MARKER_PREFIX + "fresh-now");
+    }
+
+    @Test
+    void redactsRawQueryOlderThan7DaysKeepingNormalised() {
+        // Security I1: verbatim raw_query is the highest-fidelity PII surface
+        // (casing, filler, accidental pastes) and is never read in normal
+        // operation, so it is redacted at 7d — well before the 30d row delete.
+        // normalised_query is untouched so the 30-day analytics view still works.
+        insertRow(MARKER_PREFIX + "old-8d", daysAgo(8));
+        insertRow(MARKER_PREFIX + "recent-6d", daysAgo(6));
+
+        int redacted = job.redactOldRawQueries();
+
+        assertThat(redacted)
+            .as("only the 8-day-old row crosses the 7-day redact cutoff")
+            .isEqualTo(1);
+
+        var oldRow = dsl.select(NL_SEARCH_LOG.RAW_QUERY, NL_SEARCH_LOG.NORMALISED_QUERY)
+            .from(NL_SEARCH_LOG)
+            .where(NL_SEARCH_LOG.NORMALISED_QUERY.eq((MARKER_PREFIX + "old-8d").toLowerCase()))
+            .fetchOne();
+        assertThat(oldRow).as("8-day-old row still present after redact").isNotNull();
+        assertThat(oldRow.value1()).as("raw_query redacted").isEqualTo("[redacted]");
+        assertThat(oldRow.value2())
+            .as("normalised_query preserved for analytics")
+            .isEqualTo((MARKER_PREFIX + "old-8d").toLowerCase());
+
+        String recentRaw = dsl.select(NL_SEARCH_LOG.RAW_QUERY)
+            .from(NL_SEARCH_LOG)
+            .where(NL_SEARCH_LOG.NORMALISED_QUERY.eq((MARKER_PREFIX + "recent-6d").toLowerCase()))
+            .fetchOne(NL_SEARCH_LOG.RAW_QUERY);
+        assertThat(recentRaw)
+            .as("rows inside the 7-day window keep raw_query")
+            .isEqualTo(MARKER_PREFIX + "recent-6d");
     }
 
     @Test

@@ -75,6 +75,21 @@ class DashboardSecurityIT extends IntegrationTestBase {
     }
 
     @Test
+    void dashboardDataEndpointAllPeriodCollapsesNlSearchTo30d() {
+        // Security I1 regression: nl_search_log is hard-deleted at 30d, so the
+        // dashboard's 'all' option must map NL search to 30d, not the retired
+        // 90d (which now returns 400 and would fail the whole aggregate).
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/admin/dashboard/data?period=all",
+            HttpMethod.GET, basicAuth(DASHBOARD_PASSWORD), String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String body = response.getBody();
+        assertThat(body).as("dashboard echoes the requested period").contains("\"period\":\"all\"");
+        assertThat(body).as("NL search section collapses 'all' to the 30d retained window")
+            .contains("\"nlSearch\":{\"period\":\"30d\"");
+    }
+
+    @Test
     void dashboardDataEndpointReturns401WithoutCredentials() {
         ResponseEntity<String> response = restTemplate.exchange(
             "/admin/dashboard/data?period=30d",

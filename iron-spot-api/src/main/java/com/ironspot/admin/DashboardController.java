@@ -22,9 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>Period parameter:
  * <ul>
- *   <li>NL search uses period directly (7d/30d/90d). 'all' is normalised to
- *       '90d' since the underlying nl_search_log has a 90-day retention so
- *       'all' would equal '90d' anyway.</li>
+ *   <li>NL search uses period directly (7d/30d). 'all' is normalised to
+ *       '30d' since nl_search_log is hard-deleted at 30 days (security I1),
+ *       so 'all' equals '30d' anyway.</li>
  *   <li>Moderation accepts period as-is (7d/30d/all).</li>
  * </ul>
  */
@@ -38,7 +38,9 @@ public class DashboardController {
 
     @GetMapping("/data")
     public DashboardData getDashboardData(@RequestParam(defaultValue = "30d") String period) {
-        String nlSearchPeriod = "all".equals(period) ? "90d" : period;
+        // Security I1: nl_search_log is hard-deleted at 30d, so 'all' (and the
+        // retired '90d') both collapse to the 30d retained window.
+        String nlSearchPeriod = ("all".equals(period) || "90d".equals(period)) ? "30d" : period;
         NlSearchAnalyticsResponse nlSearch = adminService.getNlSearchAnalytics(nlSearchPeriod);
         ModerationAnalyticsResponse moderation = adminService.getModerationAnalytics(period);
         return new DashboardData(period, nlSearch, moderation);

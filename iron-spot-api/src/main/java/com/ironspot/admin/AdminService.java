@@ -51,12 +51,13 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public NlSearchAnalyticsResponse getNlSearchAnalytics(String period) {
+        // Security I1: 90d dropped — nl_search_log rows are hard-deleted at 30d,
+        // so a 90d window would silently return at most 30d of data.
         int days = switch (period) {
             case "7d" -> 7;
             case "30d" -> 30;
-            case "90d" -> 90;
             default -> throw new BusinessException(
-                "Invalid period. Use 7d, 30d, or 90d.", HttpStatus.BAD_REQUEST);
+                "Invalid period. Use 7d or 30d.", HttpStatus.BAD_REQUEST);
         };
         return nlSearchLogRepository.analytics(period, days, NL_SEARCH_ANALYTICS_TOP_N);
     }
