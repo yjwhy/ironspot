@@ -97,11 +97,21 @@ export function buildNmapUrl({
   }
   params.set('dlat', String(gym.latitude));
   params.set('dlng', String(gym.longitude));
-  params.set('dname', gym.name);
+  // Security F5: cap gym name at 60 chars before it lands in the URL.
+  // Naver Maps rejects URLs over ~1KB, and an attacker-influenced
+  // 200-char name (e.g. via the brand-claim flow) would otherwise
+  // produce an unopenable deep link.
+  params.set('dname', truncateName(gym.name));
   params.set('appname', APP_NAME);
   return `nmap://route/public?${params.toString()}`;
 }
 
 export function buildWebFallbackUrl(gym: DirectionsGym): string {
-  return `https://map.naver.com/v5/search/${encodeURIComponent(gym.name)}`;
+  return `https://map.naver.com/v5/search/${encodeURIComponent(truncateName(gym.name))}`;
+}
+
+const MAX_GYM_NAME_LENGTH = 60;
+
+function truncateName(name: string): string {
+  return name.length > MAX_GYM_NAME_LENGTH ? name.slice(0, MAX_GYM_NAME_LENGTH) : name;
 }

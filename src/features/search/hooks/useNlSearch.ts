@@ -35,6 +35,18 @@ function statusOf(err: unknown): number | undefined {
   return candidate.response?.status;
 }
 
+// Security E5: cap + sanitise BE error text before rendering. The BE
+// GlobalExceptionHandler now returns a generic "유효하지 않은 입력값입니다"
+// (Security B2), but defensive normalisation here protects against any
+// future caller that returns longer or control-character payloads.
+const MAX_ERROR_LENGTH = 120;
+const CONTROL_CHARS = /\p{C}/gu;
+
+function sanitiseErrorBody(raw: string): string {
+  const nfc = raw.normalize('NFC').replace(CONTROL_CHARS, '');
+  return nfc.length > MAX_ERROR_LENGTH ? `${nfc.slice(0, MAX_ERROR_LENGTH)}…` : nfc;
+}
+
 async function messageOf(err: unknown): Promise<string | undefined> {
   if (typeof err !== 'object' || err === null) return undefined;
   const candidate = err as KyHttpErrorLike;
@@ -43,7 +55,8 @@ async function messageOf(err: unknown): Promise<string | undefined> {
   try {
     // Must call json() as a method so `this` is bound to the Response.
     const body = (await response.json()) as ErrorBody;
-    return typeof body.error === 'string' && body.error.length > 0 ? body.error : undefined;
+    if (typeof body.error !== 'string' || body.error.length === 0) return undefined;
+    return sanitiseErrorBody(body.error);
   } catch {
     return undefined;
   }
