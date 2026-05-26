@@ -22,6 +22,16 @@ import { captureError } from '@/shared/lib/sentry';
 const COVER_RESIZE_WIDTH = 1280;
 const COVER_QUALITY = 0.8;
 
+// Explicit MIME for the cover blob.
+//
+// Security F1: iOS `fetch(local-file-uri).blob()` returns a Blob whose
+// `type` is the empty string instead of `image/webp`. The upload would
+// then arrive at the BE with `Content-Type: application/octet-stream`
+// (ky/RN default), which the magic-byte sniffer + `allowed_mime_types`
+// guard reject — silently failing only on iOS. Re-wrap the bytes with
+// the explicit MIME so both platforms produce identical request bodies.
+const COVER_MIME = 'image/webp';
+
 async function compressCover(uri: string): Promise<Blob> {
   const context = ImageManipulator.manipulate(uri);
   context.resize({ width: COVER_RESIZE_WIDTH });
@@ -32,7 +42,8 @@ async function compressCover(uri: string): Promise<Blob> {
       format: SaveFormat.WEBP,
     });
     const response = await fetch(result.uri);
-    return await response.blob();
+    const bytes = await response.arrayBuffer();
+    return new Blob([bytes], { type: COVER_MIME });
   } finally {
     imageRef.release();
     context.release();

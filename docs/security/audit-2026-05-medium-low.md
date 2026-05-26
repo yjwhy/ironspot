@@ -207,7 +207,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 ## §F. APP LOW (6)
 
-### 🟢 F1. Owner cover blob fetch loses MIME on iOS
+### ✅ F1. Owner cover blob fetch loses MIME on iOS
 
 `OwnerCoverPhotoScreen.tsx:34-35`. `fetch().blob()` drops WebP MIME on iOS. **Fix:** build blob with explicit `type: 'image/webp'` or use FormData. **Effort:** S.
 
