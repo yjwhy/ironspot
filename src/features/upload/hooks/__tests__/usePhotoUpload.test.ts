@@ -42,6 +42,7 @@ const COMPRESSED_URI = 'file:///tmp/compressed.webp';
 const mockUploadResponse: PhotoUploadResponse = {
   photoId: 'photo-123',
   photoUrl: 'https://cdn.example.com/photo-123.jpg',
+  contentPath: '/api/photos/photo-123/content',
   ocrSucceeded: true,
   suggestions: [
     {
