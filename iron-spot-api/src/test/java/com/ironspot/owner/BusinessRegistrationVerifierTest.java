@@ -5,9 +5,9 @@ import com.ironspot.owner.dto.VerificationResult;
 import com.ironspot.photo.OcrService;
 import com.ironspot.photo.SafeSearchVerdict;
 import com.ironspot.photo.dto.VisionAnalysisResult;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,7 +23,18 @@ class BusinessRegistrationVerifierTest {
 
     @Mock OcrService ocrService;
     @Mock BusinessRegistryClient registryClient;
-    @InjectMocks BusinessRegistrationVerifier verifier;
+
+    // Security A5: HMAC-SHA256 needs a pepper; construct manually so the
+    // ctor argument is satisfied with a deterministic IT fixture.
+    private static final String TEST_PEPPER =
+        "test-pepper-business-number-verifier-unit-test-32-plus-chars";
+
+    private BusinessRegistrationVerifier verifier;
+
+    @BeforeEach
+    void newVerifier() {
+        verifier = new BusinessRegistrationVerifier(ocrService, registryClient, TEST_PEPPER);
+    }
 
     private static final byte[] DUMMY_IMAGE = "ignored-bytes".getBytes();
 
@@ -117,11 +128,43 @@ class BusinessRegistrationVerifierTest {
     }
 
     @Test
-    void sha256HexIsDeterministicAndHex() {
-        String h1 = BusinessRegistrationVerifier.sha256Hex("1234567890");
-        String h2 = BusinessRegistrationVerifier.sha256Hex("1234567890");
+    void hashBusinessNumberIsDeterministicAndHex() {
+        // Security A5: HMAC-SHA256 still produces 64 hex chars (matches
+        // the C3 CHECK constraint) and is deterministic for the same
+        // (pepper, input) pair, so re-claims by the same 사업자번호
+        // still collapse to the same row.
+        String h1 = verifier.hashBusinessNumber("1234567890");
+        String h2 = verifier.hashBusinessNumber("1234567890");
         assertThat(h1).isEqualTo(h2).hasSize(64).matches("[0-9a-f]+");
-        assertThat(BusinessRegistrationVerifier.sha256Hex("9999999999")).isNotEqualTo(h1);
+        assertThat(verifier.hashBusinessNumber("9999999999")).isNotEqualTo(h1);
+    }
+
+    @Test
+    void hashBusinessNumberDiffersAcrossPeppers() {
+        // Security A5: changing the pepper changes every hash — that's
+        // exactly the property that makes a DB dump useless without the
+        // pepper. (Test both verifiers compute over the same input.)
+        BusinessRegistrationVerifier other = new BusinessRegistrationVerifier(
+            ocrService, registryClient,
+            "alternate-test-pepper-business-number-verifier-32-plus-chars");
+        assertThat(verifier.hashBusinessNumber("1234567890"))
+            .isNotEqualTo(other.hashBusinessNumber("1234567890"));
+    }
+
+    @Test
+    void constructorRejectsBlankPepper() {
+        BusinessRegistrationVerifier blank =
+            new BusinessRegistrationVerifier(ocrService, registryClient, "");
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalStateException.class, blank::validatePepper);
+    }
+
+    @Test
+    void constructorRejectsShortPepper() {
+        BusinessRegistrationVerifier shortPepper =
+            new BusinessRegistrationVerifier(ocrService, registryClient, "tooshort");
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalStateException.class, shortPepper::validatePepper);
     }
 
     @Test

@@ -119,6 +119,14 @@ ironspot:
   # matches; spoofed extra entries cause a fallback to the socket peer,
   # which protects per-IP rate-limit counters.
   trusted-proxy-hops: ${IRONSPOT_TRUSTED_PROXY_HOPS:1}
+  business-number:
+    # Security A5: HMAC-SHA256 pepper for gym_owners.business_number_hash.
+    # Without this, the raw SHA-256 of a 10-digit 사업자번호 is reversible
+    # via a ~640GB rainbow table on DB leak. BusinessRegistrationVerifier
+    # fails to boot if this is unset or under 32 chars; generate via
+    # `openssl rand -base64 48` and set IRONSPOT_BUSINESS_HASH_PEPPER in
+    # Render env. Must not appear in DB, Sentry, or logs.
+    hash-pepper: ${IRONSPOT_BUSINESS_HASH_PEPPER:}
   slack:
     admin-webhook-url: ${SLACK_ADMIN_WEBHOOK_URL:}
     smoke:
