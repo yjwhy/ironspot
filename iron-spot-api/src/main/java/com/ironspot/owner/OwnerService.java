@@ -59,9 +59,23 @@ public class OwnerService {
         // the hole — legitimate owners verify once per gym, so 5/day is plenty.
         claimQuota.enforce(userId);
 
+        // Security A12: SELECT ... FOR UPDATE on the gym row so concurrent
+        // owner claims for the same gym serialise. Without this lock the
+        // co-owner-vs-dispute branch in handleVerified races — two
+        // simultaneous claimants both see an empty gym_owners table and
+        // both fall through the "first claim" path, even when their
+        // business_number_hashes differ. The FOR UPDATE makes the second
+        // claim wait for the first to commit, so handleVerified sees the
+        // committed hash and routes the mismatch to dispute.
+        //
+        // Read-only paths (map search, gym detail) use plain SELECT and
+        // do NOT block on this row lock — only other FOR UPDATE / UPDATE
+        // / DELETE on the same row do. Owner claims are rare so the
+        // serialisation window is brief.
         String gymName = dsl.select(GYMS.NAME)
             .from(GYMS)
             .where(GYMS.ID.eq(gymId))
+            .forUpdate()
             .fetchOptional(r -> r.get(GYMS.NAME))
             .orElse(null);
         if (gymName == null) {

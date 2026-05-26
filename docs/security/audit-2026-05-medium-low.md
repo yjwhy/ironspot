@@ -75,7 +75,7 @@ Remaining by effort: ~12 × M (design decisions or refactors), 2 × L (A3 Storag
 
 `NaverSearchService.java:188-196`. Two genuinely different gyms with identical road address + name (chain branches with no road suffix) collide on `synthetic_<sha16>`. Silent merge symptom. **Fix:** include lat/lng in digest input, or reject results without real Naver id. **Effort:** S.
 
-### 🟡 A12. Co-owner claim race (no FOR UPDATE)
+### ✅ A12. Co-owner claim race (no FOR UPDATE)
 
 `OwnerService.java:78-90`. `existingBusinessHashForGym` (SELECT) and `insertActive` (INSERT) are in the same `@Transactional` but the SELECT is not `FOR UPDATE`. Two parallel claims with different business hashes both pass, both insert. **Fix:** `FOR UPDATE` or partial UNIQUE INDEX with dispute-on-violation. **Effort:** M.
 
