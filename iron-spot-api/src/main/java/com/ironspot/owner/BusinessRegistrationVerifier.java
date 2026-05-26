@@ -16,8 +16,11 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.text.Normalizer;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -168,16 +171,60 @@ public class BusinessRegistrationVerifier {
         return new BusinessRegistrationOcr(businessNumber, businessName, representative, startDate);
     }
 
+    /**
+     * Security B4: substring matching ({@code a.contains(b) || b.contains(a)})
+     * used to grant verification, which lets a short-name 사업자 (e.g.
+     * "강남") claim any gym whose name contains that substring. Switched
+     * to character-bigram Jaccard ≥ {@value #JACCARD_THRESHOLD}.
+     *
+     * <p>Character bigrams give us a tokenisation that does not depend on a
+     * Korean word segmenter. 0.7 is the empirical floor:
+     * <ul>
+     *   <li>strict enough to reject "강남" vs "강남헬스장" (J ≈ 0.25) and
+     *       chain-branch suffixes "분당짐" vs "분당짐 강남점" (J ≈ 0.4)</li>
+     *   <li>lenient enough to accept corp-form variants like
+     *       "주식회사 분당짐" vs "분당짐" (J = 1.0 after normalisation)</li>
+     * </ul>
+     *
+     * <p>Length-1 inputs cannot produce bigrams; they fall back to exact
+     * equality so a one-character business name cannot wildcard-match.
+     * Mismatches fall to {@link VerificationResult.Disputed}, so admin
+     * reviews the photo manually rather than auto-rejecting.
+     */
+    private static final double JACCARD_THRESHOLD = 0.7;
+
     static boolean matchesGymName(String extracted, String target) {
         if (extracted == null || target == null) return false;
         String a = normalizeName(extracted);
         String b = normalizeName(target);
         if (a.isEmpty() || b.isEmpty()) return false;
-        return a.contains(b) || b.contains(a);
+        if (a.length() == 1 || b.length() == 1) return a.equals(b);
+
+        Set<String> aGrams = bigrams(a);
+        Set<String> bGrams = bigrams(b);
+        Set<String> intersection = new HashSet<>(aGrams);
+        intersection.retainAll(bGrams);
+        Set<String> union = new HashSet<>(aGrams);
+        union.addAll(bGrams);
+        if (union.isEmpty()) return false;
+        double jaccard = (double) intersection.size() / union.size();
+        return jaccard >= JACCARD_THRESHOLD;
+    }
+
+    private static Set<String> bigrams(String s) {
+        Set<String> out = new HashSet<>();
+        for (int i = 0; i < s.length() - 1; i++) {
+            out.add(s.substring(i, i + 2));
+        }
+        return out;
     }
 
     private static String normalizeName(String s) {
-        String t = s;
+        // NFC so visually-identical Hangul (composed vs decomposed forms)
+        // collapse before tokenisation. Vision API output is usually NFC
+        // already; this is a defensive belt-and-suspenders since the
+        // function gates a security decision.
+        String t = Normalizer.normalize(s, Normalizer.Form.NFC);
         for (String prefix : CORP_FORMS) {
             t = t.replace(prefix, "");
         }
