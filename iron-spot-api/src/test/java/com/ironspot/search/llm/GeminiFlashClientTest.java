@@ -278,7 +278,7 @@ class GeminiFlashClientTest {
     @Test
     void stripCodeFenceLeavesPlainJsonUnchanged() {
         String plain = "{\"location\":null}";
-        assertThat(GeminiFlashClient.stripCodeFence(plain)).isEqualTo(plain);
+        assertThat(LlmResponseSanitiser.stripCodeFence(plain)).isEqualTo(plain);
     }
 
     private static final String MODEL = "gemini-flash-lite-latest";

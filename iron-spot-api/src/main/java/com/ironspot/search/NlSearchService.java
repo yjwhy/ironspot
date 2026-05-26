@@ -2,6 +2,7 @@ package com.ironspot.search;
 
 import com.ironspot.auth.UserPrincipal;
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.common.text.SafeEcho;
 import com.ironspot.gym.GymRepository;
 import com.ironspot.gym.NaverSearchService;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
@@ -127,8 +128,10 @@ public class NlSearchService {
         try {
             naverPlaces = naverSearchService.search(query);
         } catch (RuntimeException e) {
+            // Security G5: raw user query carries PIPA-sensitive content;
+            // normalise + truncate before it lands in the operator log.
             log.warn("Naver merge failed for query='{}': {} — returning IronSpot only",
-                query, e.getMessage());
+                SafeEcho.truncate(Normaliser.normalise(query), 50), e.getMessage());
             return List.of();
         }
         if (naverPlaces.isEmpty()) return List.of();

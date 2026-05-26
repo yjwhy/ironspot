@@ -169,7 +169,7 @@ public class GeminiFlashClient implements LlmClient {
         // Security task #69: same fence-stripping as the Groq client. Gemini's
         // responseMimeType=application/json usually prevents fences but does not
         // guarantee it.
-        String json = stripCodeFence(textStr);
+        String json = LlmResponseSanitiser.stripCodeFence(textStr);
         try {
             return mapper.readValue(json, SearchDsl.class);
         } catch (JsonProcessingException e) {
@@ -177,25 +177,6 @@ public class GeminiFlashClient implements LlmClient {
         } catch (IllegalArgumentException e) {
             throw new LlmException(LlmException.Kind.INVALID_RESPONSE, "Gemini DSL invariant violation: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * Security task #69: tolerate ```json ... ``` markdown code fences on the
-     * LLM response. Identical to GroqLlamaClient.stripCodeFence — duplicated
-     * intentionally; sharing via a static util class is the only alternative,
-     * and 12 lines does not justify a new file.
-     */
-    static String stripCodeFence(String s) {
-        String trimmed = s.trim();
-        if (!trimmed.startsWith("```")) {
-            return trimmed;
-        }
-        int newline = trimmed.indexOf('\n');
-        trimmed = newline >= 0 ? trimmed.substring(newline + 1) : trimmed.substring(3);
-        if (trimmed.endsWith("```")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 3);
-        }
-        return trimmed.trim();
     }
 
     private static boolean isTimeout(Throwable t) {
