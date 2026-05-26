@@ -63,7 +63,7 @@ class OwnerSelfGymAutoActionIT extends IntegrationTestBase {
 
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            GYM_ID, UUID.fromString(OWNER_ID), "h-self");
+            GYM_ID, UUID.fromString(OWNER_ID), "00000000000000000000000000000000000000000000000000000000000000f0");
     }
 
     @AfterEach

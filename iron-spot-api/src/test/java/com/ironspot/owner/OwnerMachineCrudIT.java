@@ -65,10 +65,10 @@ class OwnerMachineCrudIT extends IntegrationTestBase {
 
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            GYM_ID, UUID.fromString(OWNER_ID), "h-crud");
+            GYM_ID, UUID.fromString(OWNER_ID), "0000000000000000000000000000000000000000000000000000000000000c2d");
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "h-other-crud");
+            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "0000000000000000000000000000000000000000000000000000000000000c20");
     }
 
     @AfterEach

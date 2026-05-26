@@ -387,3 +387,24 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories FORCE ROW LEVEL SECURITY;
 ALTER TABLE machine_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE machine_templates FORCE ROW LEVEL SECURITY;
+
+-- Security MEDIUM/LOW batch6 (V20 mirror): defensive CHECK constraints on
+-- text + JSONB columns. Schema-only — IT data still satisfies the bounds.
+-- Per docs/harness/lessons.md, init-test-db owns the IT schema source so
+-- the Flyway V20 migration needs an explicit mirror here.
+
+ALTER TABLE reports
+    ADD CONSTRAINT reports_detail_length_ck
+        CHECK (detail IS NULL OR char_length(detail) <= 500);
+
+ALTER TABLE moderation_audit_log
+    ADD CONSTRAINT moderation_audit_log_metadata_size_ck
+        CHECK (metadata IS NULL OR octet_length(metadata::text) <= 4096);
+
+ALTER TABLE gym_owners
+    ADD CONSTRAINT gym_owners_business_number_hash_format_ck
+        CHECK (business_number_hash ~ '^[0-9a-f]{64}$');
+
+ALTER TABLE nl_search_log
+    ADD CONSTRAINT nl_search_log_outcome_length_ck
+        CHECK (char_length(outcome) <= 64);

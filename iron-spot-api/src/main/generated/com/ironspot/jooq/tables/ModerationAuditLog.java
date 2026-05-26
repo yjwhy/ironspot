@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
@@ -190,6 +191,13 @@ public class ModerationAuditLog extends TableImpl<Record> {
             _users = new UsersPath(this, Keys.MODERATION_AUDIT_LOG__MODERATION_AUDIT_LOG_USER_ID_FKEY, null);
 
         return _users;
+    }
+
+    @Override
+    public List<Check<Record>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("moderation_audit_log_metadata_size_ck"), "(((metadata IS NULL) OR (octet_length((metadata)::text) <= 4096)))", true)
+        );
     }
 
     @Override

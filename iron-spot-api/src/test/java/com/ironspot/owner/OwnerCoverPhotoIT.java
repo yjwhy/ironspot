@@ -101,10 +101,10 @@ class OwnerCoverPhotoIT extends IntegrationTestBase {
 
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            GYM_ID, UUID.fromString(OWNER_ID), "h-c");
+            GYM_ID, UUID.fromString(OWNER_ID), "0000000000000000000000000000000000000000000000000000000000000c0c");
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "h-c-other");
+            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "00000000000000000000000000000000000000000000000000000000000000c0");
 
         // Default Vision verdict — individual tests override.
         givenVisionResult(SafeSearchVerdict.ALLOW, false);

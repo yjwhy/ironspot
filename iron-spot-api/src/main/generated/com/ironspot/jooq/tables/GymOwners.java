@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
@@ -205,6 +206,13 @@ public class GymOwners extends TableImpl<Record> {
             _users = new UsersPath(this, Keys.GYM_OWNERS__GYM_OWNERS_USER_ID_FKEY, null);
 
         return _users;
+    }
+
+    @Override
+    public List<Check<Record>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("gym_owners_business_number_hash_format_ck"), "((business_number_hash ~ '^[0-9a-f]{64}$'::text))", true)
+        );
     }
 
     @Override
