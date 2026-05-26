@@ -73,4 +73,12 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - uses: actions/dependency-review-action@5a2ce3f5b92ee19cbb1541a4984c76d921601d7c # v4
         with:
-          fail-on-severity: high
+          # Security K2: moderate-severity CVEs were merging silently
+          # because the previous gate only fired at `high`. `moderate`
+          # is a usability tradeoff (slightly noisier PRs) for a
+          # meaningful coverage gap (most published Spring Security
+          # CVEs land at moderate). `comment-summary-in-pr` makes the
+          # failure actionable: reviewer sees which dep + advisory
+          # without digging into the action log.
+          fail-on-severity: moderate
+          comment-summary-in-pr: on-failure
