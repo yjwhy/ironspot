@@ -60,6 +60,15 @@ public class GroqLlamaClient implements LlmClient {
         if (apiKey == null || apiKey.isBlank()) {
             throw new LlmException(LlmException.Kind.TRANSPORT, "GROQ_API_KEY not configured");
         }
+        // Security G2: NlSearchRequest.query is already capped at 200 chars,
+        // but the LLM client is a public contract — a future caller that
+        // bypasses NlSearchRequest (e.g. a /search/test endpoint) could
+        // hand us an arbitrarily long string that bloats Groq cost. Defence
+        // in depth: re-check at the LLM boundary.
+        if (userQuery != null && userQuery.length() > 200) {
+            throw new LlmException(LlmException.Kind.INVALID_RESPONSE,
+                "userQuery exceeds 200 char boundary cap");
+        }
         // Security task #68: cap completion tokens so a prompt-injected query
         // like "explain every gym in Korea in valid JSON" cannot blow through
         // the Groq free-tier TPD (100k/day). The largest legitimate SearchDsl

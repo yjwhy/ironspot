@@ -55,6 +55,13 @@ public class FallbackLlmClient implements LlmClient {
             return result;
         } catch (LlmException e) {
             if (!isTransient(e.kind())) {
+                // Security H2: INVALID_RESPONSE is the signature of a
+                // successful prompt-injection — primary LLM returned a
+                // body the structured parser rejected. Emit a Sentry
+                // breadcrumb before re-throwing so ops can correlate the
+                // rate of this event with new injection patterns. Other
+                // non-transient kinds get the same treatment for symmetry.
+                recordInvalidResponseBreadcrumb(e.kind(), e.getMessage());
                 throw e;
             }
             if (!tryAcquireFallbackSlot()) {
@@ -115,6 +122,25 @@ public class FallbackLlmClient implements LlmClient {
         crumb.setMessage("fallback circuit open, re-throwing primary exception");
         crumb.setData("primary_kind", kind.name());
         crumb.setLevel(SentryLevel.ERROR);
+        Sentry.addBreadcrumb(crumb);
+    }
+
+    /**
+     * Security H2: track non-transient LLM failures (INVALID_RESPONSE,
+     * SAFETY, etc.) at WARNING. INVALID_RESPONSE in particular tracks the
+     * signature of a successful prompt injection — primary returned a body
+     * the structured parser rejected. Without this breadcrumb the event
+     * leaves no trace in Sentry and a spike of attacks is invisible to ops.
+     * The {@code error_message} is the primary's diagnostic; never the
+     * user's raw query.
+     */
+    private static void recordInvalidResponseBreadcrumb(LlmException.Kind kind, String message) {
+        Breadcrumb crumb = new Breadcrumb();
+        crumb.setCategory("llm.invalid_response");
+        crumb.setMessage("primary LLM returned a non-transient failure");
+        crumb.setData("primary_kind", kind.name());
+        crumb.setData("error_message", message);
+        crumb.setLevel(SentryLevel.WARNING);
         Sentry.addBreadcrumb(crumb);
     }
 }
