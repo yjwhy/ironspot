@@ -22,6 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -191,7 +195,41 @@ public class OcrService {
     // arithmetically so we cap at the dimensions probe.
     private static final long MAX_PIXEL_COUNT = 25_000_000L;
 
-    private int readImagePixelCount(byte[] imageBytes) {
+    /**
+     * Security G3: hard wall-clock budget for the ImageIO header probe.
+     * JDK ImageIO has a long history of parser-level DoS (CVE-2024-21138
+     * etc.); even when the input passed Google Vision earlier in the
+     * upload flow, a malformed header that lands at this codepath could
+     * spin a reader inside its decode loop. 2 s is well above the
+     * microsecond-scale read for any legitimate phone capture but caps
+     * the worst-case CPU spend per request.
+     */
+    private static final long IMAGEIO_PROBE_TIMEOUT_MS = 2_000L;
+
+    int readImagePixelCount(byte[] imageBytes) {
+        // One-shot virtual thread executor: cheap (~kB of stack), and the
+        // try-with-resources shut-down sends Thread.interrupt() to the
+        // probe if it's still parsing past the budget — interrupting
+        // mid-decode is what unblocks the ImageReader.
+        try (var exec = Executors.newSingleThreadExecutor(Thread.ofVirtual().factory())) {
+            return exec.submit(() -> readImagePixelCountUnbounded(imageBytes))
+                .get(IMAGEIO_PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            log.warn("ImageIO probe exceeded {}ms budget — refusing image (possible parser DoS)",
+                IMAGEIO_PROBE_TIMEOUT_MS);
+            // Treat as the pixel-bomb path so PiiDetection conservatively
+            // assumes a worst-case face-area ratio and never under-detects.
+            return Integer.MAX_VALUE;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return 0;
+        } catch (ExecutionException e) {
+            log.warn("ImageIO probe failed: {}", e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
+            return 0;
+        }
+    }
+
+    private int readImagePixelCountUnbounded(byte[] imageBytes) {
         try (ImageInputStream stream = new MemoryCacheImageInputStream(new ByteArrayInputStream(imageBytes))) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(stream);
             if (!readers.hasNext()) return 0;
