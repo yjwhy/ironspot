@@ -1,6 +1,11 @@
+import { AUTH_REDIRECT_URL } from '../constants';
+
 export type ParsedCallback =
   | { kind: 'pkce'; code: string }
-  | { kind: 'invalid'; reason: 'parse_error' | 'missing_tokens' | 'implicit_flow_rejected' };
+  | {
+      kind: 'invalid';
+      reason: 'parse_error' | 'missing_tokens' | 'implicit_flow_rejected' | 'origin_mismatch';
+    };
 
 /**
  * Security task #16 — only accept PKCE callbacks.
@@ -20,12 +25,29 @@ export type ParsedCallback =
  * `implicit_flow_rejected` short-circuits the LoginScreen into an
  * error toast instead of `setSession`-ing whatever the URL handed us.
  */
+// Security E3: parse AUTH_REDIRECT_URL once at module load so the check is
+// O(1) per callback. Anything that doesn't match this protocol + host
+// (currently `ironspot://auth`) is treated as a hijack attempt — even if
+// it happens to carry a valid-looking `?code=…`.
+const EXPECTED_PROTOCOL = new URL(AUTH_REDIRECT_URL).protocol;
+const EXPECTED_HOST = new URL(AUTH_REDIRECT_URL).host;
+
 export function parseAuthCallback(callbackUrl: string): ParsedCallback {
   let url: URL;
   try {
     url = new URL(callbackUrl);
   } catch {
     return { kind: 'invalid', reason: 'parse_error' };
+  }
+
+  // Security E3: PKCE alone makes a stolen code unusable without our
+  // in-memory verifier, but the parser is the only validation point
+  // between the OS deep-link handler and `supabase.exchangeCodeForSession`.
+  // Reject any callback whose origin differs from AUTH_REDIRECT_URL — a
+  // custom-scheme collision attack from another app on the device can't
+  // forge the protocol+host pair we declared in the OAuth request.
+  if (url.protocol !== EXPECTED_PROTOCOL || url.host !== EXPECTED_HOST) {
+    return { kind: 'invalid', reason: 'origin_mismatch' };
   }
 
   const rawHash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash;
