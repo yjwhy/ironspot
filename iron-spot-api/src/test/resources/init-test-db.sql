@@ -414,3 +414,9 @@ ALTER TABLE nl_search_log
 CREATE INDEX IF NOT EXISTS idx_gym_owners_business_hash
     ON gym_owners (business_number_hash)
     WHERE revoked_at IS NULL;
+
+-- Security A3 Phase 1 (V22 mirror): persist bucket-relative path
+-- alongside photo_url so the BE can mint short-TTL signed URLs on
+-- response. Backfill is a no-op for IT (fresh schema, no rows yet).
+ALTER TABLE machine_photos
+    ADD COLUMN IF NOT EXISTS storage_path TEXT;

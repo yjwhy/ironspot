@@ -102,6 +102,11 @@ public class MachinePhotos extends TableImpl<Record> {
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
+    /**
+     * The column <code>public.machine_photos.storage_path</code>.
+     */
+    public final TableField<Record, String> STORAGE_PATH = createField(DSL.name("storage_path"), SQLDataType.CLOB, this, "");
+
     private MachinePhotos(Name alias, Table<Record> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

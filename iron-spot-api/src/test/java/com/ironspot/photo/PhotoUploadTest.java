@@ -107,7 +107,7 @@ class PhotoUploadTest extends IntegrationTestBase {
     void uploadRejectsEmptyFile() {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
         given(storageService.upload(any(), any(), any(), anyString()))
-            .willReturn("https://example.com/photo.webp");
+            .willReturn(new StorageService.UploadResult("test/path.webp", "https://example.com/photo.webp"));
 
         ByteArrayResource emptyResource = new ByteArrayResource(new byte[0]) {
             @Override public String getFilename() { return "empty.jpg"; }
@@ -139,7 +139,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of(), SafeSearchVerdict.ALLOW, false));
         given(storageService.upload(any(), any(), any(), anyString()))
-            .willReturn("https://example.com/octet.webp");
+            .willReturn(new StorageService.UploadResult("test/path.webp", "https://example.com/octet.webp"));
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("image", octetStreamPart(minimalJpegBytes(), "photo.webp"));
@@ -176,7 +176,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of("PANATTA", "HIGH", "ROW"), SafeSearchVerdict.ALLOW, false));
         given(storageService.upload(any(), any(), any(), anyString()))
-            .willReturn("https://example.com/photo.webp");
+            .willReturn(new StorageService.UploadResult("test/path.webp", "https://example.com/photo.webp"));
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("image", minimalJpegResource());
@@ -205,7 +205,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
         doThrow(new RuntimeException("Vision API down")).when(ocrService).analyzeImage(any());
         given(storageService.upload(any(), any(), any(), anyString()))
-            .willReturn("https://example.com/photo-noocr.webp");
+            .willReturn(new StorageService.UploadResult("test/path.webp", "https://example.com/photo-noocr.webp"));
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("image", minimalJpegResource());
@@ -271,7 +271,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of("PANATTA", "HIGH", "ROW"), SafeSearchVerdict.ALLOW, false));
         given(storageService.upload(any(), any(), any(), anyString()))
-            .willReturn("https://example.com/orphan.webp");
+            .willReturn(new StorageService.UploadResult("test/path.webp", "https://example.com/orphan.webp"));
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("image", minimalJpegResource());
@@ -336,7 +336,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of(), SafeSearchVerdict.ALLOW, false));
         given(storageService.upload(any(), any(), any(), anyString()))
-            .willReturn("https://example.com/under-quota.webp");
+            .willReturn(new StorageService.UploadResult("test/path.webp", "https://example.com/under-quota.webp"));
 
         for (int i = 0; i < visionQuotaConfig.getHourly() - 1; i++) {
             insertOrphanForUser(USER_B_ID, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10));
@@ -357,7 +357,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of(), SafeSearchVerdict.ALLOW, false));
         given(storageService.upload(any(), any(), any(), anyString()))
-            .willReturn("https://example.com/stale-window.webp");
+            .willReturn(new StorageService.UploadResult("test/path.webp", "https://example.com/stale-window.webp"));
 
         // Pile up hourly-limit photos created > 1h ago; the rolling hourly
         // window must skip them and accept a fresh upload. Daily/monthly
@@ -418,7 +418,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(ocrService.analyzeImage(any())).willReturn(new VisionAnalysisResult(
             java.util.List.of("LATERAL"), SafeSearchVerdict.QUEUE_FOR_ADMIN, false));
         given(storageService.upload(any(), any(), any(), anyString()))
-            .willReturn("https://example.com/queued.webp");
+            .willReturn(new StorageService.UploadResult("test/path.webp", "https://example.com/queued.webp"));
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("image", minimalJpegResource());
@@ -443,7 +443,7 @@ class PhotoUploadTest extends IntegrationTestBase {
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalA()));
 
         UUID photoId = UUID.randomUUID();
-        photoRepository.insert(photoId, GYM_MACHINE_ID, USER_A_ID, "https://example.com/deleteme.webp", false);
+        photoRepository.insert(photoId, GYM_MACHINE_ID, USER_A_ID, "https://example.com/deleteme.webp", "test/path.webp", false);
 
         ResponseEntity<Void> response = restTemplate.exchange(
             "/api/photos/" + photoId, HttpMethod.DELETE, bearerRequest(null), Void.class);
@@ -475,7 +475,7 @@ class PhotoUploadTest extends IntegrationTestBase {
     void deleteOtherPhotoFails() {
         // Insert photo owned by user A
         UUID photoId = UUID.randomUUID();
-        photoRepository.insert(photoId, GYM_MACHINE_ID, USER_A_ID, "https://example.com/usera.webp", false);
+        photoRepository.insert(photoId, GYM_MACHINE_ID, USER_A_ID, "https://example.com/usera.webp", "test/path.webp", false);
 
         // Authenticate as user B
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principalB()));

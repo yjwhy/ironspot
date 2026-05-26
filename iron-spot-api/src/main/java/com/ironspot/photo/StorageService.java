@@ -47,13 +47,24 @@ public class StorageService {
     // namespace collision with bound uploads.
     private static final String ORPHAN_PREFIX = "orphan";
 
-    public String upload(byte[] imageBytes, UUID gymMachineId, UUID userId, String filename) {
+    /**
+     * Security A3: upload returns BOTH the bucket-relative path and a
+     * freshly-minted signed URL. Callers persist the path to
+     * {@code machine_photos.storage_path} so a future short-TTL URL can be
+     * minted on response; the URL is still returned for backward compat
+     * with the {@code photo_url} column during the Phase 1 migration
+     * window (Phase 2 will switch response DTOs to the proxy URL).
+     */
+    public record UploadResult(String path, String signedUrl) {}
+
+    public UploadResult upload(byte[] imageBytes, UUID gymMachineId, UUID userId, String filename) {
         // Bound uploads keep the `<gymMachineId>/` prefix so existing public
         // URLs and the moderation cleanup job stay stable. Orphan uploads
         // land under `orphan/<userId>/` so the cleanup job can purge them by
         // uploader when a contribution is never finalised.
         String prefix = gymMachineId != null ? gymMachineId.toString() : ORPHAN_PREFIX + "/" + userId;
-        return uploadToPath(imageBytes, prefix + "/" + filename);
+        String path = prefix + "/" + filename;
+        return new UploadResult(path, uploadToPath(imageBytes, path));
     }
 
     /**
@@ -91,13 +102,24 @@ public class StorageService {
      * URL fit for {@code <Image source=…>} without further rewriting.
      */
     public String createSignedUrl(String path) {
+        return createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+    }
+
+    /**
+     * Security A3: TTL-parameterised overload for the photo proxy endpoint.
+     * The proxy mints short (default 5 min) URLs so an intercepted URL is
+     * useful only briefly. Long-TTL callers (upload-time persist into
+     * {@code photo_url} for backward compat) go through the no-arg form
+     * that uses {@link #SIGNED_URL_TTL_SECONDS}.
+     */
+    public String createSignedUrl(String path, int ttlSeconds) {
         Map<?, ?> response;
         try {
             response = webClient.post()
                 .uri(supabaseUrl + "/storage/v1/object/sign/" + BUCKET + "/" + path)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + serviceRoleKey)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .bodyValue(Map.of("expiresIn", SIGNED_URL_TTL_SECONDS))
+                .bodyValue(Map.of("expiresIn", ttlSeconds))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .block(Duration.ofSeconds(10));
