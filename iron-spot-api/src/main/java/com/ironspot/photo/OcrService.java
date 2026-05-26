@@ -96,8 +96,14 @@ public class OcrService {
             ))
         );
 
+        // Security A1/J3: pass the API key via x-goog-api-key header instead
+        // of the ?key= query string. Query-string credentials leak into
+        // WebClientResponseException messages, Sentry breadcrumbs, and
+        // intermediate proxy logs. The `fields` mask stays in the query
+        // string because it's not a credential.
         Map<?, ?> response = webClient.post()
-            .uri(VISION_URL + "?key=" + apiKey + "&fields=" + buildResponseFieldsMask(features))
+            .uri(VISION_URL + "?fields=" + buildResponseFieldsMask(features))
+            .header("x-goog-api-key", apiKey)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
@@ -178,6 +184,13 @@ public class OcrService {
         return PiiDetection.hasPii(faces, totalPixels);
     }
 
+    // Security B10: 25 megapixel ceiling. A 2 MB PNG can decode to
+    // 100,000 × 100,000 pixels (a "pixel bomb") which would OOM the JVM
+    // heap if any later code path (Vision retry, face-area overlay)
+    // actually allocated a buffer. PiiDetection only uses the count
+    // arithmetically so we cap at the dimensions probe.
+    private static final long MAX_PIXEL_COUNT = 25_000_000L;
+
     private int readImagePixelCount(byte[] imageBytes) {
         try (ImageInputStream stream = new MemoryCacheImageInputStream(new ByteArrayInputStream(imageBytes))) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(stream);
@@ -186,7 +199,13 @@ public class OcrService {
             try {
                 reader.setInput(stream);
                 long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
-                return pixels > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) pixels;
+                if (pixels > MAX_PIXEL_COUNT) {
+                    log.warn(
+                        "Refusing pixel-bomb candidate: declared dimensions yield {} pixels (cap {})",
+                        pixels, MAX_PIXEL_COUNT);
+                    return Integer.MAX_VALUE;
+                }
+                return (int) pixels;
             } finally {
                 reader.dispose();
             }

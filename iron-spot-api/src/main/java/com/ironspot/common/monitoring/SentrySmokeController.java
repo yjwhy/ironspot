@@ -1,6 +1,7 @@
 package com.ironspot.common.monitoring;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +22,10 @@ import java.time.Instant;
 @RestController
 @RequestMapping("/api/_admin/sentry-smoke")
 @ConditionalOnProperty(prefix = "ironspot.sentry.smoke", name = "enabled", havingValue = "true", matchIfMissing = false)
+// Security A9: gate on ADMIN role. JWT-auth alone is not enough — any
+// authenticated user could otherwise spam Sentry with fake errors that
+// pollute alert dashboards during the smoke window.
+@PreAuthorize("hasRole('ADMIN')")
 public class SentrySmokeController {
 
     @PostMapping

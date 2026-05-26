@@ -6,9 +6,12 @@ import com.ironspot.admin.dto.PromoteContributionResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +37,8 @@ import java.util.UUID;
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 @Tag(name = "admin-contributions", description = "Admin moderation surface for pending machine contributions")
+// Security A8: @Validated enables @Min/@Max on @RequestParam.
+@Validated
 public class AdminPendingContributionController {
 
     private final AdminPendingContributionService service;
@@ -41,7 +46,7 @@ public class AdminPendingContributionController {
     @GetMapping("/contributions/pending")
     @Operation(summary = "List pending machine contributions awaiting admin review")
     public List<AdminPendingContribution> listPending(
-        @RequestParam(defaultValue = "50") int limit
+        @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit
     ) {
         return service.list(limit);
     }
