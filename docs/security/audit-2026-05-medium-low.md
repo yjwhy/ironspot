@@ -175,7 +175,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 ## §E. APP MEDIUM (7)
 
-### 🟡 E1. Recent-searches MMKV stores raw queries in plaintext
+### ✅ E1. Recent-searches MMKV stores raw queries in plaintext
 
 `src/features/search/lib/recent-storage.ts:9-39`. Same plaintext-on-disk concern as #14. **Fix:** move to expo-secure-store, or normalise + truncate before persisting + add TTL. **Effort:** S.
 
