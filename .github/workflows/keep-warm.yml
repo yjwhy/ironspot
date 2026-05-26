@@ -11,8 +11,11 @@ on:
     - cron: '*/10 * * * *'
   workflow_dispatch:
 
-permissions:
-  contents: read
+# Security L4: empty permissions block — this workflow just pings an
+# unauthenticated /actuator/health endpoint. It has zero need for the
+# default GITHUB_TOKEN scope (the runner still gets a token but it can
+# do nothing). Closes the unused-token attack surface.
+permissions: {}
 
 concurrency:
   group: keep-warm
@@ -26,5 +29,11 @@ jobs:
     steps:
       - name: curl health endpoint
         run: |
-          curl --silent --show-error --fail --max-time 30 \
+          # Security L4: `--max-redirs 0` blocks open-redirect-into-SSRF
+          # if the upstream ever 301s to an attacker-controlled host
+          # (low risk for our static Render URL, but free defence). The
+          # `-H "Host: ..."` would catch DNS hijack scenarios but Render
+          # already terminates TLS for *.onrender.com so we lean on the
+          # certificate validation here.
+          curl --silent --show-error --fail --max-time 30 --max-redirs 0 \
             https://ironspot.onrender.com/actuator/health
