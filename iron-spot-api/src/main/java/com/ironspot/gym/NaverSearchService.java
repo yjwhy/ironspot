@@ -124,7 +124,7 @@ public class NaverSearchService {
         }
 
         String id = extractPlaceId(asString(item.get("link")))
-            .orElseGet(() -> synthesizeId(dedupKeyPart, name));
+            .orElseGet(() -> synthesizeId(dedupKeyPart, name, latitude, longitude));
 
         String phone = blankToNull(asString(item.get("telephone")));
         String category = blankToNull(asString(item.get("category")));
@@ -185,10 +185,20 @@ public class NaverSearchService {
         return m.find() ? Optional.of(m.group(1)) : Optional.empty();
     }
 
-    private static String synthesizeId(String roadAddress, String name) {
+    /**
+     * Security A11: include lat/lng (5 decimal places ≈ 1.1m) in the synthetic
+     * id digest so two chain branches that share a road address + name but sit
+     * at different coordinates (e.g. 강남구 vs 송파구 outlets of the same
+     * franchise) don't silently merge onto one gym row. Genuine duplicates at
+     * the same location still collapse because their coords round identically.
+     */
+    private static String synthesizeId(String roadAddress, String name, double latitude, double longitude) {
         try {
             MessageDigest sha = MessageDigest.getInstance("SHA-256");
-            byte[] digest = sha.digest((roadAddress + "|" + name).getBytes(StandardCharsets.UTF_8));
+            String input = roadAddress + "|" + name + "|"
+                + String.format(java.util.Locale.ROOT, "%.5f", latitude) + "|"
+                + String.format(java.util.Locale.ROOT, "%.5f", longitude);
+            byte[] digest = sha.digest(input.getBytes(StandardCharsets.UTF_8));
             return "synthetic_" + HexFormat.of().formatHex(digest).substring(0, 16);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 unavailable", e);

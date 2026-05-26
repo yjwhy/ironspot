@@ -3,6 +3,7 @@ package com.ironspot.gym;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.common.log.LogIds;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,7 +73,7 @@ public class NaverSearchQuotaService {
         int used = counter.incrementAndGet();
         if (used > dailyCap) {
             log.warn("Naver search daily cap exceeded for user={} (used={}, cap={})",
-                userId, used, dailyCap);
+                LogIds.redact(userId), used, dailyCap);
             throw new BusinessException(
                 "오늘 사용할 수 있는 검색 횟수를 모두 사용했어요. 내일 다시 시도해주세요.",
                 HttpStatus.TOO_MANY_REQUESTS);

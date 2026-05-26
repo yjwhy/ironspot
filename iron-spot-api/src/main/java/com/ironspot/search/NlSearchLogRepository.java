@@ -37,9 +37,17 @@ public class NlSearchLogRepository {
             .execute();
     }
 
+    /**
+     * Security B8: on account deletion the user row is anonymised, but the
+     * nl_search_log retention sweep (V11) still leaves raw_query intact for
+     * up to 30 days. Strip raw_query at the same time as we null user_id so
+     * a deleted user's queries can never re-link to them via timing or
+     * content even before the sweep runs.
+     */
     public int anonymise(UUID userId) {
         return dsl.update(NL_SEARCH_LOG)
             .setNull(NL_SEARCH_LOG.USER_ID)
+            .set(NL_SEARCH_LOG.RAW_QUERY, "[redacted-on-delete]")
             .where(NL_SEARCH_LOG.USER_ID.eq(userId))
             .execute();
     }

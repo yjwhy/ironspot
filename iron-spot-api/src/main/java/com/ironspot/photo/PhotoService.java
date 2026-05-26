@@ -1,6 +1,7 @@
 package com.ironspot.photo;
 
 import com.ironspot.common.exception.BusinessException;
+import com.ironspot.common.log.LogIds;
 import com.ironspot.common.notification.AdminNotificationService;
 import com.ironspot.photo.dto.MachineTemplateSuggestion;
 import com.ironspot.photo.dto.OcrOnlyResponse;
@@ -338,7 +339,7 @@ public class PhotoService {
         int recentHourly = photoRepository.countVisionCallsForUserSince(userUuid, now.minus(HOURLY_WINDOW));
         if (recentHourly >= visionQuotaConfig.getHourly()) {
             log.warn("Vision quota tripped (hourly) — userId={} recent={} limit={}",
-                userId, recentHourly, visionQuotaConfig.getHourly());
+                LogIds.redact(userId), recentHourly, visionQuotaConfig.getHourly());
             throw new BusinessException(
                 "시간당 업로드 한도(" + visionQuotaConfig.getHourly() + "개)를 초과했어요. 잠시 후 다시 시도해주세요.",
                 HttpStatus.TOO_MANY_REQUESTS);
@@ -347,7 +348,7 @@ public class PhotoService {
         int recentDaily = photoRepository.countVisionCallsForUserSince(userUuid, now.minus(DAILY_WINDOW));
         if (recentDaily >= visionQuotaConfig.getDaily()) {
             log.warn("Vision quota tripped (daily) — userId={} recent={} limit={}",
-                userId, recentDaily, visionQuotaConfig.getDaily());
+                LogIds.redact(userId), recentDaily, visionQuotaConfig.getDaily());
             throw new BusinessException(
                 "일일 업로드 한도(" + visionQuotaConfig.getDaily() + "개)를 초과했어요. 내일 다시 시도해주세요.",
                 HttpStatus.TOO_MANY_REQUESTS);
@@ -356,7 +357,7 @@ public class PhotoService {
         int recentMonthly = photoRepository.countVisionCallsForUserSince(userUuid, now.minus(MONTHLY_WINDOW));
         if (recentMonthly >= visionQuotaConfig.getMonthly()) {
             log.warn("Vision quota tripped (monthly) — userId={} recent={} limit={}",
-                userId, recentMonthly, visionQuotaConfig.getMonthly());
+                LogIds.redact(userId), recentMonthly, visionQuotaConfig.getMonthly());
             throw new BusinessException(
                 "월간 업로드 한도(" + visionQuotaConfig.getMonthly() + "개)를 초과했어요.",
                 HttpStatus.TOO_MANY_REQUESTS);
