@@ -35,10 +35,16 @@ export const uuidSchema = z.string().regex(UUID_PATTERN, 'invalid uuid');
  * and stripped of control codepoints by the regex — the same bounds as
  * server-side {@code Location.NamedPlace.MAX_NAME_LENGTH}.
  */
+// Security F4: NFC-normalise + strip combining marks before the regex
+// runs. The class `[\p{L}\p{N} .,()\-]` already excludes \p{M}, but a
+// pre-composed glyph that decomposes to base + mark would still squeak
+// through (regex engine sees one codepoint). Normalising to NFC and then
+// stripping any residual \p{M} closes the homograph / spoofing gap.
 export const shortLabelSchema = z
   .string()
   .max(60)
-  .regex(/^[\p{L}\p{N} .,()\-]+$/u, 'unsupported character');
+  .transform((s) => s.normalize('NFC').replace(/\p{M}+/gu, ''))
+  .pipe(z.string().regex(/^[\p{L}\p{N} .,()\-]+$/u, 'unsupported character'));
 
 export const gymRouteParams = z.object({ id: uuidSchema });
 

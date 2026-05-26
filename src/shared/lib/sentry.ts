@@ -1,19 +1,25 @@
 import * as Sentry from '@sentry/react-native';
+import { z } from 'zod';
 
 import { scrubBreadcrumb, scrubErrorEvent } from './sentry-scrub';
 
-// Empty / undefined DSN → init skipped entirely so dev environments emit zero Sentry traffic
-// without manual setup. Mirrors the server-side SentryConfig contract. Kept out of env.ts's
-// Zod schema because that schema throws at module load for missing required vars — DSN is
-// optional by design (fail-open) and must not gate app boot.
-//
-// Read as `unknown` then narrowed: in CI the gitignored expo-env.d.ts is absent so
-// process.env.X resolves to `any`. Assigning `any → unknown` is safe (no-unsafe-assignment
-// rule treats `unknown` as the safe sink) and the typeof guard then narrows to string.
-// A bare `as string | undefined` cast would also work in CI but `eslint --fix` strips it
-// locally as "unnecessary" thanks to expo-env.d.ts, undoing the fix on every pre-commit.
+// Security E6: validate DSN with Zod at module load. Inline (rather than
+// env.ts) because env.ts uses `process.env.X` (typed `any` in CI without
+// expo-env.d.ts) and adding an optional Zod field there would trip
+// `no-unsafe-assignment` in the safeParse object literal. The narrowing
+// pattern below has been the file's convention since Task 31; the
+// addition is the `.url()` validation that fails the build (well, the
+// module load) on a malformed DSN rather than crashing Sentry.init at
+// the first capture.
 const rawDSN: unknown = process.env.EXPO_PUBLIC_SENTRY_DSN;
-const DSN = typeof rawDSN === 'string' && rawDSN.length > 0 ? rawDSN : undefined;
+const dsnInput = typeof rawDSN === 'string' && rawDSN.length > 0 ? rawDSN : undefined;
+const dsnParse = z.string().url().optional().safeParse(dsnInput);
+if (!dsnParse.success) {
+  throw new Error(
+    `Invalid EXPO_PUBLIC_SENTRY_DSN: ${dsnParse.error.errors.map((e) => e.message).join(', ')}`,
+  );
+}
+const DSN = dsnParse.data;
 
 let initialised = false;
 
