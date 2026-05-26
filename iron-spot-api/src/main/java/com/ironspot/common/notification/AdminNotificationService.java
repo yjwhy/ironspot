@@ -1,5 +1,6 @@
 package com.ironspot.common.notification;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.scheduler.Schedulers;
 
+import java.net.URI;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,6 +21,34 @@ public class AdminNotificationService {
 
     @Value("${ironspot.slack.admin-webhook-url:}")
     private String webhookUrl;
+
+    /**
+     * Security B9: validate the webhook URL at startup so a typo or
+     * env-var poisoning cannot redirect admin alerts (containing photo
+     * IDs, user IDs, ban events) to an attacker-controlled host. Empty
+     * is fine — the post() path already noops when blank.
+     */
+    @PostConstruct
+    void validateWebhookHost() {
+        if (webhookUrl == null || webhookUrl.isBlank()) return;
+        URI uri;
+        try {
+            uri = URI.create(webhookUrl);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException(
+                "SLACK_ADMIN_WEBHOOK_URL must be a valid URI", e);
+        }
+        if (!"https".equals(uri.getScheme())) {
+            throw new IllegalStateException(
+                "SLACK_ADMIN_WEBHOOK_URL must use https (got " + uri.getScheme() + ")");
+        }
+        if (!"hooks.slack.com".equals(uri.getHost())) {
+            throw new IllegalStateException(
+                "SLACK_ADMIN_WEBHOOK_URL host must be hooks.slack.com "
+                    + "(got " + uri.getHost() + " — refusing to send admin "
+                    + "notifications to a non-Slack host)");
+        }
+    }
 
     public void notifyUrgentReport(UUID photoId, UUID reporterId, String reason) {
         post(":rotating_light: URGENT report — photo `" + photoId + "` by reporter `" + reporterId

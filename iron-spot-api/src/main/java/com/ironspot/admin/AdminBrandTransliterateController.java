@@ -5,6 +5,7 @@ import com.ironspot.admin.dto.TransliterateBrandResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,7 +39,13 @@ public class AdminBrandTransliterateController {
         @ApiResponse(responseCode = "502", description = "LLM upstream error"),
         @ApiResponse(responseCode = "503", description = "Gemini API key not configured")
     })
-    public TransliterateBrandResponse transliterate(@RequestBody TransliterateBrandRequest request) {
+    public TransliterateBrandResponse transliterate(
+        @Valid @RequestBody TransliterateBrandRequest request
+    ) {
+        // Security A7: @Valid forces the DTO's @Size(max=80) on each name
+        // field to fire at the controller boundary rather than after the
+        // service's sanitiseInputString. A 10 MB payload now 400s before
+        // reaching Gemini or the rate cap.
         return service.transliterate(request);
     }
 }

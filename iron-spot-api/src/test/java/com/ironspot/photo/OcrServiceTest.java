@@ -41,6 +41,9 @@ class OcrServiceTest {
         ReflectionTestUtils.setField(ocrService, "apiKey", "test-key");
         when(webClient.post()).thenReturn(requestBodyUriSpec);
         when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+        // Security A1/J3: production now passes the Vision API key via the
+        // x-goog-api-key header instead of the ?key= query string.
+        when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
         when(requestBodySpec.contentType(any())).thenReturn(requestBodySpec);
         when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);

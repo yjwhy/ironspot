@@ -56,7 +56,12 @@ class SentrySmokeControllerIT extends IntegrationTestBase {
     }
 
     private UserPrincipal principal() {
-        return UserPrincipal.builder().userId(USER_ID).email("sentry-smoke@example.com").build();
+        // Security A7: SentrySmokeController is admin-gated.
+        return UserPrincipal.builder()
+            .userId(USER_ID)
+            .email("sentry-smoke@example.com")
+            .role("admin")
+            .build();
     }
 
     private HttpEntity<Void> bearerRequest() {

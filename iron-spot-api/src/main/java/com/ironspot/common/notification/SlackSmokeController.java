@@ -3,6 +3,7 @@ package com.ironspot.common.notification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +21,10 @@ import java.util.UUID;
 @RequestMapping("/api/_admin/slack-smoke")
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "ironspot.slack.smoke", name = "enabled", havingValue = "true", matchIfMissing = false)
+// Security A9: gate every endpoint on ADMIN role. JWT-auth alone is not
+// enough — during the smoke window any authenticated user could otherwise
+// fire Slack alerts impersonating moderation events.
+@PreAuthorize("hasRole('ADMIN')")
 public class SlackSmokeController {
 
     // Sentinel UUIDs — chosen with only the last two hex digits non-zero so they are visually

@@ -9,10 +9,13 @@ import com.ironspot.admin.dto.NlSearchAnalyticsResponse;
 import com.ironspot.auth.UserPrincipal;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +32,10 @@ import java.util.UUID;
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 @Tag(name = "admin", description = "Admin-only moderation surface")
+// Security A8: @Validated on the controller is required for @Min / @Max
+// on @RequestParam method arguments to fire. Without it the annotations
+// are silently ignored.
+@Validated
 public class AdminController {
 
     private final AdminService adminService;
@@ -36,7 +43,7 @@ public class AdminController {
     @GetMapping("/reports")
     public List<AdminReportResponse> listReports(
         @RequestParam(defaultValue = "pending") String status,
-        @RequestParam(defaultValue = "50") int limit
+        @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit
     ) {
         return adminService.listReports(status, limit);
     }
@@ -53,7 +60,7 @@ public class AdminController {
     @GetMapping("/photos")
     public List<AdminQueuePhotoSummary> listPendingPhotos(
         @RequestParam(defaultValue = "pending_review") String status,
-        @RequestParam(defaultValue = "50") int limit
+        @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit
     ) {
         return adminService.listPendingPhotos(limit);
     }
@@ -66,7 +73,7 @@ public class AdminController {
      */
     @GetMapping("/queue")
     public List<com.ironspot.admin.dto.AdminQueueItem> listPendingQueue(
-        @RequestParam(defaultValue = "50") int limit
+        @RequestParam(defaultValue = "50") @Min(1) @Max(200) int limit
     ) {
         return adminService.listPendingQueue(limit);
     }

@@ -113,7 +113,14 @@ class SlackSmokeControllerIT extends IntegrationTestBase {
     }
 
     private UserPrincipal principal() {
-        return UserPrincipal.builder().userId(USER_ID).email("smoke@example.com").build();
+        // Security A7: SlackSmokeController is admin-gated; tests must
+        // send an admin principal so @PreAuthorize("hasRole('ADMIN')")
+        // doesn't 403 every smoke call.
+        return UserPrincipal.builder()
+            .userId(USER_ID)
+            .email("smoke@example.com")
+            .role("admin")
+            .build();
     }
 
     private HttpEntity<Void> bearerRequest() {
