@@ -8,6 +8,28 @@ import { supabase } from './supabase';
 // ever duplicated in the bundle (e.g. via a transitive dep pin).
 export { HTTPError, TimeoutError };
 
+/**
+ * Security E4: thrown by {@link apiClient} when the caller had a valid token
+ * at request time but the post-401 refresh attempt did NOT produce a new
+ * session (`supabase.auth.getSession()` still returns null after refresh).
+ *
+ * <p>This is distinct from a plain 401 returned to a guest call (no token
+ * at all) — those keep throwing the raw {@link HTTPError} because the
+ * remedy is "prompt to sign in", not "sign out the existing user". Top-
+ * level error handlers should check `instanceof SessionExpiredError` first
+ * and call `supabase.auth.signOut()` plus route to login, so the user
+ * doesn't see a generic "검색에 실패했어요" toast when the actual cause is
+ * an expired/revoked refresh token.
+ */
+export class SessionExpiredError extends Error {
+  readonly response: Response;
+  constructor(message: string, response: Response) {
+    super(message);
+    this.name = 'SessionExpiredError';
+    this.response = response;
+  }
+}
+
 // 30s covers the slowest legitimate path on a freshly-booted Render
 // container: large multipart upload (compressed image up to 2 MB) +
 // first-ever Vision call on a cold WebClient pool (up to ~15s for
@@ -77,7 +99,16 @@ export async function apiClient<T>(url: string, options?: RequestInit): Promise<
       const { data: refreshed } = await supabase.auth.getSession();
       const newToken = refreshed.session?.access_token;
       if (!newToken) {
-        throw err;
+        // Security E4: the caller HAD a token, the server said 401, the
+        // refresh attempt produced no new session. That's the
+        // "expired-during-use" path — distinct from the "guest with no
+        // token" path above. Throw a typed error so top-level handlers
+        // can `signOut()` and route to login instead of toasting a
+        // generic failure message.
+        throw new SessionExpiredError(
+          'Session refresh produced no new token after 401',
+          err.response,
+        );
       }
       headers.set('Authorization', `Bearer ${newToken}`);
       return await parseResponse<T>(_ky(sanitisedUrl, { ...kyOptions, headers }));
