@@ -1,5 +1,11 @@
 export const AUTH_REDIRECT_URL = 'ironspot://auth/callback';
 
+// Naver "네이버 아이디로 로그인" deep link. Distinct path from the Supabase
+// AUTH_REDIRECT_URL so parseNaverCallback's origin check never overlaps with
+// the Supabase parser. This exact value must be registered as the Callback URL
+// in the Naver Developers console.
+export const NAVER_REDIRECT_URL = 'ironspot://auth/naver';
+
 // Legal policy URLs hosted via GitHub Pages (docs/legal/ → Pages workflow).
 // Pinned here for reuse by LoginScreen consent disclosure + any future surface
 // (Settings, sign-up flow follow-ups) that needs to deep-link the operator
