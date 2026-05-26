@@ -25,6 +25,15 @@ permissions:
   contents: read
   pull-requests: write
 
+# Security L1: this workflow is split into two jobs. The `eval` job is the
+# only one that needs GROQ_API_KEY + GEMINI_API_KEY in its environment.
+# The `report` job runs strictly after eval (`needs: eval`) and has no
+# secrets in scope — it just reads the failures.json artifact that eval
+# produced and posts the PR comment + uploads the public-facing
+# `llm-eval-failures` artifact. A future refactor that accidentally
+# promotes step-level env to job level cannot leak the secrets into the
+# artifact-upload + PR-comment paths because they live in a separate job.
+
 jobs:
   eval:
     runs-on: ubuntu-latest
@@ -33,6 +42,10 @@ jobs:
     # exactly 10m and was killed mid-suite. 20m gives comfortable headroom while
     # still capping a runaway (e.g., Groq RATE_LIMIT cascading 60s back-offs).
     timeout-minutes: 20
+    # Job-scoped outputs: `report` needs to know whether `eval` failed so it can
+    # decide whether to post the PR comment. We can't rely on `needs.eval.result`
+    # alone because we use `if: always()` on the report job to handle the
+    # post-failure path.
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -66,7 +79,9 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      - name: Upload failures.json
+      # Handoff artifact for the `report` job. Always uploads (even on test
+      # failure) so the report job has something to render.
+      - name: Upload failures.json (handoff to report job)
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -75,11 +90,29 @@ jobs:
           retention-days: 90
           if-no-files-found: ignore
 
+  report:
+    # No secrets injected here. The artifact + PR comment surface lives in
+    # this isolated job so a future refactor cannot accidentally leak GROQ
+    # or GEMINI keys into the public-facing artifact path.
+    runs-on: ubuntu-latest
+    needs: eval
+    if: always() && github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download failures.json from eval job
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: llm-eval-failures
+          path: artifact
+        continue-on-error: true
+
       - name: Post PR comment on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: needs.eval.result == 'failure'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
-          FAILURES_PATH: iron-spot-api/build/reports/eval/failures.json
+          FAILURES_PATH: artifact/failures.json
         with:
           script: |
             const fs = require('fs');

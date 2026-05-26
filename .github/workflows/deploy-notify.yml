@@ -20,6 +20,13 @@ concurrency:
 permissions:
   contents: read
 
+# Security L2: every value below COMMIT_MSG, ACTOR, and REPO is
+# **attacker-controllable** in principle. COMMIT_MSG comes from the
+# pusher's git commit, ACTOR is the GitHub login (could in theory be a
+# compromised account), REPO is fixed but interpolated for clarity. All
+# downstream Slack payload assembly MUST go through `jq -nc --arg name
+# "$VAR"` so jq escapes the values; raw `"$VAR"` inside a JSON literal
+# would be a shell + JSON injection sink.
 env:
   RENDER_SERVICE_ID: srv-d81cdkd0lvsc7399jdh0
   WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK_URL }}
@@ -37,6 +44,12 @@ jobs:
     steps:
       - name: Post "Deploy triggered"
         run: |
+          # Security L2: every --arg below is attacker-controllable. NEVER
+          # change "$VAR" into a bare ${VAR} inside the JSON literal —
+          # that would be a shell + JSON injection sink. jq's --arg
+          # handles quoting + escaping; the literal payload only ever
+          # references $msg / $sha / $actor / $repo, never the raw env
+          # var inside the jq expression.
           payload=$(jq -nc \
             --arg msg "$COMMIT_MSG" \
             --arg sha "$COMMIT_SHA" \
@@ -147,6 +160,10 @@ jobs:
           elapsed=${ELAPSED:-0}
           mins=$(( elapsed / 60 ))
           secs=$(( elapsed % 60 ))
+          # Security L2: same invariant as the "Deploy triggered" step
+          # above — every value is interpolated via jq --arg so neither
+          # the icon nor verb (derived from $RESULT, which comes from
+          # the Render API response body) can break out of the JSON.
           payload=$(jq -nc \
             --arg icon "$icon" \
             --arg verb "$verb" \
