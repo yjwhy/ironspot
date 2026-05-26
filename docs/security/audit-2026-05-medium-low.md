@@ -39,7 +39,7 @@ Remaining by effort: ~12 × M (design decisions or refactors), 2 × L (A3 Storag
 
 `UploadRateGate.resolveIp` (shared by `GlobalRateLimitFilter`, etc.) takes the leftmost X-Forwarded-For without validating that the immediate remote address is Render's proxy. A client setting the header to a rotating value bypasses per-IP RPM caps. **Fix:** trust only when remote addr matches Render's proxy CIDR list, or use Spring's `ForwardedHeaderFilter` with `trustedProxies`. **Effort:** M.
 
-### 🟡 A3 (Phase 1 ✅, Phase 2 pending). Signed Storage URL stored verbatim in DB
+### 🟡 A3 (Phase 1 ✅, Phase 2a ✅, Phase 2b pending). Signed Storage URL stored verbatim in DB
 
 `StorageService.upload` returns a 365-day signed URL which is persisted in `machine_photos.photo_url`. A DB leak / backup dump / Sentry capture hands over a year-long bearer credential per photo. **Fix:** store only the bucket-relative path; mint a short-TTL (15-60 min) signed URL at response time. **Effort:** L.
 
@@ -95,7 +95,7 @@ Caffeine in-process means Render redeploy / cold restart wipes all windows. **Fi
 
 `PhotoService:340,349,358`, `NaverSearchQuotaService:74`, `UploadRateGate:76`, `GlobalRateLimitFilter:97`. PIPA conservatively treats account identifiers as personal data. **Fix:** truncate to first 8 chars or HMAC with daily-rotating pepper. **Effort:** S.
 
-### 🟢 B4. `matchesGymName` substring too permissive
+### ✅ B4. `matchesGymName` substring too permissive
 
 `BusinessRegistrationVerifier.java:126-132`. `a.contains(b) || b.contains(a)` lets a 사업자 with short 상호 `"강남"` claim ownership of any gym containing `"강남"`. **Fix:** token-set Jaccard ≥ 0.7 after normalisation, or fall to Disputed. **Effort:** M.
 
@@ -155,7 +155,7 @@ Polymorphic via `target_type` but no referential integrity. **Fix:** trigger-enf
 
 Supabase Auth enforces in `auth.users`, but the public mirror can drift. **Fix:** `CREATE UNIQUE INDEX users_email_active_uniq ON users(lower(email)) WHERE deleted_at IS NULL`. **Effort:** S.
 
-### 🟢 D3. `vision_cache` has no DB-side expiry CHECK
+### ✅ D3. `vision_cache` has no DB-side expiry CHECK
 
 Retention is purely Java-side; if the job fails silently rows live forever. **Fix:** `pg_cron` extension or trigger as a backstop. **Effort:** M.
 
@@ -183,7 +183,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 `src/shared/hooks/useKeepBackendWarm.ts:30-33`. Raw fetch against `${API_URL}/actuator/health` skips auth-injection, scrubber, and retry policy. **Fix:** route through helper, gate on `useNetworkStatus`, add jittered backoff. **Effort:** S.
 
-### 🟡 E3. OAuth callback parser doesn't verify origin
+### ✅ E3. OAuth callback parser doesn't verify origin
 
 `parseAuthCallback.ts:23-44` extracts `code` from any URL without verifying scheme/host match. PKCE keeps this safe today, but the parser is the only validation point. **Fix:** reject when `protocol + host` differs from `AUTH_REDIRECT_URL`. **Effort:** S.
 
