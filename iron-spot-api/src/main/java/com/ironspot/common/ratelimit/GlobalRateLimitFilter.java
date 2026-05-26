@@ -2,7 +2,6 @@ package com.ironspot.common.ratelimit;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.ironspot.photo.UploadRateGate;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -60,11 +59,14 @@ public class GlobalRateLimitFilter extends OncePerRequestFilter {
 
     private final int rpmCap;
     private final Cache<String, AtomicInteger> ipCounters;
+    private final ClientIpResolver clientIpResolver;
 
     public GlobalRateLimitFilter(
-        @Value("${ironspot.ratelimit.global-rpm-cap-per-ip:200}") int rpmCap
+        @Value("${ironspot.ratelimit.global-rpm-cap-per-ip:200}") int rpmCap,
+        ClientIpResolver clientIpResolver
     ) {
         this.rpmCap = rpmCap;
+        this.clientIpResolver = clientIpResolver;
         this.ipCounters = Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofSeconds(60))
             .maximumSize(50_000)
@@ -89,7 +91,7 @@ public class GlobalRateLimitFilter extends OncePerRequestFilter {
         HttpServletResponse response,
         FilterChain chain
     ) throws ServletException, IOException {
-        String ip = UploadRateGate.resolveIp(request);
+        String ip = clientIpResolver.resolve(request);
         AtomicInteger counter = ipCounters.get(ip, k -> new AtomicInteger(0));
         int used = counter.incrementAndGet();
         if (used > rpmCap) {
