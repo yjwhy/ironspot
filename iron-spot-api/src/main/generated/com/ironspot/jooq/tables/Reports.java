@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
@@ -226,6 +227,13 @@ public class Reports extends TableImpl<Record> {
             _reportsUserIdFkey = new UsersPath(this, Keys.REPORTS__REPORTS_USER_ID_FKEY, null);
 
         return _reportsUserIdFkey;
+    }
+
+    @Override
+    public List<Check<Record>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("reports_detail_length_ck"), "(((detail IS NULL) OR (char_length(detail) <= 500)))", true)
+        );
     }
 
     @Override

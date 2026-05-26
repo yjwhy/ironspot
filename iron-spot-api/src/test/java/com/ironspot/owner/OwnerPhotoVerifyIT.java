@@ -66,10 +66,10 @@ class OwnerPhotoVerifyIT extends IntegrationTestBase {
         // OWNER owns GYM_ID; OTHER_OWNER owns OTHER_GYM_ID
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            GYM_ID, UUID.fromString(OWNER_ID), "h-v");
+            GYM_ID, UUID.fromString(OWNER_ID), "00000000000000000000000000000000000000000000000000000000000000e0");
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
-            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "h-v-other");
+            OTHER_GYM_ID, UUID.fromString(OTHER_OWNER_ID), "00000000000000000000000000000000000000000000000000000000000000e1");
     }
 
     @AfterEach
