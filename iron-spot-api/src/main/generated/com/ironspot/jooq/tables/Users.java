@@ -127,6 +127,11 @@ public class Users extends TableImpl<Record> {
      */
     public final TableField<Record, OffsetDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
+    /**
+     * The column <code>public.users.deletion_finalized_at</code>.
+     */
+    public final TableField<Record, OffsetDateTime> DELETION_FINALIZED_AT = createField(DSL.name("deletion_finalized_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
+
     private Users(Name alias, Table<Record> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -196,7 +201,7 @@ public class Users extends TableImpl<Record> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IDX_USERS_CONSENT_VERSION, Indexes.IDX_USERS_ROLE);
+        return Arrays.asList(Indexes.IDX_USERS_CONSENT_VERSION, Indexes.IDX_USERS_PENDING_DELETION, Indexes.IDX_USERS_ROLE);
     }
 
     @Override

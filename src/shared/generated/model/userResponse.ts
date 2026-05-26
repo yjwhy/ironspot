@@ -17,4 +17,6 @@ export interface UserResponse {
   consentAcceptedAt?: string;
   /** Policy bundle version the user accepted. Null if not yet recorded. */
   consentVersion?: string;
+  /** Pending-deletion request timestamp (ISO-8601). Null on active accounts. */
+  deletionRequestedAt?: string;
 }

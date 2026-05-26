@@ -420,3 +420,14 @@ CREATE INDEX IF NOT EXISTS idx_gym_owners_business_hash
 -- response. Backfill is a no-op for IT (fresh schema, no rows yet).
 ALTER TABLE machine_photos
     ADD COLUMN IF NOT EXISTS storage_path TEXT;
+
+-- Security A4 (V23 mirror): account-deletion grace window. New column +
+-- partial index for the finaliser sweep. Backfill is empty for IT
+-- (fresh schema, no rows).
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS deletion_finalized_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_users_pending_deletion
+    ON users (deleted_at)
+    WHERE deleted_at IS NOT NULL
+      AND deletion_finalized_at IS NULL;

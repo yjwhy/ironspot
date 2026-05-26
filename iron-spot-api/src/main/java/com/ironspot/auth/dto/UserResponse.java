@@ -26,4 +26,16 @@ public class UserResponse {
 
     @Schema(description = "Policy bundle version the user accepted. Null if not yet recorded.")
     private String consentVersion;
+
+    /**
+     * Security A4 — account-deletion grace window. When the user has
+     * requested deletion, this carries the ISO-8601 timestamp of the
+     * request; the row will be permanently anonymised 7 days after this
+     * timestamp by {@code AccountDeletionFinaliserJob}. The FE shows
+     * a "삭제 예정 — 취소하시겠어요?" banner whenever this is non-null
+     * and offers {@code POST /api/users/me/cancel-deletion} to revert.
+     * Null on active accounts.
+     */
+    @Schema(description = "Pending-deletion request timestamp (ISO-8601). Null on active accounts.")
+    private String deletionRequestedAt;
 }
