@@ -30,16 +30,25 @@ public class StorageService {
     private static final String BUCKET = "machine-photos";
 
     /**
-     * Security task #9: signed-URL TTL when the bucket is private.
+     * Security A3 Phase 2: signed-URL TTL was 365 days, which meant a DB
+     * leak / backup dump / Sentry capture handed over a year-long bearer
+     * credential per photo. The audit's prescription is "mint a short-
+     * TTL signed URL at response time"; the photo proxy endpoint
+     * ({@code /api/photos/{id}/content}) is the long-term mint surface
+     * and already uses a 5-minute TTL for redirects.
      *
-     * <p>365 days keeps existing photos viewable for a long time without a
-     * refresh job. Supabase enforces no upper cap on expiresIn so this is
-     * comfortably within bounds. When this TTL eventually elapses the URL
-     * stops working and the photo will need a re-mint; until we add a
-     * refresh background job, the per-photo URL stays stable long enough
-     * to dwarf any realistic browse session.
+     * <p>Bring the default mint TTL down to 24 hours so the persisted
+     * {@code machine_photos.photo_url} column carries day-old URLs
+     * instead of year-old URLs — a 365× reduction in the attack window
+     * without forcing the RN client off direct-URL rendering. Phase 2b
+     * (follow-up PR) migrates RN to always hit the proxy endpoint so
+     * the persisted URL can be dropped entirely.
+     *
+     * <p>The proxy endpoint's redirect TTL (5 min, see
+     * {@code PhotoContentController.SIGNED_URL_TTL_SECONDS}) stays
+     * the floor — that's the URL the user's browser actually loads.
      */
-    private static final int SIGNED_URL_TTL_SECONDS = 365 * 24 * 60 * 60;
+    private static final int SIGNED_URL_TTL_SECONDS = 24 * 60 * 60;
     // Phase 5 item 11 slice 2: storage-path prefix for orphan uploads
     // (machine_photos.gym_machine_id IS NULL). Named constant so the reaper
     // (slice e) can search the same string without a typo silently missing
