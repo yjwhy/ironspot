@@ -179,7 +179,7 @@ Future "find all gyms by business" query does a full scan. **Fix:** `CREATE INDE
 
 `src/features/search/lib/recent-storage.ts:9-39`. Same plaintext-on-disk concern as #14. **Fix:** move to expo-secure-store, or normalise + truncate before persisting + add TTL. **Effort:** S.
 
-### 🟡 E2. `useKeepBackendWarm` bypasses api-client
+### ✅ E2. `useKeepBackendWarm` bypasses api-client
 
 `src/shared/hooks/useKeepBackendWarm.ts:30-33`. Raw fetch against `${API_URL}/actuator/health` skips auth-injection, scrubber, and retry policy. **Fix:** route through helper, gate on `useNetworkStatus`, add jittered backoff. **Effort:** S.
 
