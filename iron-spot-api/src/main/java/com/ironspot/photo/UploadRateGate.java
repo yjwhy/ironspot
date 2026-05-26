@@ -85,7 +85,7 @@ public class UploadRateGate {
      * else falls back to the socket remote address. Render's edge sets the
      * header on every request; local dev sees the loopback socket address.
      */
-    static String resolveIp(HttpServletRequest request) {
+    public static String resolveIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (StringUtils.hasText(forwarded)) {
             int comma = forwarded.indexOf(',');

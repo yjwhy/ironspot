@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import com.ironspot.common.ratelimit.GlobalRateLimitFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -22,6 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final GlobalRateLimitFilter globalRateLimitFilter;
 
     @Bean
     public AuthenticationEntryPoint unauthorizedEntryPoint() {
@@ -97,7 +99,15 @@ public class SecurityConfig {
                 // which conflicts with @PreAuthorize's 403 semantics.
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            // Security task #23: global per-IP RPM safety net. Both this and
+            // the JWT filter anchor on the built-in
+            // UsernamePasswordAuthenticationFilter (Spring Security can only
+            // order custom filters relative to its own registered ones).
+            // The rate-limit filter is added first so it runs first in the
+            // chain — a flood of malformed JWTs is 429'd before signature
+            // verification burns CPU.
+            .addFilterBefore(globalRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(jwtFilter, GlobalRateLimitFilter.class);
 
         return http.build();
     }
