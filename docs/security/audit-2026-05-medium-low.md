@@ -39,7 +39,7 @@ Remaining by effort: ~5 × S (L1, L2, L4, K4, F2 no-op verify), ~12 × M (design
 
 `UploadRateGate.resolveIp` (shared by `GlobalRateLimitFilter`, etc.) takes the leftmost X-Forwarded-For without validating that the immediate remote address is Render's proxy. A client setting the header to a rotating value bypasses per-IP RPM caps. **Fix:** trust only when remote addr matches Render's proxy CIDR list, or use Spring's `ForwardedHeaderFilter` with `trustedProxies`. **Effort:** M.
 
-### 🟡 A3 (Phase 1 ✅, Phase 2 pending). Signed Storage URL stored verbatim in DB
+### 🟡 A3 (Phase 1 ✅, Phase 2a ✅, Phase 2b pending). Signed Storage URL stored verbatim in DB
 
 `StorageService.upload` returns a 365-day signed URL which is persisted in `machine_photos.photo_url`. A DB leak / backup dump / Sentry capture hands over a year-long bearer credential per photo. **Fix:** store only the bucket-relative path; mint a short-TTL (15-60 min) signed URL at response time. **Effort:** L.
 
