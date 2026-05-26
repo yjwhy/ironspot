@@ -8,24 +8,24 @@ Severity: 🟡 MEDIUM, 🟢 LOW. Effort: S (≤1h), M (≤½ day), L (≤full da
 
 ## Progress (2026-05-26 session)
 
-**42 / 61 shipped.** PRs #236-#256 landed the autonomous quick wins.
+**67 / 75 shipped.** PRs #236-#256 landed the early quick wins; PRs #264-#281 (2026-05-26/27 session) closed the rest of the actionable backlog.
 
-| Section       | Total | Closed | Remaining           |
-| ------------- | ----- | ------ | ------------------- |
-| §A BE MEDIUM  | 12    | 7      | A2, A3, A4, A5, A12 |
-| §B BE LOW     | 10    | 6      | B1, B4, B6, B7      |
-| §C DB MEDIUM  | 4     | 3      | C4                  |
-| §D DB LOW     | 6     | 2      | D1, D2, D3, D4      |
-| §E APP MEDIUM | 7     | 3      | E1, E2, E3, E4      |
-| §F APP LOW    | 6     | 3      | F1, F2 (no-op), F6  |
-| §G AI MEDIUM  | 6     | 5      | G3                  |
-| §H AI LOW     | 5     | 5      | (all done)          |
-| §I PI MEDIUM  | 2     | 0      | I1, I2              |
-| §J PI LOW     | 3     | 1      | J1, J2              |
-| §K CI MEDIUM  | 7     | 5      | K3, K4              |
-| §L CI LOW     | 6     | 6      | (all done)          |
+| Section       | Total | Closed | Remaining             |
+| ------------- | ----- | ------ | --------------------- |
+| §A BE MEDIUM  | 12    | 11     | A3 (Phase 2c RN only) |
+| §B BE LOW     | 10    | 9      | B7 (🚫 won't-fix)     |
+| §C DB MEDIUM  | 4     | 4      | (all done)            |
+| §D DB LOW     | 6     | 4      | D1, D4 (deferred)     |
+| §E APP MEDIUM | 7     | 7      | (all done)            |
+| §F APP LOW    | 6     | 6      | (all done)            |
+| §G AI MEDIUM  | 6     | 6      | (all done)            |
+| §H AI LOW     | 5     | 5      | (all done)            |
+| §I PI MEDIUM  | 2     | 0      | I1, I2                |
+| §J PI LOW     | 3     | 2      | J2 (🚫 file absent)   |
+| §K CI MEDIUM  | 7     | 7      | (all done)            |
+| §L CI LOW     | 6     | 6      | (all done)            |
 
-Remaining by effort: ~12 × M (design decisions or refactors), 2 × L (A3 Storage TTL, B1 Redis migration). (Outstanding S items are now down to B6/B7-style judgement-call deferrals.)
+Genuinely-actionable remaining: **A3 Phase 2c RN migration** (needs simulator), **I1** (nl_search_log encryption — app-side AES-GCM planned), **I2** (PIPA consent ordering — verify LoginScreen gate first), **D1** (reports.target_id polymorphic FK). Closed-as-decided: B7 (🚫 UX info, not a real leak), J2 (🚫 referenced file doesn't exist), D4 (deferred — ENUM migration touches ~250 jOOQ sites for zero security delta).
 
 ---
 
@@ -39,7 +39,7 @@ Remaining by effort: ~12 × M (design decisions or refactors), 2 × L (A3 Storag
 
 `UploadRateGate.resolveIp` (shared by `GlobalRateLimitFilter`, etc.) takes the leftmost X-Forwarded-For without validating that the immediate remote address is Render's proxy. A client setting the header to a rotating value bypasses per-IP RPM caps. **Fix:** trust only when remote addr matches Render's proxy CIDR list, or use Spring's `ForwardedHeaderFilter` with `trustedProxies`. **Effort:** M.
 
-### 🟡 A3 (Phase 1 ✅, Phase 2a ✅, Phase 2b pending). Signed Storage URL stored verbatim in DB
+### 🟡 A3 (Phase 1/2a/2b/2c-BE ✅, Phase 2c RN pending). Signed Storage URL stored verbatim in DB
 
 `StorageService.upload` returns a 365-day signed URL which is persisted in `machine_photos.photo_url`. A DB leak / backup dump / Sentry capture hands over a year-long bearer credential per photo. **Fix:** store only the bucket-relative path; mint a short-TTL (15-60 min) signed URL at response time. **Effort:** L.
 
@@ -159,7 +159,7 @@ Supabase Auth enforces in `auth.users`, but the public mirror can drift. **Fix:*
 
 Retention is purely Java-side; if the job fails silently rows live forever. **Fix:** `pg_cron` extension or trigger as a backstop. **Effort:** M.
 
-### 🟢 D4. `users.role` could use ENUM instead of TEXT-with-CHECK
+### 🚫 D4 (deferred). `users.role` could use ENUM instead of TEXT-with-CHECK
 
 Hard typing vs. soft typing. **Fix:** `CREATE TYPE user_role AS ENUM (...)` + `ALTER COLUMN`. **Effort:** M.
 
@@ -303,7 +303,7 @@ Backup snapshot during the 30-day window persists every user's raw search text i
 
 `sentry-scrub.ts:76-83`. `yj***` uniquely identifies a tester pool member. **Fix:** mask to 1 char or HMAC the entire email. **Effort:** S.
 
-### 🟢 J2. Empty-result reporter retains raw query in heap 6min
+### 🚫 J2 (file absent). Empty-result reporter retains raw query in heap 6min
 
 `NlSearchEmptyResultReporter.java:55`. Heap dumps capture queries. **Fix:** key on SHA-256 of normalised query. **Effort:** S.
 
