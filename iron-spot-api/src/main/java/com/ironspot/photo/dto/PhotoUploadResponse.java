@@ -30,8 +30,4 @@ public record PhotoUploadResponse(
         description = "true if OCR text extraction succeeded and produced suggestions; false if OCR failed or produced no usable text"
     )
         boolean ocrSucceeded
-) {
-    public static String proxyPathFor(UUID photoId) {
-        return "/api/photos/" + photoId + "/content";
-    }
-}
+) {}

@@ -9,6 +9,8 @@
 export interface AdminQueuePhotoSummary {
   photoId: string;
   photoUrl: string;
+  /** Security A3 Phase 2c: relative photo-proxy path. Prefer over photoUrl. */
+  contentPath: string;
   pendingReportCount: number;
   oldestReportAt: string;
   topReason: string;

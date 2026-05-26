@@ -21,6 +21,7 @@ const apiPhoto: PhotoResponse = {
   gymMachineId: 'gm-1',
   userId: 'u1',
   photoUrl: 'https://example.com/photo.jpg',
+  contentPath: '/api/photos/p1/content',
   upvoteCount: 3,
   createdAt: '2026-01-01T00:00:00Z',
 };

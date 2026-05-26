@@ -11,6 +11,8 @@ export interface AdminPhotoSummary {
   gymMachineId: string;
   userId: string;
   photoUrl: string;
+  /** Security A3 Phase 2c: relative photo-proxy path. Prefer over photoUrl. */
+  contentPath: string;
   upvoteCount: number;
   createdAt: string;
   isBlinded: boolean;

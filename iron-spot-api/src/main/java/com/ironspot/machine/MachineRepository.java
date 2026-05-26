@@ -249,6 +249,16 @@ public class MachineRepository {
                 .orderBy(MACHINE_PHOTOS.CREATED_AT.desc())
                 .limit(1)
         ).as("photo_url");
+        // Security A3 Phase 2c: also pull the bound photo's id so the
+        // response can carry a proxy contentPath (preferred over the
+        // long-lived photo_url). Same most-recent-photo selection.
+        Field<java.util.UUID> photoIdField = DSL.field(
+            DSL.select(MACHINE_PHOTOS.ID)
+                .from(MACHINE_PHOTOS)
+                .where(MACHINE_PHOTOS.GYM_MACHINE_ID.eq(GYM_MACHINES.ID))
+                .orderBy(MACHINE_PHOTOS.CREATED_AT.desc())
+                .limit(1)
+        ).as("photo_id");
 
         return dsl.select(
                 GYM_MACHINES.ID,
@@ -256,6 +266,7 @@ public class MachineRepository {
                 GYMS.NAME.as("gym_name"),
                 GYM_MACHINES.CUSTOM_NAME,
                 photoUrlField,
+                photoIdField,
                 GYM_MACHINES.CREATED_AT)
             .from(GYM_MACHINES)
             .join(GYMS).on(GYMS.ID.eq(GYM_MACHINES.GYM_ID))
@@ -263,14 +274,18 @@ public class MachineRepository {
             .and(GYM_MACHINES.DELETED_AT.isNull())
             .orderBy(GYM_MACHINES.CREATED_AT.desc())
             .limit(limit)
-            .fetch(r -> new com.ironspot.admin.dto.AdminPendingContribution(
-                r.get(GYM_MACHINES.ID),
-                r.get(GYM_MACHINES.GYM_ID),
-                r.get("gym_name", String.class),
-                Objects.requireNonNullElse(r.get(GYM_MACHINES.CUSTOM_NAME), ""),
-                r.get(photoUrlField),
-                r.get(GYM_MACHINES.CREATED_AT)
-            ));
+            .fetch(r -> {
+                java.util.UUID photoId = r.get(photoIdField);
+                return new com.ironspot.admin.dto.AdminPendingContribution(
+                    r.get(GYM_MACHINES.ID),
+                    r.get(GYM_MACHINES.GYM_ID),
+                    r.get("gym_name", String.class),
+                    Objects.requireNonNullElse(r.get(GYM_MACHINES.CUSTOM_NAME), ""),
+                    r.get(photoUrlField),
+                    photoId != null ? com.ironspot.photo.PhotoProxyPath.forPhoto(photoId) : null,
+                    r.get(GYM_MACHINES.CREATED_AT)
+                );
+            });
     }
 
     /**
