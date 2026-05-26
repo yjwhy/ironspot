@@ -8,8 +8,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +16,8 @@ import java.util.Map;
  * Client for 국세청 사업자등록정보 진위확인 API (공공데이터포털).
  *
  * <p>API spec: https://www.data.go.kr/data/15081808/openapi.do
- * <p>Endpoint: POST {base-url}/api/nts-businessman/v1/validate?serviceKey={URL-encoded key}
+ * <p>Endpoint: POST {base-url}/api/nts-businessman/v1/validate
+ * <p>Auth: `Authorization: Infuser <serviceKey>` header (Security B6 — was query string)
  *
  * <p>Request body shape:
  * <pre>{@code
@@ -90,10 +89,23 @@ public class BusinessRegistryClient {
         );
 
         try {
-            String uri = baseUrl + VALIDATE_PATH + "?serviceKey="
-                + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
+            // Security B6: serviceKey used to live in the URL query
+            // string (`?serviceKey=…`) which leaked into
+            // WebClientResponseException messages, Sentry breadcrumbs,
+            // and any future outbound-proxy access log. Move it to the
+            // `Authorization: Infuser <key>` header — data.go.kr's
+            // documented alternate auth scheme for `api.odcloud.kr/...`
+            // endpoints. Same risk class as A1 (Google Vision API key).
+            //
+            // Failure mode if the NTS endpoint stops accepting the
+            // Infuser header in some future regression: the validate
+            // call returns 401/403, this method returns false, and the
+            // owner-claim flow surfaces a benign `Failed` reason
+            // ("국세청에서 사업자등록 정보를 확인할 수 없어요"). User retries —
+            // no security degradation, just a UX bump until reverted.
             Map<?, ?> response = webClient.post()
-                .uri(uri)
+                .uri(baseUrl + VALIDATE_PATH)
+                .header("Authorization", "Infuser " + apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
                 .retrieve()

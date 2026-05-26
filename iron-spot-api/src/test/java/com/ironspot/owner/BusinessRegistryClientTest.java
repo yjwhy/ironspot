@@ -40,6 +40,10 @@ class BusinessRegistryClientTest {
     private void mockHttpChain() {
         when(webClient.post()).thenReturn(requestBodyUriSpec);
         when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+        // Security B6: serviceKey now sent via Authorization header, not the
+        // URL query string. The header call lives between uri() and
+        // contentType() in the WebClient builder chain.
+        when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
         when(requestBodySpec.contentType(any())).thenReturn(requestBodySpec);
         when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
