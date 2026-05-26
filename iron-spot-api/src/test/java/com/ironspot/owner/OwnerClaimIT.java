@@ -198,11 +198,17 @@ class OwnerClaimIT extends IntegrationTestBase {
             "개업일: 2018-01-01");
         given(registryClient.validate(anyString(), anyString(), anyString(), anyString())).willReturn(true);
 
-        // Seed an existing owner with a DIFFERENT business hash
+        // Seed an existing owner with a DIFFERENT business hash.
+        // Security D2: partial UNIQUE on lower(email) means this email must
+        // differ from coOwnerSameBusinessNumberAllowed's "first@example.com"
+        // — both tests share the OwnerClaimIT Postgres container and
+        // @BeforeEach doesn't wipe users, so a shared email under a
+        // different id makes ON CONFLICT DO NOTHING skip the insert and the
+        // gym_owners FK below dangles.
         String existingOwnerId = "d0000077-0000-0000-0000-000000000077";
         jdbcTemplate.update(
             "INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
-            UUID.fromString(existingOwnerId), "first@example.com", "기존오너");
+            UUID.fromString(existingOwnerId), "first-disputed@example.com", "기존오너");
         String differentHash = hashVerifier.hashBusinessNumber("0000000000");
         jdbcTemplate.update(
             "INSERT INTO gym_owners(gym_id, user_id, business_number_hash) VALUES (?, ?, ?)",
