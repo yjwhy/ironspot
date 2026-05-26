@@ -20,12 +20,12 @@ Severity: 🟡 MEDIUM, 🟢 LOW. Effort: S (≤1h), M (≤½ day), L (≤full da
 | §F APP LOW    | 6     | 6      | (all done)            |
 | §G AI MEDIUM  | 6     | 6      | (all done)            |
 | §H AI LOW     | 5     | 5      | (all done)            |
-| §I PI MEDIUM  | 2     | 0      | I1, I2                |
+| §I PI MEDIUM  | 2     | 1      | I2                    |
 | §J PI LOW     | 3     | 2      | J2 (🚫 file absent)   |
 | §K CI MEDIUM  | 7     | 7      | (all done)            |
 | §L CI LOW     | 6     | 6      | (all done)            |
 
-Genuinely-actionable remaining: **A3 Phase 2c RN migration** (needs simulator), **I1** (nl_search_log encryption — app-side AES-GCM planned), **I2** (PIPA consent ordering — verify LoginScreen gate first), **D1** (reports.target_id polymorphic FK). Closed-as-decided: B7 (🚫 UX info, not a real leak), J2 (🚫 referenced file doesn't exist), D4 (deferred — ENUM migration touches ~250 jOOQ sites for zero security delta).
+Genuinely-actionable remaining: **A3 Phase 2c RN migration** (needs simulator), **I2** (PIPA consent ordering — verify LoginScreen gate first), **D1** (reports.target_id polymorphic FK). Closed-as-decided: B7 (🚫 UX info, not a real leak), J2 (🚫 referenced file doesn't exist), D4 (deferred — ENUM migration touches ~250 jOOQ sites for zero security delta). I1 closed by retention-shortening (not encryption — see below).
 
 ---
 
@@ -287,9 +287,9 @@ Splits on `\s+` only. `"Panatta·하이로우"` stays as one token. **Fix:** spl
 
 ## §I. PI MEDIUM (residual, 2)
 
-### 🟡 I1. `nl_search_log` writes raw queries without per-row encryption
+### ✅ I1. `nl_search_log` writes raw queries without per-row encryption
 
-Backup snapshot during the 30-day window persists every user's raw search text in plaintext. **Fix:** shorten retention to 7d, drop raw entirely, or encrypt at rest with pgcrypto. **Effort:** M.
+Backup snapshot during the retention window persists every user's raw search text in plaintext. **Fix (shipped):** shortened retention rather than encryption. Per-row AES-GCM of `raw_query` alone was rejected on review — the search text also lives near-verbatim in `normalised_query` (NFC + lowercase + whitespace-collapse only; PII like a pasted phone number survives), and that column must stay plaintext because admin analytics `GROUP BY` it. Encrypting only `raw_query` would leave the equivalent plaintext in `normalised_query`, so the fix would be illusory. Instead `NlSearchLogRetentionJob` now redacts `raw_query → '[redacted]'` at **7d** (was 30d) and hard-deletes the whole row at **30d** (was 90d), shrinking the plaintext exposure window for _both_ columns. The admin NL-analytics endpoint dropped its **90d** period (data no longer exists past 30d; `7d`/`30d` remain). No new secret / env var. **Effort:** S (actual). **PR:** #TBD.
 
 ### 🟡 I2. PIPA consent recorded AFTER session exchange
 
