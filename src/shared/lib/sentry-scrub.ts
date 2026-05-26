@@ -72,13 +72,22 @@ export function scrubHeaders(headers: unknown): unknown {
   return out;
 }
 
-/** Mask an email so the local-part keeps its first 2 chars + the domain is stripped. */
+/**
+ * Mask an email for Sentry so the local-part keeps only its first character
+ * and the domain is stripped entirely.
+ *
+ * Security J1: previously kept 2 chars. Combined with Apple Sign-In's
+ * relay address pattern (`xxx@privaterelay.appleid.com`) and short
+ * personal local-parts ("bob"), 2 chars was still strongly identifying.
+ * One char preserves just enough signal to disambiguate two errors on
+ * the same browser/device while collapsing the PII surface.
+ */
 export function maskEmail(value: string): string {
   if (!value || typeof value !== 'string') return value;
   const at = value.indexOf('@');
   if (at < 0) return value;
   const local = value.substring(0, at);
-  const visible = local.substring(0, Math.min(2, local.length));
+  const visible = local.charAt(0);
   return `${visible}***`;
 }
 
