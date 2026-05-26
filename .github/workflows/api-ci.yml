@@ -30,6 +30,11 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6
+        with:
+          # Security L3: verify gradle-wrapper.jar against gradle.org's
+          # known-good SHA list. A poisoned wrapper would otherwise run
+          # with full build privileges (and could exfiltrate secrets).
+          validate-wrappers: true
       - name: Run tests
         working-directory: iron-spot-api
         run: ./gradlew test
@@ -53,6 +58,14 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Security L6: `--frozen-lockfile` is load-bearing. The orval regen
+      # step below produces a diff against the committed client only if
+      # the install matched the lockfile exactly. Dropping the flag would
+      # silently start running the regen against a drifted dependency tree
+      # and the "client is up-to-date" check would either false-positive
+      # (mask drift) or false-negative (flag drift caused by the install
+      # itself). Do not remove `--frozen-lockfile` without also revisiting
+      # the regen / check pipeline below.
       - name: Install dependencies
         if: ${{ !cancelled() }}
         run: pnpm install --frozen-lockfile
