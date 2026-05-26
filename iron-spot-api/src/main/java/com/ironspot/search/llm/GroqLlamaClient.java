@@ -129,7 +129,7 @@ public class GroqLlamaClient implements LlmClient {
         // when the user query contains the word "JSON"). An attacker can therefore
         // craft a query that flips every response into INVALID_RESPONSE (DoS).
         // Strip fences before deserialise.
-        String json = stripCodeFence(contentStr);
+        String json = LlmResponseSanitiser.stripCodeFence(contentStr);
         try {
             return mapper.readValue(json, SearchDsl.class);
         } catch (JsonProcessingException e) {
@@ -137,28 +137,6 @@ public class GroqLlamaClient implements LlmClient {
         } catch (IllegalArgumentException e) {
             throw new LlmException(LlmException.Kind.INVALID_RESPONSE, "Groq DSL invariant violation: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * Security task #69: tolerate ```json ... ``` markdown code fences on the
-     * LLM response. {@code response_format} should prevent them but a small
-     * fraction of completions still slip through. Conservative: only strips a
-     * single leading fence and matching trailing fence; nested fences fall
-     * through to the JSON parser unchanged.
-     */
-    static String stripCodeFence(String s) {
-        String trimmed = s.trim();
-        if (!trimmed.startsWith("```")) {
-            return trimmed;
-        }
-        // Drop leading ``` (optionally followed by "json" or other language tag)
-        // and the rest of that line.
-        int newline = trimmed.indexOf('\n');
-        trimmed = newline >= 0 ? trimmed.substring(newline + 1) : trimmed.substring(3);
-        if (trimmed.endsWith("```")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 3);
-        }
-        return trimmed.trim();
     }
 
     private static boolean isTimeout(Throwable t) {

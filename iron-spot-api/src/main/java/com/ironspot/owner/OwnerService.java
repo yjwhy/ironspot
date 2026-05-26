@@ -36,6 +36,7 @@ public class OwnerService {
     private final ModerationAuditLogRepository auditLog;
     private final UserRepository userRepository;
     private final AdminNotificationService notifier;
+    private final OwnerClaimQuotaService claimQuota;
 
     /**
      * Verify a 사업자등록증 photo against a target gym and grant owner role
@@ -52,6 +53,11 @@ public class OwnerService {
         if (!consentGiven) {
             return OwnerClaimResponse.failed("개인정보 처리에 동의해야 owner 인증을 진행할 수 있어요.");
         }
+
+        // Security A6: owner-claim path runs Vision OCR directly, bypassing
+        // PhotoService.enforceVisionQuota. A per-user daily claim cap closes
+        // the hole — legitimate owners verify once per gym, so 5/day is plenty.
+        claimQuota.enforce(userId);
 
         String gymName = dsl.select(GYMS.NAME)
             .from(GYMS)

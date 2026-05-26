@@ -237,7 +237,7 @@ class GroqLlamaClientTest {
     @Test
     void stripCodeFenceLeavesPlainJsonUnchanged() {
         String plain = "{\"location\":null}";
-        assertThat(GroqLlamaClient.stripCodeFence(plain)).isEqualTo(plain);
+        assertThat(LlmResponseSanitiser.stripCodeFence(plain)).isEqualTo(plain);
     }
 
     @Test
