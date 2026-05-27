@@ -38,9 +38,11 @@ class AuthControllerIT extends IntegrationTestBase {
 
     @Test
     void naverLoginIsReachableAnonymouslyAndReturnsTokenHash() {
+        // Account is keyed on the synthetic naver_<id> email, never the real one.
+        String syntheticEmail = "naver_nid-it@users.ironspot.app";
         when(naverOAuthClient.exchangeCodeForProfile("auth-code", "state-1"))
             .thenReturn(new NaverProfile("nid-it", "it@naver.com", "통합테스트"));
-        when(supabaseAuthAdminClient.generateMagicLinkTokenHash("it@naver.com"))
+        when(supabaseAuthAdminClient.generateMagicLinkTokenHash(syntheticEmail))
             .thenReturn("it-token-hash");
 
         ResponseEntity<String> response = restTemplate.exchange(
@@ -52,7 +54,7 @@ class AuthControllerIT extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
             .contains("\"tokenHash\":\"it-token-hash\"")
-            .contains("\"email\":\"it@naver.com\"")
+            .contains("\"email\":\"naver_nid-it@users.ironspot.app\"")
             .contains("\"type\":\"magiclink\"");
     }
 

@@ -26,22 +26,39 @@ class NaverLoginServiceTest {
     @InjectMocks NaverLoginService service;
 
     @Test
-    void usesRealEmailWhenNaverProvidesIt() {
+    void alwaysUsesSyntheticEmailEvenWhenNaverProvidesReal() {
+        // Security: real email must NOT key the account (cross-provider
+        // takeover). It is kept in metadata only.
         when(naverOAuthClient.exchangeCodeForProfile("code", "state"))
             .thenReturn(new NaverProfile("nid-1", "real@naver.com", "홍길동"));
-        when(supabaseAuthAdminClient.generateMagicLinkTokenHash("real@naver.com"))
+        String synthetic = "naver_nid-1@users.ironspot.app";
+        when(supabaseAuthAdminClient.generateMagicLinkTokenHash(synthetic))
             .thenReturn("token-hash-1");
 
         NaverLoginResponse response = service.login("code", "state");
 
-        assertThat(response.email()).isEqualTo("real@naver.com");
+        assertThat(response.email()).isEqualTo(synthetic);
         assertThat(response.tokenHash()).isEqualTo("token-hash-1");
         assertThat(response.type()).isEqualTo("magiclink");
-        verify(supabaseAuthAdminClient).ensureUser(eq("real@naver.com"), any());
+        verify(supabaseAuthAdminClient).ensureUser(eq(synthetic), any());
     }
 
     @Test
-    void fallsBackToSyntheticEmailWhenNaverOmitsEmail() {
+    void keepsRealEmailInMetadataOnly() {
+        when(naverOAuthClient.exchangeCodeForProfile(any(), any()))
+            .thenReturn(new NaverProfile("nid-1", "real@naver.com", "홍길동"));
+        when(supabaseAuthAdminClient.generateMagicLinkTokenHash(any())).thenReturn("t");
+
+        service.login("code", "state");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> metadata = ArgumentCaptor.forClass(Map.class);
+        verify(supabaseAuthAdminClient).ensureUser(any(), metadata.capture());
+        assertThat(metadata.getValue()).containsEntry("naver_email", "real@naver.com");
+    }
+
+    @Test
+    void usesSyntheticEmailWhenNaverOmitsEmail() {
         when(naverOAuthClient.exchangeCodeForProfile("c", "s"))
             .thenReturn(new NaverProfile("nid-789", null, "이름"));
         String synthetic = "naver_nid-789@users.ironspot.app";
@@ -53,6 +70,11 @@ class NaverLoginServiceTest {
         assertThat(response.email()).isEqualTo(synthetic);
         assertThat(response.tokenHash()).isEqualTo("token-hash-2");
         verify(supabaseAuthAdminClient).ensureUser(eq(synthetic), any());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> metadata = ArgumentCaptor.forClass(Map.class);
+        verify(supabaseAuthAdminClient).ensureUser(eq(synthetic), metadata.capture());
+        assertThat(metadata.getValue()).doesNotContainKey("naver_email");
     }
 
     @Test
@@ -63,9 +85,10 @@ class NaverLoginServiceTest {
 
         service.login("c", "s");
 
+        String synthetic = "naver_nid-2@users.ironspot.app";
         var ordered = inOrder(supabaseAuthAdminClient);
-        ordered.verify(supabaseAuthAdminClient).ensureUser(eq("a@b.com"), any());
-        ordered.verify(supabaseAuthAdminClient).generateMagicLinkTokenHash("a@b.com");
+        ordered.verify(supabaseAuthAdminClient).ensureUser(eq(synthetic), any());
+        ordered.verify(supabaseAuthAdminClient).generateMagicLinkTokenHash(synthetic);
     }
 
     @Test
@@ -78,7 +101,8 @@ class NaverLoginServiceTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> metadata = ArgumentCaptor.forClass(Map.class);
-        verify(supabaseAuthAdminClient).ensureUser(eq("m@n.com"), metadata.capture());
+        verify(supabaseAuthAdminClient)
+            .ensureUser(eq("naver_nid-meta@users.ironspot.app"), metadata.capture());
         assertThat(metadata.getValue())
             .containsEntry("provider", "naver")
             .containsEntry("naver_id", "nid-meta")
