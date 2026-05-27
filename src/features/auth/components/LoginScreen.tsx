@@ -20,6 +20,7 @@ import {
   TERMS_OF_SERVICE_URL,
 } from '../constants';
 import { parseAuthCallback } from '../lib/parseAuthCallback';
+import { recordConsentWithRetry } from '../lib/recordConsentWithRetry';
 
 interface LoginScreenProps {
   onBrowseAsGuest: () => void;
@@ -74,15 +75,20 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
           throw new Error(`OAuth callback invalid: ${parsed.reason}`);
       }
 
-      // Security task #17: record the active-consent the user gave at the
-      // gate. Best-effort — a record failure (network, BE down) does not
-      // block onAuthenticated() because the gate has already enforced the
-      // consent client-side. The next /me fetch will re-attempt on the
-      // FE side via the consent-version reconciliation hook (future).
-      try {
-        await recordConsent({ data: { version: CONSENT_VERSION } });
-      } catch (consentErr) {
-        captureError(consentErr);
+      // Security I2 (PIPA Article 22): the user already gave active consent at
+      // the gate (security #17); now durably record it. The /me/consent
+      // endpoint is authenticated, so the write can only run post-session — we
+      // retry to survive a transient backend blip. If every attempt fails we
+      // refuse to proceed (sign out + error) rather than leave a session with
+      // no consent record on file.
+      const consentRecorded = await recordConsentWithRetry(() =>
+        recordConsent({ data: { version: CONSENT_VERSION } }),
+      );
+      if (!consentRecorded) {
+        await supabase.auth.signOut();
+        captureError(new Error('PIPA consent record failed after retries'));
+        burnt.toast({ title: '동의 기록에 실패했어요. 다시 시도해 주세요', preset: 'error' });
+        return;
       }
 
       onAuthenticated();
