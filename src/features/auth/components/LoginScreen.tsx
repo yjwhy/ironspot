@@ -85,7 +85,10 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
         recordConsent({ data: { version: CONSENT_VERSION } }),
       );
       if (!consentRecorded) {
-        await supabase.auth.signOut();
+        // If signOut itself fails the local session token persists, which is
+        // the exact PIPA gap this gate closes — surface it so it isn't silent.
+        const { error: signOutError } = await supabase.auth.signOut();
+        if (signOutError) captureError(signOutError);
         captureError(new Error('PIPA consent record failed after retries'));
         burnt.toast({ title: '동의 기록에 실패했어요. 다시 시도해 주세요', preset: 'error' });
         return;
