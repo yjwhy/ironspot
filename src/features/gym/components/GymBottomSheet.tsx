@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { BottomSheetFlatList, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
@@ -32,6 +32,17 @@ interface GymBottomSheetProps {
 // (≈ 192pt on the same device) reveals 1-2 gym card previews while keeping the map
 // dominant. Mid and full retained at 50% / 90%.
 const SNAP_POINTS = ['25%', '50%', '90%'];
+
+// Indices into SNAP_POINTS. Most modes open at the mid (50%) detent. The
+// 'unregistered-detail' mode must open at the full (90%) detent: its
+// '기구 사진 등록하기' CTA is absolute-positioned at the sheet bottom, and at the
+// mid detent it sits below the fold — tapping where it appears does nothing.
+const MID_SNAP_INDEX = 1;
+const FULL_SNAP_INDEX = 2;
+
+export function snapIndexForMode(type: GymBottomSheetMode['type']): number {
+  return type === 'unregistered-detail' ? FULL_SNAP_INDEX : MID_SNAP_INDEX;
+}
 
 const LIST_PADDING = 16;
 const BACKGROUND_STYLE = { backgroundColor: '#FFFFFF' };
@@ -65,6 +76,19 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   const sheetBottomInset = Math.max(83, tabBarHeight);
   const listBottomPad = Math.max(LIST_BOTTOM_PAD_FOR_TABS, tabBarHeight + LIST_PADDING);
 
+  // The detent the current mode should open at. Held in a ref so the
+  // empty-deps focus-effect closure below always snaps to the latest mode's
+  // index (the closure captures only stable values, never `mode`).
+  const snapIndex = snapIndexForMode(mode.type);
+  const snapIndexRef = useRef(snapIndex);
+  snapIndexRef.current = snapIndex;
+  // True only once the focus effect has presented AND completed its initial
+  // (delayed) snap — gorhom v5 ignores snapToIndex before the modal commits its
+  // mount. The detent-change effect below reads this so it never snaps into the
+  // present window; any mode change during that window is absorbed by the focus
+  // effect's snap, which already targets the latest index via snapIndexRef.
+  const hasPresentedRef = useRef(false);
+
   // useFocusEffect (not useEffect) so the portaled BottomSheetModal dismisses when the user
   // leaves the Map tab. Without dismiss-on-blur, the gorhom portal — mounted at the (tabs)
   // layout provider — keeps the sheet visible across tabs. Re-presents on refocus so returning
@@ -84,22 +108,41 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
         // mounted.current is false; delay gives React time to commit the
         // setState({mount:true}) before we snap to index 1.
         snapId = setTimeout(() => {
-          ref.current?.snapToIndex(1);
+          ref.current?.snapToIndex(snapIndexRef.current);
+          hasPresentedRef.current = true;
         }, SNAP_DELAY_MS);
       }, PRESENT_DELAY_MS);
       return function dismissOnBlur() {
         clearTimeout(id);
         clearTimeout(snapId);
+        hasPresentedRef.current = false;
         ref.current?.dismiss();
       };
     }, []),
+  );
+
+  // Re-snap when the target detent changes while the sheet is already presented
+  // — e.g. tapping an unregistered card in the list switches mode to
+  // 'unregistered-detail' (mid → full). The focus effect does NOT re-fire here
+  // (focus is unchanged), so this is the only path that opens the sheet far
+  // enough to clear the unregistered CTA. The hasPresentedRef guard skips both
+  // the initial render and the present window: in those cases the focus effect's
+  // own snap (which reads the latest snapIndexRef) lands on the right detent.
+  useEffect(
+    function resnapOnDetentChange() {
+      if (!hasPresentedRef.current) {
+        return;
+      }
+      ref.current?.snapToIndex(snapIndex);
+    },
+    [snapIndex],
   );
 
   return (
     <BottomSheetModal
       ref={ref}
       snapPoints={SNAP_POINTS}
-      index={1}
+      index={MID_SNAP_INDEX}
       enablePanDownToClose={false}
       // @gorhom/bottom-sheet v5 defaults `enableDynamicSizing={true}` which
       // tries to autosize the sheet to its child's measured height. When the
