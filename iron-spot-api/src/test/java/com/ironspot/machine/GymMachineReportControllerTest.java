@@ -68,7 +68,7 @@ class GymMachineReportControllerTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
         Integer count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM reports WHERE target_type = 'gym_machine' AND target_id = ?",
+            "SELECT COUNT(*) FROM reports WHERE gym_machine_id = ?",
             Integer.class, GYM_MACHINE_ID);
         assertThat(count).isEqualTo(1);
     }
@@ -82,6 +82,19 @@ class GymMachineReportControllerTest extends IntegrationTestBase {
             HttpMethod.POST, jsonRequest("{\"reason\":\"NOT_PRESENT\"}", "token"), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    void nonexistentGymMachineReturns404() {
+        // Security D1: reports.gym_machine_id is a FK, so a forged id must be
+        // rejected with 404 before insert — not bubble up as a FK-violation 500.
+        given(jwtValidator.validate(anyString())).willReturn(Optional.of(principal(USER_B_ID)));
+
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/gym-machines/" + UUID.randomUUID() + "/reports",
+            HttpMethod.POST, jsonRequest("{\"reason\":\"WRONG_TEMPLATE\"}", "token"), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
@@ -116,15 +129,15 @@ class GymMachineReportControllerTest extends IntegrationTestBase {
         post("/api/gym-machines/" + GYM_MACHINE_ID + "/reports",
             "{\"reason\":\"NOT_PRESENT\"}", "token");
 
-        // UNIQUE (user_id, target_id) — single row, original reason kept (no
+        // UNIQUE (user_id, gym_machine_id) — single row, original reason kept (no
         // escalation on gym_machine surface).
         Integer count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM reports WHERE target_id = ?",
+            "SELECT COUNT(*) FROM reports WHERE gym_machine_id = ?",
             Integer.class, GYM_MACHINE_ID);
         assertThat(count).isEqualTo(1);
 
         String reason = jdbcTemplate.queryForObject(
-            "SELECT reason FROM reports WHERE target_id = ?",
+            "SELECT reason FROM reports WHERE gym_machine_id = ?",
             String.class, GYM_MACHINE_ID);
         assertThat(reason).isEqualTo("WRONG_TEMPLATE");
     }

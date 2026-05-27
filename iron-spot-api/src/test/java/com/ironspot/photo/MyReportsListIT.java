@@ -59,15 +59,15 @@ class MyReportsListIT extends IntegrationTestBase {
             "INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING",
             otherUser, "other@example.com", "타사용자");
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason, status) VALUES (?, ?, ?, ?, ?)",
-            REPORTER_ID, "photo", PHOTO_ID, "INAPPROPRIATE", "pending");
+            "INSERT INTO reports(user_id, photo_id, reason, status) VALUES (?, ?, ?, ?)",
+            REPORTER_ID, PHOTO_ID, "INAPPROPRIATE", "pending");
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason, status) VALUES (?, ?, ?, ?, ?)",
-            REPORTER_ID, "photo",
+            "INSERT INTO reports(user_id, photo_id, reason, status) VALUES (?, ?, ?, ?)",
+            REPORTER_ID,
             UUID.fromString("aa000002-0000-0000-0000-000000000002"), "DUPLICATE", "actioned");
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason, status) VALUES (?, ?, ?, ?, ?)",
-            otherUser, "photo", PHOTO_ID, "INAPPROPRIATE", "pending");
+            "INSERT INTO reports(user_id, photo_id, reason, status) VALUES (?, ?, ?, ?)",
+            otherUser, PHOTO_ID, "INAPPROPRIATE", "pending");
 
         ResponseEntity<String> response = getMine();
 
@@ -82,9 +82,9 @@ class MyReportsListIT extends IntegrationTestBase {
     void listMineFlagsEscalatedTrueWhenAuditLogPresent() {
         UUID reportId = UUID.fromString("c0000001-0000-0000-0000-000000000001");
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status) "
-                + "VALUES (?, ?, ?, ?, ?, ?)",
-            reportId, REPORTER_ID, "photo", PHOTO_ID, "INAPPROPRIATE", "actioned");
+            "INSERT INTO reports(id, user_id, photo_id, reason, status) "
+                + "VALUES (?, ?, ?, ?, ?)",
+            reportId, REPORTER_ID, PHOTO_ID, "INAPPROPRIATE", "actioned");
         jdbcTemplate.update(
             "INSERT INTO moderation_audit_log(user_id, action, target_type, target_id) "
                 + "VALUES (?, ?, ?, ?)",
@@ -99,8 +99,8 @@ class MyReportsListIT extends IntegrationTestBase {
     @Test
     void listMineDefaultsEscalatedToFalse() {
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason, status) VALUES (?, ?, ?, ?, ?)",
-            REPORTER_ID, "photo", PHOTO_ID, "OTHER", "dismissed");
+            "INSERT INTO reports(user_id, photo_id, reason, status) VALUES (?, ?, ?, ?)",
+            REPORTER_ID, PHOTO_ID, "OTHER", "dismissed");
 
         ResponseEntity<String> response = getMine();
 

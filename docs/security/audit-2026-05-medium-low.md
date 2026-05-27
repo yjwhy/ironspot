@@ -15,7 +15,7 @@ Severity: 🟡 MEDIUM, 🟢 LOW. Effort: S (≤1h), M (≤½ day), L (≤full da
 | §A BE MEDIUM  | 12    | 11     | A3 (Phase 2c RN only) |
 | §B BE LOW     | 10    | 9      | B7 (🚫 won't-fix)     |
 | §C DB MEDIUM  | 4     | 4      | (all done)            |
-| §D DB LOW     | 6     | 4      | D1, D4 (deferred)     |
+| §D DB LOW     | 6     | 5      | D4 (deferred)         |
 | §E APP MEDIUM | 7     | 7      | (all done)            |
 | §F APP LOW    | 6     | 6      | (all done)            |
 | §G AI MEDIUM  | 6     | 6      | (all done)            |
@@ -25,7 +25,7 @@ Severity: 🟡 MEDIUM, 🟢 LOW. Effort: S (≤1h), M (≤½ day), L (≤full da
 | §K CI MEDIUM  | 7     | 7      | (all done)            |
 | §L CI LOW     | 6     | 6      | (all done)            |
 
-Genuinely-actionable remaining: **A3 Phase 2c RN migration** (needs simulator), **D1** (reports.target_id polymorphic FK). Closed-as-decided: B7 (🚫 UX info, not a real leak), J2 (🚫 referenced file doesn't exist), D4 (deferred — ENUM migration touches ~250 jOOQ sites for zero security delta). I1 closed by retention-shortening (not encryption — see below). I2 closed by retry-gating the consent write (the active gate already obtains consent before processing; the fix makes the audit record durable).
+Genuinely-actionable remaining: **A3 Phase 2c RN migration** (needs simulator). Closed-as-decided: B7 (🚫 UX info, not a real leak), J2 (🚫 referenced file doesn't exist), D4 (deferred — ENUM migration touches ~250 jOOQ sites for zero security delta). I1 closed by retention-shortening (not encryption — see below). I2 closed by retry-gating the consent write (the active gate already obtains consent before processing; the fix makes the audit record durable). D1 closed by typed FK columns (photo_id/gym_machine_id) replacing the polymorphic target_id, API contract preserved.
 
 ---
 
@@ -147,9 +147,9 @@ Real Naver IDs and `synthetic_<...>` IDs share the same uniqueness namespace. Co
 
 ## §D. DB LOW (6)
 
-### 🟢 D1. `reports.target_id` has no FK
+### ✅ D1. `reports.target_id` has no FK
 
-Polymorphic via `target_type` but no referential integrity. **Fix:** trigger-enforced check or partial CHECK pinning target_types. **Effort:** M.
+Polymorphic via `target_type` but no referential integrity — orphan reports survived target deletion, typo'd ids silently accepted. **Fix (shipped, V26):** replaced the `(target_type, target_id)` pair with two typed nullable FK columns `photo_id` / `gym_machine_id` (`ON DELETE CASCADE`) + a CHECK that exactly one is set + per-type partial unique indexes. The API contract is preserved — `ReportRepository` derives `targetType`/`targetId` for response DTOs, so the frontend is untouched. Also closed a side effect: the new `gym_machine_id` FK turned a forged id into a 500, so `createGymMachineReport` now guards existence → 404 (mirrors the photo path). **Effort:** M (actual). **PR:** #TBD.
 
 ### ✅ D2. `users.email` has no UNIQUE constraint
 

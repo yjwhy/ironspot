@@ -173,10 +173,12 @@ class OwnerQueueIT extends IntegrationTestBase {
     private UUID seedReport(String reporterId, String targetType, UUID targetId,
                             String reason, OffsetDateTime ownerTimeoutAt) {
         UUID reportId = UUID.randomUUID();
+        UUID photoId = "photo".equals(targetType) ? targetId : null;
+        UUID gymMachineId = "gym_machine".equals(targetType) ? targetId : null;
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status, owner_timeout_at) "
+            "INSERT INTO reports(id, user_id, photo_id, gym_machine_id, reason, status, owner_timeout_at) "
                 + "VALUES (?, ?, ?, ?, ?, 'pending', ?)",
-            reportId, UUID.fromString(reporterId), targetType, targetId, reason,
+            reportId, UUID.fromString(reporterId), photoId, gymMachineId, reason,
             ownerTimeoutAt == null ? null : java.sql.Timestamp.from(ownerTimeoutAt.toInstant()));
         return reportId;
     }

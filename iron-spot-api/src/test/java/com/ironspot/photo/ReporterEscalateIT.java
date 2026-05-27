@@ -115,8 +115,8 @@ class ReporterEscalateIT extends IntegrationTestBase {
     private UUID seedDisposedReport(String status) {
         UUID id = UUID.randomUUID();
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status, disposed_by, disposed_at) "
-                + "VALUES (?, ?, 'photo', ?, 'INAPPROPRIATE', ?, ?, NOW())",
+            "INSERT INTO reports(id, user_id, photo_id, reason, status, disposed_by, disposed_at) "
+                + "VALUES (?, ?, ?, 'INAPPROPRIATE', ?, ?, NOW())",
             id, UUID.fromString(REPORTER_ID), PHOTO_ID, status, UUID.fromString(ADMIN_ID));
         return id;
     }

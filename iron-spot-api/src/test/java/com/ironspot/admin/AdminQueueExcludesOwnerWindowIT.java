@@ -67,8 +67,8 @@ class AdminQueueExcludesOwnerWindowIT extends IntegrationTestBase {
     void inWindowReportsHiddenButReappearAfterTimeoutClears() {
         UUID reportId = UUID.randomUUID();
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status, owner_timeout_at) "
-                + "VALUES (?, ?, 'photo', ?, 'INAPPROPRIATE', 'pending', ?)",
+            "INSERT INTO reports(id, user_id, photo_id, reason, status, owner_timeout_at) "
+                + "VALUES (?, ?, ?, 'INAPPROPRIATE', 'pending', ?)",
             reportId, UUID.fromString(REPORTER_ID), PHOTO_ID,
             java.sql.Timestamp.from(OffsetDateTime.now().plusHours(20).toInstant()));
 

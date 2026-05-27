@@ -36,40 +36,60 @@ public class ReportRepository {
     public static final String TARGET_TYPE_GYM_MACHINE = "gym_machine";
     static final String STATUS_PENDING = "pending";
 
+    /**
+     * Security D1: the target is stored in typed FK columns
+     * ({@code photo_id} / {@code gym_machine_id}), exactly one non-null. The
+     * API contract still speaks the polymorphic ({@code targetType},
+     * {@code targetId}) pair, so these expressions derive it back for response
+     * DTOs — {@code targetType} from which column is set, {@code targetId} via
+     * COALESCE.
+     */
+    private static final Field<String> TARGET_TYPE_EXPR =
+        DSL.when(REPORTS.PHOTO_ID.isNotNull(), TARGET_TYPE_PHOTO).otherwise(TARGET_TYPE_GYM_MACHINE);
+    private static final Field<UUID> TARGET_ID_EXPR =
+        DSL.coalesce(REPORTS.PHOTO_ID, REPORTS.GYM_MACHINE_ID);
+
     public enum InsertResult { INSERTED, ESCALATED, DUPLICATE }
 
     private final DSLContext dsl;
 
     /**
      * Insert a new report, or escalate an existing one if the new reason is urgent
-     * and the existing reason is not. UNIQUE on (user_id, target_id) means a single
-     * user can have at most one row per target; escalation overwrites reason/detail
-     * in place rather than inserting a second row.
+     * and the existing reason is not. A reporter can have at most one row per
+     * target (partial unique on (user_id, photo_id) / (user_id, gym_machine_id));
+     * escalation overwrites reason/detail in place rather than inserting a second
+     * row.
      * <p>
-     * ADR 0022 follow-up (Task 46): {@code targetType} is now an explicit parameter
-     * — photo callers pass {@link #TARGET_TYPE_PHOTO}, gym_machine callers pass
-     * {@link #TARGET_TYPE_GYM_MACHINE}. Escalation (LEGAL_PERSONAL upgrade) only
-     * applies on the photo surface — gym_machine reasons never escalate.
+     * ADR 0022 follow-up (Task 46): {@code targetType} is an explicit parameter —
+     * photo callers pass {@link #TARGET_TYPE_PHOTO}, gym_machine callers pass
+     * {@link #TARGET_TYPE_GYM_MACHINE}. Security D1: the value routes to the
+     * matching typed column. Escalation (LEGAL_PERSONAL upgrade) only applies on
+     * the photo surface — gym_machine reasons never escalate.
      */
     public InsertResult insertOrEscalate(
             UUID userId, String targetType, UUID targetId, ReportReason reason, String detail) {
+        boolean isPhoto = TARGET_TYPE_PHOTO.equals(targetType);
+        Field<UUID> targetColumn = isPhoto ? REPORTS.PHOTO_ID : REPORTS.GYM_MACHINE_ID;
+
         int inserted = dsl.insertInto(REPORTS)
             .set(REPORTS.USER_ID, userId)
-            .set(REPORTS.TARGET_TYPE, targetType)
-            .set(REPORTS.TARGET_ID, targetId)
+            .set(targetColumn, targetId)
             .set(REPORTS.REASON, reason.name())
             .set(REPORTS.DETAIL, detail)
-            .onConflict(REPORTS.USER_ID, REPORTS.TARGET_ID)
+            // Conflict target is the partial unique index for this surface; the
+            // WHERE matches its predicate so Postgres infers the right index.
+            .onConflict(REPORTS.USER_ID, targetColumn)
+            .where(targetColumn.isNotNull())
             .doNothing()
             .execute();
         if (inserted > 0) return InsertResult.INSERTED;
 
-        if (TARGET_TYPE_PHOTO.equals(targetType) && reason == ReportReason.LEGAL_PERSONAL) {
+        if (isPhoto && reason == ReportReason.LEGAL_PERSONAL) {
             int escalated = dsl.update(REPORTS)
                 .set(REPORTS.REASON, reason.name())
                 .set(REPORTS.DETAIL, detail)
                 .where(REPORTS.USER_ID.eq(userId))
-                .and(REPORTS.TARGET_ID.eq(targetId))
+                .and(targetColumn.eq(targetId))
                 .and(REPORTS.REASON.notEqual(ReportReason.LEGAL_PERSONAL.name()))
                 .execute();
             if (escalated > 0) return InsertResult.ESCALATED;
@@ -80,7 +100,7 @@ public class ReportRepository {
     public int countPending(UUID photoId) {
         Integer count = dsl.selectCount()
             .from(REPORTS)
-            .where(REPORTS.TARGET_ID.eq(photoId))
+            .where(REPORTS.PHOTO_ID.eq(photoId))
             .and(REPORTS.STATUS.eq(STATUS_PENDING))
             .fetchOneInto(Integer.class);
         return Objects.requireNonNullElse(count, 0);
@@ -97,7 +117,7 @@ public class ReportRepository {
 
     public List<AdminReportResponse> findByStatusOrderByCreatedAtDesc(String status, int limit) {
         return dsl.select(
-                REPORTS.ID, REPORTS.USER_ID, REPORTS.TARGET_TYPE, REPORTS.TARGET_ID,
+                REPORTS.ID, REPORTS.USER_ID, TARGET_TYPE_EXPR, TARGET_ID_EXPR,
                 REPORTS.REASON, REPORTS.DETAIL, REPORTS.STATUS,
                 REPORTS.DISPOSED_BY, REPORTS.DISPOSED_AT, REPORTS.CREATED_AT)
             .from(REPORTS)
@@ -107,8 +127,8 @@ public class ReportRepository {
             .fetch(r -> new AdminReportResponse(
                 r.get(REPORTS.ID),
                 r.get(REPORTS.USER_ID),
-                r.get(REPORTS.TARGET_TYPE),
-                r.get(REPORTS.TARGET_ID),
+                r.get(TARGET_TYPE_EXPR),
+                r.get(TARGET_ID_EXPR),
                 r.get(REPORTS.REASON),
                 r.get(REPORTS.DETAIL),
                 r.get(REPORTS.STATUS),
@@ -120,7 +140,7 @@ public class ReportRepository {
 
     public Optional<AdminReportResponse> findById(UUID id) {
         return dsl.select(
-                REPORTS.ID, REPORTS.USER_ID, REPORTS.TARGET_TYPE, REPORTS.TARGET_ID,
+                REPORTS.ID, REPORTS.USER_ID, TARGET_TYPE_EXPR, TARGET_ID_EXPR,
                 REPORTS.REASON, REPORTS.DETAIL, REPORTS.STATUS,
                 REPORTS.DISPOSED_BY, REPORTS.DISPOSED_AT, REPORTS.CREATED_AT)
             .from(REPORTS)
@@ -128,8 +148,8 @@ public class ReportRepository {
             .fetchOptional(r -> new AdminReportResponse(
                 r.get(REPORTS.ID),
                 r.get(REPORTS.USER_ID),
-                r.get(REPORTS.TARGET_TYPE),
-                r.get(REPORTS.TARGET_ID),
+                r.get(TARGET_TYPE_EXPR),
+                r.get(TARGET_ID_EXPR),
                 r.get(REPORTS.REASON),
                 r.get(REPORTS.DETAIL),
                 r.get(REPORTS.STATUS),
@@ -151,13 +171,14 @@ public class ReportRepository {
      * Lookup the latest report id filed by this reporter against this target
      * (Task 47 / ADR 0023 Q4 B3). Used immediately after insertOrEscalate to
      * stamp owner_timeout_at / apply self-gym auto-action on the row we just
-     * created. Returns empty if no row exists.
+     * created. The target id may live in either typed column. Returns empty if
+     * no row exists.
      */
     public Optional<UUID> findIdByReporterAndTarget(UUID userId, UUID targetId) {
         return dsl.select(REPORTS.ID)
             .from(REPORTS)
             .where(REPORTS.USER_ID.eq(userId))
-            .and(REPORTS.TARGET_ID.eq(targetId))
+            .and(REPORTS.PHOTO_ID.eq(targetId).or(REPORTS.GYM_MACHINE_ID.eq(targetId)))
             .fetchOptional(r -> r.get(REPORTS.ID));
     }
 
@@ -201,8 +222,8 @@ public class ReportRepository {
     /**
      * Photo-grouped admin queue: one row per photo with at least one pending report,
      * aggregating pending count, oldest report timestamp, and most-common reason.
-     * The {@code target_type = 'photo'} filter is defensive — future report types
-     * (gym_machine, user) must not leak into the photo moderation surface.
+     * Joining on {@code photo_id} (the FK) inherently scopes to photo reports —
+     * gym_machine reports have a null photo_id (security D1).
      */
     public List<AdminQueuePhotoSummary> listPendingPhotoQueue(int limit) {
         Field<Integer> pendingCount = DSL.count(REPORTS.ID).as("pending_count");
@@ -214,9 +235,8 @@ public class ReportRepository {
         return dsl.select(MACHINE_PHOTOS.ID, MACHINE_PHOTOS.PHOTO_URL,
                 pendingCount, oldestReportAt, topReason)
             .from(MACHINE_PHOTOS)
-            .join(REPORTS).on(REPORTS.TARGET_ID.eq(MACHINE_PHOTOS.ID))
+            .join(REPORTS).on(REPORTS.PHOTO_ID.eq(MACHINE_PHOTOS.ID))
             .where(REPORTS.STATUS.eq(STATUS_PENDING))
-            .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_PHOTO))
             .and(notInOwnerWindow())
             .groupBy(MACHINE_PHOTOS.ID, MACHINE_PHOTOS.PHOTO_URL)
             .orderBy(oldestReportAt.asc())
@@ -259,9 +279,8 @@ public class ReportRepository {
         return dsl.select(MACHINE_PHOTOS.ID, MACHINE_PHOTOS.PHOTO_URL,
                 pendingCount, oldestReportAt, topReason)
             .from(MACHINE_PHOTOS)
-            .join(REPORTS).on(REPORTS.TARGET_ID.eq(MACHINE_PHOTOS.ID))
+            .join(REPORTS).on(REPORTS.PHOTO_ID.eq(MACHINE_PHOTOS.ID))
             .where(REPORTS.STATUS.eq(STATUS_PENDING))
-            .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_PHOTO))
             .and(notInOwnerWindow())
             .groupBy(MACHINE_PHOTOS.ID, MACHINE_PHOTOS.PHOTO_URL)
             .orderBy(oldestReportAt.asc())
@@ -293,11 +312,10 @@ public class ReportRepository {
         return dsl.select(GYM_MACHINES.ID, labelField,
                 pendingCount, oldestReportAt, topReason)
             .from(GYM_MACHINES)
-            .join(REPORTS).on(REPORTS.TARGET_ID.eq(GYM_MACHINES.ID))
+            .join(REPORTS).on(REPORTS.GYM_MACHINE_ID.eq(GYM_MACHINES.ID))
             .leftJoin(MACHINE_TEMPLATES).on(MACHINE_TEMPLATES.ID.eq(GYM_MACHINES.TEMPLATE_ID))
             .leftJoin(BRANDS).on(BRANDS.ID.eq(MACHINE_TEMPLATES.BRAND_ID))
             .where(REPORTS.STATUS.eq(STATUS_PENDING))
-            .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_GYM_MACHINE))
             .and(notInOwnerWindow())
             .groupBy(GYM_MACHINES.ID, BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN)
             .orderBy(oldestReportAt.asc())
@@ -326,23 +344,25 @@ public class ReportRepository {
     /**
      * ADR 0022 follow-up (Task 46): explicit target_type filter so admin screens
      * can scope to the right surface (photo detail vs gym_machine detail).
+     * Security D1: the type selects which typed column to match.
      */
     public List<AdminReportResponse> findByTargetTypeAndIdAndStatus(
             String targetType, UUID targetId, String status) {
+        Field<UUID> targetColumn =
+            TARGET_TYPE_PHOTO.equals(targetType) ? REPORTS.PHOTO_ID : REPORTS.GYM_MACHINE_ID;
         return dsl.select(
-                REPORTS.ID, REPORTS.USER_ID, REPORTS.TARGET_TYPE, REPORTS.TARGET_ID,
+                REPORTS.ID, REPORTS.USER_ID, TARGET_TYPE_EXPR, TARGET_ID_EXPR,
                 REPORTS.REASON, REPORTS.DETAIL, REPORTS.STATUS,
                 REPORTS.DISPOSED_BY, REPORTS.DISPOSED_AT, REPORTS.CREATED_AT)
             .from(REPORTS)
-            .where(REPORTS.TARGET_ID.eq(targetId))
+            .where(targetColumn.eq(targetId))
             .and(REPORTS.STATUS.eq(status))
-            .and(REPORTS.TARGET_TYPE.eq(targetType))
             .orderBy(REPORTS.CREATED_AT.asc())
             .fetch(r -> new AdminReportResponse(
                 r.get(REPORTS.ID),
                 r.get(REPORTS.USER_ID),
-                r.get(REPORTS.TARGET_TYPE),
-                r.get(REPORTS.TARGET_ID),
+                r.get(TARGET_TYPE_EXPR),
+                r.get(TARGET_ID_EXPR),
                 r.get(REPORTS.REASON),
                 r.get(REPORTS.DETAIL),
                 r.get(REPORTS.STATUS),
@@ -359,9 +379,8 @@ public class ReportRepository {
     public int countActionedByUploader(UUID uploaderId) {
         Integer count = dsl.selectCount()
             .from(REPORTS)
-            .join(MACHINE_PHOTOS).on(MACHINE_PHOTOS.ID.eq(REPORTS.TARGET_ID))
+            .join(MACHINE_PHOTOS).on(MACHINE_PHOTOS.ID.eq(REPORTS.PHOTO_ID))
             .where(REPORTS.STATUS.eq("actioned"))
-            .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_PHOTO))
             .and(MACHINE_PHOTOS.USER_ID.eq(uploaderId))
             .fetchOneInto(Integer.class);
         return Objects.requireNonNullElse(count, 0);
@@ -396,7 +415,7 @@ public class ReportRepository {
         ).as("escalated");
 
         return dsl.select(
-                REPORTS.ID, REPORTS.TARGET_TYPE, REPORTS.TARGET_ID,
+                REPORTS.ID, TARGET_TYPE_EXPR, TARGET_ID_EXPR,
                 REPORTS.REASON, REPORTS.DETAIL, REPORTS.STATUS,
                 REPORTS.CREATED_AT, REPORTS.DISPOSED_AT, escalatedField)
             .from(REPORTS)
@@ -405,8 +424,8 @@ public class ReportRepository {
             .limit(limit)
             .fetch(r -> new MyReportResponse(
                 r.get(REPORTS.ID),
-                r.get(REPORTS.TARGET_TYPE),
-                r.get(REPORTS.TARGET_ID),
+                r.get(TARGET_TYPE_EXPR),
+                r.get(TARGET_ID_EXPR),
                 r.get(REPORTS.REASON),
                 r.get(REPORTS.DETAIL),
                 r.get(REPORTS.STATUS),
@@ -502,17 +521,16 @@ public class ReportRepository {
 
     private List<OwnerQueueItem> ownerQueuePhotos(List<UUID> gymIds, int limit) {
         return dsl.select(
-                REPORTS.ID, REPORTS.TARGET_ID, REPORTS.REASON, REPORTS.DETAIL,
+                REPORTS.ID, REPORTS.PHOTO_ID, REPORTS.REASON, REPORTS.DETAIL,
                 REPORTS.USER_ID, REPORTS.CREATED_AT, REPORTS.OWNER_TIMEOUT_AT,
                 MACHINE_PHOTOS.PHOTO_URL,
                 GYM_MACHINES.GYM_ID,
                 GYMS.NAME)
             .from(REPORTS)
-            .join(MACHINE_PHOTOS).on(MACHINE_PHOTOS.ID.eq(REPORTS.TARGET_ID))
+            .join(MACHINE_PHOTOS).on(MACHINE_PHOTOS.ID.eq(REPORTS.PHOTO_ID))
             .join(GYM_MACHINES).on(GYM_MACHINES.ID.eq(MACHINE_PHOTOS.GYM_MACHINE_ID))
             .join(GYMS).on(GYMS.ID.eq(GYM_MACHINES.GYM_ID))
             .where(REPORTS.STATUS.eq(STATUS_PENDING))
-            .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_PHOTO))
             .and(REPORTS.OWNER_TIMEOUT_AT.isNotNull())
             .and(REPORTS.OWNER_TIMEOUT_AT.greaterThan(OffsetDateTime.now()))
             .and(GYM_MACHINES.GYM_ID.in(gymIds))
@@ -521,7 +539,7 @@ public class ReportRepository {
             .fetch(r -> new OwnerQueueItem(
                 TARGET_TYPE_PHOTO,
                 r.get(REPORTS.ID),
-                r.get(REPORTS.TARGET_ID),
+                r.get(REPORTS.PHOTO_ID),
                 "사진",
                 r.get(MACHINE_PHOTOS.PHOTO_URL),
                 r.get(REPORTS.REASON),
@@ -540,18 +558,17 @@ public class ReportRepository {
             String.class, BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN
         ).as("label");
         return dsl.select(
-                REPORTS.ID, REPORTS.TARGET_ID, REPORTS.REASON, REPORTS.DETAIL,
+                REPORTS.ID, REPORTS.GYM_MACHINE_ID, REPORTS.REASON, REPORTS.DETAIL,
                 REPORTS.USER_ID, REPORTS.CREATED_AT, REPORTS.OWNER_TIMEOUT_AT,
                 labelField,
                 GYM_MACHINES.GYM_ID,
                 GYMS.NAME)
             .from(REPORTS)
-            .join(GYM_MACHINES).on(GYM_MACHINES.ID.eq(REPORTS.TARGET_ID))
+            .join(GYM_MACHINES).on(GYM_MACHINES.ID.eq(REPORTS.GYM_MACHINE_ID))
             .join(GYMS).on(GYMS.ID.eq(GYM_MACHINES.GYM_ID))
             .leftJoin(MACHINE_TEMPLATES).on(MACHINE_TEMPLATES.ID.eq(GYM_MACHINES.TEMPLATE_ID))
             .leftJoin(BRANDS).on(BRANDS.ID.eq(MACHINE_TEMPLATES.BRAND_ID))
             .where(REPORTS.STATUS.eq(STATUS_PENDING))
-            .and(REPORTS.TARGET_TYPE.eq(TARGET_TYPE_GYM_MACHINE))
             .and(REPORTS.OWNER_TIMEOUT_AT.isNotNull())
             .and(REPORTS.OWNER_TIMEOUT_AT.greaterThan(OffsetDateTime.now()))
             .and(GYM_MACHINES.GYM_ID.in(gymIds))
@@ -560,7 +577,7 @@ public class ReportRepository {
             .fetch(r -> new OwnerQueueItem(
                 TARGET_TYPE_GYM_MACHINE,
                 r.get(REPORTS.ID),
-                r.get(REPORTS.TARGET_ID),
+                r.get(REPORTS.GYM_MACHINE_ID),
                 r.get(labelField),
                 null,
                 r.get(REPORTS.REASON),

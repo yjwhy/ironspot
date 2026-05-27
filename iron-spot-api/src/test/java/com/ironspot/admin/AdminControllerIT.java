@@ -74,12 +74,12 @@ class AdminControllerIT extends IntegrationTestBase {
 
         jdbcTemplate.update("DELETE FROM reports");
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status) "
-                + "VALUES (?, ?, 'photo', ?, 'INAPPROPRIATE', 'pending')",
+            "INSERT INTO reports(id, user_id, photo_id, reason, status) "
+                + "VALUES (?, ?, ?, 'INAPPROPRIATE', 'pending')",
             PENDING_REPORT_ID, UUID.fromString(REGULAR_ID), UNBLINDED_PHOTO_ID);
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status, disposed_by, disposed_at) "
-                + "VALUES (?, ?, 'photo', ?, 'INAPPROPRIATE', 'actioned', ?, NOW())",
+            "INSERT INTO reports(id, user_id, photo_id, reason, status, disposed_by, disposed_at) "
+                + "VALUES (?, ?, ?, 'INAPPROPRIATE', 'actioned', ?, NOW())",
             DISPOSED_REPORT_ID, UUID.fromString(REGULAR_ID), BLINDED_PHOTO_ID, UUID.fromString(ADMIN_ID));
 
         jdbcTemplate.update("UPDATE machine_photos SET is_blinded = TRUE WHERE id = ?", BLINDED_PHOTO_ID);
@@ -383,12 +383,12 @@ class AdminControllerIT extends IntegrationTestBase {
             "INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
             UUID.fromString("d0000055-0000-0000-0000-000000000055"), "y@example.com", "y");
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason, status) "
-                + "VALUES (?, 'photo', ?, 'INAPPROPRIATE', 'pending')",
+            "INSERT INTO reports(user_id, photo_id, reason, status) "
+                + "VALUES (?, ?, 'INAPPROPRIATE', 'pending')",
             UUID.fromString("d0000099-0000-0000-0000-000000000099"), UNBLINDED_PHOTO_ID);
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason, status) "
-                + "VALUES (?, 'photo', ?, 'INAPPROPRIATE', 'pending')",
+            "INSERT INTO reports(user_id, photo_id, reason, status) "
+                + "VALUES (?, ?, 'INAPPROPRIATE', 'pending')",
             UUID.fromString("d0000055-0000-0000-0000-000000000055"), UNBLINDED_PHOTO_ID);
 
         ResponseEntity<String> response = restTemplate.exchange(
@@ -403,12 +403,13 @@ class AdminControllerIT extends IntegrationTestBase {
     @Test
     void listPendingPhotosExcludesNonPhotoTargetTypes() {
         mockPrincipal(ADMIN_ID, "admin");
-        // Replace the seeded pending report with a user-target report to force the queue to be empty.
+        // Replace the seeded pending report with a gym_machine-target report to force the queue to be empty.
+        // (D1: the only non-photo report target is now gym_machine; the pending-photos query must skip it.)
         jdbcTemplate.update("DELETE FROM reports WHERE id = ?", PENDING_REPORT_ID);
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason, status) "
-                + "VALUES (?, 'user', ?, 'INAPPROPRIATE', 'pending')",
-            UUID.fromString(REGULAR_ID), UUID.fromString(TARGET_USER_ID));
+            "INSERT INTO reports(user_id, gym_machine_id, reason, status) "
+                + "VALUES (?, ?, 'WRONG_TEMPLATE', 'pending')",
+            UUID.fromString(REGULAR_ID), GYM_MACHINE_ID);
 
         ResponseEntity<String> response = restTemplate.exchange(
             "/api/admin/photos?status=pending_review", HttpMethod.GET, bearerRequest("token"), String.class);
@@ -697,21 +698,27 @@ class AdminControllerIT extends IntegrationTestBase {
             "INSERT INTO users(id, email, nickname) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
             reporterId, reporterId + "@example.com", "seeded");
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason, status, disposed_by, disposed_at) "
-                + "VALUES (?, 'photo', ?, 'INAPPROPRIATE', 'actioned', ?, NOW())",
+            "INSERT INTO reports(user_id, photo_id, reason, status, disposed_by, disposed_at) "
+                + "VALUES (?, ?, 'INAPPROPRIATE', 'actioned', ?, NOW())",
             reporterId, targetPhotoId, UUID.fromString(ADMIN_ID));
     }
 
     /**
-     * countDismissedByReporter does not join machine_photos, so the target_id is
-     * irrelevant to the count — use a random UUID per call to avoid the
-     * UNIQUE (user_id, target_id) constraint when seeding multiple rows.
+     * countDismissedByReporter does not join machine_photos, so the photo target
+     * is irrelevant to the count. D1 added a FK + per-reporter-per-photo partial
+     * UNIQUE on reports.photo_id, so each call seeds its own machine_photos row
+     * to keep distinct, FK-valid photo targets when seeding multiple rows.
      */
     private void seedDismissedReport(UUID reporterId) {
+        UUID photoId = UUID.randomUUID();
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason, status, disposed_by, disposed_at) "
-                + "VALUES (?, 'photo', ?, 'INAPPROPRIATE', 'dismissed', ?, NOW())",
-            reporterId, UUID.randomUUID(), UUID.fromString(ADMIN_ID));
+            "INSERT INTO machine_photos(id, gym_machine_id, user_id, photo_url) VALUES (?, ?, ?, ?)",
+            photoId, GYM_MACHINE_ID, reporterId,
+            "https://example.com/photos/dismissed-" + photoId + ".jpg");
+        jdbcTemplate.update(
+            "INSERT INTO reports(user_id, photo_id, reason, status, disposed_by, disposed_at) "
+                + "VALUES (?, ?, 'INAPPROPRIATE', 'dismissed', ?, NOW())",
+            reporterId, photoId, UUID.fromString(ADMIN_ID));
     }
 
     // ──────────────────── gym_machine disposition cascade (Task 46) ──────────────────────
@@ -724,8 +731,8 @@ class AdminControllerIT extends IntegrationTestBase {
     private void seedGymMachineReport(UUID gymMachineId, String reason) {
         jdbcTemplate.update("DELETE FROM reports WHERE id = ?", GYM_MACHINE_REPORT_ID);
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status) "
-                + "VALUES (?, ?, 'gym_machine', ?, ?, 'pending')",
+            "INSERT INTO reports(id, user_id, gym_machine_id, reason, status) "
+                + "VALUES (?, ?, ?, ?, 'pending')",
             GYM_MACHINE_REPORT_ID, UUID.fromString(REGULAR_ID), gymMachineId, reason);
     }
 

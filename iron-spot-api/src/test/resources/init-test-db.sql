@@ -191,11 +191,14 @@ CREATE TABLE IF NOT EXISTS photo_votes (
   PRIMARY KEY (user_id, photo_id)
 );
 
+-- Security D1: typed FK columns replace the polymorphic (target_type,
+-- target_id) pair. Mirror of V26__reports_typed_target_fk.sql (Flyway is
+-- disabled in tests, so this file is the IT schema source).
 CREATE TABLE IF NOT EXISTS reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id),
-  target_type TEXT NOT NULL,
-  target_id UUID NOT NULL,
+  photo_id UUID REFERENCES machine_photos(id) ON DELETE CASCADE,
+  gym_machine_id UUID REFERENCES gym_machines(id) ON DELETE CASCADE,
   reason TEXT NOT NULL,
   detail TEXT,
   status TEXT DEFAULT 'pending',
@@ -207,11 +210,21 @@ CREATE TABLE IF NOT EXISTS reports (
   -- owner AND reason is not in the urgent fast-track set (SafeSearch suspect,
   -- auto-blind). OwnerTimeoutEscalationJob surfaces expired rows in admin queue.
   owner_timeout_at TIMESTAMPTZ,
-  CONSTRAINT reports_unique_reporter_target UNIQUE (user_id, target_id)
+  CONSTRAINT reports_exactly_one_target
+    CHECK ((photo_id IS NOT NULL)::int + (gym_machine_id IS NOT NULL)::int = 1)
 );
 
-CREATE INDEX IF NOT EXISTS reports_target_pending_idx
-  ON reports (target_id) WHERE status = 'pending';
+CREATE UNIQUE INDEX IF NOT EXISTS reports_unique_reporter_photo
+  ON reports (user_id, photo_id) WHERE photo_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS reports_unique_reporter_gym_machine
+  ON reports (user_id, gym_machine_id) WHERE gym_machine_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS reports_photo_pending_idx
+  ON reports (photo_id) WHERE status = 'pending' AND photo_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS reports_gym_machine_pending_idx
+  ON reports (gym_machine_id) WHERE status = 'pending' AND gym_machine_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS reports_reporter_recent_idx
   ON reports (user_id, created_at DESC);
@@ -256,9 +269,8 @@ CREATE OR REPLACE VIEW moderation_analytics_30d AS
 WITH actioned_by_uploader AS (
   SELECT mp.user_id AS uploader_id, COUNT(*) AS cnt
   FROM reports r
-  JOIN machine_photos mp ON mp.id = r.target_id
+  JOIN machine_photos mp ON mp.id = r.photo_id
   WHERE r.status = 'actioned'
-    AND r.target_type = 'photo'
     AND r.disposed_at >= NOW() - INTERVAL '30 days'
     AND mp.user_id IS NOT NULL
   GROUP BY mp.user_id
