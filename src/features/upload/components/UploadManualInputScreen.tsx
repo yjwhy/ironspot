@@ -281,11 +281,23 @@ export function UploadManualInputScreen() {
     // the (rare) flow back-into-brand-step → re-pick path.
     setTemplate(null);
     setFreeFormName('');
+    // Auto-advance on pick so the user never has to scroll past a long brand
+    // list to reach a separate "다음" button: catalog brand → its template
+    // list, proposed brand → the free-form name step.
+    setStep(next.kind === 'catalog' ? 'template' : 'name');
   }
 
   function handleTemplatePick(next: TemplatePick) {
     setTemplate(next);
-    setFreeFormName('');
+    // Catalog template is a terminal pick — go straight to the photo step,
+    // no extra confirmation tap. Proposed template pre-fills the name input
+    // with the typed query and advances to the name step.
+    if (next.kind === 'catalog') {
+      pushToMachinePhoto({ kind: 'template', templateId: next.template.id });
+      return;
+    }
+    setFreeFormName(next.query);
+    setStep('name');
   }
 
   function handleRevertBrand() {
@@ -314,39 +326,16 @@ export function UploadManualInputScreen() {
     });
   }
 
-  function handleNext() {
-    if (step === 'brand') {
-      if (brand === null) return;
-      setStep(brand.kind === 'catalog' ? 'template' : 'name');
-      return;
-    }
-    if (step === 'template') {
-      if (template === null) return;
-      if (template.kind === 'catalog') {
-        pushToMachinePhoto({ kind: 'template', templateId: template.template.id });
-        return;
-      }
-      // Pre-fill the name input with whatever the user already typed into the
-      // template search box — the common case is "they typed the model name
-      // there to confirm it wasn't in the catalog", so typing it again on the
-      // next step would be redundant.
-      setFreeFormName(template.query);
-      setStep('name');
-      return;
-    }
-    // step === 'name'
+  // Brand and template steps auto-advance on pick (see handleBrandPick /
+  // handleTemplatePick), so only the free-form name step needs an explicit
+  // submit button.
+  function handleSubmitName() {
     if (brand === null) return;
     const trimmedName = freeFormName.trim();
     if (trimmedName === '') return;
     const brandLabel = brand.kind === 'catalog' ? formatBrandLabel(brand.brand) : brand.query;
     pushToMachinePhoto({ kind: 'freeForm', text: `${brandLabel} ${trimmedName}` });
   }
-
-  const canProceed = (() => {
-    if (step === 'brand') return brand !== null;
-    if (step === 'template') return template !== null;
-    return freeFormName.trim() !== '';
-  })();
 
   return (
     <ScrollView
@@ -374,12 +363,14 @@ export function UploadManualInputScreen() {
         <NameStep brand={brand} text={freeFormName} onChangeText={setFreeFormName} />
       ) : null}
 
-      <Button
-        testID="upload-manual-next"
-        label="다음"
-        onPress={handleNext}
-        disabled={!canProceed}
-      />
+      {step === 'name' ? (
+        <Button
+          testID="upload-manual-next"
+          label="다음"
+          onPress={handleSubmitName}
+          disabled={freeFormName.trim() === ''}
+        />
+      ) : null}
     </ScrollView>
   );
 }

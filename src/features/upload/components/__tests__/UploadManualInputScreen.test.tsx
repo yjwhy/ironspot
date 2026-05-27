@@ -75,22 +75,26 @@ describe('UploadManualInputScreen', () => {
     expect(getByTestId('upload-manual-brand-option-brand-life')).toBeTruthy();
   });
 
-  it('keeps the next button disabled until a brand is picked', () => {
-    const { getByTestId } = render(<UploadManualInputScreen />);
-    expect(getByTestId('upload-manual-next')).toHaveProp('accessibilityState', {
-      disabled: true,
-      busy: false,
-    });
+  it('does not render a next button on the brand step (selection auto-advances)', () => {
+    const { queryByTestId } = render(<UploadManualInputScreen />);
+    expect(queryByTestId('upload-manual-next')).toBeNull();
+  });
+
+  it('tapping a catalog brand auto-advances to its template step', () => {
+    const { getByTestId, queryByTestId } = render(<UploadManualInputScreen />);
+
+    fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+
+    // Advanced to the template step without a separate "다음" tap.
+    expect(getByTestId('upload-manual-template-option-tpl-hammer-chest')).toBeTruthy();
+    expect(queryByTestId('upload-manual-brand-option-brand-hammer')).toBeNull();
   });
 
   it('catalog brand + catalog template path pushes a template selection', () => {
     const { getByTestId } = render(<UploadManualInputScreen />);
 
     fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
-    fireEvent.press(getByTestId('upload-manual-next'));
-
     fireEvent.press(getByTestId('upload-manual-template-option-tpl-hammer-chest'));
-    fireEvent.press(getByTestId('upload-manual-next'));
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: UPLOAD_MACHINE_PHOTO_PATHNAME,
@@ -106,7 +110,6 @@ describe('UploadManualInputScreen', () => {
     const { getByTestId, queryByTestId } = render(<UploadManualInputScreen />);
 
     fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
-    fireEvent.press(getByTestId('upload-manual-next'));
 
     expect(getByTestId('upload-manual-template-option-tpl-hammer-chest')).toBeTruthy();
     expect(queryByTestId('upload-manual-template-option-tpl-other')).toBeNull();
@@ -126,8 +129,8 @@ describe('UploadManualInputScreen', () => {
 
     fireEvent.changeText(getByTestId('upload-manual-brand-search'), 'Cybex');
     fireEvent.press(getByTestId('upload-manual-brand-propose-new'));
-    fireEvent.press(getByTestId('upload-manual-next'));
 
+    // Proposed brand auto-advances to the name step.
     fireEvent.changeText(getByTestId('upload-manual-name-input'), 'Lat Pulldown');
     fireEvent.press(getByTestId('upload-manual-next'));
 
@@ -145,13 +148,12 @@ describe('UploadManualInputScreen', () => {
     const { getByTestId } = render(<UploadManualInputScreen />);
 
     fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
-    fireEvent.press(getByTestId('upload-manual-next'));
 
     fireEvent.changeText(getByTestId('upload-manual-template-search'), 'Hip Thrust');
     fireEvent.press(getByTestId('upload-manual-template-propose-new'));
-    fireEvent.press(getByTestId('upload-manual-next'));
 
-    // Pre-filled from the template search query so the user doesn't retype.
+    // Proposed template auto-advances to the name step, pre-filled from the
+    // template search query so the user doesn't retype.
     expect(getByTestId('upload-manual-name-input')).toHaveProp('value', 'Hip Thrust');
 
     fireEvent.press(getByTestId('upload-manual-next'));
@@ -173,7 +175,6 @@ describe('UploadManualInputScreen', () => {
     const { getByTestId, queryByTestId } = render(<UploadManualInputScreen />);
 
     fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
-    fireEvent.press(getByTestId('upload-manual-next'));
 
     act(() => {
       fireEvent.press(getByTestId('upload-manual-crumb-brand'));
@@ -181,5 +182,24 @@ describe('UploadManualInputScreen', () => {
 
     expect(getByTestId('upload-manual-brand-option-brand-hammer')).toBeTruthy();
     expect(queryByTestId('upload-manual-template-option-tpl-hammer-chest')).toBeNull();
+  });
+
+  it('template crumb revert returns from the name step to the template step', () => {
+    const { getByTestId, queryByTestId } = render(<UploadManualInputScreen />);
+
+    fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+    fireEvent.changeText(getByTestId('upload-manual-template-search'), 'Hip Thrust');
+    fireEvent.press(getByTestId('upload-manual-template-propose-new'));
+
+    // On the name step (proposed template auto-advanced here).
+    expect(getByTestId('upload-manual-name-input')).toBeTruthy();
+
+    act(() => {
+      fireEvent.press(getByTestId('upload-manual-crumb-template'));
+    });
+
+    // Back on the template step with the template selection cleared.
+    expect(getByTestId('upload-manual-template-option-tpl-hammer-chest')).toBeTruthy();
+    expect(queryByTestId('upload-manual-name-input')).toBeNull();
   });
 });
