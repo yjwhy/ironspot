@@ -123,6 +123,16 @@ describe('UploadManualInputScreen', () => {
     expect(queryByTestId('upload-manual-template-option-tpl-other')).toBeNull();
   });
 
+  it('shows the selected brand logo in the brand crumb on the template step', () => {
+    const { getByTestId } = render(<UploadManualInputScreen />);
+
+    fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+
+    // The crumb summarising the picked brand carries its logo, not just text.
+    expect(getByTestId('upload-manual-crumb-brand')).toBeTruthy();
+    expect(getByTestId('upload-manual-crumb-brand-logo')).toBeTruthy();
+  });
+
   it('groups the brand templates under their body-part headers', () => {
     const { getByTestId, getByText } = render(<UploadManualInputScreen />);
 

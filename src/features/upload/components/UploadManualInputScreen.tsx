@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { useBrands } from '@/features/map/hooks/useBrands';
@@ -247,12 +247,26 @@ function Crumbs({ brand, template, step, onRevertBrand, onRevertTemplate }: Crum
         ? templateDisplayName(template.template)
         : template.query;
 
+  // Catalog brands carry a logo; proposed (new) brands have no id, so the crumb
+  // falls back to text only.
+  const brandLogo =
+    brand !== null && brand.kind === 'catalog' ? (
+      <BrandLogo
+        testID="upload-manual-crumb-brand-logo"
+        brandId={brand.brand.id}
+        brandName={brand.brand.name}
+        brandNameKo={brand.brand.nameKo}
+        size="sm"
+      />
+    ) : null;
+
   return (
     <View className="gap-1">
       {showBrand ? (
         <Crumb
           testID="upload-manual-crumb-brand"
           label={`브랜드: ${brandLabel}`}
+          leading={brandLogo}
           onRevert={onRevertBrand}
         />
       ) : null}
@@ -271,12 +285,17 @@ interface CrumbProps {
   testID: string;
   label: string;
   onRevert: () => void;
+  /** Optional element rendered before the label (e.g. the brand logo). */
+  leading?: ReactNode;
 }
 
-function Crumb({ testID, label, onRevert }: CrumbProps) {
+function Crumb({ testID, label, onRevert, leading }: CrumbProps) {
   return (
     <View className="flex-row items-center justify-between rounded-lg bg-bg-muted px-3 py-2">
-      <AppText className="flex-1 text-body-sm text-text-secondary">{label}</AppText>
+      <View className="flex-1 flex-row items-center gap-2">
+        {leading}
+        <AppText className="flex-1 text-body-sm text-text-secondary">{label}</AppText>
+      </View>
       <Pressable
         testID={testID}
         accessibilityRole="button"
