@@ -1,11 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
+import { AuthedImage } from '@/shared/components/AuthedImage';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Skeleton } from '@/shared/components/Skeleton';
 import type { PhotoResponse } from '@/shared/generated/model/photoResponse';
@@ -183,8 +183,8 @@ function GridCell({ photo, index, onPress }: GridCellProps) {
         style={pressedOpacity}
         className="overflow-hidden rounded-md bg-bg-muted"
       >
-        <Image
-          source={{ uri: photo.photoUrl }}
+        <AuthedImage
+          contentPath={photo.contentPath}
           style={{ width: '100%', aspectRatio: 1 }}
           contentFit="cover"
         />
