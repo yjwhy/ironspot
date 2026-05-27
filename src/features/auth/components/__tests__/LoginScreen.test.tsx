@@ -16,8 +16,17 @@ jest.mock('@/shared/lib/supabase', () => ({
       signInWithOAuth: jest.fn(),
       exchangeCodeForSession: jest.fn(),
       setSession: jest.fn(),
+      signOut: jest.fn(),
     },
   },
+}));
+
+// Security I2: LoginScreen records PIPA consent (with retry) before granting
+// access. Mock the generated hook so consent resolves/rejects deterministically
+// instead of hitting the network — otherwise the retry would run real backoff
+// delays and leak timers across tests.
+jest.mock('@/shared/generated/users/users', () => ({
+  useRecordConsent: jest.fn(),
 }));
 
 jest.mock('expo-web-browser', () => ({
@@ -46,10 +55,18 @@ function getSupabaseMock() {
         signInWithOAuth: jest.Mock;
         exchangeCodeForSession: jest.Mock;
         setSession: jest.Mock;
+        signOut: jest.Mock;
       };
     };
   };
   return supabase;
+}
+
+const recordConsentMock = jest.fn();
+
+function getUseRecordConsentMock() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('@/shared/generated/users/users') as { useRecordConsent: jest.Mock };
 }
 
 function getWebBrowserMock() {
@@ -80,6 +97,9 @@ beforeEach(() => {
   });
   getSupabaseMock().auth.exchangeCodeForSession.mockResolvedValue({ error: null });
   getSupabaseMock().auth.setSession.mockResolvedValue({ error: null });
+  getSupabaseMock().auth.signOut.mockResolvedValue({ error: null });
+  recordConsentMock.mockResolvedValue(undefined);
+  getUseRecordConsentMock().useRecordConsent.mockReturnValue({ mutateAsync: recordConsentMock });
   getWebBrowserMock().openAuthSessionAsync.mockResolvedValue({
     type: 'success',
     url: PKCE_CALLBACK_URL,
@@ -219,6 +239,38 @@ describe('LoginScreen — OAuth flow', () => {
     await waitFor(() => {
       expect(onAuthenticated).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('records PIPA consent before granting access (security I2)', async () => {
+    const { onAuthenticated, getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
+    act(() => {
+      fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
+    });
+    await waitFor(() => {
+      expect(recordConsentMock).toHaveBeenCalledWith({ data: { version: 'v1' } });
+    });
+    await waitFor(() => {
+      expect(onAuthenticated).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('signs out and does not grant access when consent recording fails (security I2)', async () => {
+    recordConsentMock.mockRejectedValue(new Error('consent endpoint down'));
+    const { onAuthenticated, getByRole, getByTestId } = renderLoginScreen();
+    tapConsentCheckbox(getByTestId);
+    act(() => {
+      fireEvent.press(getByRole('button', { name: 'Google로 계속하기' }));
+    });
+
+    await waitFor(
+      () => {
+        expect(getSupabaseMock().auth.signOut).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 3000 },
+    );
+    expect(onAuthenticated).not.toHaveBeenCalled();
+    expect(getBurntMock().toast).toHaveBeenCalledWith(expect.objectContaining({ preset: 'error' }));
   });
 
   it('rejects implicit-flow callbacks as a custom-scheme hijack vector (security #16)', async () => {

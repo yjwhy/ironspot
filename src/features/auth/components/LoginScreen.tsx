@@ -24,6 +24,7 @@ import {
 } from '../constants';
 import { buildNaverAuthorizeUrl, generateOAuthState, parseNaverCallback } from '../lib/naverOAuth';
 import { parseAuthCallback } from '../lib/parseAuthCallback';
+import { recordConsentWithRetry } from '../lib/recordConsentWithRetry';
 
 interface LoginScreenProps {
   onBrowseAsGuest: () => void;
@@ -60,10 +61,23 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
    * client-side. Shared by the Supabase and Naver login paths.
    */
   async function completeLogin() {
-    try {
-      await recordConsent({ data: { version: CONSENT_VERSION } });
-    } catch (consentErr) {
-      captureError(consentErr);
+    // Security I2 (PIPA Article 22): the user already gave active consent at the
+    // gate (security #17); now durably record it before granting access. The
+    // /me/consent endpoint is authenticated, so the write can only run
+    // post-session — retry to survive a transient backend blip. If every
+    // attempt fails, refuse to proceed (sign out + error) rather than leave a
+    // session with no consent record on file.
+    const consentRecorded = await recordConsentWithRetry(() =>
+      recordConsent({ data: { version: CONSENT_VERSION } }),
+    );
+    if (!consentRecorded) {
+      // If signOut itself fails the local session token persists, which is the
+      // exact PIPA gap this gate closes — surface it so it isn't silent.
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) captureError(signOutError);
+      captureError(new Error('PIPA consent record failed after retries'));
+      burnt.toast({ title: '동의 기록에 실패했어요. 다시 시도해 주세요', preset: 'error' });
+      return;
     }
     onAuthenticated();
   }
