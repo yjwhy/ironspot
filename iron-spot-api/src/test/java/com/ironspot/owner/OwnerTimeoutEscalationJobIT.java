@@ -46,13 +46,13 @@ class OwnerTimeoutEscalationJobIT extends IntegrationTestBase {
         UUID expired = UUID.randomUUID();
         UUID secondExpired = UUID.randomUUID();
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status, owner_timeout_at) "
-                + "VALUES (?, ?, 'photo', ?, 'INAPPROPRIATE', 'pending', ?)",
+            "INSERT INTO reports(id, user_id, photo_id, reason, status, owner_timeout_at) "
+                + "VALUES (?, ?, ?, 'INAPPROPRIATE', 'pending', ?)",
             expired, UUID.fromString("d0000151-0000-0000-0000-000000000151"), PHOTO_ID,
             java.sql.Timestamp.from(OffsetDateTime.now().minusMinutes(5).toInstant()));
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status, owner_timeout_at) "
-                + "VALUES (?, ?, 'photo', ?, 'OTHER', 'pending', ?)",
+            "INSERT INTO reports(id, user_id, photo_id, reason, status, owner_timeout_at) "
+                + "VALUES (?, ?, ?, 'OTHER', 'pending', ?)",
             secondExpired, UUID.fromString("d0000151-0000-0000-0000-000000000151"),
             UUID.fromString("aa000002-0000-0000-0000-000000000002"),
             java.sql.Timestamp.from(OffsetDateTime.now().minusMinutes(10).toInstant()));
@@ -75,8 +75,8 @@ class OwnerTimeoutEscalationJobIT extends IntegrationTestBase {
     void inWindowReportsAreUntouched() {
         UUID inWindow = UUID.randomUUID();
         jdbcTemplate.update(
-            "INSERT INTO reports(id, user_id, target_type, target_id, reason, status, owner_timeout_at) "
-                + "VALUES (?, ?, 'photo', ?, 'INAPPROPRIATE', 'pending', ?)",
+            "INSERT INTO reports(id, user_id, photo_id, reason, status, owner_timeout_at) "
+                + "VALUES (?, ?, ?, 'INAPPROPRIATE', 'pending', ?)",
             inWindow, UUID.fromString("d0000151-0000-0000-0000-000000000151"), PHOTO_ID,
             java.sql.Timestamp.from(OffsetDateTime.now().plusHours(20).toInstant()));
 

@@ -90,12 +90,12 @@ class OwnerSelfGymAutoActionIT extends IntegrationTestBase {
 
         // Report should be actioned, photo blinded, owner_timeout_at NULL.
         String status = jdbcTemplate.queryForObject(
-            "SELECT status FROM reports WHERE user_id = ? AND target_id = ?",
+            "SELECT status FROM reports WHERE user_id = ? AND photo_id = ?",
             String.class, UUID.fromString(OWNER_ID), PHOTO_ID);
         assertThat(status).isEqualTo("actioned");
 
         java.sql.Timestamp timeout = jdbcTemplate.queryForObject(
-            "SELECT owner_timeout_at FROM reports WHERE user_id = ? AND target_id = ?",
+            "SELECT owner_timeout_at FROM reports WHERE user_id = ? AND photo_id = ?",
             java.sql.Timestamp.class, UUID.fromString(OWNER_ID), PHOTO_ID);
         assertThat(timeout).isNull();
 
@@ -121,7 +121,7 @@ class OwnerSelfGymAutoActionIT extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
         String status = jdbcTemplate.queryForObject(
-            "SELECT status FROM reports WHERE user_id = ? AND target_id = ?",
+            "SELECT status FROM reports WHERE user_id = ? AND gym_machine_id = ?",
             String.class, UUID.fromString(OWNER_ID), GYM_MACHINE_ID);
         assertThat(status).isEqualTo("actioned");
 
@@ -146,12 +146,12 @@ class OwnerSelfGymAutoActionIT extends IntegrationTestBase {
         // Pending + owner_timeout_at set; machine NOT deleted yet (owner must
         // dispose via queue with a new template).
         String status = jdbcTemplate.queryForObject(
-            "SELECT status FROM reports WHERE user_id = ? AND target_id = ?",
+            "SELECT status FROM reports WHERE user_id = ? AND gym_machine_id = ?",
             String.class, UUID.fromString(OWNER_ID), GYM_MACHINE_ID);
         assertThat(status).isEqualTo("pending");
 
         java.sql.Timestamp timeout = jdbcTemplate.queryForObject(
-            "SELECT owner_timeout_at FROM reports WHERE user_id = ? AND target_id = ?",
+            "SELECT owner_timeout_at FROM reports WHERE user_id = ? AND gym_machine_id = ?",
             java.sql.Timestamp.class, UUID.fromString(OWNER_ID), GYM_MACHINE_ID);
         assertThat(timeout).isNotNull();
 

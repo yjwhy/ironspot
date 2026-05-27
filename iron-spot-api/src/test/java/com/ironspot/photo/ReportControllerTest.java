@@ -203,7 +203,7 @@ class ReportControllerTest extends IntegrationTestBase {
         assertThat(escalation.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(reportCount(PHOTO_ID)).isEqualTo(1); // still one row, escalated in place
         String reasonAfter = jdbcTemplate.queryForObject(
-            "SELECT reason FROM reports WHERE target_id = ? AND user_id = ?",
+            "SELECT reason FROM reports WHERE photo_id = ? AND user_id = ?",
             String.class, PHOTO_ID, UUID.fromString(USER_B_ID));
         assertThat(reasonAfter).isEqualTo("LEGAL_PERSONAL");
         verify(adminNotifier).notifyUrgentReport(eq(PHOTO_ID),
@@ -218,13 +218,13 @@ class ReportControllerTest extends IntegrationTestBase {
         UUID userBUuid = UUID.fromString(USER_B_ID);
         // First, an existing report for PHOTO_ID
         jdbcTemplate.update(
-            "INSERT INTO reports(user_id, target_type, target_id, reason) VALUES (?, ?, ?, ?)",
-            userBUuid, "photo", PHOTO_ID, "INAPPROPRIATE");
+            "INSERT INTO reports(user_id, photo_id, reason) VALUES (?, ?, ?)",
+            userBUuid, PHOTO_ID, "INAPPROPRIATE");
         // Plus 9 reports on other photos to bring cap usage to 10 total
         for (int i = 0; i < 9; i++) {
             jdbcTemplate.update(
-                "INSERT INTO reports(user_id, target_type, target_id, reason) VALUES (?, ?, ?, ?)",
-                userBUuid, "photo", UUID.randomUUID(), "INAPPROPRIATE");
+                "INSERT INTO reports(user_id, photo_id, reason) VALUES (?, ?, ?)",
+                userBUuid, seedPhoto(), "INAPPROPRIATE");
         }
 
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principal(USER_B_ID)));
@@ -245,8 +245,8 @@ class ReportControllerTest extends IntegrationTestBase {
         UUID userBUuid = UUID.fromString(USER_B_ID);
         for (int i = 0; i < 10; i++) {
             jdbcTemplate.update(
-                "INSERT INTO reports(user_id, target_type, target_id, reason) VALUES (?, ?, ?, ?)",
-                userBUuid, "photo", UUID.randomUUID(), "INAPPROPRIATE");
+                "INSERT INTO reports(user_id, photo_id, reason) VALUES (?, ?, ?)",
+                userBUuid, seedPhoto(), "INAPPROPRIATE");
         }
         given(jwtValidator.validate(anyString())).willReturn(Optional.of(principal(USER_B_ID)));
 
@@ -268,7 +268,7 @@ class ReportControllerTest extends IntegrationTestBase {
             "{\"reason\":\"OTHER\",\"detail\":\"이상한 사진\"}", "token");
 
         String detail = jdbcTemplate.queryForObject(
-            "SELECT detail FROM reports WHERE target_id = ?", String.class, PHOTO_ID);
+            "SELECT detail FROM reports WHERE photo_id = ?", String.class, PHOTO_ID);
         assertThat(detail).isEqualTo("이상한 사진");
     }
 
@@ -305,8 +305,22 @@ class ReportControllerTest extends IntegrationTestBase {
 
     private int reportCount(UUID photoId) {
         Integer count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM reports WHERE target_id = ?", Integer.class, photoId);
+            "SELECT COUNT(*) FROM reports WHERE photo_id = ?", Integer.class, photoId);
         return count != null ? count : 0;
+    }
+
+    /**
+     * D1: reports.photo_id is now a FK into machine_photos, so cap-counting tests
+     * that previously aimed reports at arbitrary UUIDs must reference real photo
+     * rows. Seeds a throwaway machine_photos row on the seeded gym_machine.
+     */
+    private UUID seedPhoto() {
+        UUID photoId = UUID.randomUUID();
+        jdbcTemplate.update(
+            "INSERT INTO machine_photos(id, gym_machine_id, user_id, photo_url) VALUES (?, ?, ?, ?)",
+            photoId, UUID.fromString("f0000001-0000-0000-0000-000000000001"),
+            UUID.fromString(USER_B_ID), "https://example.com/photos/cap-" + photoId + ".jpg");
+        return photoId;
     }
 
     private boolean isBlinded(UUID photoId) {
