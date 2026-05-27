@@ -20,12 +20,12 @@ Severity: 🟡 MEDIUM, 🟢 LOW. Effort: S (≤1h), M (≤½ day), L (≤full da
 | §F APP LOW    | 6     | 6      | (all done)            |
 | §G AI MEDIUM  | 6     | 6      | (all done)            |
 | §H AI LOW     | 5     | 5      | (all done)            |
-| §I PI MEDIUM  | 2     | 1      | I2                    |
+| §I PI MEDIUM  | 2     | 2      | (all done)            |
 | §J PI LOW     | 3     | 2      | J2 (🚫 file absent)   |
 | §K CI MEDIUM  | 7     | 7      | (all done)            |
 | §L CI LOW     | 6     | 6      | (all done)            |
 
-Genuinely-actionable remaining: **A3 Phase 2c RN migration** (needs simulator), **I2** (PIPA consent ordering — verify LoginScreen gate first), **D1** (reports.target_id polymorphic FK). Closed-as-decided: B7 (🚫 UX info, not a real leak), J2 (🚫 referenced file doesn't exist), D4 (deferred — ENUM migration touches ~250 jOOQ sites for zero security delta). I1 closed by retention-shortening (not encryption — see below).
+Genuinely-actionable remaining: **A3 Phase 2c RN migration** (needs simulator), **D1** (reports.target_id polymorphic FK). Closed-as-decided: B7 (🚫 UX info, not a real leak), J2 (🚫 referenced file doesn't exist), D4 (deferred — ENUM migration touches ~250 jOOQ sites for zero security delta). I1 closed by retention-shortening (not encryption — see below). I2 closed by retry-gating the consent write (the active gate already obtains consent before processing; the fix makes the audit record durable).
 
 ---
 
@@ -291,9 +291,9 @@ Splits on `\s+` only. `"Panatta·하이로우"` stays as one token. **Fix:** spl
 
 Backup snapshot during the retention window persists every user's raw search text in plaintext. **Fix (shipped):** shortened retention rather than encryption. Per-row AES-GCM of `raw_query` alone was rejected on review — the search text also lives near-verbatim in `normalised_query` (NFC + lowercase + whitespace-collapse only; PII like a pasted phone number survives), and that column must stay plaintext because admin analytics `GROUP BY` it. Encrypting only `raw_query` would leave the equivalent plaintext in `normalised_query`, so the fix would be illusory. Instead `NlSearchLogRetentionJob` now redacts `raw_query → '[redacted]'` at **7d** (was 30d) and hard-deletes the whole row at **30d** (was 90d), shrinking the plaintext exposure window for _both_ columns. The admin NL-analytics endpoint dropped its **90d** period (data no longer exists past 30d; `7d`/`30d` remain). No new secret / env var. **Effort:** S (actual). **PR:** #TBD.
 
-### 🟡 I2. PIPA consent recorded AFTER session exchange
+### ✅ I2. PIPA consent recorded AFTER session exchange
 
-`LoginScreen.tsx:82-86`. Consent write runs after `exchangeCodeForSession` — PIPA Article 22 expects it before processing. **Fix:** record consent before code exchange, or retry consent write before granting `onAuthenticated`. **Effort:** M.
+`LoginScreen.tsx`. Consent write ran after `exchangeCodeForSession` as a best-effort call whose failure was swallowed. **Recording before the session is impossible** — `/api/users/me/consent` is authenticated, so it needs the session. The active consent gate (security #17) already obtains the user's consent _before_ any OAuth runs; the residual gap was the durability of the audit record. **Fix (shipped):** `recordConsentWithRetry` (bounded linear-backoff, 3 attempts) wraps the write; on total failure LoginScreen signs the user out + toasts an error and does **not** call `onAuthenticated` — refusing to proceed with processing when consent could not be recorded, rather than silently swallowing. **Effort:** S (actual). **PR:** #TBD.
 
 ---
 
