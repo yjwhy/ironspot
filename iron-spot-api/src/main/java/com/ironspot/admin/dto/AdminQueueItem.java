@@ -28,6 +28,9 @@ public record AdminQueueItem(
     @Schema(description = "Photo URL when type=photo; null when type=gym_machine")
     String imageUrl,
 
+    @Schema(description = "Security A3: photo-proxy path when type=photo; null when type=gym_machine")
+    String contentPath,
+
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     int pendingReportCount,
 
