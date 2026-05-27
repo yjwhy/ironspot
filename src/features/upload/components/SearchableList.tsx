@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
@@ -18,6 +18,14 @@ import { selectedRowClass } from './selectedRowClass';
 export interface SearchableRow {
   id: string;
   label: string;
+  /**
+   * Optional section a row belongs to (e.g. body part for the template step).
+   * When set, SearchableList renders a header before the first row of each
+   * group. Rows MUST already be ordered so same-group rows are consecutive —
+   * the caller owns the grouping/sort. Rows without `group` render flat (the
+   * brand step relies on this).
+   */
+  group?: string;
 }
 
 export interface ProposeNewRow {
@@ -73,23 +81,37 @@ export function SearchableList({
       </View>
       <View className="gap-2">
         {hasRows ? (
-          rows.map(function renderRow(row) {
+          rows.map(function renderRow(row, index) {
             const isSelected = row.id === selectedRowId;
+            // Header to show before this row, or null when the row has no group
+            // or shares the previous row's group. Held as a narrowed string so
+            // the testID template literal stays string-typed.
+            const groupHeader =
+              row.group !== undefined && row.group !== rows[index - 1]?.group ? row.group : null;
             return (
-              <Pressable
-                key={row.id}
-                testID={`${testIDPrefix}-option-${row.id}`}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: isSelected }}
-                onPress={function handlePress() {
-                  onSelectRow(row.id);
-                }}
-                style={pressedOpacity}
-                className={selectedRowClass(isSelected)}
-              >
-                {renderLeading?.(row)}
-                <AppText className="text-body text-text-primary">{row.label}</AppText>
-              </Pressable>
+              <Fragment key={row.id}>
+                {groupHeader !== null ? (
+                  <AppText
+                    testID={`${testIDPrefix}-group-${groupHeader}`}
+                    className="mt-1 text-caption font-semibold uppercase text-text-tertiary"
+                  >
+                    {groupHeader}
+                  </AppText>
+                ) : null}
+                <Pressable
+                  testID={`${testIDPrefix}-option-${row.id}`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: isSelected }}
+                  onPress={function handlePress() {
+                    onSelectRow(row.id);
+                  }}
+                  style={pressedOpacity}
+                  className={selectedRowClass(isSelected)}
+                >
+                  {renderLeading?.(row)}
+                  <AppText className="text-body text-text-primary">{row.label}</AppText>
+                </Pressable>
+              </Fragment>
             );
           })
         ) : (

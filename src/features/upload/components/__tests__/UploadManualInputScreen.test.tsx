@@ -1,12 +1,14 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 
 import { useBrands } from '@/features/map/hooks/useBrands';
+import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
 
 import { UPLOAD_MACHINE_PHOTO_PATHNAME } from '../../constants';
 import { UploadManualInputScreen } from '../UploadManualInputScreen';
 
 jest.mock('@/features/map/hooks/useBrands', () => ({ useBrands: jest.fn() }));
+jest.mock('@/features/map/hooks/useCategories', () => ({ useCategories: jest.fn() }));
 jest.mock('@/features/map/hooks/useMachineTemplates', () => ({ useMachineTemplates: jest.fn() }));
 
 const mockPush = jest.fn();
@@ -16,6 +18,7 @@ jest.mock('expo-router', () => ({
 }));
 
 const mockUseBrands = useBrands as jest.Mock;
+const mockUseCategories = useCategories as jest.Mock;
 const mockUseMachineTemplates = useMachineTemplates as jest.Mock;
 
 interface TemplateFixture {
@@ -56,7 +59,12 @@ function setupQueries() {
       loadingType: 'plate',
     },
   ];
+  const categories = [
+    { id: 'cat-chest', name: '가슴' },
+    { id: 'cat-back', name: '등' },
+  ];
   mockUseBrands.mockReturnValue({ data: brands });
+  mockUseCategories.mockReturnValue({ data: categories });
   mockUseMachineTemplates.mockImplementation((params?: { brandId?: string }) => {
     if (params?.brandId === undefined) return { data: undefined };
     return { data: templates.filter((t) => t.brandId === params.brandId) };
@@ -113,6 +121,18 @@ describe('UploadManualInputScreen', () => {
 
     expect(getByTestId('upload-manual-template-option-tpl-hammer-chest')).toBeTruthy();
     expect(queryByTestId('upload-manual-template-option-tpl-other')).toBeNull();
+  });
+
+  it('groups the brand templates under their body-part headers', () => {
+    const { getByTestId, getByText } = render(<UploadManualInputScreen />);
+
+    fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+
+    // The chest and back machines surface under their body-part (운동 부위) headers.
+    expect(getByText('가슴')).toBeTruthy();
+    expect(getByText('등')).toBeTruthy();
+    expect(getByTestId('upload-manual-template-group-가슴')).toBeTruthy();
+    expect(getByTestId('upload-manual-template-group-등')).toBeTruthy();
   });
 
   it('shows a propose-new brand row when the query has no catalog match', () => {

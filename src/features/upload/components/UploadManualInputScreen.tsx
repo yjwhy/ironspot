@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { useBrands } from '@/features/map/hooks/useBrands';
+import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
 import { AppText } from '@/shared/components/AppText';
 import { BrandLogo } from '@/shared/components/BrandLogo';
@@ -112,18 +113,49 @@ interface TemplateStepProps {
   onPick: (pick: TemplatePick) => void;
 }
 
+// Templates with no resolvable category fall under this heading rather than
+// being dropped — a missing body part shouldn't hide a registrable machine.
+const UNCATEGORISED_BODY_PART = '기타';
+
+// Group the brand's templates by body part (운동 부위) so the list reads as
+// sections rather than one long flat list. Rows are ordered group-then-label
+// because SearchableList renders a header whenever the group changes, so
+// same-group rows must be consecutive.
+function toBodyPartRows(
+  templates: readonly MachineTemplateResponse[],
+  bodyPartById: ReadonlyMap<string, string>,
+): SearchableRow[] {
+  return templates
+    .map(function toRow(template): SearchableRow {
+      return {
+        id: template.id,
+        label: templateDisplayName(template),
+        group: bodyPartById.get(template.categoryId) ?? UNCATEGORISED_BODY_PART,
+      };
+    })
+    .sort(function byBodyPartThenLabel(a, b) {
+      if (a.group !== b.group) return (a.group ?? '').localeCompare(b.group ?? '', 'ko');
+      return a.label.localeCompare(b.label, 'ko');
+    });
+}
+
 function TemplateStep({ brand, pick, onPick }: TemplateStepProps) {
   const [query, setQuery] = useState(pick?.kind === 'proposed' ? pick.query : '');
   // Hook only fires for a catalog brand; brand.id is sufficient as the filter
   // (category narrows in MachinePicker but is intentionally absent here).
   const { data: templates = [] } = useMachineTemplates({ brandId: brand.id });
+  const { data: categories = [] } = useCategories();
+  const bodyPartById = new Map(categories.map((category) => [category.id, category.name]));
 
   const matches = filterByFuzzy(templates, query, function getLabels(template) {
     return { primary: template.nameKo, secondary: template.nameEn };
   });
-  const rows: SearchableRow[] = matches.map(function toRow(m) {
-    return { id: m.item.id, label: templateDisplayName(m.item) };
-  });
+  const rows: SearchableRow[] = toBodyPartRows(
+    matches.map(function toItem(m) {
+      return m.item;
+    }),
+    bodyPartById,
+  );
   const selectedRowId = pick?.kind === 'catalog' ? pick.template.id : null;
   const proposeQuery = query.trim();
   const proposeNew =
