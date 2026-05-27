@@ -7,7 +7,7 @@ import type { GymWithMachineCount } from '@/shared/types/database';
 import type * as BottomSheetMockModule from '@/test/utils/bottom-sheet-mock';
 
 import { useGymMachines } from '../../hooks/useGymMachines';
-import { GymBottomSheet } from '../GymBottomSheet';
+import { GymBottomSheet, snapIndexForMode } from '../GymBottomSheet';
 
 jest.mock('@react-navigation/bottom-tabs', () => ({
   useBottomTabBarHeight: jest.fn(() => 83),
@@ -109,6 +109,21 @@ const strengthGym: GymWithMachineCount = {
   matched_machine_names: [],
   cover_photo_url: null,
 };
+
+// The unregistered-detail CTA ('기구 사진 등록하기') is absolute-positioned at the
+// sheet bottom and is clipped at the mid detent. snapIndexForMode is the pure
+// decision that opens that mode at the full detent; the snap wiring itself is
+// verified on the simulator (the gorhom modal mock exposes no imperative handle).
+describe('snapIndexForMode', () => {
+  it('opens the unregistered-detail mode at the full (90%) detent', () => {
+    expect(snapIndexForMode('unregistered-detail')).toBe(2);
+  });
+
+  it('opens list and registered-detail modes at the mid (50%) detent', () => {
+    expect(snapIndexForMode('list')).toBe(1);
+    expect(snapIndexForMode('detail')).toBe(1);
+  });
+});
 
 describe('GymBottomSheet (list mode)', () => {
   beforeEach(() => {
