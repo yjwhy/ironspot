@@ -39,7 +39,10 @@ class StorageServiceTest {
 
     private static final String SUPABASE_URL = "https://test.supabase.co";
     private static final String SERVICE_ROLE_KEY = "test-service-role-key";
-    private static final String SIGNED_PATH = "/storage/v1/object/sign/machine-photos/foo?token=ABC";
+    // Real Supabase signedURL shape: relative to the Storage API root, WITHOUT
+    // the /storage/v1 prefix. StorageService must prepend it.
+    private static final String SIGNED_PATH = "/object/sign/machine-photos/foo?token=ABC";
+    private static final String EXPECTED_SIGNED_URL = SUPABASE_URL + "/storage/v1" + SIGNED_PATH;
 
     @BeforeEach
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -78,7 +81,7 @@ class StorageServiceTest {
 
         // Security task #9: bucket is private; upload returns a signed URL
         // minted by Supabase, not the legacy /public/ shape.
-        assertThat(result.signedUrl()).isEqualTo(SUPABASE_URL + SIGNED_PATH);
+        assertThat(result.signedUrl()).isEqualTo(EXPECTED_SIGNED_URL);
         // Security A3: bucket-relative path is exposed separately so the
         // proxy endpoint can mint a fresh short-TTL URL on demand.
         assertThat(result.path()).isEqualTo(gymMachineId + "/" + filename);
@@ -99,7 +102,7 @@ class StorageServiceTest {
         // because the mock returns the same SIGNED_PATH regardless of input
         // (real Supabase keys the token to the path; we exercise the
         // signed-URL-returning behaviour, not Supabase's signing).
-        assertThat(result.signedUrl()).isEqualTo(SUPABASE_URL + SIGNED_PATH);
+        assertThat(result.signedUrl()).isEqualTo(EXPECTED_SIGNED_URL);
         // Orphan path: prefix follows orphan/<userId>/<filename>.
         assertThat(result.path()).isEqualTo("orphan/" + userId + "/" + filename);
     }
@@ -113,7 +116,34 @@ class StorageServiceTest {
 
         String result = storageService.createSignedUrl("bucket/path/photo.webp");
 
-        assertThat(result).isEqualTo(SUPABASE_URL + SIGNED_PATH);
+        assertThat(result).isEqualTo(EXPECTED_SIGNED_URL);
+    }
+
+    @Test
+    void createSignedUrlPrependsStorageV1ToTheRelativeSignedPath() {
+        // Regression: Supabase returns signedURL WITHOUT /storage/v1; concatenating
+        // it raw onto the project URL 404s and blanks every photo. The path must
+        // gain the /storage/v1 prefix.
+        lenient().when(postMono.block(any()))
+            .thenReturn(Map.of("signedURL", "/object/sign/machine-photos/foo?token=ABC"));
+
+        String result = storageService.createSignedUrl("bucket/path/photo.webp");
+
+        assertThat(result)
+            .isEqualTo(SUPABASE_URL + "/storage/v1/object/sign/machine-photos/foo?token=ABC");
+    }
+
+    @Test
+    void createSignedUrlDoesNotDoubleStorageV1WhenAlreadyPresent() {
+        // Idempotency: if a future Supabase version starts including /storage/v1
+        // in signedURL, don't prepend it twice.
+        lenient().when(postMono.block(any()))
+            .thenReturn(Map.of("signedURL", "/storage/v1/object/sign/machine-photos/foo?token=ABC"));
+
+        String result = storageService.createSignedUrl("bucket/path/photo.webp");
+
+        assertThat(result)
+            .isEqualTo(SUPABASE_URL + "/storage/v1/object/sign/machine-photos/foo?token=ABC");
     }
 
     // Phase 5 item 11 slice (c): path-derivation helper backs the reaper's

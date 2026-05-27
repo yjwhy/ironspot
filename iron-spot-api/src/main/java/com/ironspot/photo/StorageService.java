@@ -153,7 +153,14 @@ public class StorageService {
                 "이미지 URL 응답 형식이 예상과 다릅니다",
                 HttpStatus.BAD_GATEWAY);
         }
-        return supabaseUrl + url;
+        // Supabase's `signedURL` is relative to the Storage API root, e.g.
+        // `/object/sign/<bucket>/<path>?token=…`, and omits the `/storage/v1`
+        // prefix. Concatenating it straight onto supabaseUrl yields a 404
+        // (`/object/sign/…` instead of `/storage/v1/object/sign/…`), which
+        // blanks every photo. Prepend `/storage/v1` idempotently in case a
+        // future Supabase version starts including it.
+        String signedPath = url.startsWith("/storage/v1") ? url : "/storage/v1" + url;
+        return supabaseUrl + signedPath;
     }
 
     /**
