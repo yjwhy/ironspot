@@ -157,6 +157,14 @@ public class ReportService {
                 "머신 신고에 사용할 수 없는 사유입니다", HttpStatus.BAD_REQUEST);
         }
 
+        // Security D1: verify the gym_machine exists (and isn't soft-deleted)
+        // before insert. reports.gym_machine_id is now a FK, so a hand-crafted
+        // UUID would otherwise hit a FK violation -> 500 + Sentry spam (mirrors
+        // the photo guard above; anyone could DoS the observability pipeline).
+        if (!machineRepository.gymMachineExists(gymMachineId)) {
+            throw new BusinessException("신고할 머신을 찾을 수 없어요.", HttpStatus.NOT_FOUND);
+        }
+
         InsertResult result = reportRepository.insertOrEscalate(
             userUuid, ReportRepository.TARGET_TYPE_GYM_MACHINE, gymMachineId,
             request.reason(), request.detail());

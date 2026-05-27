@@ -192,6 +192,21 @@ public class MachineRepository {
     }
 
     /**
+     * Security D1: cheap existence check before a gym_machine report insert.
+     * reports.gym_machine_id is now a FK, so a forged id would otherwise reach
+     * a DataIntegrityViolation -> 500 + Sentry alarm spam (mirrors the photo
+     * report guard). Soft-deleted machines (deleted_at) count as absent.
+     */
+    public boolean gymMachineExists(UUID gymMachineId) {
+        return dsl.fetchExists(
+            dsl.selectOne()
+                .from(GYM_MACHINES)
+                .where(GYM_MACHINES.ID.eq(gymMachineId))
+                .and(GYM_MACHINES.DELETED_AT.isNull())
+        );
+    }
+
+    /**
      * Owner-initiated gym_machine update (Task 47 / ADR 0023 Q5 P3). Updates
      * both template_id and quantity in one statement. Returns rows affected
      * so 0 → 404 in the service.

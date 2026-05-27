@@ -119,9 +119,10 @@ public class ModerationAnalyticsRepository {
         var cutoff = cutoff(periodDays);
         return dsl.select(MACHINE_PHOTOS.USER_ID, DSL.count().as("cnt"))
             .from(REPORTS)
-            .join(MACHINE_PHOTOS).on(MACHINE_PHOTOS.ID.eq(REPORTS.TARGET_ID))
+            // Security D1: joining on photo_id (the FK) inherently scopes to
+            // photo reports — the old target_type='photo' filter is implicit.
+            .join(MACHINE_PHOTOS).on(MACHINE_PHOTOS.ID.eq(REPORTS.PHOTO_ID))
             .where(REPORTS.STATUS.eq("actioned"))
-            .and(REPORTS.TARGET_TYPE.eq("photo"))
             .and(MACHINE_PHOTOS.USER_ID.isNotNull())
             .and(cutoff != null
                 ? REPORTS.DISPOSED_AT.greaterOrEqual(cutoff)
