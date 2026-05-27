@@ -290,6 +290,7 @@ public class ReportRepository {
                 r.get(MACHINE_PHOTOS.ID),
                 "사진",
                 r.get(MACHINE_PHOTOS.PHOTO_URL),
+                PhotoProxyPath.forPhoto(r.get(MACHINE_PHOTOS.ID)),
                 r.get(pendingCount),
                 r.get(oldestReportAt),
                 r.get(topReason)
@@ -324,6 +325,7 @@ public class ReportRepository {
                 TARGET_TYPE_GYM_MACHINE,
                 r.get(GYM_MACHINES.ID),
                 r.get(labelField),
+                null,
                 null,
                 r.get(pendingCount),
                 r.get(oldestReportAt),

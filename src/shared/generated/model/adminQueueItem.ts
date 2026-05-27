@@ -14,6 +14,8 @@ export interface AdminQueueItem {
   label: string;
   /** Photo URL when type=photo; null when type=gym_machine */
   imageUrl?: string;
+  /** Security A3: photo-proxy path when type=photo; null when type=gym_machine */
+  contentPath?: string;
   pendingReportCount: number;
   oldestReportAt: string;
   topReason: string;

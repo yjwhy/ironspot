@@ -36,6 +36,7 @@ describe('getMachinePhotos', () => {
       gym_machine_id: 'gm-1',
       user_id: 'u1',
       photo_url: 'https://example.com/photo.jpg',
+      content_path: '/api/photos/p1/content',
       upvote_count: 7,
       created_at: '2026-01-01T00:00:00Z',
       verified_by_owner_at: null, // Task 47: omitted from API response → null on the local type

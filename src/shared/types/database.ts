@@ -89,6 +89,13 @@ export interface MachinePhoto {
   gym_machine_id: string;
   user_id: string | null;
   photo_url: string;
+  /**
+   * Security A3: relative proxy path (`/api/photos/{id}/content`) for the
+   * authenticated short-TTL image proxy. Optional so pre-A3 fixtures still
+   * satisfy the shape; populated from PhotoResponse.contentPath in
+   * toMachinePhoto for the real flow.
+   */
+  content_path?: string;
   created_at: string;
   upvote_count: number;
   is_upvoted_by_me?: boolean;

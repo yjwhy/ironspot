@@ -1,11 +1,11 @@
 import { FlashList } from '@shopify/flash-list';
 import type { UseQueryResult } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AuthedImage } from '@/shared/components/AuthedImage';
 import { EmptyState } from '@/shared/components/EmptyState';
 import type { AdminPendingContribution } from '@/shared/generated/model/adminPendingContribution';
 import type { AdminQueueItem } from '@/shared/generated/model/adminQueueItem';
@@ -206,11 +206,11 @@ function QueueSeparator() {
  * and a "머신" placeholder otherwise. Extracted from QueueRow / ContributionRow
  * so both rows share one source for the `THUMB_SIZE` + corner-radius pair.
  */
-function RowThumb({ url }: { url: string | undefined }) {
-  if (url !== undefined) {
+function RowThumb({ contentPath }: { contentPath: string | undefined }) {
+  if (contentPath !== undefined) {
     return (
-      <Image
-        source={{ uri: url }}
+      <AuthedImage
+        contentPath={contentPath}
         style={{ width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: 8 }}
         cachePolicy="memory-disk"
       />
@@ -231,7 +231,7 @@ function renderQueueRow({ item }: { item: AdminQueueItem }) {
 }
 
 function QueueRow({ item }: { item: AdminQueueItem }) {
-  const imageUrl = item.type === 'photo' ? item.imageUrl : undefined;
+  const contentPath = item.type === 'photo' ? item.contentPath : undefined;
   return (
     <Pressable
       testID={`admin-queue-row-${item.type}-${item.targetId}`}
@@ -240,7 +240,7 @@ function QueueRow({ item }: { item: AdminQueueItem }) {
       }}
       className="flex-row items-center gap-3 px-4 py-3 active:bg-bg-elevated"
     >
-      <RowThumb url={imageUrl} />
+      <RowThumb contentPath={contentPath} />
       <View className="flex-1">
         <Text className="text-base font-medium text-text-primary" numberOfLines={1}>
           {item.label} · 신고 {item.pendingReportCount}건
@@ -267,7 +267,7 @@ function ContributionRow({ item }: { item: AdminPendingContribution }) {
       }}
       className="flex-row items-center gap-3 px-4 py-3 active:bg-bg-elevated"
     >
-      <RowThumb url={item.photoUrl} />
+      <RowThumb contentPath={item.contentPath} />
       <View className="flex-1">
         <Text className="text-base font-medium text-text-primary" numberOfLines={1}>
           {item.freeFormName}

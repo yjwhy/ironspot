@@ -1,8 +1,8 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AuthedImage } from '@/shared/components/AuthedImage';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { formatRelativeKo } from '@/shared/lib/format';
@@ -53,6 +53,7 @@ interface DetailProps {
     photo: {
       id?: string;
       photoUrl?: string;
+      contentPath?: string;
       isBlinded?: boolean;
       createdAt?: string;
     };
@@ -93,8 +94,8 @@ function Detail({ photoId, detail }: DetailProps) {
     <SafeAreaView className="flex-1 bg-bg-base">
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
         <View>
-          <Image
-            source={{ uri: photo.photoUrl ?? '' }}
+          <AuthedImage
+            contentPath={photo.contentPath}
             style={{ width: '100%', aspectRatio: 1, borderRadius: 12 }}
             cachePolicy="memory-disk"
           />
