@@ -1,6 +1,7 @@
 import { toast } from 'burnt';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ImageManipulator } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, View } from 'react-native';
@@ -126,20 +127,50 @@ export function UploadMachinePhotoScreen() {
   // below see the post-guard type (SubmittableSelection, no null).
   const submittableSelection: SubmittableSelection = selection;
 
+  function notifyProcessingError(e: unknown) {
+    toast({
+      title: '사진 처리 중 오류가 발생했어요',
+      message: e instanceof Error ? e.message : undefined,
+      preset: 'error',
+    });
+    setIsProcessing(false);
+  }
+
   async function handleCapture() {
     if (cameraRef.current === null || isProcessing) return;
     setIsProcessing(true);
     try {
+      // takePictureAsync stays inside the try so a camera rejection (not
+      // ready / hardware race) surfaces the error toast rather than becoming
+      // an unhandled rejection. registerWithPhoto navigates away on success,
+      // so isProcessing is only reset on this error path.
       const photo = await cameraRef.current.takePictureAsync();
       const compressedUri = await compressImage(photo.uri);
       await registerWithPhoto(compressedUri, submittableSelection);
     } catch (e) {
-      toast({
-        title: '사진 처리 중 오류가 발생했어요',
-        message: e instanceof Error ? e.message : undefined,
-        preset: 'error',
-      });
-      setIsProcessing(false);
+      notifyProcessingError(e);
+    }
+  }
+
+  // Phase 5 follow-up: the contribution photo may also come from the gallery
+  // (parity with the label-OCR path's UploadPhotoScreen) so users can submit a
+  // shot they already took at the gym. Mirrors that screen's picker options.
+  async function handlePickFromGallery() {
+    if (isProcessing) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 1,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (asset === undefined) return;
+    setIsProcessing(true);
+    try {
+      const compressedUri = await compressImage(asset.uri);
+      await registerWithPhoto(compressedUri, submittableSelection);
+    } catch (e) {
+      notifyProcessingError(e);
     }
   }
 
@@ -262,6 +293,19 @@ export function UploadMachinePhotoScreen() {
           className="items-center rounded-xl bg-accent py-4"
         >
           <AppText className="text-body font-semibold text-white">촬영하고 등록하기</AppText>
+        </Pressable>
+        <Pressable
+          testID="upload-machine-photo-gallery"
+          accessibilityRole="button"
+          accessibilityLabel="갤러리에서 선택"
+          onPress={() => {
+            void handlePickFromGallery();
+          }}
+          disabled={isProcessing}
+          style={pressedOpacity}
+          className="items-center rounded-xl border border-white/30 py-4"
+        >
+          <AppText className="text-body font-medium text-white">갤러리에서 선택</AppText>
         </Pressable>
         <Pressable
           testID="upload-machine-photo-cancel"
