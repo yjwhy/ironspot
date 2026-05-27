@@ -9,6 +9,7 @@ export function toMachinePhoto(r: PhotoResponse): MachinePhoto {
     gym_machine_id: r.gymMachineId,
     user_id: r.userId,
     photo_url: r.photoUrl,
+    content_path: r.contentPath,
     upvote_count: r.upvoteCount,
     created_at: r.createdAt,
     verified_by_owner_at: r.verifiedByOwnerAt ?? null,

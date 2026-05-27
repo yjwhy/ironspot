@@ -32,7 +32,7 @@ export function PhotoPager({ photos, initialIndex, onIndexChange }: PhotoPagerPr
     return (
       <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center' }}>
         <ZoomableImage
-          uri={item.photo_url}
+          contentPath={item.content_path}
           width={SCREEN_WIDTH}
           height={SCREEN_HEIGHT}
           accessibilityLabel={`사진 ${String(index + 1)}`}

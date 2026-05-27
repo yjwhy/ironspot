@@ -6,14 +6,14 @@ import { ZoomableImage } from '../ZoomableImage';
 describe('ZoomableImage', () => {
   it('renders exactly one Image', () => {
     const { UNSAFE_getAllByType } = render(
-      <ZoomableImage uri="https://example.com/p.jpg" width={300} height={400} />,
+      <ZoomableImage contentPath="/api/photos/p1/content" width={300} height={400} />,
     );
     expect(UNSAFE_getAllByType(Image)).toHaveLength(1);
   });
 
   it('exposes accessibilityRole="image" on the wrapper', () => {
     const { getByRole } = render(
-      <ZoomableImage uri="https://example.com/p.jpg" width={300} height={400} />,
+      <ZoomableImage contentPath="/api/photos/p1/content" width={300} height={400} />,
     );
     expect(getByRole('image')).toBeTruthy();
   });
@@ -21,7 +21,7 @@ describe('ZoomableImage', () => {
   it('forwards an accessibilityLabel when provided', () => {
     const { getByLabelText } = render(
       <ZoomableImage
-        uri="https://example.com/p.jpg"
+        contentPath="/api/photos/p1/content"
         width={300}
         height={400}
         accessibilityLabel="머신 사진 1번"

@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -7,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBrands } from '@/features/map/hooks/useBrands';
 import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
+import { AuthedImage } from '@/shared/components/AuthedImage';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import type { PromoteContributionRequest } from '@/shared/generated/model/promoteContributionRequest';
@@ -71,10 +71,10 @@ export function AdminPendingContributionScreen({
             제출 {formatRelativeKo(contribution.createdAt)}
           </Text>
         </Section>
-        {contribution.photoUrl !== undefined && (
+        {contribution.contentPath !== undefined && (
           <Section title="첨부 사진">
-            <Image
-              source={{ uri: contribution.photoUrl }}
+            <AuthedImage
+              contentPath={contribution.contentPath}
               style={{ width: '100%', height: PHOTO_HEIGHT, borderRadius: 12 }}
               contentFit="cover"
               cachePolicy="memory-disk"

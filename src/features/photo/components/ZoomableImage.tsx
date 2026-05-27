@@ -2,18 +2,27 @@ import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { useAuthedImageSource } from '@/shared/hooks/useAuthedImageSource';
+
 const DOUBLE_TAP_SCALE = 2;
 const MIN_SCALE = 1;
 const ZOOM_DURATION = 200;
 
 interface ZoomableImageProps {
-  uri: string;
+  /** Security A3: relative proxy path; loaded via the authenticated proxy. */
+  contentPath: string | null | undefined;
   width: number;
   height: number;
   accessibilityLabel?: string;
 }
 
-export function ZoomableImage({ uri, width, height, accessibilityLabel }: ZoomableImageProps) {
+export function ZoomableImage({
+  contentPath,
+  width,
+  height,
+  accessibilityLabel,
+}: ZoomableImageProps) {
+  const source = useAuthedImageSource(contentPath);
   const scale = useSharedValue(MIN_SCALE);
   const savedScale = useSharedValue(MIN_SCALE);
   const translateX = useSharedValue(0);
@@ -86,7 +95,7 @@ export function ZoomableImage({ uri, width, height, accessibilityLabel }: Zoomab
         accessibilityLabel={accessibilityLabel}
         style={[{ width, height }, animatedStyle]}
       >
-        <Image source={{ uri }} style={{ width, height }} contentFit="contain" />
+        <Image source={source} style={{ width, height }} contentFit="contain" />
       </Animated.View>
     </GestureDetector>
   );
