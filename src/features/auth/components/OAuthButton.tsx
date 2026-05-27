@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
 
-export type OAuthProvider = 'google' | 'kakao' | 'apple';
+export type OAuthProvider = 'google' | 'kakao' | 'apple' | 'naver';
 
 interface OAuthButtonProps {
   provider: OAuthProvider;
@@ -28,8 +28,11 @@ interface ProviderStyle {
   spinnerColor: string;
   // AntDesign icon glyph that matches the provider's sign-in branding most
   // closely. Kakao falls back to `message` (speech bubble) because the
-  // installed icon sets have no dedicated Kakao glyph.
-  iconName: 'google' | 'apple' | 'message';
+  // installed icon sets have no dedicated Kakao glyph. null when a text glyph
+  // (`iconText`) is used instead — Naver has no icon-set glyph, so its brand
+  // "N" is rendered as text.
+  iconName: 'google' | 'apple' | 'message' | null;
+  iconText?: string;
 }
 
 const PROVIDER_STYLES: Record<OAuthProvider, ProviderStyle> = {
@@ -53,6 +56,16 @@ const PROVIDER_STYLES: Record<OAuthProvider, ProviderStyle> = {
     iconColor: '#FFFFFF',
     spinnerColor: '#FFFFFF',
     iconName: 'apple',
+  },
+  naver: {
+    // Naver brand green (#03C75A) + white "N" glyph, per the 네이버 로그인
+    // button style guide. No icon-set glyph exists, so the mark is text.
+    containerClass: 'bg-[#03C75A]',
+    textClass: 'text-white',
+    iconColor: '#FFFFFF',
+    spinnerColor: '#FFFFFF',
+    iconName: null,
+    iconText: 'N',
   },
 };
 
@@ -90,7 +103,13 @@ export function OAuthButton({
         <ActivityIndicator color={style.spinnerColor} />
       ) : (
         <View className="flex-row items-center gap-2">
-          <AntDesign name={style.iconName} size={ICON_SIZE} color={style.iconColor} />
+          {style.iconName ? (
+            <AntDesign name={style.iconName} size={ICON_SIZE} color={style.iconColor} />
+          ) : (
+            <AppText className={`font-bold ${style.textClass}`} style={{ fontSize: ICON_SIZE }}>
+              {style.iconText}
+            </AppText>
+          )}
           <AppText className={`font-semibold ${style.textClass}`}>{label}</AppText>
         </View>
       )}

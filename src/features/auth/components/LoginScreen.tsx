@@ -6,7 +6,9 @@ import { Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/shared/components/AppText';
+import { naverLogin } from '@/shared/generated/auth/auth';
 import { useRecordConsent } from '@/shared/generated/users/users';
+import { env } from '@/shared/lib/env';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { captureError } from '@/shared/lib/sentry';
 import { supabase } from '@/shared/lib/supabase';
@@ -16,9 +18,11 @@ import { OAuthButton } from './OAuthButton';
 import {
   AUTH_REDIRECT_URL,
   CONSENT_VERSION,
+  NAVER_REDIRECT_URL,
   PRIVACY_POLICY_URL,
   TERMS_OF_SERVICE_URL,
 } from '../constants';
+import { buildNaverAuthorizeUrl, generateOAuthState, parseNaverCallback } from '../lib/naverOAuth';
 import { parseAuthCallback } from '../lib/parseAuthCallback';
 import { recordConsentWithRetry } from '../lib/recordConsentWithRetry';
 
@@ -27,8 +31,10 @@ interface LoginScreenProps {
   onAuthenticated: () => void;
 }
 
-type OAuthProvider = 'google' | 'kakao' | 'apple';
-type LoadingProvider = OAuthProvider | null;
+// Supabase-native providers go through supabase.auth.signInWithOAuth. Naver is
+// NOT a Supabase provider, so it has its own handler + backend bridge.
+type SupabaseProvider = 'google' | 'kakao' | 'apple';
+type LoadingProvider = SupabaseProvider | 'naver' | null;
 
 export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenProps) {
   const [loading, setLoading] = useState<LoadingProvider>(null);
@@ -48,7 +54,35 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
    * no toast, no Sentry, no onAuthenticated. Every other failure goes through `catch`
    * which reports to Sentry and shows the same user-facing toast.
    */
-  async function handleOAuthLogin(provider: OAuthProvider) {
+  /**
+   * Security task #17: record the active consent the user gave at the gate,
+   * then finish. Best-effort — a record failure (network, BE down) does not
+   * block onAuthenticated() because the gate already enforced consent
+   * client-side. Shared by the Supabase and Naver login paths.
+   */
+  async function completeLogin() {
+    // Security I2 (PIPA Article 22): the user already gave active consent at the
+    // gate (security #17); now durably record it before granting access. The
+    // /me/consent endpoint is authenticated, so the write can only run
+    // post-session — retry to survive a transient backend blip. If every
+    // attempt fails, refuse to proceed (sign out + error) rather than leave a
+    // session with no consent record on file.
+    const consentRecorded = await recordConsentWithRetry(() =>
+      recordConsent({ data: { version: CONSENT_VERSION } }),
+    );
+    if (!consentRecorded) {
+      // If signOut itself fails the local session token persists, which is the
+      // exact PIPA gap this gate closes — surface it so it isn't silent.
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) captureError(signOutError);
+      captureError(new Error('PIPA consent record failed after retries'));
+      burnt.toast({ title: '동의 기록에 실패했어요. 다시 시도해 주세요', preset: 'error' });
+      return;
+    }
+    onAuthenticated();
+  }
+
+  async function handleOAuthLogin(provider: SupabaseProvider) {
     setLoading(provider);
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -75,26 +109,48 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
           throw new Error(`OAuth callback invalid: ${parsed.reason}`);
       }
 
-      // Security I2 (PIPA Article 22): the user already gave active consent at
-      // the gate (security #17); now durably record it. The /me/consent
-      // endpoint is authenticated, so the write can only run post-session — we
-      // retry to survive a transient backend blip. If every attempt fails we
-      // refuse to proceed (sign out + error) rather than leave a session with
-      // no consent record on file.
-      const consentRecorded = await recordConsentWithRetry(() =>
-        recordConsent({ data: { version: CONSENT_VERSION } }),
-      );
-      if (!consentRecorded) {
-        // If signOut itself fails the local session token persists, which is
-        // the exact PIPA gap this gate closes — surface it so it isn't silent.
-        const { error: signOutError } = await supabase.auth.signOut();
-        if (signOutError) captureError(signOutError);
-        captureError(new Error('PIPA consent record failed after retries'));
-        burnt.toast({ title: '동의 기록에 실패했어요. 다시 시도해 주세요', preset: 'error' });
-        return;
+      await completeLogin();
+    } catch (err) {
+      captureError(err);
+      burnt.toast({ title: '로그인에 실패했습니다', preset: 'error' });
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  /**
+   * Naver login bridge. Supabase has no native Naver provider, so we run the
+   * Naver authorization-code flow ourselves, post the code to the backend
+   * (which mints a Supabase magic-link token), then redeem it via verifyOtp to
+   * establish the session. State is generated per-attempt and re-checked in
+   * parseNaverCallback (CSRF). User-cancelled WebBrowser sessions return
+   * silently like the Supabase path.
+   */
+  async function handleNaverLogin() {
+    setLoading('naver');
+    try {
+      const state = generateOAuthState();
+      const authUrl = buildNaverAuthorizeUrl({
+        clientId: env.EXPO_PUBLIC_NAVER_CLIENT_ID,
+        state,
+      });
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, NAVER_REDIRECT_URL);
+      if (result.type !== 'success' || !result.url) return;
+
+      const parsed = parseNaverCallback(result.url, state);
+      if (parsed.kind === 'invalid') {
+        throw new Error(`Naver callback invalid: ${parsed.reason}`);
       }
 
-      onAuthenticated();
+      const { data } = await naverLogin({ code: parsed.code, state: parsed.state });
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: data.tokenHash,
+        type: 'magiclink',
+      });
+      if (verifyError) throw verifyError;
+
+      await completeLogin();
     } catch (err) {
       captureError(err);
       burnt.toast({ title: '로그인에 실패했습니다', preset: 'error' });
@@ -134,6 +190,17 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
           loading={loading === 'kakao'}
           disabled={!consentAccepted}
         />
+        {env.EXPO_PUBLIC_NAVER_CLIENT_ID ? (
+          <OAuthButton
+            provider="naver"
+            label="네이버로 계속하기"
+            onPress={() => {
+              void handleNaverLogin();
+            }}
+            loading={loading === 'naver'}
+            disabled={!consentAccepted}
+          />
+        ) : null}
         {Platform.OS === 'ios' ? (
           <OAuthButton
             provider="apple"

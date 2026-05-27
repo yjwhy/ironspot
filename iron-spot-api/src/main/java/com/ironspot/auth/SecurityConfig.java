@@ -82,6 +82,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/gym-machines/*/reports").authenticated()
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/api-docs/**", "/swagger-ui/**").permitAll()
+                // Naver-login bridge: the caller has no Supabase session yet
+                // (Supabase has no native Naver provider, so the backend mints
+                // one). Pre-auth by necessity; GlobalRateLimitFilter still
+                // gates per-IP flooding, and the body is @Valid-checked.
+                .requestMatchers(HttpMethod.POST, "/api/auth/naver").permitAll()
                 // Explicit so a future permitAll for actuator-like admin tools cannot
                 // accidentally widen the surface that exposes any /api/_admin smoke
                 // endpoint (Slack smoke, Sentry smoke, and any future ops verifiers).

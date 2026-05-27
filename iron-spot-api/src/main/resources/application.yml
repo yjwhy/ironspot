@@ -101,6 +101,14 @@ naver:
   search:
     client-id: ${NAVER_SEARCH_CLIENT_ID}
     client-secret: ${NAVER_SEARCH_CLIENT_SECRET}
+  # Naver "네이버 아이디로 로그인" — a SEPARATE Naver application from the
+  # 지역검색 (search) credentials above. Backend bridges Naver OAuth to a
+  # Supabase session (Supabase has no native Naver provider). Empty → the
+  # /api/auth/naver endpoint fails at runtime; NaverOAuthClient logs a warning
+  # at boot. Set NAVER_CLIENT_ID / NAVER_CLIENT_SECRET in Render env.
+  login:
+    client-id: ${NAVER_CLIENT_ID:}
+    client-secret: ${NAVER_CLIENT_SECRET:}
 
 groq:
   # Empty → GroqLlamaClient logs warning at startup, throws TRANSPORT at runtime.
