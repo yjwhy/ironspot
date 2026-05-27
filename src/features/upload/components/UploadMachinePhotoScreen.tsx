@@ -174,7 +174,13 @@ export function UploadMachinePhotoScreen() {
         ? { title: '등록 요청을 보냈어요', message: '검토 후 반영될 거예요', preset: 'done' }
         : { title: '등록됐어요', preset: 'done' },
     );
-    router.replace('/');
+    // Land on the just-registered machine's gallery (replace, so the upload
+    // stack unwinds and back returns to the map) instead of resetting to the
+    // initial map. The gym, machine, and the photo just bound are all queryable
+    // immediately, so the gallery shows the user their contribution — even when
+    // pendingReview is true, in which case the toast above stays honest about
+    // the review queue.
+    router.replace(`/gym/${created.gymId}/machine/${created.gymMachineId}`);
   }
 
   function handleCancel() {
