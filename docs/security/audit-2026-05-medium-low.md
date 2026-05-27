@@ -10,22 +10,22 @@ Severity: 🟡 MEDIUM, 🟢 LOW. Effort: S (≤1h), M (≤½ day), L (≤full da
 
 **67 / 75 shipped.** PRs #236-#256 landed the early quick wins; PRs #264-#281 (2026-05-26/27 session) closed the rest of the actionable backlog.
 
-| Section       | Total | Closed | Remaining             |
-| ------------- | ----- | ------ | --------------------- |
-| §A BE MEDIUM  | 12    | 11     | A3 (Phase 2c RN only) |
-| §B BE LOW     | 10    | 9      | B7 (🚫 won't-fix)     |
-| §C DB MEDIUM  | 4     | 4      | (all done)            |
-| §D DB LOW     | 6     | 5      | D4 (deferred)         |
-| §E APP MEDIUM | 7     | 7      | (all done)            |
-| §F APP LOW    | 6     | 6      | (all done)            |
-| §G AI MEDIUM  | 6     | 6      | (all done)            |
-| §H AI LOW     | 5     | 5      | (all done)            |
-| §I PI MEDIUM  | 2     | 2      | (all done)            |
-| §J PI LOW     | 3     | 2      | J2 (🚫 file absent)   |
-| §K CI MEDIUM  | 7     | 7      | (all done)            |
-| §L CI LOW     | 6     | 6      | (all done)            |
+| Section       | Total | Closed | Remaining           |
+| ------------- | ----- | ------ | ------------------- |
+| §A BE MEDIUM  | 12    | 12     | (all done)          |
+| §B BE LOW     | 10    | 9      | B7 (🚫 won't-fix)   |
+| §C DB MEDIUM  | 4     | 4      | (all done)          |
+| §D DB LOW     | 6     | 5      | D4 (deferred)       |
+| §E APP MEDIUM | 7     | 7      | (all done)          |
+| §F APP LOW    | 6     | 6      | (all done)          |
+| §G AI MEDIUM  | 6     | 6      | (all done)          |
+| §H AI LOW     | 5     | 5      | (all done)          |
+| §I PI MEDIUM  | 2     | 2      | (all done)          |
+| §J PI LOW     | 3     | 2      | J2 (🚫 file absent) |
+| §K CI MEDIUM  | 7     | 7      | (all done)          |
+| §L CI LOW     | 6     | 6      | (all done)          |
 
-Genuinely-actionable remaining: **A3 Phase 2c RN migration** (needs simulator). Closed-as-decided: B7 (🚫 UX info, not a real leak), J2 (🚫 referenced file doesn't exist), D4 (deferred — ENUM migration touches ~250 jOOQ sites for zero security delta). I1 closed by retention-shortening (not encryption — see below). I2 closed by retry-gating the consent write (the active gate already obtains consent before processing; the fix makes the audit record durable). D1 closed by typed FK columns (photo_id/gym_machine_id) replacing the polymorphic target_id, API contract preserved.
+Genuinely-actionable remaining: **(none — all closed)**. A3 Phase 2c RN migration shipped (all photo surfaces load via the AuthedImage proxy; verified on sim). Closed-as-decided: B7 (🚫 UX info, not a real leak), J2 (🚫 referenced file doesn't exist), D4 (deferred — ENUM migration touches ~250 jOOQ sites for zero security delta). I1 closed by retention-shortening (not encryption — see below). I2 closed by retry-gating the consent write (the active gate already obtains consent before processing; the fix makes the audit record durable). D1 closed by typed FK columns (photo_id/gym_machine_id) replacing the polymorphic target_id, API contract preserved.
 
 ---
 
@@ -39,9 +39,9 @@ Genuinely-actionable remaining: **A3 Phase 2c RN migration** (needs simulator). 
 
 `UploadRateGate.resolveIp` (shared by `GlobalRateLimitFilter`, etc.) takes the leftmost X-Forwarded-For without validating that the immediate remote address is Render's proxy. A client setting the header to a rotating value bypasses per-IP RPM caps. **Fix:** trust only when remote addr matches Render's proxy CIDR list, or use Spring's `ForwardedHeaderFilter` with `trustedProxies`. **Effort:** M.
 
-### 🟡 A3 (Phase 1/2a/2b/2c-BE ✅, Phase 2c RN pending). Signed Storage URL stored verbatim in DB
+### ✅ A3. Signed Storage URL stored verbatim in DB
 
-`StorageService.upload` returns a 365-day signed URL which is persisted in `machine_photos.photo_url`. A DB leak / backup dump / Sentry capture hands over a year-long bearer credential per photo. **Fix:** store only the bucket-relative path; mint a short-TTL (15-60 min) signed URL at response time. **Effort:** L.
+`StorageService.upload` returned a 365-day signed URL persisted in `machine_photos.photo_url`. A DB leak / backup dump / Sentry capture hands over a year-long bearer credential per photo. **Fix (shipped):** Phase 1 (storage_path column + `/api/photos/{id}/content` proxy) + 2a (TTL 365d→24h) + 2b/2c-BE (contentPath on all photo DTOs) + **2c-RN**: every RN photo surface (MyPhotoListView, ZoomableImage/PhotoPager detail, AdminPhotoScreen, AdminQueueScreen, AdminPendingContributionScreen) now loads through the authenticated short-TTL proxy via the shared `AuthedImage` / `useAuthedImageSource`; the long-lived `photo_url` is no longer rendered. Verified on the iOS simulator. A prerequisite bug surfaced during verification — `StorageService.createSignedUrl` omitted `/storage/v1` so every signed URL 404'd — fixed separately (#288). **Effort:** L. **PR:** #TBD (RN), #288 (signed-URL fix).
 
 ### ✅ A4. No re-auth or grace window on account deletion
 
