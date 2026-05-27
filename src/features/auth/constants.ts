@@ -1,10 +1,18 @@
 export const AUTH_REDIRECT_URL = 'ironspot://auth/callback';
 
-// Naver "네이버 아이디로 로그인" deep link. Distinct path from the Supabase
+// Naver "네이버 아이디로 로그인" app deep link. Distinct path from the Supabase
 // AUTH_REDIRECT_URL so parseNaverCallback's origin check never overlaps with
-// the Supabase parser. This exact value must be registered as the Callback URL
-// in the Naver Developers console.
+// the Supabase parser. This is the in-app auth-session callback scheme that
+// ASWebAuthenticationSession (iOS) intercepts — NOT the value registered at
+// Naver (see NAVER_WEB_CALLBACK_URL).
 export const NAVER_REDIRECT_URL = 'ironspot://auth/naver';
+
+// The https Callback URL registered in the Naver Developers console. Naver's
+// web login rejects custom URL schemes, so the OAuth redirect_uri must be this
+// https bounce page (docs/legal/naver-callback.html on GitHub Pages); it
+// immediately re-redirects to NAVER_REDIRECT_URL with the code+state, which the
+// in-app auth session then intercepts. Register this EXACT value at Naver.
+export const NAVER_WEB_CALLBACK_URL = 'https://yjwhy.github.io/ironspot/naver-callback.html';
 
 // Legal policy URLs hosted via GitHub Pages (docs/legal/ → Pages workflow).
 // Pinned here for reuse by LoginScreen consent disclosure + any future surface

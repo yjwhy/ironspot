@@ -7,7 +7,10 @@ describe('buildNaverAuthorizeUrl', () => {
     expect(url.origin + url.pathname).toBe('https://nid.naver.com/oauth2.0/authorize');
     expect(url.searchParams.get('response_type')).toBe('code');
     expect(url.searchParams.get('client_id')).toBe('cid-1');
-    expect(url.searchParams.get('redirect_uri')).toBe('ironspot://auth/naver');
+    // Naver rejects custom schemes — redirect_uri is the https bounce page.
+    expect(url.searchParams.get('redirect_uri')).toBe(
+      'https://yjwhy.github.io/ironspot/naver-callback.html',
+    );
     expect(url.searchParams.get('state')).toBe('st-1');
   });
 });

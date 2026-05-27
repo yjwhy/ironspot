@@ -1,0 +1,28 @@
+---
+---
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>네이버 로그인</title>
+  </head>
+  <body>
+    <!--
+      Naver "네이버 아이디로 로그인" Callback bounce page.
+
+      Naver's web login console rejects custom URL schemes as the Callback URL
+      (it only accepts http/https), but iOS ASWebAuthenticationSession can only
+      intercept a custom scheme. So Naver redirects here (an https URL it
+      accepts) with ?code & ?state, and this page immediately re-redirects into
+      the app via the ironspot:// scheme, which the in-app auth session then
+      intercepts. The full query string (code, state, or error) is forwarded
+      verbatim; parseNaverCallback on the app side validates origin + state.
+    -->
+    <script>
+      window.location.replace('ironspot://auth/naver' + (window.location.search || ''));
+    </script>
+    <p>네이버 로그인 처리 중입니다. 앱으로 자동 이동하지 않으면 이 창을 닫고 다시 시도해 주세요.</p>
+  </body>
+</html>

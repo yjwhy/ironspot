@@ -1,4 +1,4 @@
-import { NAVER_REDIRECT_URL } from '../constants';
+import { NAVER_REDIRECT_URL, NAVER_WEB_CALLBACK_URL } from '../constants';
 
 // Naver's OAuth 2.0 authorization endpoint. The token exchange happens
 // server-side (NaverOAuthClient) — the app only opens this authorize URL and
@@ -35,7 +35,9 @@ export function buildNaverAuthorizeUrl({ clientId, state }: NaverAuthorizeParams
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
-    redirect_uri: NAVER_REDIRECT_URL,
+    // Naver rejects custom schemes, so the redirect_uri is the https bounce
+    // page; it forwards to NAVER_REDIRECT_URL, which the auth session catches.
+    redirect_uri: NAVER_WEB_CALLBACK_URL,
     state,
   });
   return `${NAVER_AUTHORIZE_URL}?${params.toString()}`;
