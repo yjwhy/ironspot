@@ -10,6 +10,7 @@ import com.ironspot.jooq.Public;
 import com.ironspot.jooq.tables.Gyms.GymsPath;
 import com.ironspot.jooq.tables.MachinePhotos.MachinePhotosPath;
 import com.ironspot.jooq.tables.MachineTemplates.MachineTemplatesPath;
+import com.ironspot.jooq.tables.Reports.ReportsPath;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -230,6 +231,19 @@ public class GymMachines extends TableImpl<Record> {
             _machinePhotos = new MachinePhotosPath(this, null, Keys.MACHINE_PHOTOS__MACHINE_PHOTOS_GYM_MACHINE_ID_FKEY.getInverseKey());
 
         return _machinePhotos;
+    }
+
+    private transient ReportsPath _reports;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.reports</code>
+     * table
+     */
+    public ReportsPath reports() {
+        if (_reports == null)
+            _reports = new ReportsPath(this, null, Keys.REPORTS__REPORTS_GYM_MACHINE_ID_FKEY.getInverseKey());
+
+        return _reports;
     }
 
     @Override

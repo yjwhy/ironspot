@@ -87,8 +87,8 @@ public class ModerationAnalytics_30d extends TableImpl<Record> {
                 SELECT mp.user_id AS uploader_id,
                    count(*) AS cnt
                   FROM (reports r
-                    JOIN machine_photos mp ON ((mp.id = r.target_id)))
-                 WHERE ((r.status = 'actioned'::text) AND (r.target_type = 'photo'::text) AND (r.disposed_at >= (now() - '30 days'::interval)) AND (mp.user_id IS NOT NULL))
+                    JOIN machine_photos mp ON ((mp.id = r.photo_id)))
+                 WHERE ((r.status = 'actioned'::text) AND (r.disposed_at >= (now() - '30 days'::interval)) AND (mp.user_id IS NOT NULL))
                  GROUP BY mp.user_id
                ), dismissed_by_reporter AS (
                 SELECT reports.user_id AS reporter_id,

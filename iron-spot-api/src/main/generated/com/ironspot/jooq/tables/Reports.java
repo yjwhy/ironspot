@@ -7,6 +7,8 @@ package com.ironspot.jooq.tables;
 import com.ironspot.jooq.Indexes;
 import com.ironspot.jooq.Keys;
 import com.ironspot.jooq.Public;
+import com.ironspot.jooq.tables.GymMachines.GymMachinesPath;
+import com.ironspot.jooq.tables.MachinePhotos.MachinePhotosPath;
 import com.ironspot.jooq.tables.Users.UsersPath;
 
 import java.time.OffsetDateTime;
@@ -72,14 +74,14 @@ public class Reports extends TableImpl<Record> {
     public final TableField<Record, UUID> USER_ID = createField(DSL.name("user_id"), SQLDataType.UUID, this, "");
 
     /**
-     * The column <code>public.reports.target_type</code>.
+     * The column <code>public.reports.photo_id</code>.
      */
-    public final TableField<Record, String> TARGET_TYPE = createField(DSL.name("target_type"), SQLDataType.CLOB.nullable(false), this, "");
+    public final TableField<Record, UUID> PHOTO_ID = createField(DSL.name("photo_id"), SQLDataType.UUID, this, "");
 
     /**
-     * The column <code>public.reports.target_id</code>.
+     * The column <code>public.reports.gym_machine_id</code>.
      */
-    public final TableField<Record, UUID> TARGET_ID = createField(DSL.name("target_id"), SQLDataType.UUID.nullable(false), this, "");
+    public final TableField<Record, UUID> GYM_MACHINE_ID = createField(DSL.name("gym_machine_id"), SQLDataType.UUID, this, "");
 
     /**
      * The column <code>public.reports.reason</code>.
@@ -185,7 +187,7 @@ public class Reports extends TableImpl<Record> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.REPORTS_REPORTER_RECENT_IDX, Indexes.REPORTS_TARGET_PENDING_IDX);
+        return Arrays.asList(Indexes.REPORTS_GYM_MACHINE_PENDING_IDX, Indexes.REPORTS_PHOTO_PENDING_IDX, Indexes.REPORTS_REPORTER_RECENT_IDX, Indexes.REPORTS_UNIQUE_REPORTER_GYM_MACHINE, Indexes.REPORTS_UNIQUE_REPORTER_PHOTO);
     }
 
     @Override
@@ -194,13 +196,8 @@ public class Reports extends TableImpl<Record> {
     }
 
     @Override
-    public List<UniqueKey<Record>> getUniqueKeys() {
-        return Arrays.asList(Keys.REPORTS_UNIQUE_REPORTER_TARGET);
-    }
-
-    @Override
     public List<ForeignKey<Record, ?>> getReferences() {
-        return Arrays.asList(Keys.REPORTS__REPORTS_DISPOSED_BY_FKEY, Keys.REPORTS__REPORTS_USER_ID_FKEY);
+        return Arrays.asList(Keys.REPORTS__REPORTS_DISPOSED_BY_FKEY, Keys.REPORTS__REPORTS_GYM_MACHINE_ID_FKEY, Keys.REPORTS__REPORTS_PHOTO_ID_FKEY, Keys.REPORTS__REPORTS_USER_ID_FKEY);
     }
 
     private transient UsersPath _reportsDisposedByFkey;
@@ -214,6 +211,31 @@ public class Reports extends TableImpl<Record> {
             _reportsDisposedByFkey = new UsersPath(this, Keys.REPORTS__REPORTS_DISPOSED_BY_FKEY, null);
 
         return _reportsDisposedByFkey;
+    }
+
+    private transient GymMachinesPath _gymMachines;
+
+    /**
+     * Get the implicit join path to the <code>public.gym_machines</code> table.
+     */
+    public GymMachinesPath gymMachines() {
+        if (_gymMachines == null)
+            _gymMachines = new GymMachinesPath(this, Keys.REPORTS__REPORTS_GYM_MACHINE_ID_FKEY, null);
+
+        return _gymMachines;
+    }
+
+    private transient MachinePhotosPath _machinePhotos;
+
+    /**
+     * Get the implicit join path to the <code>public.machine_photos</code>
+     * table.
+     */
+    public MachinePhotosPath machinePhotos() {
+        if (_machinePhotos == null)
+            _machinePhotos = new MachinePhotosPath(this, Keys.REPORTS__REPORTS_PHOTO_ID_FKEY, null);
+
+        return _machinePhotos;
     }
 
     private transient UsersPath _reportsUserIdFkey;
@@ -232,7 +254,8 @@ public class Reports extends TableImpl<Record> {
     @Override
     public List<Check<Record>> getChecks() {
         return Arrays.asList(
-            Internal.createCheck(this, DSL.name("reports_detail_length_ck"), "(((detail IS NULL) OR (char_length(detail) <= 500)))", true)
+            Internal.createCheck(this, DSL.name("reports_detail_length_ck"), "(((detail IS NULL) OR (char_length(detail) <= 500)))", true),
+            Internal.createCheck(this, DSL.name("reports_exactly_one_target"), "(((((photo_id IS NOT NULL))::integer + ((gym_machine_id IS NOT NULL))::integer) = 1))", true)
         );
     }
 

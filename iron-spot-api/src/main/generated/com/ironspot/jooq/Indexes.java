@@ -47,6 +47,9 @@ public class Indexes {
     public static final Index NL_SEARCH_LOG_CREATED_AT_IDX = Internal.createIndex(DSL.name("nl_search_log_created_at_idx"), NlSearchLog.NL_SEARCH_LOG, new OrderField[] { NlSearchLog.NL_SEARCH_LOG.CREATED_AT }, false);
     public static final Index NL_SEARCH_LOG_NORMALISED_CREATED_IDX = Internal.createIndex(DSL.name("nl_search_log_normalised_created_idx"), NlSearchLog.NL_SEARCH_LOG, new OrderField[] { NlSearchLog.NL_SEARCH_LOG.NORMALISED_QUERY, NlSearchLog.NL_SEARCH_LOG.CREATED_AT }, false);
     public static final Index NL_SEARCH_LOG_USER_ID_IDX = Internal.createIndex(DSL.name("nl_search_log_user_id_idx"), NlSearchLog.NL_SEARCH_LOG, new OrderField[] { NlSearchLog.NL_SEARCH_LOG.USER_ID }, false);
+    public static final Index REPORTS_GYM_MACHINE_PENDING_IDX = Internal.createIndex(DSL.name("reports_gym_machine_pending_idx"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.GYM_MACHINE_ID }, false);
+    public static final Index REPORTS_PHOTO_PENDING_IDX = Internal.createIndex(DSL.name("reports_photo_pending_idx"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.PHOTO_ID }, false);
     public static final Index REPORTS_REPORTER_RECENT_IDX = Internal.createIndex(DSL.name("reports_reporter_recent_idx"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.USER_ID, Reports.REPORTS.CREATED_AT.desc() }, false);
-    public static final Index REPORTS_TARGET_PENDING_IDX = Internal.createIndex(DSL.name("reports_target_pending_idx"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.TARGET_ID }, false);
+    public static final Index REPORTS_UNIQUE_REPORTER_GYM_MACHINE = Internal.createIndex(DSL.name("reports_unique_reporter_gym_machine"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.USER_ID, Reports.REPORTS.GYM_MACHINE_ID }, true);
+    public static final Index REPORTS_UNIQUE_REPORTER_PHOTO = Internal.createIndex(DSL.name("reports_unique_reporter_photo"), Reports.REPORTS, new OrderField[] { Reports.REPORTS.USER_ID, Reports.REPORTS.PHOTO_ID }, true);
 }
