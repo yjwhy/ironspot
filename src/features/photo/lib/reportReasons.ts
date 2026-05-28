@@ -15,7 +15,7 @@ export interface ReportReasonOption {
  */
 export const PHOTO_GENERAL_REASONS: readonly ReportReasonOption[] = [
   { id: CreateReportRequestReason.INAPPROPRIATE, label: '부적절한 사진 (NSFW / 폭력)' },
-  { id: CreateReportRequestReason.WRONG_MACHINE, label: '잘못된 기구 정보' },
+  { id: CreateReportRequestReason.WRONG_MACHINE, label: '잘못된 머신 정보' },
   { id: CreateReportRequestReason.DUPLICATE, label: '중복 사진' },
   { id: CreateReportRequestReason.OTHER, label: '기타' },
 ] as const;

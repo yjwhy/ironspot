@@ -1,3 +1,4 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { toast } from 'burnt';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { getInfoAsync } from 'expo-file-system/legacy';
@@ -9,9 +10,11 @@ import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
 import { pressedOpacity } from '@/shared/lib/pressable';
+import { colors } from '@/shared/theme/tokens';
 
 import { UPLOAD_IMAGE_FORMAT } from '../constants';
-import { PhotoGuidanceBanner, PhotoGuidanceHintStrip } from './PhotoCaptureGuidance';
+import { LabelInfoSheet } from './LabelInfoSheet';
+import { PhotoGuidanceHintStrip } from './PhotoCaptureGuidance';
 
 const COMPRESS_MAX_WIDTH = 1200;
 const COMPRESS_QUALITY = 0.8;
@@ -172,14 +175,33 @@ function CameraScreenContent({
 }: CameraScreenContentProps) {
   // Guidance composition: the always-visible hint strip sits between the
   // preview and the capture buttons so it's read just before the user
-  // commits to the shot. The first-time banner overlays the preview so
-  // returning users (banner already dismissed in MMKV) get only the strip.
+  // commits to the shot. The top-right '?' is the user's re-entry point
+  // into the LabelInfoSheet — replaces the prior PhotoGuidanceBanner that
+  // could be dismissed once and never resurfaced from inside the app.
+  const [isLabelInfoVisible, setLabelInfoVisible] = useState(false);
+
   return (
     <View className="flex-1 bg-black">
       <View className="flex-1">
         <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
         {isCompressing ? <CompressingOverlay /> : null}
-        <PhotoGuidanceBanner />
+        <Pressable
+          testID="upload-photo-label-info"
+          accessibilityRole="button"
+          accessibilityLabel="라벨이 뭔지 알아보기"
+          accessibilityHint="라벨 예시와 설명을 시트로 표시"
+          onPress={function openLabelInfo() {
+            setLabelInfoVisible(true);
+          }}
+          // hitSlop expands the touch target to the 44pt minimum without
+          // inflating the glyph itself. Pressed-opacity feedback keeps the
+          // button quiet against the live preview behind it.
+          hitSlop={12}
+          style={pressedOpacity}
+          className="absolute right-4 top-4 h-9 w-9 items-center justify-center rounded-full bg-black/55"
+        >
+          <MaterialIcons name="help-outline" size={20} color={colors.text.inverse} />
+        </Pressable>
       </View>
 
       <PhotoGuidanceHintStrip />
@@ -189,6 +211,13 @@ function CameraScreenContent({
         onCapture={onCapture}
         onPickFromGallery={onPickFromGallery}
       />
+      {isLabelInfoVisible ? (
+        <LabelInfoSheet
+          onClose={function closeLabelInfo() {
+            setLabelInfoVisible(false);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

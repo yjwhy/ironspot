@@ -25,13 +25,13 @@ interface GymCardProps {
 // count, verified-date) or their sizes, update GymCardSkeleton to match.
 export const GYM_CARD_THUMBNAIL_SIZE = 80;
 
-const EMPTY_COUNT_COPY = '아직 등록된 기구가 없어요';
+const EMPTY_COUNT_COPY = '아직 등록된 머신이 없어요';
 
 function formatMachineCount(machineCount: number): string {
   // Phase 5 item 19: explicit "등록된" prefix prevents the wrong mental model
   // ("this gym only has N machines"). N=0 routes to a friendlier sentence
   // that primes the contribution loop instead of reading coldly.
-  return machineCount === 0 ? EMPTY_COUNT_COPY : `등록된 기구 ${String(machineCount)}대`;
+  return machineCount === 0 ? EMPTY_COUNT_COPY : `등록된 머신 ${String(machineCount)}대`;
 }
 
 function buildAccessibilityLabel(

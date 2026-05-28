@@ -239,4 +239,51 @@ describe('UploadManualInputScreen', () => {
     expect(getByTestId('upload-manual-template-option-tpl-hammer-chest')).toBeTruthy();
     expect(queryByTestId('upload-manual-name-input')).toBeNull();
   });
+
+  // V27 follow-up: series rows only appear once the user starts searching,
+  // so the empty-state list keeps the brand catalog scannable. Series stay
+  // reachable for the "I only know the line name from the machine body"
+  // path the moment the user types anything matching.
+
+  it('hides series rows when the search box is empty', () => {
+    mockUseSeries.mockReturnValue({
+      data: [
+        {
+          id: 'series-master-pro',
+          brandId: 'brand-hammer',
+          name: 'Master Pro',
+          nameKo: 'Master Pro',
+        },
+      ],
+    });
+    const { queryByTestId } = render(<UploadManualInputScreen />);
+
+    // Brand rows still render at empty state.
+    expect(queryByTestId('upload-manual-brand-option-brand-hammer')).toBeTruthy();
+    // Series row is not in the list until the user types.
+    expect(queryByTestId('upload-manual-brand-option-series-master-pro')).toBeNull();
+  });
+
+  it('surfaces a series row when its name is typed into the search', () => {
+    mockUseSeries.mockReturnValue({
+      data: [
+        {
+          id: 'series-master-pro',
+          brandId: 'brand-hammer',
+          name: 'Master Pro',
+          nameKo: 'Master Pro',
+        },
+      ],
+    });
+    const { getByTestId, queryByTestId } = render(<UploadManualInputScreen />);
+
+    fireEvent.changeText(getByTestId('upload-manual-brand-search'), 'Master Pro');
+
+    // The series row appears once the search matches it, and the unrelated
+    // brand row (Life Fitness here — Hammer is the series' parent so it
+    // also matches via brand secondary token) is filtered out by the
+    // bilingual fuzzy.
+    expect(getByTestId('upload-manual-brand-option-series-master-pro')).toBeTruthy();
+    expect(queryByTestId('upload-manual-brand-option-brand-life')).toBeNull();
+  });
 });

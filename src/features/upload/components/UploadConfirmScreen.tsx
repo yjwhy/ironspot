@@ -45,7 +45,7 @@ function UploadingView({ compressedUri, uploadProgress }: UploadingViewProps) {
         <UploadProgressBar progress={uploadProgress} />
       </View>
       <AppText className="text-center text-body-sm text-text-secondary">
-        기구를 분석하고 있어요...
+        머신을 분석하고 있어요...
       </AppText>
     </View>
   );
@@ -97,7 +97,7 @@ function OcrSuccessView({
         className="aspect-square w-full rounded-xl"
         resizeMode="cover"
       />
-      <AppText className="text-body font-semibold text-text-primary">어떤 기구인가요?</AppText>
+      <AppText className="text-body font-semibold text-text-primary">어떤 머신인가요?</AppText>
       <View className="gap-2">
         {suggestions.slice(0, MAX_OCR_SUGGESTIONS).map(function renderSuggestion(suggestion) {
           const label = `${suggestion.brandName} ${templateDisplayName(suggestion)}`;
@@ -128,7 +128,7 @@ function OcrSuccessView({
           className={selectedRowClass(isPickerOpen)}
         >
           <RadioDot selected={isPickerOpen} />
-          <AppText className="flex-1 text-body text-text-primary">다른 기구로 등록</AppText>
+          <AppText className="flex-1 text-body text-text-primary">다른 머신으로 등록</AppText>
         </Pressable>
         {children}
       </View>
@@ -174,7 +174,7 @@ function OcrFailView({
         resizeMode="cover"
       />
       <AppText className="text-center text-body text-text-secondary">
-        기구를 인식하지 못했어요
+        머신을 인식하지 못했어요
       </AppText>
       <MachinePicker value={selection} onChange={onPickerChange} />
       <View className="gap-2">
@@ -314,7 +314,7 @@ export function UploadConfirmScreen() {
   // Phase 5 item 11 slice 3: selection covers both branches of the OCR-result
   // tree. 'template' is emitted by the OcrSuccess radios AND by the
   // MachinePicker closed-list pick. 'freeForm' is the picker escape hatch.
-  // isPickerOpen is only meaningful on the OcrSuccess path — the "다른 기구로
+  // isPickerOpen is only meaningful on the OcrSuccess path — the "다른 머신으로
   // 등록" radio toggles it. OcrFail always renders the picker so the boolean
   // is unused there.
   const [selection, setSelection] = useState<MachinePickerSelection>({ kind: 'none' });

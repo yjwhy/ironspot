@@ -276,17 +276,17 @@ function TemplateStep({
 
   return (
     <View className="gap-2">
-      <StepLabel index={3} label="기구" />
+      <StepLabel index={3} label="머신" />
       <SearchInput
         testID="machine-picker-template-search"
-        placeholder="기구 검색"
+        placeholder="머신 검색"
         value={query}
         onChangeText={onChangeQuery}
       />
       <View className="gap-2">
         {filteredTemplates.length === 0 ? (
           <AppText className="text-body-sm text-text-secondary">
-            해당 조합에 등록된 기구가 없어요
+            해당 조합에 등록된 머신이 없어요
           </AppText>
         ) : (
           filteredTemplates.map(function renderTemplate(template) {
@@ -345,12 +345,12 @@ function EscapeHatch({ isOpen, text, onOpen, onChangeText }: EscapeHatchProps) {
   return (
     <View className="gap-2">
       <AppText className="text-body-sm text-text-secondary">
-        리스트에 없는 기구는 검토 후 등록돼요
+        리스트에 없는 머신은 검토 후 등록돼요
       </AppText>
       <TextInput
         testID="machine-picker-freeform-input"
         className="rounded-xl border border-border bg-bg-muted px-4 py-3 text-body text-text-primary"
-        placeholder="기구 이름을 입력하세요"
+        placeholder="머신 이름을 입력하세요"
         value={text}
         onChangeText={onChangeText}
         autoFocus

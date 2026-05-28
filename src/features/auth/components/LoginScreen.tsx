@@ -165,7 +165,7 @@ export function LoginScreen({ onBrowseAsGuest, onAuthenticated }: LoginScreenPro
         <MaterialIcons name="fitness-center" size={48} color={colors.accent.DEFAULT} />
         <AppText className="text-display font-bold text-text-primary">IronSpot</AppText>
         <AppText className="text-body text-text-secondary text-center">
-          내 주변 헬스장 기구를 찾아보세요
+          내 주변 헬스장 머신을 찾아보세요
         </AppText>
       </View>
 

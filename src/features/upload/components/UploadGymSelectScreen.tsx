@@ -407,7 +407,7 @@ function GymItem({ gym, isSelected, onPress }: GymItemProps) {
           <AppText className="text-body-sm text-text-secondary">{gym.address}</AppText>
         </View>
         <AppText className="text-body-sm text-text-tertiary">
-          기구 {String(gym.machine_count)}개
+          머신 {String(gym.machine_count)}개
         </AppText>
       </Pressable>
 
@@ -436,7 +436,7 @@ function GymMachineSubList({ gymId }: GymMachineSubListProps) {
     return (
       <View className="px-4 py-2" testID="machines-error">
         <AppText className="text-body-sm text-text-secondary">
-          기구 목록을 불러오지 못했어요
+          머신 목록을 불러오지 못했어요
         </AppText>
       </View>
     );
@@ -445,7 +445,7 @@ function GymMachineSubList({ gymId }: GymMachineSubListProps) {
   if (machines.length === 0) {
     return (
       <View className="px-4 py-2">
-        <AppText className="text-body-sm text-text-secondary">등록된 기구가 없어요</AppText>
+        <AppText className="text-body-sm text-text-secondary">등록된 머신이 없어요</AppText>
       </View>
     );
   }

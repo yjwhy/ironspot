@@ -15,7 +15,7 @@ export type GymBottomSheetMode =
        * an unregistered Naver place. The previous flow created the gym row
        * the moment the user tapped the card and relied on a 5s undo toast
        * to recover from accidental presses; this mode replaces that with a
-       * read-only detail screen + a "기구 사진 등록하기" CTA that
+       * read-only detail screen + a "머신 사진 등록하기" CTA that
        * eventually drives the atomic create-on-first-photo backend path
        * (slice d wires the camera).
        */

@@ -38,7 +38,7 @@ import { filterByFuzzy } from '../lib/catalog-fuzzy';
 // gym_machines.template_id NULL and stores the brand+name compound in
 // free_form_name with pending_review=true (admin promotes later).
 //
-// MachinePicker is still mounted on the OCR-fail and "다른 기구로 등록"
+// MachinePicker is still mounted on the OCR-fail and "다른 머신으로 등록"
 // branches of UploadConfirmScreen; this screen owning a different picker is
 // intentional — those branches already have a label photo and lean on the
 // closed-list affordance, whereas this screen's user opened "직접 입력"
@@ -112,7 +112,13 @@ function buildDiscoveryItems(
 function DiscoveryStep({ brands, series, pick, onPick }: DiscoveryStepProps) {
   const [query, setQuery] = useState(pick?.kind === 'proposed' ? pick.query : '');
 
-  const items = buildDiscoveryItems(brands, series);
+  // V27 follow-up: series rows surface only while the user is actively
+  // searching. The empty-state list shows brands alone so the 27-brand
+  // catalog doesn't get buried under 74 series rows. Series stay
+  // reachable for the "I only know the line name from the machine
+  // body" path the moment the user types anything matching.
+  const includeSeries = query.trim() !== '';
+  const items = buildDiscoveryItems(brands, includeSeries ? series : []);
   // Row id maps to either a brand or a series; UUIDs from the two tables
   // never collide so we can index by raw id and look the kind back up via
   // the discovery-item map below.
@@ -126,11 +132,15 @@ function DiscoveryStep({ brands, series, pick, onPick }: DiscoveryStepProps) {
     if (item.kind === 'brand') {
       return { id: item.id, label: formatBrandLabel(item.brand) };
     }
-    // Series row: "Master Pro · LEXCO" so the brand attribution is visible.
+    // Series row: "렉스코 (LEXCO) — Master Pro". Brand leads so the natural
+    // parent → child hierarchy reads first ("Toyota Camry" pattern) and the
+    // row prefix matches the brand-only row format above for visual scan.
+    // Em dash separates because the brand-pair already contains both parens
+    // and Korean+English, so a thinner separator would crowd visually.
     const seriesLabel = item.series === null ? item.primary : item.series.name;
     return {
       id: item.id,
-      label: `${seriesLabel} · ${formatBrandLabel(item.brand)}`,
+      label: `${formatBrandLabel(item.brand)} — ${seriesLabel}`,
     };
   });
 
@@ -259,7 +269,7 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
   const proposeNew =
     proposeQuery !== '' && matches.length === 0
       ? {
-          label: `"${proposeQuery}" 신규 기구로 등록 요청`,
+          label: `"${proposeQuery}" 신규 머신으로 등록 요청`,
           isSelected: pick?.kind === 'proposed',
           onSelect: function handlePropose() {
             onPick({ kind: 'proposed', query: proposeQuery });
@@ -269,10 +279,10 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
 
   return (
     <View className="gap-3">
-      <AppText className="text-body font-semibold text-text-primary">어떤 기구인가요?</AppText>
+      <AppText className="text-body font-semibold text-text-primary">어떤 머신인가요?</AppText>
       <SearchableList
         testIDPrefix="upload-manual-template"
-        searchPlaceholder="기구 검색 또는 직접 입력"
+        searchPlaceholder="머신 검색 또는 직접 입력"
         query={query}
         onChangeQuery={setQuery}
         rows={rows}
@@ -283,8 +293,8 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
         }}
         emptyMessage={
           series !== null
-            ? '이 시리즈에는 등록된 기구가 없어요'
-            : '이 브랜드에는 등록된 기구가 없어요'
+            ? '이 시리즈에는 등록된 머신이 없어요'
+            : '이 브랜드에는 등록된 머신이 없어요'
         }
         proposeNew={proposeNew}
       />
@@ -317,10 +327,10 @@ function NameStep({ entity, text, onChangeText }: NameStepProps) {
   return (
     <View className="gap-3">
       <AppText className="text-body font-semibold text-text-primary">
-        기구 이름을 입력해 주세요
+        머신 이름을 입력해 주세요
       </AppText>
       <AppText className="text-body-sm text-text-secondary">
-        {label} 의 기구 이름을 입력하면 관리자가 검토 후 카탈로그에 추가해요
+        {label} 의 머신 이름을 입력하면 관리자가 검토 후 카탈로그에 추가해요
       </AppText>
       <TextInput
         testID="upload-manual-name-input"
@@ -395,7 +405,7 @@ function Crumbs({ entity, template, step, onRevertEntity, onRevertTemplate }: Cr
       {showTemplate ? (
         <Crumb
           testID="upload-manual-crumb-template"
-          label={`기구: ${templateLabel}`}
+          label={`머신: ${templateLabel}`}
           onRevert={onRevertTemplate}
         />
       ) : null}

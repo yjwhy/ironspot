@@ -146,13 +146,13 @@ describe('GymDetail', () => {
   it('shows an empty state when there are zero machines', () => {
     setMockResult({ data: [] });
     const { getByText } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
-    expect(getByText('등록된 기구가 없어요')).toBeTruthy();
+    expect(getByText('등록된 머신이 없어요')).toBeTruthy();
   });
 
   it('shows an error message when the fetch fails', () => {
     setMockResult({ isError: true });
     const { getByText } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
-    expect(getByText('기구 정보를 불러오지 못했어요')).toBeTruthy();
+    expect(getByText('머신 정보를 불러오지 못했어요')).toBeTruthy();
   });
 
   it('renders MachineList rows when machines are returned', () => {
@@ -188,42 +188,33 @@ describe('GymDetail', () => {
     expect(mockUseGymMachines).toHaveBeenCalledWith('g-1');
   });
 
-  it('renders the "사진 추가" FAB above the machine list', () => {
-    // Phase 5 item 15a: gives the user an entry point into the upload flow
-    // from inside the gym detail without backing out to map → search → pick.
-    const { getByLabelText } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
-    expect(getByLabelText('사진 추가')).toBeTruthy();
+  it('renders the inline "머신 추가" button between owner entry and machine list', () => {
+    // Sole add-machine affordance after the redundant "사진 추가" FAB was
+    // removed 2026-05-28. Stays in the natural reading flow so it is
+    // visible whether GymDetail renders full-screen or inside the half-
+    // open GymBottomSheet snap state.
+    const { getByRole } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
+    expect(getByRole('button', { name: '머신 추가' })).toBeTruthy();
   });
 
-  it('routes the FAB tap to the gymId-bound camera so a new machine can be registered in place', () => {
-    // Phase 5 item 15a: item 11 backend (POST /api/gym-machines) shipped, so
-    // the FAB now lands directly on the camera with the current gym pre-bound
-    // and no machine pre-selected — OCR + template match (or direct-input
-    // fallback) create a new gym_machines row for this gym.
-    const { getByLabelText } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
-    fireEvent.press(getByLabelText('사진 추가'));
+  it('routes the inline "머신 추가" tap to the gymId-bound upload method-choice screen', () => {
+    const { getByRole } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
+    fireEvent.press(getByRole('button', { name: '머신 추가' }));
     expect(router.push).toHaveBeenCalledWith({
       pathname: UPLOAD_METHOD_CHOICE_PATHNAME,
       params: { gymId: 'g-1' },
     });
   });
 
-  it('renders the inline "기구 추가" button between owner entry and machine list', () => {
-    // Follow-up to FAB visibility: when GymDetail renders inside the
-    // half-open GymBottomSheet snap, the absolute-positioned FAB is below
-    // the visible viewport. This inline button stays in the natural
-    // reading flow so the add-machine affordance is always discoverable.
-    const { getByRole } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
-    expect(getByRole('button', { name: '기구 추가' })).toBeTruthy();
-  });
-
-  it('routes the inline "기구 추가" tap to the same gymId-bound upload flow as the FAB', () => {
-    const { getByRole } = render(<GymDetail gym={baseGym} onPressMachine={() => undefined} />);
-    fireEvent.press(getByRole('button', { name: '기구 추가' }));
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: UPLOAD_METHOD_CHOICE_PATHNAME,
-      params: { gymId: 'g-1' },
-    });
+  it('no longer renders the redundant "사진 추가" FAB (removed 2026-05-28)', () => {
+    // The FAB and the inline "머신 추가" button both routed to the same
+    // method-choice screen and the FAB's "사진 추가" label conflicted
+    // with the row's "머신 추가" label for the same action. Removed in
+    // favour of the inline row alone.
+    const { queryByLabelText } = render(
+      <GymDetail gym={baseGym} onPressMachine={() => undefined} />,
+    );
+    expect(queryByLabelText('사진 추가')).toBeNull();
   });
 
   it('omits the cover photo hero when cover_photo_url is null', () => {

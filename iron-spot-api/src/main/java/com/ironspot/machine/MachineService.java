@@ -61,7 +61,7 @@ public class MachineService {
 
         boolean isDirectInput = request.templateId() == null;
         if (!isDirectInput && !machineRepository.templateExistsAndApproved(request.templateId())) {
-            throw new BusinessException("유효하지 않은 기구 템플릿입니다", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("유효하지 않은 머신 템플릿입니다", HttpStatus.BAD_REQUEST);
         }
 
         if (request.photoId() != null) {
@@ -85,7 +85,7 @@ public class MachineService {
             if (updated == 0) {
                 // Photo is already bound to another gym_machine — refuse the
                 // rebind so prior contributions stay intact.
-                throw new BusinessException("이미 다른 기구에 연결된 사진입니다", HttpStatus.BAD_REQUEST);
+                throw new BusinessException("이미 다른 머신에 연결된 사진입니다", HttpStatus.BAD_REQUEST);
             }
         }
 

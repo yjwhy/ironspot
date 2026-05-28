@@ -110,7 +110,7 @@ const strengthGym: GymWithMachineCount = {
   cover_photo_url: null,
 };
 
-// The unregistered-detail CTA ('기구 사진 등록하기') is absolute-positioned at the
+// The unregistered-detail CTA ('머신 사진 등록하기') is absolute-positioned at the
 // sheet bottom and is clipped at the mid detent. snapIndexForMode is the pure
 // decision that opens that mode at the full detent; the snap wiring itself is
 // verified on the simulator (the gorhom modal mock exposes no imperative handle).

@@ -73,7 +73,7 @@ describe('ReportReasonSheet', () => {
     expect(getByText('일반 사유')).toBeTruthy();
     expect(getByText('긴급 (즉시 검토)')).toBeTruthy();
     expect(getByText('부적절한 사진 (NSFW / 폭력)')).toBeTruthy();
-    expect(getByText('잘못된 기구 정보')).toBeTruthy();
+    expect(getByText('잘못된 머신 정보')).toBeTruthy();
     expect(getByText('중복 사진')).toBeTruthy();
     expect(getByText('기타')).toBeTruthy();
     expect(getByText('본인이 찍혔거나 법적 문제')).toBeTruthy();
@@ -102,7 +102,7 @@ describe('ReportReasonSheet', () => {
 
   it('submits the selected reason', () => {
     const { getByLabelText, getByRole, handleReport } = setup();
-    fireEvent.press(getByLabelText('잘못된 기구 정보'));
+    fireEvent.press(getByLabelText('잘못된 머신 정보'));
     fireEvent.press(getByRole('button', { name: '신고 제출' }));
     expect(handleReport).toHaveBeenCalledWith({ reason: 'WRONG_MACHINE', detail: undefined });
   });

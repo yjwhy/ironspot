@@ -52,21 +52,21 @@ describe('GymCard', () => {
     expect(getByText('1.2km')).toBeTruthy();
   });
 
-  it('renders the registered-count copy with the "등록된 기구 N대" phrasing when N > 0', () => {
+  it('renders the registered-count copy with the "등록된 머신 N대" phrasing when N > 0', () => {
     // Phase 5 item 19: clarify that the count is our registered set, not the
     // gym's actual total. Avoids the "this gym only has 12 machines" misread.
     const { getByText } = renderCard();
-    expect(getByText('등록된 기구 12대')).toBeTruthy();
+    expect(getByText('등록된 머신 12대')).toBeTruthy();
   });
 
-  it('renders the friendlier "아직 등록된 기구가 없어요" copy when machine_count is 0', () => {
-    // Phase 5 item 19: "등록된 기구 0대" is grammatically correct but reads
+  it('renders the friendlier "아직 등록된 머신이 없어요" copy when machine_count is 0', () => {
+    // Phase 5 item 19: "등록된 머신 0대" is grammatically correct but reads
     // coldly; the alternative invites contribution.
     const { getByText, queryByText } = renderCard({
       gym: { ...baseGym, machine_count: 0 },
     });
-    expect(getByText('아직 등록된 기구가 없어요')).toBeTruthy();
-    expect(queryByText('등록된 기구 0대')).toBeNull();
+    expect(getByText('아직 등록된 머신이 없어요')).toBeTruthy();
+    expect(queryByText('등록된 머신 0대')).toBeNull();
   });
 
   it('does not render the matched-machines line', () => {
@@ -110,7 +110,7 @@ describe('GymCard', () => {
     const { getByRole } = renderCard();
     expect(
       getByRole('button', {
-        name: 'Fitness Factory, 0.3km, 등록된 기구 12대, 확인일 2026.03.15',
+        name: 'Fitness Factory, 0.3km, 등록된 머신 12대, 확인일 2026.03.15',
       }),
     ).toBeTruthy();
   });
@@ -120,13 +120,13 @@ describe('GymCard', () => {
       gym: { ...baseGym, machine_count: 0, last_verified_at: null },
     });
     expect(
-      getByRole('button', { name: 'Fitness Factory, 0.3km, 아직 등록된 기구가 없어요' }),
+      getByRole('button', { name: 'Fitness Factory, 0.3km, 아직 등록된 머신이 없어요' }),
     ).toBeTruthy();
   });
 
   it('drops the verified segment from the accessibility label when last_verified_at is null', () => {
     const { getByRole } = renderCard({ gym: { ...baseGym, last_verified_at: null } });
-    expect(getByRole('button', { name: 'Fitness Factory, 0.3km, 등록된 기구 12대' })).toBeTruthy();
+    expect(getByRole('button', { name: 'Fitness Factory, 0.3km, 등록된 머신 12대' })).toBeTruthy();
   });
 
   it('calls onPress when tapped', () => {
