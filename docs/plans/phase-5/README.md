@@ -596,6 +596,28 @@ Same mental-model gap that drove item 18 + item 23. The launch-cohort catalog (i
 
 Same as items 18, 19, 23: the launch cohort is Korean-speaking, and surfaces that lead with English-only hurt recognition speed on the most common interactions (filter open, chip read, machine row scan). Self-contained — V11 migration + two helpers + ~5 render sites. No NL search wire-format change (internal: `BrandRepository.findIdByNameOrKoFuzzy` expands to a 3-stage resolver — exact case-insensitive → whitespace-stripped → Levenshtein similarity ≥ 0.6 — over the 24-row catalog, so Korean queries like "해머스트렝스 풀다운" resolve without prompt drift).
 
+### 25. Brand product-line (series) catalog layer
+
+**Current state**
+
+- Brands market their machines under product-line names ("Master Pro" for LEXCO, "Pure Kraft" for gym80, "Iso-Lateral" for Hammer Strength). The name printed prominently on the machine body is the series, not the brand.
+- Pre-V27 the catalog had only Brand → Template. Users opening 직접 입력 typed what they read off the machine ("Master Pro Leg Extension") into the brand search box, the brand fuzzy resolver couldn't match it against LEXCO, and they were forced down the propose-new path. The contribution landed in the admin queue orphaned from LEXCO — admin then had to parse the free-text manually to reconstruct the brand link.
+- OCR brand anchoring (`FuzzyMatchService`) recognised brand tokens but had no notion of series, so a Lexco label that read "MASTER PRO LEG EXTENSION" couldn't narrow suggestions to the Master Pro line even when other Lexco product lines existed.
+
+**Shipped (2026-05-28, branch `feat/machine-series-layer`)**
+
+- [x] V27 migration: `machine_series` table (brand_id FK, name, name_ko, UNIQUE per brand) + `machine_templates.series_id` NULLABLE FK + partial index + RLS deny-by-default. `init-test-db.sql` mirrors the DDL.
+- [x] Catalog seed: 74 high-confidence series across 18 brands (web-verified against official manufacturer sites). 8 brands intentionally have no series (Ultra Strength, Star Trac, Icarian, Booty Builder, Gymleco, Citadel, Watson, MegaMass). MegaMass added as a new US brand at `b1000027`. Names stored English-only — every machine prints its series in Latin — so `name_ko = name` on every row (mirrors gym80 brand precedent).
+- [x] `GET /api/series` endpoint + `useSeries` hook. Closed catalog (~74 rows), full list fetched once and narrowed offline, same pattern as `/api/brands`.
+- [x] `MachineTemplateRepository.findAllApprovedDetailed` + the wire DTO gain optional `seriesId` filter + field so the picker can group/filter by series without an extra round trip. `useMachineTemplates({ seriesId })` supported.
+- [x] OCR series anchoring in `FuzzyMatchService`: once a brand is recognised in OCR, the matcher consults series of that brand and, if a series's name tokens are wholly present in the input, restricts candidates to templates with that `seriesId`. Cross-brand series (Cybex's "Eagle NX" in a Lexco photo) are ignored because their parent brand wasn't anchored.
+- [x] Admin promote: `PromoteContributionRequest` gains optional `seriesId` (existing series under brandId) and `newSeriesName` (creates a new series). Mutually exclusive. `newBrandAndTemplate` accepts `newSeriesName` only since a brand-new brand has no existing series. `existingTemplate` rejects both — that template's `seriesId` is intrinsic.
+- [x] Unified discovery step on the manual-input flow: `UploadManualInputScreen`'s first step now searches brands AND series in a single merged list. Picking a series row anchors both brand + series and the template step shows only that line's machines; picking a brand keeps the existing behaviour. EntityPick discriminated union (brand | series | proposed) replaces BrandPick.
+
+**Reason to ship pre-launch**
+
+The orphaning problem is most acute on the very first surface a Korean user touches — the manual-input flow opened from "직접 입력" when there's no label to OCR. Pre-V27, the most-photographed brand (LEXCO) and its flagship line (Master Pro) were guaranteed to land in the propose-new path because the catalog had no way to bridge "Master Pro" to "LEXCO". Series is the missing search-resolution layer that turns the launch-cohort failure case into a closed-list pick.
+
 ## Post-launch hypotheses (drive prioritisation)
 
 Each Phase 5 task ships only when the matching hypothesis is either confirmed or falsified by real data. Phase 4 closed without users so all of these are pre-decisions waiting on evidence.
