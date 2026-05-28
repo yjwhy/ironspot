@@ -132,11 +132,15 @@ function DiscoveryStep({ brands, series, pick, onPick }: DiscoveryStepProps) {
     if (item.kind === 'brand') {
       return { id: item.id, label: formatBrandLabel(item.brand) };
     }
-    // Series row: "Master Pro · LEXCO" so the brand attribution is visible.
+    // Series row: "렉스코 (LEXCO) — Master Pro". Brand leads so the natural
+    // parent → child hierarchy reads first ("Toyota Camry" pattern) and the
+    // row prefix matches the brand-only row format above for visual scan.
+    // Em dash separates because the brand-pair already contains both parens
+    // and Korean+English, so a thinner separator would crowd visually.
     const seriesLabel = item.series === null ? item.primary : item.series.name;
     return {
       id: item.id,
-      label: `${seriesLabel} · ${formatBrandLabel(item.brand)}`,
+      label: `${formatBrandLabel(item.brand)} — ${seriesLabel}`,
     };
   });
 
