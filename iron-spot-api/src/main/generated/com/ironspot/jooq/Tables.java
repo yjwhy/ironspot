@@ -10,6 +10,7 @@ import com.ironspot.jooq.tables.GymMachines;
 import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
+import com.ironspot.jooq.tables.MachineSeries;
 import com.ironspot.jooq.tables.MachineTemplates;
 import com.ironspot.jooq.tables.ModerationAnalytics_30d;
 import com.ironspot.jooq.tables.ModerationAuditLog;
@@ -75,6 +76,11 @@ public class Tables {
      * The table <code>public.machine_photos</code>.
      */
     public static final MachinePhotos MACHINE_PHOTOS = MachinePhotos.MACHINE_PHOTOS;
+
+    /**
+     * The table <code>public.machine_series</code>.
+     */
+    public static final MachineSeries MACHINE_SERIES = MachineSeries.MACHINE_SERIES;
 
     /**
      * The table <code>public.machine_templates</code>.
