@@ -41,9 +41,10 @@ public class MachineTemplateRepository {
 
     /**
      * Filter-UI catalog + closed-list picker source. Optional brandId /
-     * categoryId narrow the result on the server so MachinePicker's
-     * TemplateStep can drop its JS-side .filter (Phase 5 item 11 slice 3
-     * README follow-up). When both are null returns the full approved set.
+     * categoryId / seriesId narrow the result on the server so
+     * MachinePicker's TemplateStep can drop its JS-side .filter (Phase 5
+     * item 11 slice 3 README follow-up). When all are null returns the
+     * full approved set.
      *
      * <p>Phase 5 item 18: both {@code name_en} and {@code name_ko} are
      * projected so the client renders Korean primary on cards + English
@@ -51,13 +52,21 @@ public class MachineTemplateRepository {
      *
      * <p>Phase 5 item 24: {@code brand_name_ko} also projected so the
      * filter accordion / picker / brand chip can lead with Korean.
+     *
+     * <p>V27 / machine_series: {@code seriesId} filter + projection so the
+     * unified brand-or-series picker entry can narrow to a single product
+     * line (e.g. LEXCO Master Pro) and the response carries the link for
+     * downstream grouping.
      */
-    public List<MachineTemplateResponse> findAllApprovedDetailed(UUID brandId, UUID categoryId) {
+    public List<MachineTemplateResponse> findAllApprovedDetailed(UUID brandId, UUID categoryId, UUID seriesId) {
         Condition brandCond = brandId != null
             ? MACHINE_TEMPLATES.BRAND_ID.eq(brandId)
             : DSL.noCondition();
         Condition categoryCond = categoryId != null
             ? MACHINE_TEMPLATES.CATEGORY_ID.eq(categoryId)
+            : DSL.noCondition();
+        Condition seriesCond = seriesId != null
+            ? MACHINE_TEMPLATES.SERIES_ID.eq(seriesId)
             : DSL.noCondition();
         return dsl.select(
                 MACHINE_TEMPLATES.ID,
@@ -67,12 +76,14 @@ public class MachineTemplateRepository {
                 MACHINE_TEMPLATES.CATEGORY_ID,
                 MACHINE_TEMPLATES.NAME_EN,
                 MACHINE_TEMPLATES.NAME_KO,
-                MACHINE_TEMPLATES.LOADING_TYPE)
+                MACHINE_TEMPLATES.LOADING_TYPE,
+                MACHINE_TEMPLATES.SERIES_ID)
             .from(MACHINE_TEMPLATES)
             .join(BRANDS).on(MACHINE_TEMPLATES.BRAND_ID.eq(BRANDS.ID))
             .where(MACHINE_TEMPLATES.IS_APPROVED.isTrue())
             .and(brandCond)
             .and(categoryCond)
+            .and(seriesCond)
             .orderBy(BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN)
             .fetch(r -> new MachineTemplateResponse(
                 r.get(MACHINE_TEMPLATES.ID),
@@ -82,7 +93,8 @@ public class MachineTemplateRepository {
                 r.get(MACHINE_TEMPLATES.CATEGORY_ID),
                 r.get(MACHINE_TEMPLATES.NAME_EN),
                 r.get(MACHINE_TEMPLATES.NAME_KO),
-                r.get(MACHINE_TEMPLATES.LOADING_TYPE).getLiteral()
+                r.get(MACHINE_TEMPLATES.LOADING_TYPE).getLiteral(),
+                r.get(MACHINE_TEMPLATES.SERIES_ID)
             ));
     }
 

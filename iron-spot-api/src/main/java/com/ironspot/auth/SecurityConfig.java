@@ -75,6 +75,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/brands").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/machine-templates").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/series").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/machines/*/photos").permitAll()
                 // Task 46: gym_machine 신고는 인증 사용자만 가능. anyRequest 가
                 // 어차피 authenticated 라 redundant 하지만, 사진 신고 endpoint 와

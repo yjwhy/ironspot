@@ -349,6 +349,20 @@ INSERT INTO machine_templates(id, brand_id, category_id, name_en, name_ko, loadi
     '체스트 프레스',
     'plate'
   );
+-- V27 mirror: machine_series fixtures for series-resolution ITs.
+-- Monolith is Panatta's flagship line; Insignia is Life Fitness's.
+-- Linking the High Row template to Monolith lets ITs verify the
+-- seriesId filter on /api/machine-templates.
+INSERT INTO machine_series(id, brand_id, name, name_ko) VALUES
+  ('5e000001-0000-0000-0000-000000000001',
+   'b0000001-0000-0000-0000-000000000001',
+   'Monolith', 'Monolith'),
+  ('5e000002-0000-0000-0000-000000000002',
+   'b0000002-0000-0000-0000-000000000002',
+   'Insignia', 'Insignia');
+UPDATE machine_templates
+  SET series_id = '5e000001-0000-0000-0000-000000000001'
+  WHERE id = 'e0000001-0000-0000-0000-000000000001';
 INSERT INTO users(id, email, nickname)
   VALUES ('d0000001-0000-0000-0000-000000000001', 'test@example.com', '테스트유저');
 INSERT INTO gym_machines(id, gym_id, template_id, quantity)
