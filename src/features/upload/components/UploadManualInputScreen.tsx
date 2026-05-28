@@ -112,7 +112,13 @@ function buildDiscoveryItems(
 function DiscoveryStep({ brands, series, pick, onPick }: DiscoveryStepProps) {
   const [query, setQuery] = useState(pick?.kind === 'proposed' ? pick.query : '');
 
-  const items = buildDiscoveryItems(brands, series);
+  // V27 follow-up: series rows surface only while the user is actively
+  // searching. The empty-state list shows brands alone so the 27-brand
+  // catalog doesn't get buried under 74 series rows. Series stay
+  // reachable for the "I only know the line name from the machine
+  // body" path the moment the user types anything matching.
+  const includeSeries = query.trim() !== '';
+  const items = buildDiscoveryItems(brands, includeSeries ? series : []);
   // Row id maps to either a brand or a series; UUIDs from the two tables
   // never collide so we can index by raw id and look the kind back up via
   // the discovery-item map below.
