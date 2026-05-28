@@ -50,6 +50,23 @@ CREATE TABLE IF NOT EXISTS machine_templates (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- V27 mirror: brand product-line layer (Brand → Series → Template). The
+-- series table is created before the series_id FK on machine_templates.
+CREATE TABLE IF NOT EXISTS machine_series (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id UUID NOT NULL REFERENCES brands(id),
+  name TEXT NOT NULL,
+  name_ko TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (brand_id, name)
+);
+
+ALTER TABLE machine_templates
+  ADD COLUMN IF NOT EXISTS series_id UUID REFERENCES machine_series(id);
+
+CREATE INDEX IF NOT EXISTS idx_machine_templates_series
+  ON machine_templates (series_id) WHERE series_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS gym_machines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id UUID REFERENCES gyms(id),
@@ -399,6 +416,8 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories FORCE ROW LEVEL SECURITY;
 ALTER TABLE machine_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE machine_templates FORCE ROW LEVEL SECURITY;
+ALTER TABLE machine_series ENABLE ROW LEVEL SECURITY;
+ALTER TABLE machine_series FORCE ROW LEVEL SECURITY;
 
 -- Security MEDIUM/LOW batch6 (V20 mirror): defensive CHECK constraints on
 -- text + JSONB columns. Schema-only — IT data still satisfies the bounds.
