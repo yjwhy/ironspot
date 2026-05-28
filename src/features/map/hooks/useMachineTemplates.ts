@@ -32,6 +32,7 @@ export function useMachineTemplates(params?: ListTemplatesParams) {
     queryKey: mapKeys.machineTemplates({
       brandId: params?.brandId,
       categoryId: params?.categoryId,
+      seriesId: params?.seriesId,
     }),
     queryFn: () => fetchMachineTemplates(params),
     staleTime: Infinity,

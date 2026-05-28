@@ -3,6 +3,7 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { useBrands } from '@/features/map/hooks/useBrands';
 import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
+import { useSeries } from '@/features/map/hooks/useSeries';
 
 import { UPLOAD_MACHINE_PHOTO_PATHNAME } from '../../constants';
 import { UploadManualInputScreen } from '../UploadManualInputScreen';
@@ -10,6 +11,7 @@ import { UploadManualInputScreen } from '../UploadManualInputScreen';
 jest.mock('@/features/map/hooks/useBrands', () => ({ useBrands: jest.fn() }));
 jest.mock('@/features/map/hooks/useCategories', () => ({ useCategories: jest.fn() }));
 jest.mock('@/features/map/hooks/useMachineTemplates', () => ({ useMachineTemplates: jest.fn() }));
+jest.mock('@/features/map/hooks/useSeries', () => ({ useSeries: jest.fn() }));
 
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
@@ -20,6 +22,7 @@ jest.mock('expo-router', () => ({
 const mockUseBrands = useBrands as jest.Mock;
 const mockUseCategories = useCategories as jest.Mock;
 const mockUseMachineTemplates = useMachineTemplates as jest.Mock;
+const mockUseSeries = useSeries as jest.Mock;
 
 interface TemplateFixture {
   id: string;
@@ -65,7 +68,11 @@ function setupQueries() {
   ];
   mockUseBrands.mockReturnValue({ data: brands });
   mockUseCategories.mockReturnValue({ data: categories });
-  mockUseMachineTemplates.mockImplementation((params?: { brandId?: string }) => {
+  mockUseSeries.mockReturnValue({ data: [] });
+  mockUseMachineTemplates.mockImplementation((params?: { brandId?: string; seriesId?: string }) => {
+    if (params?.seriesId !== undefined) {
+      return { data: [] };
+    }
     if (params?.brandId === undefined) return { data: undefined };
     return { data: templates.filter((t) => t.brandId === params.brandId) };
   });

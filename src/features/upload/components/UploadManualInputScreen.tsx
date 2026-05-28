@@ -5,10 +5,15 @@ import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useBrands } from '@/features/map/hooks/useBrands';
 import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
+import { useSeries } from '@/features/map/hooks/useSeries';
 import { AppText } from '@/shared/components/AppText';
 import { BrandLogo } from '@/shared/components/BrandLogo';
 import { Button } from '@/shared/components/Button';
-import type { BrandResponse, MachineTemplateResponse } from '@/shared/generated/model';
+import type {
+  BrandResponse,
+  MachineTemplateResponse,
+  SeriesResponse,
+} from '@/shared/generated/model';
 import { formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { templateDisplayName } from '@/shared/lib/template-display-name';
@@ -20,9 +25,16 @@ import { filterByFuzzy } from '../lib/catalog-fuzzy';
 // Phase 5 follow-up C — brand-first manual-input flow. Replaces the prior
 // MachinePicker-driven screen (brand → category chips → template) with a
 // 2-step picker (brand → template-of-that-brand) and a fallback free-form
-// name step when either side is absent from the catalog. body_part lives on
-// machine_templates.category_id, so a successful catalog-template pick
-// inherits its category for free; the free-form branch leaves
+// name step when either side is absent from the catalog.
+//
+// V27 / machine_series: the first step now searches brands AND series in a
+// single merged list. Users read the line name off the machine ("Master Pro")
+// without knowing the brand (LEXCO); picking the series row anchors brand +
+// series so the template step shows only that line's machines. brand-only
+// picks keep the previous behaviour (all of that brand's templates).
+//
+// body_part lives on machine_templates.category_id, so a successful catalog-
+// template pick inherits its category for free; the free-form branch leaves
 // gym_machines.template_id NULL and stores the brand+name compound in
 // free_form_name with pending_review=true (admin promotes later).
 //
@@ -34,37 +46,108 @@ import { filterByFuzzy } from '../lib/catalog-fuzzy';
 
 // ─── Picker selections ──────────────────────────────────────────────────────
 
-type BrandPick = { kind: 'catalog'; brand: BrandResponse } | { kind: 'proposed'; query: string };
+type EntityPick =
+  | { kind: 'brand'; brand: BrandResponse }
+  | { kind: 'series'; series: SeriesResponse; brand: BrandResponse }
+  | { kind: 'proposed'; query: string };
 
 type TemplatePick =
   | { kind: 'catalog'; template: MachineTemplateResponse }
   | { kind: 'proposed'; query: string };
 
-type Step = 'brand' | 'template' | 'name';
+type Step = 'discovery' | 'template' | 'name';
 
-// ─── Brand step ─────────────────────────────────────────────────────────────
+// ─── Discovery step (brand OR series) ───────────────────────────────────────
 
-interface BrandStepProps {
+interface DiscoveryStepProps {
   brands: readonly BrandResponse[];
-  pick: BrandPick | null;
-  onPick: (pick: BrandPick) => void;
+  series: readonly SeriesResponse[];
+  pick: EntityPick | null;
+  onPick: (pick: EntityPick) => void;
 }
 
-function BrandStep({ brands, pick, onPick }: BrandStepProps) {
+interface DiscoveryItem {
+  kind: 'brand' | 'series';
+  id: string;
+  primary: string;
+  secondary: string;
+  // For series rows the brand suffix is appended to the label so the user
+  // sees "Master Pro · LEXCO" and the picker resolves to the right brand.
+  brand: BrandResponse;
+  series: SeriesResponse | null;
+}
+
+function buildDiscoveryItems(
+  brands: readonly BrandResponse[],
+  series: readonly SeriesResponse[],
+): DiscoveryItem[] {
+  const brandById = new Map(brands.map((b) => [b.id, b] as const));
+  const brandItems: DiscoveryItem[] = brands.map(function toBrandItem(brand) {
+    return {
+      kind: 'brand',
+      id: brand.id,
+      primary: brand.nameKo,
+      secondary: brand.name,
+      brand,
+      series: null,
+    };
+  });
+  const seriesItems: DiscoveryItem[] = series.flatMap(function toSeriesItem(s) {
+    const parent = brandById.get(s.brandId);
+    if (parent === undefined) return [];
+    return [
+      {
+        kind: 'series',
+        id: s.id,
+        primary: s.name,
+        secondary: s.nameKo,
+        brand: parent,
+        series: s,
+      },
+    ];
+  });
+  return [...brandItems, ...seriesItems];
+}
+
+function DiscoveryStep({ brands, series, pick, onPick }: DiscoveryStepProps) {
   const [query, setQuery] = useState(pick?.kind === 'proposed' ? pick.query : '');
 
-  const matches = filterByFuzzy(brands, query, function getLabels(brand) {
-    return { primary: brand.nameKo, secondary: brand.name };
+  const items = buildDiscoveryItems(brands, series);
+  // Row id maps to either a brand or a series; UUIDs from the two tables
+  // never collide so we can index by raw id and look the kind back up via
+  // the discovery-item map below.
+  const itemsByRowId = new Map(items.map((item) => [item.id, item] as const));
+  const matches = filterByFuzzy(items, query, function getLabels(item) {
+    return { primary: item.primary, secondary: item.secondary };
   });
+
   const rows: SearchableRow[] = matches.map(function toRow(m) {
-    return { id: m.item.id, label: formatBrandLabel(m.item) };
+    const item = m.item;
+    if (item.kind === 'brand') {
+      return { id: item.id, label: formatBrandLabel(item.brand) };
+    }
+    // Series row: "Master Pro · LEXCO" so the brand attribution is visible.
+    const seriesLabel = item.series === null ? item.primary : item.series.name;
+    return {
+      id: item.id,
+      label: `${seriesLabel} · ${formatBrandLabel(item.brand)}`,
+    };
   });
-  const selectedRowId = pick?.kind === 'catalog' ? pick.brand.id : null;
+
+  const selectedRowId =
+    pick === null
+      ? null
+      : pick.kind === 'brand'
+        ? pick.brand.id
+        : pick.kind === 'series'
+          ? pick.series.id
+          : null;
+
   const proposeQuery = query.trim();
   const proposeNew =
     proposeQuery !== '' && matches.length === 0
       ? {
-          label: `"${proposeQuery}" 신규 브랜드로 등록 요청`,
+          label: `"${proposeQuery}" 신규 브랜드/시리즈로 등록 요청`,
           isSelected: pick?.kind === 'proposed',
           onSelect: function handlePropose() {
             onPick({ kind: 'proposed', query: proposeQuery });
@@ -74,28 +157,40 @@ function BrandStep({ brands, pick, onPick }: BrandStepProps) {
 
   return (
     <View className="gap-3">
-      <AppText className="text-body font-semibold text-text-primary">어떤 브랜드인가요?</AppText>
+      <AppText className="text-body font-semibold text-text-primary">
+        어떤 브랜드 또는 시리즈인가요?
+      </AppText>
       <SearchableList
         testIDPrefix="upload-manual-brand"
-        searchPlaceholder="브랜드 검색 또는 직접 입력"
+        searchPlaceholder="브랜드 또는 시리즈 검색 (예: Master Pro)"
         query={query}
         onChangeQuery={setQuery}
         rows={rows}
         selectedRowId={selectedRowId}
-        onSelectRow={function handleSelect(id) {
-          const brand = brands.find((b) => b.id === id);
-          if (brand !== undefined) onPick({ kind: 'catalog', brand });
+        onSelectRow={function handleSelect(rowId) {
+          const item = itemsByRowId.get(rowId);
+          if (item === undefined) return;
+          if (item.kind === 'brand') {
+            onPick({ kind: 'brand', brand: item.brand });
+            return;
+          }
+          if (item.series !== null) {
+            onPick({ kind: 'series', series: item.series, brand: item.brand });
+          }
         }}
         emptyMessage="검색 결과가 없어요"
         proposeNew={proposeNew}
-        renderLeading={function renderBrandLogo(row) {
-          const brand = brands.find((b) => b.id === row.id);
-          if (brand === undefined) return null;
+        renderLeading={function renderLeading(row) {
+          // For both brand rows and series rows we surface the parent brand
+          // logo — series rows still need the brand mark next to the series
+          // name so the row reads "Master Pro · LEXCO" with Lexco's logo.
+          const item = itemsByRowId.get(row.id);
+          if (item === undefined) return null;
           return (
             <BrandLogo
-              brandId={brand.id}
-              brandName={brand.name}
-              brandNameKo={brand.nameKo}
+              brandId={item.brand.id}
+              brandName={item.brand.name}
+              brandNameKo={item.brand.nameKo}
               size="md"
             />
           );
@@ -109,6 +204,7 @@ function BrandStep({ brands, pick, onPick }: BrandStepProps) {
 
 interface TemplateStepProps {
   brand: BrandResponse;
+  series: SeriesResponse | null;
   pick: TemplatePick | null;
   onPick: (pick: TemplatePick) => void;
 }
@@ -139,11 +235,13 @@ function toBodyPartRows(
     });
 }
 
-function TemplateStep({ brand, pick, onPick }: TemplateStepProps) {
+function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
   const [query, setQuery] = useState(pick?.kind === 'proposed' ? pick.query : '');
-  // Hook only fires for a catalog brand; brand.id is sufficient as the filter
-  // (category narrows in MachinePicker but is intentionally absent here).
-  const { data: templates = [] } = useMachineTemplates({ brandId: brand.id });
+  // V27: when a series was picked in the discovery step, narrow to that
+  // product line server-side; otherwise fall back to the whole brand.
+  const { data: templates = [] } = useMachineTemplates(
+    series !== null ? { seriesId: series.id } : { brandId: brand.id },
+  );
   const { data: categories = [] } = useCategories();
   const bodyPartById = new Map(categories.map((category) => [category.id, category.name]));
 
@@ -183,7 +281,11 @@ function TemplateStep({ brand, pick, onPick }: TemplateStepProps) {
           const template = templates.find((t) => t.id === id);
           if (template !== undefined) onPick({ kind: 'catalog', template });
         }}
-        emptyMessage="이 브랜드에는 등록된 기구가 없어요"
+        emptyMessage={
+          series !== null
+            ? '이 시리즈에는 등록된 기구가 없어요'
+            : '이 브랜드에는 등록된 기구가 없어요'
+        }
         proposeNew={proposeNew}
       />
     </View>
@@ -193,20 +295,32 @@ function TemplateStep({ brand, pick, onPick }: TemplateStepProps) {
 // ─── Name step ──────────────────────────────────────────────────────────────
 
 interface NameStepProps {
-  brand: BrandPick;
+  entity: EntityPick;
   text: string;
   onChangeText: (text: string) => void;
 }
 
-function NameStep({ brand, text, onChangeText }: NameStepProps) {
-  const brandLabel = brand.kind === 'catalog' ? formatBrandLabel(brand.brand) : brand.query;
+// Build the "owner" label shown above the free-form input. For a series pick
+// we surface both brand and series so the admin queue gets the richest hint
+// in the free-form text: "LEXCO Master Pro 레그익스텐션" rather than just
+// "LEXCO 레그익스텐션".
+function entityDisplayLabel(entity: EntityPick): string {
+  if (entity.kind === 'brand') return formatBrandLabel(entity.brand);
+  if (entity.kind === 'series') {
+    return `${formatBrandLabel(entity.brand)} ${entity.series.name}`;
+  }
+  return entity.query;
+}
+
+function NameStep({ entity, text, onChangeText }: NameStepProps) {
+  const label = entityDisplayLabel(entity);
   return (
     <View className="gap-3">
       <AppText className="text-body font-semibold text-text-primary">
         기구 이름을 입력해 주세요
       </AppText>
       <AppText className="text-body-sm text-text-secondary">
-        {brandLabel} 의 기구 이름을 입력하면 관리자가 검토 후 카탈로그에 추가해요
+        {label} 의 기구 이름을 입력하면 관리자가 검토 후 카탈로그에 추가해요
       </AppText>
       <TextInput
         testID="upload-manual-name-input"
@@ -226,20 +340,26 @@ function NameStep({ brand, text, onChangeText }: NameStepProps) {
 // losing screen context. Tapping a chip clears the corresponding selection
 // and snaps the active step back to that selection's stage.
 interface CrumbsProps {
-  brand: BrandPick | null;
+  entity: EntityPick | null;
   template: TemplatePick | null;
   step: Step;
-  onRevertBrand: () => void;
+  onRevertEntity: () => void;
   onRevertTemplate: () => void;
 }
 
-function Crumbs({ brand, template, step, onRevertBrand, onRevertTemplate }: CrumbsProps) {
-  const showBrand = brand !== null && step !== 'brand';
-  const showTemplate = template !== null && step === 'name';
-  if (!showBrand && !showTemplate) return null;
+function entityCrumbLabel(entity: EntityPick): string {
+  if (entity.kind === 'brand') return `브랜드: ${formatBrandLabel(entity.brand)}`;
+  if (entity.kind === 'series') {
+    return `시리즈: ${entity.series.name} (${formatBrandLabel(entity.brand)})`;
+  }
+  return `브랜드: ${entity.query}`;
+}
 
-  const brandLabel =
-    brand === null ? '' : brand.kind === 'catalog' ? formatBrandLabel(brand.brand) : brand.query;
+function Crumbs({ entity, template, step, onRevertEntity, onRevertTemplate }: CrumbsProps) {
+  const showEntity = entity !== null && step !== 'discovery';
+  const showTemplate = template !== null && step === 'name';
+  if (!showEntity && !showTemplate) return null;
+
   const templateLabel =
     template === null
       ? ''
@@ -247,27 +367,29 @@ function Crumbs({ brand, template, step, onRevertBrand, onRevertTemplate }: Crum
         ? templateDisplayName(template.template)
         : template.query;
 
-  // Catalog brands carry a logo; proposed (new) brands have no id, so the crumb
-  // falls back to text only.
-  const brandLogo =
-    brand !== null && brand.kind === 'catalog' ? (
+  // Catalog brand-or-series picks carry a brand logo; a proposed entry has
+  // no id and falls back to text only.
+  const entityBrand =
+    entity !== null && (entity.kind === 'brand' || entity.kind === 'series') ? entity.brand : null;
+  const entityLogo =
+    entityBrand !== null ? (
       <BrandLogo
         testID="upload-manual-crumb-brand-logo"
-        brandId={brand.brand.id}
-        brandName={brand.brand.name}
-        brandNameKo={brand.brand.nameKo}
+        brandId={entityBrand.id}
+        brandName={entityBrand.name}
+        brandNameKo={entityBrand.nameKo}
         size="sm"
       />
     ) : null;
 
   return (
     <View className="gap-1">
-      {showBrand ? (
+      {showEntity ? (
         <Crumb
           testID="upload-manual-crumb-brand"
-          label={`브랜드: ${brandLabel}`}
-          leading={brandLogo}
-          onRevert={onRevertBrand}
+          label={entityCrumbLabel(entity)}
+          leading={entityLogo}
+          onRevert={onRevertEntity}
         />
       ) : null}
       {showTemplate ? (
@@ -320,22 +442,23 @@ export function UploadManualInputScreen() {
   }>();
 
   const { data: brands = [] } = useBrands();
+  const { data: series = [] } = useSeries();
 
-  const [step, setStep] = useState<Step>('brand');
-  const [brand, setBrand] = useState<BrandPick | null>(null);
+  const [step, setStep] = useState<Step>('discovery');
+  const [entity, setEntity] = useState<EntityPick | null>(null);
   const [template, setTemplate] = useState<TemplatePick | null>(null);
   const [freeFormName, setFreeFormName] = useState('');
 
-  function handleBrandPick(next: BrandPick) {
-    setBrand(next);
+  function handleEntityPick(next: EntityPick) {
+    setEntity(next);
     // Catalog/proposed swap should clear any stale template selection on
-    // the (rare) flow back-into-brand-step → re-pick path.
+    // the (rare) flow back-into-discovery → re-pick path.
     setTemplate(null);
     setFreeFormName('');
-    // Auto-advance on pick so the user never has to scroll past a long brand
-    // list to reach a separate "다음" button: catalog brand → its template
-    // list, proposed brand → the free-form name step.
-    setStep(next.kind === 'catalog' ? 'template' : 'name');
+    // Auto-advance on pick so the user never has to scroll past a long list
+    // to reach a separate "다음" button: brand or series → its template
+    // list (filtered by series when present), proposed → free-form name step.
+    setStep(next.kind === 'proposed' ? 'name' : 'template');
   }
 
   function handleTemplatePick(next: TemplatePick) {
@@ -351,11 +474,11 @@ export function UploadManualInputScreen() {
     setStep('name');
   }
 
-  function handleRevertBrand() {
-    setBrand(null);
+  function handleRevertEntity() {
+    setEntity(null);
     setTemplate(null);
     setFreeFormName('');
-    setStep('brand');
+    setStep('discovery');
   }
 
   function handleRevertTemplate() {
@@ -377,16 +500,22 @@ export function UploadManualInputScreen() {
     });
   }
 
-  // Brand and template steps auto-advance on pick (see handleBrandPick /
+  // Discovery and template steps auto-advance on pick (see handleEntityPick /
   // handleTemplatePick), so only the free-form name step needs an explicit
   // submit button.
   function handleSubmitName() {
-    if (brand === null) return;
+    if (entity === null) return;
     const trimmedName = freeFormName.trim();
     if (trimmedName === '') return;
-    const brandLabel = brand.kind === 'catalog' ? formatBrandLabel(brand.brand) : brand.query;
-    pushToMachinePhoto({ kind: 'freeForm', text: `${brandLabel} ${trimmedName}` });
+    const owner = entityDisplayLabel(entity);
+    pushToMachinePhoto({ kind: 'freeForm', text: `${owner} ${trimmedName}` });
   }
+
+  // When a series pick is active, the parent brand is implicit; the template
+  // step uses series filtering rather than brand filtering.
+  const templateStepBrand =
+    entity !== null && (entity.kind === 'brand' || entity.kind === 'series') ? entity.brand : null;
+  const templateStepSeries = entity !== null && entity.kind === 'series' ? entity.series : null;
 
   return (
     <ScrollView
@@ -395,23 +524,28 @@ export function UploadManualInputScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <Crumbs
-        brand={brand}
+        entity={entity}
         template={template}
         step={step}
-        onRevertBrand={handleRevertBrand}
+        onRevertEntity={handleRevertEntity}
         onRevertTemplate={handleRevertTemplate}
       />
 
-      {step === 'brand' ? (
-        <BrandStep brands={brands} pick={brand} onPick={handleBrandPick} />
+      {step === 'discovery' ? (
+        <DiscoveryStep brands={brands} series={series} pick={entity} onPick={handleEntityPick} />
       ) : null}
 
-      {step === 'template' && brand !== null && brand.kind === 'catalog' ? (
-        <TemplateStep brand={brand.brand} pick={template} onPick={handleTemplatePick} />
+      {step === 'template' && templateStepBrand !== null ? (
+        <TemplateStep
+          brand={templateStepBrand}
+          series={templateStepSeries}
+          pick={template}
+          onPick={handleTemplatePick}
+        />
       ) : null}
 
-      {step === 'name' && brand !== null ? (
-        <NameStep brand={brand} text={freeFormName} onChangeText={setFreeFormName} />
+      {step === 'name' && entity !== null ? (
+        <NameStep entity={entity} text={freeFormName} onChangeText={setFreeFormName} />
       ) : null}
 
       {step === 'name' ? (
