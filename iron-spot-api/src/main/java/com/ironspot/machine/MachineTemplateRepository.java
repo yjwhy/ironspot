@@ -22,20 +22,24 @@ public class MachineTemplateRepository {
     public List<MachineTemplateSummary> findAllApproved() {
         return dsl.select(
                 MACHINE_TEMPLATES.ID,
+                MACHINE_TEMPLATES.BRAND_ID,
                 BRANDS.NAME,
                 BRANDS.NAME_KO,
                 MACHINE_TEMPLATES.NAME_EN,
-                MACHINE_TEMPLATES.NAME_KO)
+                MACHINE_TEMPLATES.NAME_KO,
+                MACHINE_TEMPLATES.SERIES_ID)
             .from(MACHINE_TEMPLATES)
             .join(BRANDS).on(MACHINE_TEMPLATES.BRAND_ID.eq(BRANDS.ID))
             .where(MACHINE_TEMPLATES.IS_APPROVED.isTrue())
             .orderBy(BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN)
             .fetch(r -> new MachineTemplateSummary(
                 r.get(MACHINE_TEMPLATES.ID),
+                r.get(MACHINE_TEMPLATES.BRAND_ID),
                 r.get(BRANDS.NAME),
                 r.get(BRANDS.NAME_KO),
                 r.get(MACHINE_TEMPLATES.NAME_EN),
-                r.get(MACHINE_TEMPLATES.NAME_KO)
+                r.get(MACHINE_TEMPLATES.NAME_KO),
+                r.get(MACHINE_TEMPLATES.SERIES_ID)
             ));
     }
 
@@ -131,10 +135,12 @@ public class MachineTemplateRepository {
             : DSL.noCondition();
         return dsl.select(
                 MACHINE_TEMPLATES.ID,
+                MACHINE_TEMPLATES.BRAND_ID,
                 BRANDS.NAME,
                 BRANDS.NAME_KO,
                 MACHINE_TEMPLATES.NAME_EN,
-                MACHINE_TEMPLATES.NAME_KO)
+                MACHINE_TEMPLATES.NAME_KO,
+                MACHINE_TEMPLATES.SERIES_ID)
             .from(MACHINE_TEMPLATES)
             .join(BRANDS).on(MACHINE_TEMPLATES.BRAND_ID.eq(BRANDS.ID))
             .where(MACHINE_TEMPLATES.IS_APPROVED.isTrue())
@@ -143,10 +149,12 @@ public class MachineTemplateRepository {
             .orderBy(BRANDS.NAME, MACHINE_TEMPLATES.NAME_EN)
             .fetch(r -> new MachineTemplateSummary(
                 r.get(MACHINE_TEMPLATES.ID),
+                r.get(MACHINE_TEMPLATES.BRAND_ID),
                 r.get(BRANDS.NAME),
                 r.get(BRANDS.NAME_KO),
                 r.get(MACHINE_TEMPLATES.NAME_EN),
-                r.get(MACHINE_TEMPLATES.NAME_KO)
+                r.get(MACHINE_TEMPLATES.NAME_KO),
+                r.get(MACHINE_TEMPLATES.SERIES_ID)
             ));
     }
 }

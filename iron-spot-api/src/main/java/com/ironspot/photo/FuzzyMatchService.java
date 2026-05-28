@@ -3,14 +3,18 @@ package com.ironspot.photo;
 import com.ironspot.machine.MachineTemplateRepository;
 import com.ironspot.machine.MachineTemplateSummary;
 import com.ironspot.photo.dto.MachineTemplateSuggestion;
+import com.ironspot.series.SeriesRepository;
+import com.ironspot.series.dto.SeriesResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,6 +39,7 @@ public class FuzzyMatchService {
     private static final double FALLBACK_JACCARD_THRESHOLD = 0.25;
 
     private final MachineTemplateRepository templateRepository;
+    private final SeriesRepository seriesRepository;
 
     public List<MachineTemplateSuggestion> findMatches(List<String> ocrTexts) {
         if (ocrTexts.isEmpty()) return List.of();
@@ -48,7 +53,8 @@ public class FuzzyMatchService {
         if (matchedBrandKeys.isEmpty()) {
             return scoreByBilingualJaccard(inputTokens, approved);
         }
-        return scoreByTemplateNamePrecision(inputTokens, approved, matchedBrandKeys);
+        Set<UUID> matchedSeriesIds = identifyMatchedSeriesIds(inputTokens, approved, matchedBrandKeys);
+        return scoreByTemplateNamePrecision(inputTokens, approved, matchedBrandKeys, matchedSeriesIds);
     }
 
     public List<UUID> findTemplateIds(String machineName, UUID brandId, UUID categoryId) {
@@ -91,10 +97,19 @@ public class FuzzyMatchService {
     private List<MachineTemplateSuggestion> scoreByTemplateNamePrecision(
         Set<String> inputTokens,
         List<MachineTemplateSummary> approved,
-        Set<String> matchedBrandKeys
+        Set<String> matchedBrandKeys,
+        Set<UUID> matchedSeriesIds
     ) {
+        // V27 / machine_series: when a series of the matched brand was also
+        // recognised in OCR ("Lexco" + "Master Pro"), narrow further to
+        // templates whose seriesId matches. Otherwise keep the existing
+        // brand-only candidate set (templates with NULL seriesId still
+        // qualify on the brand-only path).
+        boolean seriesAnchored = !matchedSeriesIds.isEmpty();
         return approved.stream()
             .filter(t -> matchedBrandKeys.contains(brandKey(t)))
+            .filter(t -> !seriesAnchored
+                || (t.seriesId() != null && matchedSeriesIds.contains(t.seriesId())))
             .map(t -> {
                 Set<String> templateNameTokens = templateNameTokens(t);
                 double score = precision(inputTokens, templateNameTokens);
@@ -152,6 +167,44 @@ public class FuzzyMatchService {
         Set<String> brandTokens = tokenize(brandName.toLowerCase(Locale.ROOT));
         if (brandTokens.isEmpty()) return false;
         return brandTokens.stream().allMatch(inputTokens::contains);
+    }
+
+    // V27 / machine_series: a series is "anchored" only when its parent brand
+    // was already matched (so cross-brand series tokens like "Eagle NX" in a
+    // Lexco photo are ignored) AND its name tokens are wholly present in the
+    // OCR input — the same all-tokens-required rule as brand anchoring, so a
+    // stray "Pro" or "Master" alone never narrows the candidate set.
+    private Set<UUID> identifyMatchedSeriesIds(
+        Set<String> inputTokens,
+        List<MachineTemplateSummary> approved,
+        Set<String> matchedBrandKeys
+    ) {
+        Map<UUID, String> brandIdToKey = new HashMap<>();
+        for (MachineTemplateSummary t : approved) {
+            if (t.brandId() == null) continue;
+            String key = brandKey(t);
+            if (matchedBrandKeys.contains(key)) {
+                brandIdToKey.put(t.brandId(), key);
+            }
+        }
+        if (brandIdToKey.isEmpty()) return Set.of();
+
+        Set<UUID> matched = new HashSet<>();
+        for (SeriesResponse s : seriesRepository.findAll()) {
+            if (!brandIdToKey.containsKey(s.brandId())) continue;
+            if (seriesTokensSubsetOfInput(inputTokens, s.name())
+                || seriesTokensSubsetOfInput(inputTokens, s.nameKo())) {
+                matched.add(s.id());
+            }
+        }
+        return matched;
+    }
+
+    private boolean seriesTokensSubsetOfInput(Set<String> inputTokens, String seriesName) {
+        if (seriesName == null || seriesName.isBlank()) return false;
+        Set<String> seriesTokens = tokenize(seriesName.toLowerCase(Locale.ROOT));
+        if (seriesTokens.isEmpty()) return false;
+        return seriesTokens.stream().allMatch(inputTokens::contains);
     }
 
     private String brandKey(MachineTemplateSummary t) {

@@ -3,6 +3,8 @@ package com.ironspot.photo;
 import com.ironspot.machine.MachineTemplateSummary;
 import com.ironspot.machine.MachineTemplateRepository;
 import com.ironspot.photo.dto.MachineTemplateSuggestion;
+import com.ironspot.series.SeriesRepository;
+import com.ironspot.series.dto.SeriesResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +27,9 @@ class FuzzyMatchServiceTest {
 
     @Mock
     private MachineTemplateRepository templateRepository;
+
+    @Mock
+    private SeriesRepository seriesRepository;
 
     @InjectMocks
     private FuzzyMatchService fuzzyMatchService;
@@ -370,6 +375,116 @@ class FuzzyMatchServiceTest {
             .extracting(MachineTemplateSuggestion::id)
             .containsExactly(hammerStrengthIsoLateral)
             .doesNotContain(cybexLegExtension, matrixLegExtension);
+    }
+
+    // -------------------------------------------------------------------------
+    // V27 / machine_series: series anchoring. Once a brand is recognised in
+    // OCR, the matcher also looks for series-of-that-brand whose name tokens
+    // are wholly present in the input. If a series matches, suggestions are
+    // restricted further to templates with that seriesId. This is what
+    // turns "Lexco Master Pro Leg Extension" into a Master Pro-only result
+    // instead of every Lexco leg extension.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void seriesAnchoredScoringNarrowsToMatchedSeriesLine() {
+        UUID lexcoBrandId = UUID.randomUUID();
+        UUID masterProSeriesId = UUID.randomUUID();
+        UUID falconSeriesId = UUID.randomUUID();
+        UUID masterProLegExt = UUID.randomUUID();
+        UUID falconLegExt = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(
+                masterProLegExt, lexcoBrandId, "LEXCO", "렉스코",
+                "Leg Extension", "레그 익스텐션", masterProSeriesId),
+            new MachineTemplateSummary(
+                falconLegExt, lexcoBrandId, "LEXCO", "렉스코",
+                "Leg Extension", "레그 익스텐션", falconSeriesId)
+        ));
+        when(seriesRepository.findAll()).thenReturn(List.of(
+            new SeriesResponse(masterProSeriesId, lexcoBrandId, "Master Pro", "Master Pro"),
+            new SeriesResponse(falconSeriesId, lexcoBrandId, "Falcon", "Falcon")
+        ));
+
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of("LEXCO", "MASTER", "PRO", "LEG", "EXTENSION")
+        );
+
+        assertThat(results)
+            .extracting(MachineTemplateSuggestion::id)
+            .containsExactly(masterProLegExt)
+            .doesNotContain(falconLegExt);
+    }
+
+    @Test
+    void seriesAnchoringDoesNotEngageWhenSeriesAbsentFromOcr() {
+        // Brand is recognised but no series token appears. Both same-brand
+        // templates remain candidates via the standard brand-anchored path.
+        UUID lexcoBrandId = UUID.randomUUID();
+        UUID masterProSeriesId = UUID.randomUUID();
+        UUID falconSeriesId = UUID.randomUUID();
+        UUID masterProLegExt = UUID.randomUUID();
+        UUID falconLegExt = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(
+                masterProLegExt, lexcoBrandId, "LEXCO", "렉스코",
+                "Leg Extension", "레그 익스텐션", masterProSeriesId),
+            new MachineTemplateSummary(
+                falconLegExt, lexcoBrandId, "LEXCO", "렉스코",
+                "Leg Extension", "레그 익스텐션", falconSeriesId)
+        ));
+        when(seriesRepository.findAll()).thenReturn(List.of(
+            new SeriesResponse(masterProSeriesId, lexcoBrandId, "Master Pro", "Master Pro"),
+            new SeriesResponse(falconSeriesId, lexcoBrandId, "Falcon", "Falcon")
+        ));
+
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of("LEXCO", "LEG", "EXTENSION")
+        );
+
+        assertThat(results)
+            .extracting(MachineTemplateSuggestion::id)
+            .containsExactlyInAnyOrder(masterProLegExt, falconLegExt);
+    }
+
+    @Test
+    void seriesAnchoringIgnoresSeriesOfNonMatchedBrand() {
+        // OCR carries LEXCO + "Master Pro" tokens but ALSO a Cybex-only
+        // series name. Only LEXCO is brand-matched; Cybex series tokens
+        // are ignored because their brand wasn't anchored.
+        UUID lexcoBrandId = UUID.randomUUID();
+        UUID cybexBrandId = UUID.randomUUID();
+        UUID masterProSeriesId = UUID.randomUUID();
+        UUID eagleNxSeriesId = UUID.randomUUID();
+        UUID masterProLegExt = UUID.randomUUID();
+        UUID falconLegExt = UUID.randomUUID();
+        UUID lexcoFalconSeriesId = UUID.randomUUID();
+
+        when(templateRepository.findAllApproved()).thenReturn(List.of(
+            new MachineTemplateSummary(
+                masterProLegExt, lexcoBrandId, "LEXCO", "렉스코",
+                "Leg Extension", "레그 익스텐션", masterProSeriesId),
+            new MachineTemplateSummary(
+                falconLegExt, lexcoBrandId, "LEXCO", "렉스코",
+                "Leg Extension", "레그 익스텐션", lexcoFalconSeriesId)
+        ));
+        when(seriesRepository.findAll()).thenReturn(List.of(
+            new SeriesResponse(masterProSeriesId, lexcoBrandId, "Master Pro", "Master Pro"),
+            new SeriesResponse(lexcoFalconSeriesId, lexcoBrandId, "Falcon", "Falcon"),
+            new SeriesResponse(eagleNxSeriesId, cybexBrandId, "Eagle NX", "Eagle NX")
+        ));
+
+        // OCR has LEXCO + Master Pro. Eagle NX tokens are absent. Only Lexco
+        // Master Pro templates should match.
+        List<MachineTemplateSuggestion> results = fuzzyMatchService.findMatches(
+            List.of("LEXCO", "MASTER", "PRO", "LEG", "EXTENSION")
+        );
+
+        assertThat(results)
+            .extracting(MachineTemplateSuggestion::id)
+            .containsExactly(masterProLegExt);
     }
 
     @Test
