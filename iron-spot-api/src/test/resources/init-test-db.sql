@@ -50,6 +50,23 @@ CREATE TABLE IF NOT EXISTS machine_templates (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- V27 mirror: brand product-line layer (Brand → Series → Template). The
+-- series table is created before the series_id FK on machine_templates.
+CREATE TABLE IF NOT EXISTS machine_series (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id UUID NOT NULL REFERENCES brands(id),
+  name TEXT NOT NULL,
+  name_ko TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (brand_id, name)
+);
+
+ALTER TABLE machine_templates
+  ADD COLUMN IF NOT EXISTS series_id UUID REFERENCES machine_series(id);
+
+CREATE INDEX IF NOT EXISTS idx_machine_templates_series
+  ON machine_templates (series_id) WHERE series_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS gym_machines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id UUID REFERENCES gyms(id),
@@ -332,6 +349,20 @@ INSERT INTO machine_templates(id, brand_id, category_id, name_en, name_ko, loadi
     '체스트 프레스',
     'plate'
   );
+-- V27 mirror: machine_series fixtures for series-resolution ITs.
+-- Monolith is Panatta's flagship line; Insignia is Life Fitness's.
+-- Linking the High Row template to Monolith lets ITs verify the
+-- seriesId filter on /api/machine-templates.
+INSERT INTO machine_series(id, brand_id, name, name_ko) VALUES
+  ('5e000001-0000-0000-0000-000000000001',
+   'b0000001-0000-0000-0000-000000000001',
+   'Monolith', 'Monolith'),
+  ('5e000002-0000-0000-0000-000000000002',
+   'b0000002-0000-0000-0000-000000000002',
+   'Insignia', 'Insignia');
+UPDATE machine_templates
+  SET series_id = '5e000001-0000-0000-0000-000000000001'
+  WHERE id = 'e0000001-0000-0000-0000-000000000001';
 INSERT INTO users(id, email, nickname)
   VALUES ('d0000001-0000-0000-0000-000000000001', 'test@example.com', '테스트유저');
 INSERT INTO gym_machines(id, gym_id, template_id, quantity)
@@ -399,6 +430,8 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories FORCE ROW LEVEL SECURITY;
 ALTER TABLE machine_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE machine_templates FORCE ROW LEVEL SECURITY;
+ALTER TABLE machine_series ENABLE ROW LEVEL SECURITY;
+ALTER TABLE machine_series FORCE ROW LEVEL SECURITY;
 
 -- Security MEDIUM/LOW batch6 (V20 mirror): defensive CHECK constraints on
 -- text + JSONB columns. Schema-only — IT data still satisfies the bounds.

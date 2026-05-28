@@ -15,8 +15,12 @@ describe('mapKeys factory', () => {
     expect(mapKeys.categories()).toEqual(['map', 'categories']);
   });
 
+  it('nests brand product-line series under root', () => {
+    expect(mapKeys.series()).toEqual(['map', 'series']);
+  });
+
   it('nests machine templates under root (no filter)', () => {
-    expect(mapKeys.machineTemplates()).toEqual(['map', 'machine-templates', null, null]);
+    expect(mapKeys.machineTemplates()).toEqual(['map', 'machine-templates', null, null, null]);
   });
 
   it('encodes brandId / categoryId in machine template key for picker pushdown', () => {
@@ -25,6 +29,17 @@ describe('mapKeys factory', () => {
       'machine-templates',
       'b1',
       'c1',
+      null,
+    ]);
+  });
+
+  it('encodes seriesId in machine template key (V27 product-line filter)', () => {
+    expect(mapKeys.machineTemplates({ seriesId: 's1' })).toEqual([
+      'map',
+      'machine-templates',
+      null,
+      null,
+      's1',
     ]);
   });
 

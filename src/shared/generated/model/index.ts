@@ -82,6 +82,7 @@ export * from './resolvedLocation';
 export * from './searchParams';
 export * from './searchPlacesParams';
 export * from './searchScope';
+export * from './seriesResponse';
 export * from './topQuery';
 export * from './topReporter';
 export * from './transliterateBrandRequest';

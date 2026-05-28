@@ -39,8 +39,10 @@ public class MachineTemplateController {
         @Parameter(description = "Restrict to templates of this brand.")
         @RequestParam(value = "brandId", required = false) UUID brandId,
         @Parameter(description = "Restrict to templates of this category (운동 부위).")
-        @RequestParam(value = "categoryId", required = false) UUID categoryId
+        @RequestParam(value = "categoryId", required = false) UUID categoryId,
+        @Parameter(description = "Restrict to templates of this product-line series (V27).")
+        @RequestParam(value = "seriesId", required = false) UUID seriesId
     ) {
-        return templateRepository.findAllApprovedDetailed(brandId, categoryId);
+        return templateRepository.findAllApprovedDetailed(brandId, categoryId, seriesId);
     }
 }

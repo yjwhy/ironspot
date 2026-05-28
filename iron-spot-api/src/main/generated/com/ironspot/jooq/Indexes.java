@@ -8,6 +8,7 @@ import com.ironspot.jooq.tables.GymMachines;
 import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
+import com.ironspot.jooq.tables.MachineTemplates;
 import com.ironspot.jooq.tables.ModerationAuditLog;
 import com.ironspot.jooq.tables.NlSearchLog;
 import com.ironspot.jooq.tables.Reports;
@@ -40,6 +41,7 @@ public class Indexes {
     public static final Index IDX_GYMS_CREATED_BY_USER_ID = Internal.createIndex(DSL.name("idx_gyms_created_by_user_id"), Gyms.GYMS, new OrderField[] { Gyms.GYMS.CREATED_BY_USER_ID }, false);
     public static final Index IDX_MACHINE_PHOTOS_ORPHAN_USER_CREATED = Internal.createIndex(DSL.name("idx_machine_photos_orphan_user_created"), MachinePhotos.MACHINE_PHOTOS, new OrderField[] { MachinePhotos.MACHINE_PHOTOS.USER_ID, MachinePhotos.MACHINE_PHOTOS.CREATED_AT }, false);
     public static final Index IDX_MACHINE_PHOTOS_USER_CREATED = Internal.createIndex(DSL.name("idx_machine_photos_user_created"), MachinePhotos.MACHINE_PHOTOS, new OrderField[] { MachinePhotos.MACHINE_PHOTOS.USER_ID, MachinePhotos.MACHINE_PHOTOS.CREATED_AT }, false);
+    public static final Index IDX_MACHINE_TEMPLATES_SERIES = Internal.createIndex(DSL.name("idx_machine_templates_series"), MachineTemplates.MACHINE_TEMPLATES, new OrderField[] { MachineTemplates.MACHINE_TEMPLATES.SERIES_ID }, false);
     public static final Index IDX_USERS_CONSENT_VERSION = Internal.createIndex(DSL.name("idx_users_consent_version"), Users.USERS, new OrderField[] { Users.USERS.CONSENT_VERSION }, false);
     public static final Index IDX_USERS_PENDING_DELETION = Internal.createIndex(DSL.name("idx_users_pending_deletion"), Users.USERS, new OrderField[] { Users.USERS.DELETED_AT }, false);
     public static final Index IDX_USERS_ROLE = Internal.createIndex(DSL.name("idx_users_role"), Users.USERS, new OrderField[] { Users.USERS.ROLE }, false);

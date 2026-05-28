@@ -6,6 +6,7 @@ package com.ironspot.jooq.tables;
 
 import com.ironspot.jooq.Keys;
 import com.ironspot.jooq.Public;
+import com.ironspot.jooq.tables.MachineSeries.MachineSeriesPath;
 import com.ironspot.jooq.tables.MachineTemplates.MachineTemplatesPath;
 
 import java.util.Arrays;
@@ -147,6 +148,19 @@ public class Brands extends TableImpl<Record> {
     @Override
     public List<UniqueKey<Record>> getUniqueKeys() {
         return Arrays.asList(Keys.BRANDS_NAME_KEY);
+    }
+
+    private transient MachineSeriesPath _machineSeries;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.machine_series</code> table
+     */
+    public MachineSeriesPath machineSeries() {
+        if (_machineSeries == null)
+            _machineSeries = new MachineSeriesPath(this, null, Keys.MACHINE_SERIES__MACHINE_SERIES_BRAND_ID_FKEY.getInverseKey());
+
+        return _machineSeries;
     }
 
     private transient MachineTemplatesPath _machineTemplates;

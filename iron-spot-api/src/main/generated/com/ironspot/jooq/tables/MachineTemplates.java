@@ -4,12 +4,14 @@
 package com.ironspot.jooq.tables;
 
 
+import com.ironspot.jooq.Indexes;
 import com.ironspot.jooq.Keys;
 import com.ironspot.jooq.Public;
 import com.ironspot.jooq.enums.LoadingType;
 import com.ironspot.jooq.tables.Brands.BrandsPath;
 import com.ironspot.jooq.tables.Categories.CategoriesPath;
 import com.ironspot.jooq.tables.GymMachines.GymMachinesPath;
+import com.ironspot.jooq.tables.MachineSeries.MachineSeriesPath;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -20,6 +22,7 @@ import java.util.UUID;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -101,6 +104,11 @@ public class MachineTemplates extends TableImpl<Record> {
      */
     public final TableField<Record, OffsetDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
+    /**
+     * The column <code>public.machine_templates.series_id</code>.
+     */
+    public final TableField<Record, UUID> SERIES_ID = createField(DSL.name("series_id"), SQLDataType.UUID, this, "");
+
     private MachineTemplates(Name alias, Table<Record> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -169,13 +177,18 @@ public class MachineTemplates extends TableImpl<Record> {
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.IDX_MACHINE_TEMPLATES_SERIES);
+    }
+
+    @Override
     public UniqueKey<Record> getPrimaryKey() {
         return Keys.MACHINE_TEMPLATES_PKEY;
     }
 
     @Override
     public List<ForeignKey<Record, ?>> getReferences() {
-        return Arrays.asList(Keys.MACHINE_TEMPLATES__MACHINE_TEMPLATES_BRAND_ID_FKEY, Keys.MACHINE_TEMPLATES__MACHINE_TEMPLATES_CATEGORY_ID_FKEY);
+        return Arrays.asList(Keys.MACHINE_TEMPLATES__MACHINE_TEMPLATES_BRAND_ID_FKEY, Keys.MACHINE_TEMPLATES__MACHINE_TEMPLATES_CATEGORY_ID_FKEY, Keys.MACHINE_TEMPLATES__MACHINE_TEMPLATES_SERIES_ID_FKEY);
     }
 
     private transient BrandsPath _brands;
@@ -200,6 +213,19 @@ public class MachineTemplates extends TableImpl<Record> {
             _categories = new CategoriesPath(this, Keys.MACHINE_TEMPLATES__MACHINE_TEMPLATES_CATEGORY_ID_FKEY, null);
 
         return _categories;
+    }
+
+    private transient MachineSeriesPath _machineSeries;
+
+    /**
+     * Get the implicit join path to the <code>public.machine_series</code>
+     * table.
+     */
+    public MachineSeriesPath machineSeries() {
+        if (_machineSeries == null)
+            _machineSeries = new MachineSeriesPath(this, Keys.MACHINE_TEMPLATES__MACHINE_TEMPLATES_SERIES_ID_FKEY, null);
+
+        return _machineSeries;
     }
 
     private transient GymMachinesPath _gymMachines;

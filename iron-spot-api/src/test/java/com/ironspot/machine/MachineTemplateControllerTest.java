@@ -23,6 +23,7 @@ class MachineTemplateControllerTest extends IntegrationTestBase {
     // Seeded by init-test-db.sql.
     private static final String BRAND_PANATTA_ID = "b0000001-0000-0000-0000-000000000001";
     private static final String CATEGORY_CHEST_ID = "c0000002-0000-0000-0000-000000000002";
+    private static final String SERIES_MONOLITH_ID = "5e000001-0000-0000-0000-000000000001";
 
     @Autowired
     private TestRestTemplate restTemplate;
@@ -84,6 +85,30 @@ class MachineTemplateControllerTest extends IntegrationTestBase {
         assertThat(body).contains("\"nameEn\":\"Chest Press\"");
         assertThat(body).doesNotContain("\"nameEn\":\"High Row\"");
         assertThat(body).doesNotContain("Panatta");
+    }
+
+    @Test
+    void listTemplatesNarrowsBySeriesIdQueryParam() {
+        // V27 / machine_series: init-test-db links High Row to Monolith series;
+        // Chest Press has series_id NULL. The seriesId filter should return
+        // only the linked template.
+        ResponseEntity<String> response = restTemplate.getForEntity(
+            "/api/machine-templates?seriesId=" + SERIES_MONOLITH_ID, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String body = response.getBody();
+        assertThat(body).contains("\"nameEn\":\"High Row\"");
+        assertThat(body).doesNotContain("\"nameEn\":\"Chest Press\"");
+    }
+
+    @Test
+    void listTemplatesIncludesSeriesIdInResponse() {
+        // High Row is linked to Monolith series in init-test-db; the wire DTO
+        // must surface seriesId so the RN client can group/filter by series.
+        ResponseEntity<String> response =
+            restTemplate.getForEntity("/api/machine-templates", String.class);
+
+        assertThat(response.getBody()).contains("\"seriesId\":\"" + SERIES_MONOLITH_ID + "\"");
     }
 
     @Test

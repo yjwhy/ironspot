@@ -10,6 +10,7 @@ import com.ironspot.jooq.tables.GymMachines;
 import com.ironspot.jooq.tables.GymOwners;
 import com.ironspot.jooq.tables.Gyms;
 import com.ironspot.jooq.tables.MachinePhotos;
+import com.ironspot.jooq.tables.MachineSeries;
 import com.ironspot.jooq.tables.MachineTemplates;
 import com.ironspot.jooq.tables.ModerationAnalytics_30d;
 import com.ironspot.jooq.tables.ModerationAuditLog;
@@ -92,6 +93,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.machine_photos</code>.
      */
     public final MachinePhotos MACHINE_PHOTOS = MachinePhotos.MACHINE_PHOTOS;
+
+    /**
+     * The table <code>public.machine_series</code>.
+     */
+    public final MachineSeries MACHINE_SERIES = MachineSeries.MACHINE_SERIES;
 
     /**
      * The table <code>public.machine_templates</code>.
@@ -672,6 +678,7 @@ public class Public extends SchemaImpl {
             GymOwners.GYM_OWNERS,
             Gyms.GYMS,
             MachinePhotos.MACHINE_PHOTOS,
+            MachineSeries.MACHINE_SERIES,
             MachineTemplates.MACHINE_TEMPLATES,
             ModerationAnalytics_30d.MODERATION_ANALYTICS_30D,
             ModerationAuditLog.MODERATION_AUDIT_LOG,
