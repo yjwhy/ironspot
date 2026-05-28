@@ -1,8 +1,7 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { UPLOAD_METHOD_CHOICE_PATHNAME } from '@/features/upload/constants';
@@ -12,8 +11,6 @@ import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Skeleton } from '@/shared/components/Skeleton';
 import { formatVerifiedDate } from '@/shared/lib/format';
-import { pressedOpacity } from '@/shared/lib/pressable';
-import { colors } from '@/shared/theme/tokens';
 import type { Gym, GymMachineWithDetails } from '@/shared/types/database';
 
 import { DirectionsChip } from './DirectionsChip';
@@ -68,7 +65,6 @@ export function GymDetail({ gym, onPressMachine }: GymDetailProps) {
           />
         </View>
       </ScrollView>
-      <AddPhotoFab gymId={gym.id} />
     </View>
   );
 }
@@ -145,54 +141,22 @@ function MachinesBody({ data, isPending, isError, onPressMachine }: MachinesBody
   return <MachineList machines={data} onPressMachine={onPressMachine} />;
 }
 
-interface AddPhotoFabProps {
-  gymId: string;
-}
-
-function AddPhotoFab({ gymId }: AddPhotoFabProps) {
-  const requireAuth = useRequireAuth();
-  function handlePress() {
-    requireAuth(function navigateToUpload() {
-      // Phase 5 follow-up G: route through method-choice (OCR vs manual)
-      // before the camera. Existing-machine photo-add callers
-      // (MachinePhotoGalleryScreen) still go directly to UPLOAD_PHOTO_PATHNAME.
-      router.push({
-        pathname: UPLOAD_METHOD_CHOICE_PATHNAME,
-        params: { gymId },
-      });
-    });
-  }
-  return (
-    <Pressable
-      onPress={handlePress}
-      accessibilityRole="button"
-      accessibilityLabel="사진 추가"
-      style={pressedOpacity}
-      className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-accent shadow-lg"
-    >
-      <MaterialIcons
-        name="add-a-photo"
-        size={24}
-        color={colors.text.inverse}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      />
-    </Pressable>
-  );
-}
-
 interface AddMachineRowProps {
   gymId: string;
 }
 
 /**
  * Inline "기구 추가" CTA between {@link GymOwnerEntry} and {@link MachinesBody}.
+ * Routes to the upload method-choice screen (OCR vs 직접 입력) bound to
+ * the current gymId. Lives in the natural reading flow so it stays
+ * visible whether `GymDetail` renders full-screen or inside the half-
+ * open `GymBottomSheet` snap state.
  *
- * Mirrors {@link AddPhotoFab}'s navigation (UPLOAD_METHOD_CHOICE_PATHNAME)
- * but lives in the natural reading flow so it stays visible even when
- * `GymDetail` renders inside the half-open `GymBottomSheet` snap state.
- * The floating FAB stays as a redundant entry point for full-screen
- * users; this inline row is the primary discoverable affordance.
+ * Previously paired with a redundant `add-a-photo` FAB at bottom-right;
+ * the FAB was removed 2026-05-28 because both CTAs targeted the same
+ * route, the FAB's "사진 추가" label conflicted with this row's "기구
+ * 추가" label for the same action, and the camera icon misled users
+ * into expecting a direct camera launch rather than the method-choice.
  */
 function AddMachineRow({ gymId }: AddMachineRowProps) {
   const requireAuth = useRequireAuth();
