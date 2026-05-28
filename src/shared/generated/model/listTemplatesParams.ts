@@ -15,4 +15,8 @@ export type ListTemplatesParams = {
    * Restrict to templates of this category (운동 부위).
    */
   categoryId?: string;
+  /**
+   * Restrict to templates of this product-line series (V27).
+   */
+  seriesId?: string;
 };

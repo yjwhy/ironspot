@@ -3,6 +3,7 @@ import type { MapBounds, SearchFilters } from '@/shared/types/database';
 export const mapKeys = {
   all: ['map'] as const,
   brands: () => [...mapKeys.all, 'brands'] as const,
+  series: () => [...mapKeys.all, 'series'] as const,
   categories: () => [...mapKeys.all, 'categories'] as const,
   machineTemplates: (params?: { brandId?: string; categoryId?: string }) =>
     [

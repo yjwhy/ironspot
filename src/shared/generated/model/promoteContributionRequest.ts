@@ -49,4 +49,12 @@ export interface PromoteContributionRequest {
   loadingType?: PromoteContributionRequestLoadingType;
   /** Optional categories.id; null leaves the template uncategorised */
   categoryId?: string;
+  /** V27: optional existing machine_series.id under brandId. Only valid when kind='newTemplate'. Mutually exclusive with newSeriesName. */
+  seriesId?: string;
+  /**
+   * V27: optional new series name to create under brandId (newTemplate) or newBrandName (newBrandAndTemplate). Mutually exclusive with seriesId.
+   * @minLength 0
+   * @maxLength 80
+   */
+  newSeriesName?: string;
 }

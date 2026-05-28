@@ -6,15 +6,9 @@
  * OpenAPI spec version: v1
  */
 
-export interface MachineTemplateResponse {
+export interface SeriesResponse {
   id: string;
   brandId: string;
-  brandName: string;
-  brandNameKo: string;
-  categoryId: string;
-  nameEn: string;
+  name: string;
   nameKo: string;
-  loadingType: string;
-  /** @nullable */
-  seriesId?: string | null;
 }
