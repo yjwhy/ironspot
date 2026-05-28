@@ -76,7 +76,13 @@ export function SearchableList({
           placeholder={searchPlaceholder}
           placeholderTextColor={colors.text.tertiary}
           accessibilityLabel={searchPlaceholder}
-          className="flex-1 text-body-sm text-text-primary"
+          // The `text-body-sm` typography token sets `lineHeight: 20`, and on
+          // iOS RN draws TextInput text/cursor at the TOP of its lineHeight
+          // box rather than vertically centering — so the icon + caret floated
+          // above the input's visual midline. Mirrors the inline-style fix
+          // already in place on FilterSheet's global-search input: drop the
+          // lineHeight-bearing class and inline the matching font size.
+          style={{ flex: 1, color: colors.text.primary, fontSize: 13 }}
         />
       </View>
       <View className="gap-2">
