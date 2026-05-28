@@ -42,7 +42,7 @@ export function UploadMethodChoiceScreen() {
     <View className="flex-1 gap-4 bg-bg-base p-6">
       <AppText className="text-h2 font-semibold text-text-primary">어떻게 추가할까요?</AppText>
       <AppText className="text-body text-text-secondary">
-        머신의 명판이 잘 보이면 사진으로, 라벨이 없거나 보이지 않으면 직접 입력으로 선택해주세요
+        머신의 라벨이 잘 보이면 사진으로, 라벨이 없거나 보이지 않으면 직접 입력으로 선택해주세요
       </AppText>
 
       <View className="mt-2 gap-3">
@@ -50,7 +50,7 @@ export function UploadMethodChoiceScreen() {
           testID="upload-method-label"
           icon="qr-code-scanner"
           title="라벨 사진으로 검색"
-          subtitle="브랜드/모델명이 적힌 명판을 찍으면 자동으로 인식돼요"
+          subtitle="브랜드/모델명이 적힌 라벨을 찍으면 자동으로 인식돼요"
           variant="primary"
           onPress={handleLabelPath}
         />
