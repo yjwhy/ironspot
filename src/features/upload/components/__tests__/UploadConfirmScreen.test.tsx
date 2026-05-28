@@ -205,7 +205,7 @@ describe('UploadConfirmScreen', () => {
 
     const { getByTestId, getByText } = render(<UploadConfirmScreen />);
 
-    expect(getByText('기구를 인식하지 못했어요')).toBeTruthy();
+    expect(getByText('머신을 인식하지 못했어요')).toBeTruthy();
     expect(getByTestId('upload-retry-btn')).toBeTruthy();
     expect(getByTestId('machine-picker')).toBeTruthy();
     expect(getByTestId('machine-picker-escape-link')).toBeTruthy();

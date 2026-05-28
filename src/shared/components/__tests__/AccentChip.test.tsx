@@ -5,8 +5,8 @@ import { AccentChip } from '../AccentChip';
 
 describe('AccentChip', () => {
   it('renders text children', () => {
-    const { getByText } = render(<AccentChip>기구 12대</AccentChip>);
-    expect(getByText('기구 12대')).toBeTruthy();
+    const { getByText } = render(<AccentChip>머신 12대</AccentChip>);
+    expect(getByText('머신 12대')).toBeTruthy();
   });
 
   it('forwards testID', () => {

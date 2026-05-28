@@ -20,7 +20,7 @@ interface UnregisteredGymDetailProps {
   onPressRegisterFirstPhoto: () => void;
 }
 
-const REGISTER_CTA_LABEL = '기구 사진 등록하기';
+const REGISTER_CTA_LABEL = '머신 사진 등록하기';
 const UNREGISTERED_BADGE = '아직 등록되지 않은 헬스장';
 const EMPTY_GALLERY_LABEL = '첫 등록자가 되어 사진을 추가해주세요';
 

@@ -63,7 +63,7 @@ export function PhotoGuidanceBanner() {
           브랜드/모델명 적힌 라벨을 가까이 찍어주세요
         </AppText>
         <AppText className="text-center text-body-sm text-text-secondary">
-          기구 전체가 아닌 라벨(스티커) 부분을 찍으면 브랜드와 모델명이 자동으로 인식돼요
+          머신 전체가 아닌 라벨(스티커) 부분을 찍으면 브랜드와 모델명이 자동으로 인식돼요
         </AppText>
         <Pressable
           testID="photo-guidance-banner-dismiss"

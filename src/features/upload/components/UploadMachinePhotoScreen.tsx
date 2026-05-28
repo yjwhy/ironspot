@@ -276,7 +276,7 @@ export function UploadMachinePhotoScreen() {
 
       <View className="bg-black px-6 pb-2 pt-3">
         <AppText className="text-body-sm text-white/80">
-          기구 전체가 잘 보이도록 한 발 뒤에서 찍어주세요
+          머신 전체가 잘 보이도록 한 발 뒤에서 찍어주세요
         </AppText>
       </View>
 

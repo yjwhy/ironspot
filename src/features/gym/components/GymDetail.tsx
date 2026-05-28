@@ -128,14 +128,14 @@ function MachinesBody({ data, isPending, isError, onPressMachine }: MachinesBody
     return (
       <EmptyState
         icon="error-outline"
-        title="기구 정보를 불러오지 못했어요"
+        title="머신 정보를 불러오지 못했어요"
         description="잠시 후 다시 시도해주세요"
       />
     );
   }
 
   if (!data || data.length === 0) {
-    return <EmptyState icon="info-outline" title="등록된 기구가 없어요" />;
+    return <EmptyState icon="info-outline" title="등록된 머신이 없어요" />;
   }
 
   return <MachineList machines={data} onPressMachine={onPressMachine} />;
@@ -146,7 +146,7 @@ interface AddMachineRowProps {
 }
 
 /**
- * Inline "기구 추가" CTA between {@link GymOwnerEntry} and {@link MachinesBody}.
+ * Inline "머신 추가" CTA between {@link GymOwnerEntry} and {@link MachinesBody}.
  * Routes to the upload method-choice screen (OCR vs 직접 입력) bound to
  * the current gymId. Lives in the natural reading flow so it stays
  * visible whether `GymDetail` renders full-screen or inside the half-
@@ -154,7 +154,7 @@ interface AddMachineRowProps {
  *
  * Previously paired with a redundant `add-a-photo` FAB at bottom-right;
  * the FAB was removed 2026-05-28 because both CTAs targeted the same
- * route, the FAB's "사진 추가" label conflicted with this row's "기구
+ * route, the FAB's "사진 추가" label conflicted with this row's "머신
  * 추가" label for the same action, and the camera icon misled users
  * into expecting a direct camera launch rather than the method-choice.
  */
@@ -168,5 +168,5 @@ function AddMachineRow({ gymId }: AddMachineRowProps) {
       });
     });
   }
-  return <Button label="기구 추가" onPress={handlePress} variant="primary" />;
+  return <Button label="머신 추가" onPress={handlePress} variant="primary" />;
 }

@@ -104,7 +104,7 @@ public class PhotoService {
             // Bound upload pointed at a non-existent gym_machine_id. Orphan
             // uploads (gymMachineId == null) cannot hit this branch because
             // machine_photos.gym_machine_id is nullable.
-            throw new BusinessException("유효하지 않은 헬스장 기구 ID입니다", HttpStatus.BAD_REQUEST);
+            throw new BusinessException("유효하지 않은 헬스장 머신 ID입니다", HttpStatus.BAD_REQUEST);
         }
 
         if (queueForAdmin) {

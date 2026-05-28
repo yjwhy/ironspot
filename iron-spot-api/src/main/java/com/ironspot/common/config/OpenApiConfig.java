@@ -20,7 +20,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("IronSpot API")
-                        .description("헬스장 기구 정보 플랫폼 API")
+                        .description("헬스장 머신 정보 플랫폼 API")
                         .version("v1"))
                 .addSecurityItem(new SecurityRequirement().addList("Bearer"))
                 .components(new Components()

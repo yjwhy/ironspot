@@ -5,7 +5,7 @@ import { UploadMachinePhotoScreen } from '@/features/upload/components/UploadMac
 export default function MachinePhotoRoute() {
   return (
     <>
-      <Stack.Screen options={{ title: '기구 사진' }} />
+      <Stack.Screen options={{ title: '머신 사진' }} />
       <UploadMachinePhotoScreen />
     </>
   );

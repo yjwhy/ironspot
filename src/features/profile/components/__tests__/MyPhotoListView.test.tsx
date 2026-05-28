@@ -31,7 +31,7 @@ function makePhoto(overrides: Partial<PhotoResponse> = {}): PhotoResponse {
 const baseProps = {
   title: '내가 올린 사진',
   emptyTitle: '아직 올린 사진이 없어요',
-  emptyDescription: '기구 사진을 올려보세요!',
+  emptyDescription: '머신 사진을 올려보세요!',
   isPending: false,
   isError: false,
   isFetching: false,
@@ -57,7 +57,7 @@ describe('MyPhotoListView', () => {
   it('shows empty state when there are no photos', () => {
     const { getByText } = render(<MyPhotoListView {...baseProps} photos={[]} />);
     expect(getByText('아직 올린 사진이 없어요')).toBeTruthy();
-    expect(getByText('기구 사진을 올려보세요!')).toBeTruthy();
+    expect(getByText('머신 사진을 올려보세요!')).toBeTruthy();
   });
 
   it('shows error state when isError is true', () => {

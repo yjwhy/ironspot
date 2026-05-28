@@ -35,7 +35,7 @@ const SNAP_POINTS = ['25%', '50%', '90%'];
 
 // Indices into SNAP_POINTS. Most modes open at the mid (50%) detent. The
 // 'unregistered-detail' mode must open at the full (90%) detent: its
-// '기구 사진 등록하기' CTA is absolute-positioned at the sheet bottom, and at the
+// '머신 사진 등록하기' CTA is absolute-positioned at the sheet bottom, and at the
 // mid detent it sits below the fold — tapping where it appears does nothing.
 const MID_SNAP_INDEX = 1;
 const FULL_SNAP_INDEX = 2;
