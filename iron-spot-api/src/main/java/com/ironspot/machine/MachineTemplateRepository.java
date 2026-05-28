@@ -112,7 +112,7 @@ public class MachineTemplateRepository {
      * weakly references categories today); the picker forces a selection in
      * the UI but the contract stays permissive for future flows.
      */
-    public UUID create(UUID brandId, UUID categoryId, String nameEn, String nameKo, String loadingType) {
+    public UUID create(UUID brandId, UUID categoryId, String nameEn, String nameKo, String loadingType, UUID seriesId) {
         LoadingType lt = LoadingType.lookupLiteral(loadingType);
         return dsl.insertInto(MACHINE_TEMPLATES)
             .set(MACHINE_TEMPLATES.BRAND_ID, brandId)
@@ -121,6 +121,7 @@ public class MachineTemplateRepository {
             .set(MACHINE_TEMPLATES.NAME_KO, nameKo)
             .set(MACHINE_TEMPLATES.LOADING_TYPE, lt)
             .set(MACHINE_TEMPLATES.IS_APPROVED, true)
+            .set(MACHINE_TEMPLATES.SERIES_ID, seriesId)
             .returning(MACHINE_TEMPLATES.ID)
             .fetchOne()
             .get(MACHINE_TEMPLATES.ID);

@@ -20,13 +20,19 @@ import java.util.UUID;
  *       merged into the existing row.</li>
  *   <li>{@code newTemplate} — requires {@code brandId, nameEn, nameKo,
  *       loadingType}. Authors a new template under an existing brand and
- *       promotes the pending row to it. {@code categoryId} is optional.</li>
+ *       promotes the pending row to it. {@code categoryId} is optional.
+ *       V27: optional {@code seriesId} attaches to an existing series under
+ *       that brand, OR {@code newSeriesName} creates a new series first.
+ *       Both null leaves the template's seriesId NULL.</li>
  *   <li>{@code newBrandAndTemplate} — requires {@code newBrandName,
  *       newBrandNameKo, nameEn, nameKo, loadingType}. Authors a new brand
  *       AND a new template under it (used when the brand catalog itself is
  *       short a row). {@code newBrandNameKo} (Phase 5 item 24) is required
  *       because V11 made {@code brands.name_ko} NOT NULL. {@code
- *       categoryId} is optional.</li>
+ *       categoryId} is optional. V27: optional {@code newSeriesName}
+ *       creates a series under the new brand and attaches the template
+ *       to it. {@code seriesId} is rejected here — you cannot reference
+ *       an existing series under a brand-new brand.</li>
  * </ul>
  *
  * <p>The flat-record shape (rather than a sealed-interface discriminated
@@ -77,6 +83,32 @@ public record PromoteContributionRequest(
     String loadingType,
 
     @Schema(description = "Optional categories.id; null leaves the template uncategorised")
-    UUID categoryId
+    UUID categoryId,
+
+    @Schema(description = "V27: optional existing machine_series.id under brandId. Only valid when kind='newTemplate'. Mutually exclusive with newSeriesName.")
+    UUID seriesId,
+
+    @Size(max = 80)
+    @Schema(description = "V27: optional new series name to create under brandId (newTemplate) or newBrandName (newBrandAndTemplate). Mutually exclusive with seriesId.")
+    String newSeriesName
 ) {
+    /**
+     * Backwards-compatible 9-arg constructor used by pre-V27 unit tests.
+     * Defaults the new series fields to null so existing fixtures compile
+     * unchanged. Wire requests via Jackson use the canonical 11-arg form.
+     */
+    public PromoteContributionRequest(
+        String kind,
+        UUID templateId,
+        UUID brandId,
+        String newBrandName,
+        String newBrandNameKo,
+        String nameEn,
+        String nameKo,
+        String loadingType,
+        UUID categoryId
+    ) {
+        this(kind, templateId, brandId, newBrandName, newBrandNameKo,
+            nameEn, nameKo, loadingType, categoryId, null, null);
+    }
 }

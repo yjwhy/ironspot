@@ -8,6 +8,7 @@ import com.ironspot.common.exception.BusinessException;
 import com.ironspot.machine.MachineRepository;
 import com.ironspot.machine.MachineTemplateRepository;
 import com.ironspot.photo.PhotoRepository;
+import com.ironspot.series.SeriesRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
@@ -46,6 +47,7 @@ public class AdminPendingContributionService {
     private final MachineTemplateRepository templateRepository;
     private final BrandRepository brandRepository;
     private final PhotoRepository photoRepository;
+    private final SeriesRepository seriesRepository;
 
     @Transactional(readOnly = true)
     public List<AdminPendingContribution> list(int limit) {
@@ -89,6 +91,10 @@ public class AdminPendingContributionService {
         requireAbsent(req.nameEn(), "nameEn");
         requireAbsent(req.nameKo(), "nameKo");
         requireAbsent(req.loadingType(), "loadingType");
+        // V27: existingTemplate carries its own series_id intrinsically; the
+        // admin cannot override it via this kind.
+        requireAbsent(req.seriesId(), "seriesId");
+        requireAbsent(req.newSeriesName(), "newSeriesName");
         UUID templateId = requirePresent(req.templateId(), "templateId");
         if (!machineRepository.templateExistsAndApproved(templateId)) {
             throw new BusinessException(
@@ -109,7 +115,8 @@ public class AdminPendingContributionService {
             throw new BusinessException(
                 "선택한 브랜드를 찾을 수 없습니다", HttpStatus.BAD_REQUEST);
         }
-        return templateRepository.create(brandId, req.categoryId(), tpl.nameEn, tpl.nameKo, tpl.loadingType);
+        UUID resolvedSeriesId = resolveSeriesForNewTemplate(brandId, req);
+        return templateRepository.create(brandId, req.categoryId(), tpl.nameEn, tpl.nameKo, tpl.loadingType, resolvedSeriesId);
     }
 
     private UUID resolveNewBrandAndTemplate(PromoteContributionRequest req) {
@@ -118,6 +125,9 @@ public class AdminPendingContributionService {
         // brand label" mismatch.
         requireAbsent(req.templateId(), "templateId");
         requireAbsent(req.brandId(), "brandId");
+        // V27: seriesId references an EXISTING series, which cannot belong to
+        // a brand we're about to create. Only newSeriesName makes sense here.
+        requireAbsent(req.seriesId(), "seriesId");
         String brandName = requirePresentString(req.newBrandName(), "newBrandName");
         String brandNameKo = requirePresentString(req.newBrandNameKo(), "newBrandNameKo");
         TemplateFields tpl = requireTemplateFields(req);
@@ -128,7 +138,43 @@ public class AdminPendingContributionService {
             throw new BusinessException(
                 "이미 존재하는 브랜드입니다", HttpStatus.CONFLICT);
         }
-        return templateRepository.create(brandId, req.categoryId(), tpl.nameEn, tpl.nameKo, tpl.loadingType);
+        UUID resolvedSeriesId = req.newSeriesName() != null && !req.newSeriesName().isBlank()
+            ? createSeries(brandId, req.newSeriesName())
+            : null;
+        return templateRepository.create(brandId, req.categoryId(), tpl.nameEn, tpl.nameKo, tpl.loadingType, resolvedSeriesId);
+    }
+
+    // V27: pick (and validate) a series for a newTemplate under an existing
+    // brand. seriesId and newSeriesName are mutually exclusive; both null
+    // means "no series" (templates with NULL seriesId stay valid).
+    private UUID resolveSeriesForNewTemplate(UUID brandId, PromoteContributionRequest req) {
+        boolean hasExisting = req.seriesId() != null;
+        boolean hasNew = req.newSeriesName() != null && !req.newSeriesName().isBlank();
+        if (hasExisting && hasNew) {
+            throw new BusinessException(
+                "seriesId 와 newSeriesName 은 동시에 지정할 수 없습니다", HttpStatus.BAD_REQUEST);
+        }
+        if (hasExisting) {
+            if (!seriesRepository.existsByIdAndBrand(req.seriesId(), brandId)) {
+                throw new BusinessException(
+                    "선택한 시리즈를 해당 브랜드에서 찾을 수 없습니다", HttpStatus.BAD_REQUEST);
+            }
+            return req.seriesId();
+        }
+        if (hasNew) {
+            return createSeries(brandId, req.newSeriesName());
+        }
+        return null;
+    }
+
+    private UUID createSeries(UUID brandId, String name) {
+        try {
+            // V27 English-only naming: nameKo mirrors name on the wire/DB.
+            return seriesRepository.create(brandId, name, name);
+        } catch (DuplicateKeyException ex) {
+            throw new BusinessException(
+                "이미 존재하는 시리즈입니다", HttpStatus.CONFLICT);
+        }
     }
 
     private record TemplateFields(String nameEn, String nameKo, String loadingType) {}

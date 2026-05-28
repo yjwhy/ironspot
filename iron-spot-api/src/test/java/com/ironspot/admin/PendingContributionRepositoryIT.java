@@ -190,7 +190,7 @@ class PendingContributionRepositoryIT extends IntegrationTestBase {
         UUID brandId = brandRepository.create("IT-pending-brand-B", "IT 보류 브랜드 B");
         UUID templateId = templateRepository.create(
             brandId, CATEGORY_ID,
-            "IT-pending-template", "한국어 머신명", "pin");
+            "IT-pending-template", "한국어 머신명", "pin", null);
 
         Boolean approved = jdbc.queryForObject(
             "SELECT is_approved FROM machine_templates WHERE id = ?", Boolean.class, templateId);

@@ -7,6 +7,7 @@ import com.ironspot.common.exception.BusinessException;
 import com.ironspot.machine.MachineRepository;
 import com.ironspot.machine.MachineTemplateRepository;
 import com.ironspot.photo.PhotoRepository;
+import com.ironspot.series.SeriesRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +35,7 @@ class AdminPendingContributionServiceTest {
     @Mock private MachineTemplateRepository templateRepository;
     @Mock private BrandRepository brandRepository;
     @Mock private PhotoRepository photoRepository;
+    @Mock private SeriesRepository seriesRepository;
 
     @InjectMocks private AdminPendingContributionService service;
 
@@ -98,7 +100,7 @@ class AdminPendingContributionServiceTest {
         UUID createdTemplate = UUID.fromString("77777777-7777-7777-7777-777777777777");
         givenPendingExists();
         when(brandRepository.existsById(brandId)).thenReturn(true);
-        when(templateRepository.create(brandId, categoryId, "Lat Pulldown", "랫 풀다운", "pin"))
+        when(templateRepository.create(brandId, categoryId, "Lat Pulldown", "랫 풀다운", "pin", null))
             .thenReturn(createdTemplate);
         when(machineRepository.findExistingApprovedAtGym(gymId, createdTemplate)).thenReturn(Optional.empty());
         when(machineRepository.promoteToTemplate(gymMachineId, createdTemplate)).thenReturn(1);
@@ -115,7 +117,7 @@ class AdminPendingContributionServiceTest {
         when(brandRepository.existsById(brandId)).thenReturn(false);
 
         assertBadRequest(() -> service.promote(gymMachineId, newTemplateRequest()));
-        verify(templateRepository, never()).create(any(), any(), any(), any(), any());
+        verify(templateRepository, never()).create(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -132,7 +134,7 @@ class AdminPendingContributionServiceTest {
         UUID createdTemplate = UUID.fromString("99999999-9999-9999-9999-999999999999");
         givenPendingExists();
         when(brandRepository.create("NewBrand", "신규 브랜드")).thenReturn(createdBrand);
-        when(templateRepository.create(createdBrand, categoryId, "Custom Press", "커스텀 프레스", "plate"))
+        when(templateRepository.create(createdBrand, categoryId, "Custom Press", "커스텀 프레스", "plate", null))
             .thenReturn(createdTemplate);
         when(machineRepository.findExistingApprovedAtGym(gymId, createdTemplate)).thenReturn(Optional.empty());
         when(machineRepository.promoteToTemplate(gymMachineId, createdTemplate)).thenReturn(1);
@@ -152,7 +154,7 @@ class AdminPendingContributionServiceTest {
         assertThatThrownBy(() -> service.promote(gymMachineId, newBrandAndTemplateRequest()))
             .isInstanceOf(BusinessException.class)
             .matches(ex -> ((BusinessException) ex).getStatus() == HttpStatus.CONFLICT);
-        verify(templateRepository, never()).create(any(), any(), any(), any(), any());
+        verify(templateRepository, never()).create(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -237,6 +239,129 @@ class AdminPendingContributionServiceTest {
         when(machineRepository.listPendingContributions(25)).thenReturn(java.util.List.of());
         service.list(25);
         verify(machineRepository).listPendingContributions(eq(25));
+    }
+
+    // -------------------------------------------------------------------------
+    // V27 / machine_series: admin promote can attach the new template to an
+    // existing series under brandId OR create a new series under it. The
+    // newBrandAndTemplate kind can only create a series (never reference an
+    // existing one, since the brand itself is being created in-line).
+    // existingTemplate forbids both — the chosen template's seriesId is
+    // intrinsic and not overridable from the promote payload.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void promote_newTemplate_withExistingSeriesId_attachesTemplateToSeries() {
+        givenPendingExists();
+        when(brandRepository.existsById(brandId)).thenReturn(true);
+        UUID seriesId = UUID.fromString("66666666-6666-6666-6666-666666666666");
+        when(seriesRepository.existsByIdAndBrand(seriesId, brandId)).thenReturn(true);
+        UUID createdTemplate = UUID.fromString("77777777-7777-7777-7777-777777777777");
+        when(templateRepository.create(brandId, categoryId, "Lat Pulldown", "랫 풀다운", "pin", seriesId))
+            .thenReturn(createdTemplate);
+        when(machineRepository.findExistingApprovedAtGym(gymId, createdTemplate)).thenReturn(Optional.empty());
+        when(machineRepository.promoteToTemplate(gymMachineId, createdTemplate)).thenReturn(1);
+
+        PromoteContributionRequest req = new PromoteContributionRequest(
+            "newTemplate", null, brandId, null, null, "Lat Pulldown", "랫 풀다운", "pin",
+            categoryId, seriesId, null);
+
+        PromoteContributionResponse resp = service.promote(gymMachineId, req);
+
+        assertThat(resp.templateId()).isEqualTo(createdTemplate);
+        verify(templateRepository).create(brandId, categoryId, "Lat Pulldown", "랫 풀다운", "pin", seriesId);
+    }
+
+    @Test
+    void promote_newTemplate_withNewSeriesName_createsSeriesAndAttachesTemplate() {
+        givenPendingExists();
+        when(brandRepository.existsById(brandId)).thenReturn(true);
+        UUID createdSeries = UUID.fromString("88888888-8888-8888-8888-888888888888");
+        when(seriesRepository.create(brandId, "Master Pro", "Master Pro")).thenReturn(createdSeries);
+        UUID createdTemplate = UUID.fromString("99999999-9999-9999-9999-999999999999");
+        when(templateRepository.create(brandId, categoryId, "Lat Pulldown", "랫 풀다운", "pin", createdSeries))
+            .thenReturn(createdTemplate);
+        when(machineRepository.findExistingApprovedAtGym(gymId, createdTemplate)).thenReturn(Optional.empty());
+        when(machineRepository.promoteToTemplate(gymMachineId, createdTemplate)).thenReturn(1);
+
+        PromoteContributionRequest req = new PromoteContributionRequest(
+            "newTemplate", null, brandId, null, null, "Lat Pulldown", "랫 풀다운", "pin",
+            categoryId, null, "Master Pro");
+
+        service.promote(gymMachineId, req);
+
+        verify(seriesRepository).create(brandId, "Master Pro", "Master Pro");
+        verify(templateRepository).create(brandId, categoryId, "Lat Pulldown", "랫 풀다운", "pin", createdSeries);
+    }
+
+    @Test
+    void promote_newTemplate_400WhenSeriesIdAndNewSeriesNameBothSet() {
+        givenPendingExists();
+        when(brandRepository.existsById(brandId)).thenReturn(true);
+        PromoteContributionRequest req = new PromoteContributionRequest(
+            "newTemplate", null, brandId, null, null, "Lat Pulldown", "랫 풀다운", "pin",
+            categoryId, UUID.randomUUID(), "Master Pro");
+
+        assertBadRequest(() -> service.promote(gymMachineId, req));
+        verify(templateRepository, never()).create(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void promote_newTemplate_400WhenSeriesIdDoesNotMatchBrand() {
+        givenPendingExists();
+        when(brandRepository.existsById(brandId)).thenReturn(true);
+        UUID seriesId = UUID.randomUUID();
+        when(seriesRepository.existsByIdAndBrand(seriesId, brandId)).thenReturn(false);
+        PromoteContributionRequest req = new PromoteContributionRequest(
+            "newTemplate", null, brandId, null, null, "Lat Pulldown", "랫 풀다운", "pin",
+            categoryId, seriesId, null);
+
+        assertBadRequest(() -> service.promote(gymMachineId, req));
+        verify(templateRepository, never()).create(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void promote_newBrandAndTemplate_withNewSeriesName_createsBrandSeriesTemplate() {
+        givenPendingExists();
+        UUID createdBrand = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        when(brandRepository.create("NewBrand", "신규 브랜드")).thenReturn(createdBrand);
+        UUID createdSeries = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        when(seriesRepository.create(createdBrand, "Heritage", "Heritage")).thenReturn(createdSeries);
+        UUID createdTemplate = UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        when(templateRepository.create(createdBrand, categoryId, "Custom Press", "커스텀 프레스", "plate", createdSeries))
+            .thenReturn(createdTemplate);
+        when(machineRepository.findExistingApprovedAtGym(gymId, createdTemplate)).thenReturn(Optional.empty());
+        when(machineRepository.promoteToTemplate(gymMachineId, createdTemplate)).thenReturn(1);
+
+        PromoteContributionRequest req = new PromoteContributionRequest(
+            "newBrandAndTemplate", null, null, "NewBrand", "신규 브랜드",
+            "Custom Press", "커스텀 프레스", "plate", categoryId, null, "Heritage");
+
+        service.promote(gymMachineId, req);
+
+        verify(seriesRepository).create(createdBrand, "Heritage", "Heritage");
+        verify(templateRepository).create(createdBrand, categoryId, "Custom Press", "커스텀 프레스", "plate", createdSeries);
+    }
+
+    @Test
+    void promote_newBrandAndTemplate_400WhenSeriesIdSet() {
+        givenPendingExists();
+        PromoteContributionRequest req = new PromoteContributionRequest(
+            "newBrandAndTemplate", null, null, "NewBrand", "신규 브랜드",
+            "Custom Press", "커스텀 프레스", "plate", categoryId, UUID.randomUUID(), null);
+
+        assertBadRequest(() -> service.promote(gymMachineId, req));
+        verify(brandRepository, never()).create(any(), any());
+    }
+
+    @Test
+    void promote_existingTemplate_400WhenSeriesFieldsSet() {
+        givenPendingExists();
+        PromoteContributionRequest req = new PromoteContributionRequest(
+            "existingTemplate", templateId, null, null, null, null, null, null, null,
+            UUID.randomUUID(), null);
+
+        assertBadRequest(() -> service.promote(gymMachineId, req));
     }
 
     private PromoteContributionRequest existingTemplateRequest(UUID templateId) {
