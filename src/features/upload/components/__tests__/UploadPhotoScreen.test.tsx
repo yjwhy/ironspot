@@ -4,7 +4,24 @@ import { launchImageLibraryAsync } from 'expo-image-picker';
 import { PermissionStatus } from 'expo-modules-core';
 import { ActivityIndicator } from 'react-native';
 
+import type * as BottomSheetMockModule from '@/test/utils/bottom-sheet-mock';
+
 import { UploadPhotoScreen } from '../UploadPhotoScreen';
+
+// LabelInfoSheet renders through @gorhom/bottom-sheet; passthrough mocks so
+// the sheet's testIDs are addressable inside the camera screen tests.
+jest.mock('@gorhom/bottom-sheet', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mock = require('@/test/utils/bottom-sheet-mock') as typeof BottomSheetMockModule;
+  return {
+    __esModule: true,
+    default: mock.BottomSheetPassthrough,
+    BottomSheetModal: mock.BottomSheetModalPassthrough,
+    BottomSheetModalProvider: mock.BottomSheetPassthrough,
+    BottomSheetView: mock.BottomSheetPassthrough,
+    BottomSheetBackdrop: () => null,
+  };
+});
 
 jest.mock('expo-camera', () => ({
   CameraView: 'CameraView',
@@ -151,5 +168,50 @@ describe('UploadPhotoScreen', () => {
         },
       });
     });
+  });
+
+  // V27 follow-up: replaced the first-time PhotoGuidanceBanner with an
+  // on-demand LabelInfoSheet reachable from the viewfinder corner. The
+  // sheet stays usable across visits (no MMKV gating) so a user can
+  // re-check what a 라벨 looks like mid-capture.
+
+  it('renders a "?" info button in the camera viewfinder corner when permission is granted', () => {
+    mockUseCameraPermissions.mockReturnValue([
+      buildPermission({ granted: true }),
+      jest.fn(),
+      jest.fn(),
+    ]);
+    const { getByTestId } = render(<UploadPhotoScreen />);
+    expect(getByTestId('upload-photo-label-info')).toBeTruthy();
+  });
+
+  it('tapping the viewfinder "?" opens the LabelInfoSheet without navigating', () => {
+    mockUseCameraPermissions.mockReturnValue([
+      buildPermission({ granted: true }),
+      jest.fn(),
+      jest.fn(),
+    ]);
+    const { getByTestId, queryByTestId } = render(<UploadPhotoScreen />);
+
+    expect(queryByTestId('label-info-sheet')).toBeNull();
+    fireEvent.press(getByTestId('upload-photo-label-info'));
+
+    expect(getByTestId('label-info-sheet')).toBeTruthy();
+    expect(getByTestId('label-info-sheet-image')).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-overlay the camera with the legacy PhotoGuidanceBanner', () => {
+    // Regression: the prior PhotoGuidanceBanner auto-mounted as a full
+    // overlay until the user tapped "알겠어요" (MMKV-gated). It is gone;
+    // the LabelInfoSheet is opt-in via the "?" button only.
+    mockUseCameraPermissions.mockReturnValue([
+      buildPermission({ granted: true }),
+      jest.fn(),
+      jest.fn(),
+    ]);
+    const { queryByTestId } = render(<UploadPhotoScreen />);
+    expect(queryByTestId('photo-guidance-banner')).toBeNull();
+    expect(queryByTestId('label-info-sheet')).toBeNull();
   });
 });
