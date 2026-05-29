@@ -174,6 +174,9 @@ export const BRAND_LOGOS: Record<string, ImageSourcePropType> = {
     require('../../../assets/brand-logos/arsenal.png') as ImageSourcePropType,
   'b1000026-0000-0000-0000-000000000026':
     require('../../../assets/brand-logos/repcon.png') as ImageSourcePropType,
+  // V27 expansion (1)
+  'b1000027-0000-0000-0000-000000000027':
+    require('../../../assets/brand-logos/megamass.png') as ImageSourcePropType,
 };
 
 export function BrandLogo({
