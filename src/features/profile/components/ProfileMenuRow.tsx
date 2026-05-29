@@ -38,7 +38,7 @@ export function ProfileMenuRow({
       accessibilityLabel={badge ? `${label}, ${badge}` : label}
       accessibilityState={{ disabled }}
       style={pressedOpacity}
-      className="flex-row items-center justify-between px-4 py-4 border-b border-border-DEFAULT"
+      className="flex-row items-center justify-between px-4 py-4"
     >
       <View className="flex-row items-center gap-3">
         <MaterialIcons

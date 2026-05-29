@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Fragment, type ReactNode } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
 import { pressedOpacity } from '@/shared/lib/pressable';
@@ -50,6 +50,13 @@ interface SearchableListProps {
    * step leaves it undefined so rows stay label-only.
    */
   renderLeading?: (row: SearchableRow) => ReactNode;
+  /**
+   * When true, the list area shows a spinner instead of rows / empty message
+   * / propose-new. Distinguishes "still fetching" from "fetched, genuinely
+   * empty" so the template step doesn't flash `emptyMessage` before its
+   * per-brand templates arrive. The search input stays interactive.
+   */
+  isLoading?: boolean;
 }
 
 export function SearchableList({
@@ -63,6 +70,7 @@ export function SearchableList({
   emptyMessage,
   proposeNew,
   renderLeading,
+  isLoading = false,
 }: SearchableListProps) {
   const hasRows = rows.length > 0;
   return (
@@ -86,57 +94,70 @@ export function SearchableList({
         />
       </View>
       <View className="gap-2">
-        {hasRows ? (
-          rows.map(function renderRow(row, index) {
-            const isSelected = row.id === selectedRowId;
-            // Header to show before this row, or null when the row has no group
-            // or shares the previous row's group. Held as a narrowed string so
-            // the testID template literal stays string-typed.
-            const groupHeader =
-              row.group !== undefined && row.group !== rows[index - 1]?.group ? row.group : null;
-            return (
-              <Fragment key={row.id}>
-                {groupHeader !== null ? (
-                  <AppText
-                    testID={`${testIDPrefix}-group-${groupHeader}`}
-                    className="mt-1 text-caption font-semibold uppercase text-text-tertiary"
-                  >
-                    {groupHeader}
-                  </AppText>
-                ) : null}
-                <Pressable
-                  testID={`${testIDPrefix}-option-${row.id}`}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: isSelected }}
-                  onPress={function handlePress() {
-                    onSelectRow(row.id);
-                  }}
-                  style={pressedOpacity}
-                  className={selectedRowClass(isSelected)}
-                >
-                  {renderLeading?.(row)}
-                  <AppText className="text-body text-text-primary">{row.label}</AppText>
-                </Pressable>
-              </Fragment>
-            );
-          })
+        {isLoading ? (
+          <View testID={`${testIDPrefix}-loading`} className="items-center py-6">
+            <ActivityIndicator size="small" color={colors.text.tertiary} />
+          </View>
         ) : (
-          <AppText testID={`${testIDPrefix}-empty`} className="text-body-sm text-text-secondary">
-            {emptyMessage}
-          </AppText>
+          <Fragment>
+            {hasRows ? (
+              rows.map(function renderRow(row, index) {
+                const isSelected = row.id === selectedRowId;
+                // Header to show before this row, or null when the row has no group
+                // or shares the previous row's group. Held as a narrowed string so
+                // the testID template literal stays string-typed.
+                const groupHeader =
+                  row.group !== undefined && row.group !== rows[index - 1]?.group
+                    ? row.group
+                    : null;
+                return (
+                  <Fragment key={row.id}>
+                    {groupHeader !== null ? (
+                      <AppText
+                        testID={`${testIDPrefix}-group-${groupHeader}`}
+                        className="mt-1 text-caption font-semibold uppercase text-text-tertiary"
+                      >
+                        {groupHeader}
+                      </AppText>
+                    ) : null}
+                    <Pressable
+                      testID={`${testIDPrefix}-option-${row.id}`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: isSelected }}
+                      onPress={function handlePress() {
+                        onSelectRow(row.id);
+                      }}
+                      style={pressedOpacity}
+                      className={selectedRowClass(isSelected)}
+                    >
+                      {renderLeading?.(row)}
+                      <AppText className="text-body text-text-primary">{row.label}</AppText>
+                    </Pressable>
+                  </Fragment>
+                );
+              })
+            ) : (
+              <AppText
+                testID={`${testIDPrefix}-empty`}
+                className="text-body-sm text-text-secondary"
+              >
+                {emptyMessage}
+              </AppText>
+            )}
+            {proposeNew !== null ? (
+              <Pressable
+                testID={`${testIDPrefix}-propose-new`}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: proposeNew.isSelected }}
+                onPress={proposeNew.onSelect}
+                style={pressedOpacity}
+                className={selectedRowClass(proposeNew.isSelected)}
+              >
+                <AppText className="text-body text-text-primary">{proposeNew.label}</AppText>
+              </Pressable>
+            ) : null}
+          </Fragment>
         )}
-        {proposeNew !== null ? (
-          <Pressable
-            testID={`${testIDPrefix}-propose-new`}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: proposeNew.isSelected }}
-            onPress={proposeNew.onSelect}
-            style={pressedOpacity}
-            className={selectedRowClass(proposeNew.isSelected)}
-          >
-            <AppText className="text-body text-text-primary">{proposeNew.label}</AppText>
-          </Pressable>
-        ) : null}
       </View>
     </View>
   );

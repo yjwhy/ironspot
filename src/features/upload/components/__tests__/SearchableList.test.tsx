@@ -89,4 +89,23 @@ describe('SearchableList', () => {
       checked: true,
     });
   });
+
+  it('shows the loading spinner instead of the empty message while loading', () => {
+    const { getByTestId, queryByTestId } = renderList({ rows: [], isLoading: true });
+    expect(getByTestId(`${TEST_ID}-loading`)).toBeTruthy();
+    expect(queryByTestId(`${TEST_ID}-empty`)).toBeNull();
+  });
+
+  it('hides the proposeNew row while loading even when a query has been typed', () => {
+    const { queryByTestId } = renderList({
+      rows: [],
+      isLoading: true,
+      proposeNew: {
+        label: '"Cybex" 신규 브랜드로 등록 요청',
+        isSelected: false,
+        onSelect: jest.fn(),
+      },
+    });
+    expect(queryByTestId(`${TEST_ID}-propose-new`)).toBeNull();
+  });
 });
