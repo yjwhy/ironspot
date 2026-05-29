@@ -17,4 +17,10 @@ export interface PhotoResponse {
   createdAt: string;
   /** Set when an active owner of this photo's gym has marked it as verified (Task 47 / ADR 0023 Q5 T1+T2). Null otherwise. */
   verifiedByOwnerAt?: string;
+  /** Gym this photo's machine belongs to. Null for orphan photos (uploaded but not yet bound to a gym_machine). Populated on the my-photos and machine-photos list responses for the photo-context caption. */
+  gymId?: string;
+  /** Display name of the gym this photo belongs to. Null when gymId is null. */
+  gymName?: string;
+  /** Display name of the machine: the catalog template's Korean name, or the gym's custom (free-form) name when no template is linked. Null for orphan photos. */
+  machineName?: string;
 }

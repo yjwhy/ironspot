@@ -15,8 +15,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static com.ironspot.jooq.Tables.GYMS;
 import static com.ironspot.jooq.Tables.GYM_MACHINES;
 import static com.ironspot.jooq.Tables.MACHINE_PHOTOS;
+import static com.ironspot.jooq.Tables.MACHINE_TEMPLATES;
 
 @Repository
 @RequiredArgsConstructor
@@ -24,6 +26,9 @@ public class PhotoRepository {
 
     private final DSLContext dsl;
 
+    // Photo rows without the gym-context join (gymId/gymName/machineName left
+    // null). Used by surfaces that already know the gym context (gym detail
+    // batch) or don't need it (upvote/report echo).
     private PhotoResponse toPhotoResponse(Record r) {
         OffsetDateTime createdAt = r.get(MACHINE_PHOTOS.CREATED_AT);
         OffsetDateTime verifiedByOwnerAt = r.get(MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT);
@@ -36,30 +41,68 @@ public class PhotoRepository {
             PhotoProxyPath.forPhoto(id),
             Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.UPVOTE_COUNT), 0),
             createdAt != null ? createdAt.toInstant() : null,
-            verifiedByOwnerAt != null ? verifiedByOwnerAt.toInstant() : null
+            verifiedByOwnerAt != null ? verifiedByOwnerAt.toInstant() : null,
+            null,
+            null,
+            null
+        );
+    }
+
+    // Photo rows with the gym + machine context resolved via LEFT JOINs.
+    // machineName prefers the catalog template's Korean name and falls back to
+    // the gym's custom (free-form) name; all three context fields stay null
+    // for orphan photos (gym_machine_id IS NULL), since the joins drop out.
+    private PhotoResponse toPhotoResponseWithGym(Record r) {
+        OffsetDateTime createdAt = r.get(MACHINE_PHOTOS.CREATED_AT);
+        OffsetDateTime verifiedByOwnerAt = r.get(MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT);
+        UUID id = r.get(MACHINE_PHOTOS.ID);
+        // Null-safe coalesce: stays null for orphan photos where both columns
+        // are absent (requireNonNullElse would NPE on two nulls).
+        String templateName = r.get(MACHINE_TEMPLATES.NAME_KO);
+        String machineName = templateName != null ? templateName : r.get(GYM_MACHINES.CUSTOM_NAME);
+        return new PhotoResponse(
+            id,
+            r.get(MACHINE_PHOTOS.GYM_MACHINE_ID),
+            r.get(MACHINE_PHOTOS.USER_ID),
+            r.get(MACHINE_PHOTOS.PHOTO_URL),
+            PhotoProxyPath.forPhoto(id),
+            Objects.requireNonNullElse(r.get(MACHINE_PHOTOS.UPVOTE_COUNT), 0),
+            createdAt != null ? createdAt.toInstant() : null,
+            verifiedByOwnerAt != null ? verifiedByOwnerAt.toInstant() : null,
+            r.get(GYM_MACHINES.GYM_ID),
+            r.get(GYMS.NAME),
+            machineName
         );
     }
 
     public List<PhotoResponse> findByGymMachineId(UUID gymMachineId) {
         return dsl.select(
                 MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
-                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT, MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT)
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT, MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT,
+                GYM_MACHINES.GYM_ID, GYMS.NAME, MACHINE_TEMPLATES.NAME_KO, GYM_MACHINES.CUSTOM_NAME)
             .from(MACHINE_PHOTOS)
+            .leftJoin(GYM_MACHINES).on(GYM_MACHINES.ID.eq(MACHINE_PHOTOS.GYM_MACHINE_ID))
+            .leftJoin(GYMS).on(GYMS.ID.eq(GYM_MACHINES.GYM_ID))
+            .leftJoin(MACHINE_TEMPLATES).on(MACHINE_TEMPLATES.ID.eq(GYM_MACHINES.TEMPLATE_ID))
             .where(MACHINE_PHOTOS.GYM_MACHINE_ID.eq(gymMachineId))
             .and(MACHINE_PHOTOS.IS_BLINDED.isFalse())
             .orderBy(MACHINE_PHOTOS.UPVOTE_COUNT.desc(), MACHINE_PHOTOS.CREATED_AT.desc())
-            .fetch(this::toPhotoResponse);
+            .fetch(this::toPhotoResponseWithGym);
     }
 
     public List<PhotoResponse> findByUserId(UUID userId) {
         return dsl.select(
                 MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
-                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT, MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT)
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT, MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT,
+                GYM_MACHINES.GYM_ID, GYMS.NAME, MACHINE_TEMPLATES.NAME_KO, GYM_MACHINES.CUSTOM_NAME)
             .from(MACHINE_PHOTOS)
+            .leftJoin(GYM_MACHINES).on(GYM_MACHINES.ID.eq(MACHINE_PHOTOS.GYM_MACHINE_ID))
+            .leftJoin(GYMS).on(GYMS.ID.eq(GYM_MACHINES.GYM_ID))
+            .leftJoin(MACHINE_TEMPLATES).on(MACHINE_TEMPLATES.ID.eq(GYM_MACHINES.TEMPLATE_ID))
             .where(MACHINE_PHOTOS.USER_ID.eq(userId))
             .and(MACHINE_PHOTOS.IS_BLINDED.isFalse())
             .orderBy(MACHINE_PHOTOS.CREATED_AT.desc())
-            .fetch(this::toPhotoResponse);
+            .fetch(this::toPhotoResponseWithGym);
     }
 
     public Map<UUID, List<PhotoResponse>> findByGymMachineIds(List<UUID> gymMachineIds) {

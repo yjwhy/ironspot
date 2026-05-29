@@ -78,4 +78,16 @@ describe('MyPhotoListView', () => {
       params: { id: 'photo-B', machineId: 'machine-B' },
     });
   });
+
+  it('renders the gym and machine caption on a cell when present', () => {
+    const photo = makePhoto({
+      id: 'photo-C',
+      gymMachineId: 'machine-C',
+      machineName: '하이로우',
+      gymName: '테스트 헬스장',
+    });
+    const { getByText } = render(<MyPhotoListView {...baseProps} photos={[photo]} />);
+    expect(getByText('하이로우')).toBeTruthy();
+    expect(getByText('테스트 헬스장')).toBeTruthy();
+  });
 });

@@ -69,7 +69,12 @@ class MyContentTest extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
             .contains(PHOTO_VISIBLE.toString())
-            .doesNotContain(PHOTO_BLINDED.toString());
+            .doesNotContain(PHOTO_BLINDED.toString())
+            // Photo-context caption: gym + machine resolved via the join.
+            // PHOTO_VISIBLE → gym_machine f0000001 → gym '테스트 헬스장',
+            // template '하이로우' (init-test-db.sql).
+            .contains("테스트 헬스장")
+            .contains("하이로우");
     }
 
     @Test
@@ -106,7 +111,11 @@ class MyContentTest extends IntegrationTestBase {
             "/api/users/me/votes", HttpMethod.GET, bearerRequest(), String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).contains(PHOTO_VISIBLE.toString());
+        assertThat(response.getBody())
+            .contains(PHOTO_VISIBLE.toString())
+            // Vote grid shares the same caption — gym + machine populated too.
+            .contains("테스트 헬스장")
+            .contains("하이로우");
     }
 
     @Test
