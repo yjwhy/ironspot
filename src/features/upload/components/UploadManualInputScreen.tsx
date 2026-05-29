@@ -62,6 +62,7 @@ type Step = 'discovery' | 'template' | 'name';
 interface DiscoveryStepProps {
   brands: readonly BrandResponse[];
   series: readonly SeriesResponse[];
+  isLoading: boolean;
   pick: EntityPick | null;
   onPick: (pick: EntityPick) => void;
 }
@@ -109,7 +110,7 @@ function buildDiscoveryItems(
   return [...brandItems, ...seriesItems];
 }
 
-function DiscoveryStep({ brands, series, pick, onPick }: DiscoveryStepProps) {
+function DiscoveryStep({ brands, series, isLoading, pick, onPick }: DiscoveryStepProps) {
   const [query, setQuery] = useState(pick?.kind === 'proposed' ? pick.query : '');
 
   // V27 follow-up: series rows surface only while the user is actively
@@ -190,6 +191,7 @@ function DiscoveryStep({ brands, series, pick, onPick }: DiscoveryStepProps) {
         }}
         emptyMessage="검색 결과가 없어요"
         proposeNew={proposeNew}
+        isLoading={isLoading}
         renderLeading={function renderLeading(row) {
           // For both brand rows and series rows we surface the parent brand
           // logo — series rows still need the brand mark next to the series
@@ -249,7 +251,7 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
   const [query, setQuery] = useState(pick?.kind === 'proposed' ? pick.query : '');
   // V27: when a series was picked in the discovery step, narrow to that
   // product line server-side; otherwise fall back to the whole brand.
-  const { data: templates = [] } = useMachineTemplates(
+  const { data: templates = [], isLoading } = useMachineTemplates(
     series !== null ? { seriesId: series.id } : { brandId: brand.id },
   );
   const { data: categories = [] } = useCategories();
@@ -297,6 +299,7 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
             : '이 브랜드에는 등록된 머신이 없어요'
         }
         proposeNew={proposeNew}
+        isLoading={isLoading}
       />
     </View>
   );
@@ -451,8 +454,8 @@ export function UploadManualInputScreen() {
     naverPlace?: string;
   }>();
 
-  const { data: brands = [] } = useBrands();
-  const { data: series = [] } = useSeries();
+  const { data: brands = [], isLoading: brandsLoading } = useBrands();
+  const { data: series = [], isLoading: seriesLoading } = useSeries();
 
   const [step, setStep] = useState<Step>('discovery');
   const [entity, setEntity] = useState<EntityPick | null>(null);
@@ -542,7 +545,13 @@ export function UploadManualInputScreen() {
       />
 
       {step === 'discovery' ? (
-        <DiscoveryStep brands={brands} series={series} pick={entity} onPick={handleEntityPick} />
+        <DiscoveryStep
+          brands={brands}
+          series={series}
+          isLoading={brandsLoading || seriesLoading}
+          pick={entity}
+          onPick={handleEntityPick}
+        />
       ) : null}
 
       {step === 'template' && templateStepBrand !== null ? (

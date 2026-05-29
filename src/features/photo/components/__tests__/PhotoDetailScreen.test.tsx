@@ -185,4 +185,30 @@ describe('PhotoDetailScreen', () => {
     const { getByRole } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
     expect(getByRole('button', { name: '추천 12', disabled: true })).toBeTruthy();
   });
+
+  it('renders the gym·machine context line and opens the machine gallery on tap', () => {
+    const photo = makeMachinePhoto({
+      id: 'p1',
+      gym_machine_id: 'gm-1',
+      gym_id: 'gym-9',
+      gym_name: '테스트 헬스장',
+      machine_name: '하이로우',
+      upvote_count: 1,
+      created_at: '2026-03-01T00:00:00Z',
+    });
+    setMachinePhotos({ data: [photo] });
+    const { getByText, getByTestId } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
+    expect(getByText('테스트 헬스장 · 하이로우')).toBeTruthy();
+    fireEvent.press(getByTestId('photo-detail-gym-machine'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/gym/[id]/machine/[machineId]',
+      params: { id: 'gym-9', machineId: 'gm-1' },
+    });
+  });
+
+  it('omits the gym·machine line when the photo has no gym context', () => {
+    // photoOne (default factory) carries no gym_name → the line is suppressed.
+    const { queryByTestId } = render(<PhotoDetailScreen photoId="p1" machineId="gm-1" />);
+    expect(queryByTestId('photo-detail-gym-machine')).toBeNull();
+  });
 });

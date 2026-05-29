@@ -40,8 +40,27 @@ describe('getMachinePhotos', () => {
       upvote_count: 7,
       created_at: '2026-01-01T00:00:00Z',
       verified_by_owner_at: null, // Task 47: omitted from API response → null on the local type
+      gym_id: null, // photo-context fields omitted from API response → null
+      gym_name: null,
+      machine_name: null,
     };
     expect(result).toEqual([expected]);
+  });
+
+  it('maps the photo-context fields (gym + machine) when present', async () => {
+    mockListPhotos.mockResolvedValue([
+      { ...apiPhoto, gymId: 'gym-1', gymName: '테스트 헬스장', machineName: '하이로우' },
+    ]);
+
+    const result = await getMachinePhotos('gm-1');
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        gym_id: 'gym-1',
+        gym_name: '테스트 헬스장',
+        machine_name: '하이로우',
+      }),
+    ]);
   });
 
   it('maps null userId to null user_id', async () => {

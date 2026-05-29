@@ -13,6 +13,9 @@ export function toMachinePhoto(r: PhotoResponse): MachinePhoto {
     upvote_count: r.upvoteCount,
     created_at: r.createdAt,
     verified_by_owner_at: r.verifiedByOwnerAt ?? null,
+    gym_id: r.gymId ?? null,
+    gym_name: r.gymName ?? null,
+    machine_name: r.machineName ?? null,
   };
 }
 
