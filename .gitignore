@@ -55,3 +55,9 @@ coverage/
 
 # Git worktrees (local development)
 .worktrees/
+
+# Serena MCP cache (local tooling)
+.serena/
+
+# macOS Spotlight opt-out marker
+.metadata_never_index
