@@ -105,6 +105,16 @@ export interface MachinePhoto {
    * shape; null means "not verified" at runtime.
    */
   verified_by_owner_at?: string | null;
+  /**
+   * Photo-context caption fields. Resolved server-side from the photo's
+   * gym_machine (gym name + machine display name) on the my-photos,
+   * my-votes, and machine-photos list responses. Null for orphan photos
+   * (not yet bound to a gym_machine) and on responses that don't join the
+   * gym context (e.g. the gym-detail batch, which already knows its gym).
+   */
+  gym_id?: string | null;
+  gym_name?: string | null;
+  machine_name?: string | null;
 }
 
 export interface GymWithMachineCount extends Gym {

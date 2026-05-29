@@ -171,6 +171,13 @@ interface GridCellProps {
 
 function GridCell({ photo, index, onPress }: GridCellProps) {
   const upvoteLabel = `추천 ${String(photo.upvoteCount)}`;
+  // Photo-context caption: machine (what) over gym (where). Both come from the
+  // my-photos / my-votes list join and are absent for orphan photos, so each
+  // line renders only when present. The accessibility label folds them in so
+  // the cell announces "<machine>, <gym>, 추천 N" rather than a bare "사진".
+  const accessibilityLabel = [photo.machineName, photo.gymName, upvoteLabel]
+    .filter(Boolean)
+    .join(', ');
   return (
     <Animated.View
       entering={FadeIn.duration(ANIMATION.transitionDuration).delay(index * ANIMATION.stagger)}
@@ -179,7 +186,7 @@ function GridCell({ photo, index, onPress }: GridCellProps) {
         onPress={onPress}
         testID={`my-photo-cell-${photo.id}`}
         accessibilityRole="button"
-        accessibilityLabel={`사진, ${upvoteLabel}`}
+        accessibilityLabel={accessibilityLabel}
         style={pressedOpacity}
         className="overflow-hidden rounded-md bg-bg-muted"
       >
@@ -188,7 +195,17 @@ function GridCell({ photo, index, onPress }: GridCellProps) {
           style={{ width: '100%', aspectRatio: 1 }}
           contentFit="cover"
         />
-        <View className="px-2 py-1">
+        <View className="gap-0.5 px-2 py-1.5">
+          {photo.machineName ? (
+            <AppText className="text-caption text-text-primary" numberOfLines={1}>
+              {photo.machineName}
+            </AppText>
+          ) : null}
+          {photo.gymName ? (
+            <AppText className="text-caption text-text-tertiary" numberOfLines={1}>
+              {photo.gymName}
+            </AppText>
+          ) : null}
           <AppText className="text-caption text-text-tertiary" numberOfLines={1}>
             {upvoteLabel}
           </AppText>

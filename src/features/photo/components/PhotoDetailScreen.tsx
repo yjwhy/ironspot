@@ -233,6 +233,14 @@ function FooterBar({ photo, bottomInset }: FooterBarProps) {
   const { handleUpvote, isPending, isUpvotedByMe } = useUpvote(photo);
   const heartScale = useSharedValue(1);
 
+  function handleOpenMachine() {
+    if (!photo.gym_id) return;
+    router.push({
+      pathname: '/gym/[id]/machine/[machineId]',
+      params: { id: photo.gym_id, machineId: photo.gym_machine_id },
+    });
+  }
+
   function handlePress() {
     heartScale.value = withSequence(
       withSpring(HEART_BOUNCE_PEAK_SCALE, {
@@ -252,6 +260,13 @@ function FooterBar({ photo, bottomInset }: FooterBarProps) {
       className="absolute bottom-0 left-0 right-0 bg-black/60 px-4 pt-3"
       style={{ paddingBottom: bottomInset }}
     >
+      {photo.gym_name ? (
+        <GymMachineLine
+          gymName={photo.gym_name}
+          machineName={photo.machine_name ?? null}
+          onPress={handleOpenMachine}
+        />
+      ) : null}
       <Pressable
         onPress={handlePress}
         disabled={isPending}
@@ -281,6 +296,48 @@ function FooterBar({ photo, bottomInset }: FooterBarProps) {
         ) : null}
       </View>
     </View>
+  );
+}
+
+interface GymMachineLineProps {
+  gymName: string;
+  machineName: string | null;
+  onPress: () => void;
+}
+
+// Photo-context line: tells the viewer which gym (and machine) this photo
+// belongs to — the "어느 헬스장에 등록된 사진인지" affordance. Tapping opens
+// that machine's gallery for the full catalog context. Gym leads (the user's
+// primary question is "where"), machine follows after a middot.
+function GymMachineLine({ gymName, machineName, onPress }: GymMachineLineProps) {
+  const label = machineName !== null ? `${gymName} · ${machineName}` : gymName;
+  return (
+    <Pressable
+      testID="photo-detail-gym-machine"
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} 머신 보기`}
+      style={pressedOpacity}
+      className="mb-2 flex-row items-center gap-1 self-start"
+    >
+      <MaterialIcons
+        name="place"
+        size={14}
+        color={colors.text.inverse}
+        importantForAccessibility="no"
+        accessibilityElementsHidden
+      />
+      <AppText className="text-body-sm font-medium text-text-inverse" numberOfLines={1}>
+        {label}
+      </AppText>
+      <MaterialIcons
+        name="chevron-right"
+        size={16}
+        color={colors.text.inverse}
+        importantForAccessibility="no"
+        accessibilityElementsHidden
+      />
+    </Pressable>
   );
 }
 
