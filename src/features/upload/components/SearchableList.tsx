@@ -45,11 +45,18 @@ interface SearchableListProps {
   emptyMessage: string;
   proposeNew: ProposeNewRow | null;
   /**
-   * Optional leading element rendered before each row's label. The brand
-   * step uses this to drop a `BrandLogo` next to the label; the template
-   * step leaves it undefined so rows stay label-only.
+   * Optional leading element rendered before each row's label, INSIDE the select
+   * Pressable — so a tap on it also selects the row. The brand step uses this to
+   * drop a `BrandLogo` next to the label; the template step leaves it undefined.
+   * (Contrast with `renderTrailing`, which sits outside the select Pressable.)
    */
   renderLeading?: (row: SearchableRow) => ReactNode;
+  /**
+   * Optional trailing control rendered to the right of each row, OUTSIDE the
+   * select Pressable, so tapping it does not select the row. The template step
+   * uses this for a "view reference photo" button.
+   */
+  renderTrailing?: (row: SearchableRow) => ReactNode;
   /**
    * When true, the list area shows a spinner instead of rows / empty message
    * / propose-new. Distinguishes "still fetching" from "fetched, genuinely
@@ -70,6 +77,7 @@ export function SearchableList({
   emptyMessage,
   proposeNew,
   renderLeading,
+  renderTrailing,
   isLoading = false,
 }: SearchableListProps) {
   const hasRows = rows.length > 0;
@@ -120,19 +128,22 @@ export function SearchableList({
                         {groupHeader}
                       </AppText>
                     ) : null}
-                    <Pressable
-                      testID={`${testIDPrefix}-option-${row.id}`}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: isSelected }}
-                      onPress={function handlePress() {
-                        onSelectRow(row.id);
-                      }}
-                      style={pressedOpacity}
-                      className={selectedRowClass(isSelected)}
-                    >
-                      {renderLeading?.(row)}
-                      <AppText className="text-body text-text-primary">{row.label}</AppText>
-                    </Pressable>
+                    <View className={selectedRowClass(isSelected)}>
+                      <Pressable
+                        testID={`${testIDPrefix}-option-${row.id}`}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: isSelected }}
+                        onPress={function handlePress() {
+                          onSelectRow(row.id);
+                        }}
+                        style={pressedOpacity}
+                        className="flex-1 flex-row items-center gap-3"
+                      >
+                        {renderLeading?.(row)}
+                        <AppText className="text-body text-text-primary">{row.label}</AppText>
+                      </Pressable>
+                      {renderTrailing?.(row)}
+                    </View>
                   </Fragment>
                 );
               })
