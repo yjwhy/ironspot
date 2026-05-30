@@ -1,3 +1,4 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
@@ -6,6 +7,7 @@ import { useBrands } from '@/features/map/hooks/useBrands';
 import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
 import { useSeries } from '@/features/map/hooks/useSeries';
+import { TemplatePhotoSheet } from '@/features/photo/components/TemplatePhotoSheet';
 import { AppText } from '@/shared/components/AppText';
 import { BrandLogo } from '@/shared/components/BrandLogo';
 import { Button } from '@/shared/components/Button';
@@ -17,6 +19,7 @@ import type {
 import { formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { templateDisplayName } from '@/shared/lib/template-display-name';
+import { colors } from '@/shared/theme/tokens';
 
 import { SearchableList, type SearchableRow } from './SearchableList';
 import { UPLOAD_MACHINE_PHOTO_PATHNAME } from '../constants';
@@ -247,8 +250,53 @@ function toBodyPartRows(
     });
 }
 
+// Display name for the sheet title; falls back to an empty string if the
+// template is no longer in the fetched list (e.g. query changed mid-preview).
+// "find" prefix signals the not-found (empty) case at the call site.
+function findTemplateLabelById(
+  templates: readonly MachineTemplateResponse[],
+  templateId: string,
+): string {
+  const template = templates.find((t) => t.id === templateId);
+  return template === undefined ? '' : templateDisplayName(template);
+}
+
+// Trailing "사진" control on a template row. Opens the reference-photo sheet
+// without selecting the row (it renders outside SearchableList's select Pressable).
+const PHOTO_BUTTON_ICON_SIZE = 14;
+
+interface TemplatePhotoButtonProps {
+  label: string;
+  templateId: string;
+  onPress: (templateId: string) => void;
+}
+
+function TemplatePhotoButton({ label, templateId, onPress }: TemplatePhotoButtonProps) {
+  return (
+    <Pressable
+      testID={`upload-manual-template-photo-${templateId}`}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} 사진 보기`}
+      onPress={function openPreview() {
+        onPress(templateId);
+      }}
+      style={pressedOpacity}
+      className="flex-row items-center gap-1 rounded-full border border-border px-3 py-1.5"
+    >
+      <MaterialIcons
+        name="photo-camera"
+        size={PHOTO_BUTTON_ICON_SIZE}
+        color={colors.text.secondary}
+      />
+      <AppText className="text-caption text-text-secondary">사진</AppText>
+    </Pressable>
+  );
+}
+
 function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
   const [query, setQuery] = useState(pick?.kind === 'proposed' ? pick.query : '');
+  // Template a user tapped "사진 보기" on — drives the reference-photo sheet.
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   // V27: when a series was picked in the discovery step, narrow to that
   // product line server-side; otherwise fall back to the whole brand.
   const { data: templates = [], isLoading } = useMachineTemplates(
@@ -293,6 +341,15 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
           const template = templates.find((t) => t.id === id);
           if (template !== undefined) onPick({ kind: 'catalog', template });
         }}
+        renderTrailing={function renderPhotoButton(row) {
+          return (
+            <TemplatePhotoButton
+              label={row.label}
+              templateId={row.id}
+              onPress={setPreviewTemplateId}
+            />
+          );
+        }}
         emptyMessage={
           series !== null
             ? '이 시리즈에는 등록된 머신이 없어요'
@@ -301,6 +358,16 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
         proposeNew={proposeNew}
         isLoading={isLoading}
       />
+
+      {previewTemplateId !== null ? (
+        <TemplatePhotoSheet
+          templateId={previewTemplateId}
+          templateLabel={findTemplateLabelById(templates, previewTemplateId)}
+          onClose={function closePreview() {
+            setPreviewTemplateId(null);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

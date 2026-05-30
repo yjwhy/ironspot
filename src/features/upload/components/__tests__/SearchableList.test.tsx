@@ -1,5 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import type { ComponentProps } from 'react';
+import { Pressable, Text } from 'react-native';
 
 import { SearchableList } from '../SearchableList';
 
@@ -107,5 +108,29 @@ describe('SearchableList', () => {
       },
     });
     expect(queryByTestId(`${TEST_ID}-propose-new`)).toBeNull();
+  });
+
+  it('renders a trailing control per row when renderTrailing is provided', () => {
+    const { getByTestId } = renderList({
+      renderTrailing: (row) => <Text testID={`${TEST_ID}-trailing-${row.id}`}>사진</Text>,
+    });
+    expect(getByTestId(`${TEST_ID}-trailing-a`)).toBeTruthy();
+    expect(getByTestId(`${TEST_ID}-trailing-b`)).toBeTruthy();
+  });
+
+  it('tapping the trailing control does NOT select the row', () => {
+    const onTrailingPress = jest.fn();
+    const { getByTestId, onSelectRow } = renderList({
+      renderTrailing: (row) => (
+        <Pressable testID={`${TEST_ID}-trailing-${row.id}`} onPress={onTrailingPress}>
+          <Text>사진</Text>
+        </Pressable>
+      ),
+    });
+
+    fireEvent.press(getByTestId(`${TEST_ID}-trailing-a`));
+
+    expect(onTrailingPress).toHaveBeenCalledTimes(1);
+    expect(onSelectRow).not.toHaveBeenCalled();
   });
 });
