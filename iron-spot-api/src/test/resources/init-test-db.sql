@@ -67,6 +67,14 @@ ALTER TABLE machine_templates
 CREATE INDEX IF NOT EXISTS idx_machine_templates_series
   ON machine_templates (series_id) WHERE series_id IS NOT NULL;
 
+-- V30 mirror: curated reference image (template-references bucket key) +
+-- official manufacturer page URL for the model. Both nullable.
+ALTER TABLE machine_templates
+  ADD COLUMN IF NOT EXISTS reference_image_path TEXT;
+
+ALTER TABLE machine_templates
+  ADD COLUMN IF NOT EXISTS official_url TEXT;
+
 CREATE TABLE IF NOT EXISTS gym_machines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id UUID REFERENCES gyms(id),
@@ -185,6 +193,14 @@ CREATE INDEX IF NOT EXISTS idx_machine_photos_orphan_user_created
 -- V12 mirror: non-partial index for Vision-quota count over bound + orphan.
 CREATE INDEX IF NOT EXISTS idx_machine_photos_user_created
   ON machine_photos (user_id, created_at);
+
+-- V30 mirror: supports the reference-photo join legs (template_id on
+-- gym_machines, gym_machine_id on machine_photos).
+CREATE INDEX IF NOT EXISTS idx_gym_machines_template
+  ON gym_machines (template_id) WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_machine_photos_gym_machine
+  ON machine_photos (gym_machine_id);
 
 -- V12 mirror: image-hash dedupe cache for Vision API responses.
 CREATE TABLE IF NOT EXISTS vision_cache (
