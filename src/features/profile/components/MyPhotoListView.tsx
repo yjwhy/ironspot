@@ -49,7 +49,16 @@ export function MyPhotoListView({
   }
 
   function handleBack() {
-    router.back();
+    // This screen (my-photos / my-votes) can become the only entry in the
+    // stack — a deep link to it, a dev fast-refresh while it's open, or a
+    // router.replace flow that lands here. Calling router.back() then throws
+    // "GO_BACK was not handled" and traps the user. Fall back to the profile
+    // tab when there's no history.
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/profile');
+    }
   }
 
   return (
