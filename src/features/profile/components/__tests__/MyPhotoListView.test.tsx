@@ -9,11 +9,15 @@ jest.mock('expo-router', () => ({
   router: {
     push: jest.fn(),
     back: jest.fn(),
+    replace: jest.fn(),
+    canGoBack: jest.fn(() => true),
   },
 }));
 
 const routerPushMock = router.push as jest.Mock;
 const routerBackMock = router.back as jest.Mock;
+const routerReplaceMock = router.replace as jest.Mock;
+const routerCanGoBackMock = router.canGoBack as jest.Mock;
 
 function makePhoto(overrides: Partial<PhotoResponse> = {}): PhotoResponse {
   return {
@@ -48,10 +52,20 @@ describe('MyPhotoListView', () => {
     expect(getByRole('header', { name: '내가 올린 사진' })).toBeTruthy();
   });
 
-  it('navigates back when the back button is pressed', () => {
+  it('navigates back when the back button is pressed and there is history', () => {
+    routerCanGoBackMock.mockReturnValue(true);
     const { getByRole } = render(<MyPhotoListView {...baseProps} photos={[]} />);
     fireEvent.press(getByRole('button', { name: '뒤로 가기' }));
     expect(routerBackMock).toHaveBeenCalledTimes(1);
+    expect(routerReplaceMock).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the profile tab when there is no history (no GO_BACK trap)', () => {
+    routerCanGoBackMock.mockReturnValue(false);
+    const { getByRole } = render(<MyPhotoListView {...baseProps} photos={[]} />);
+    fireEvent.press(getByRole('button', { name: '뒤로 가기' }));
+    expect(routerBackMock).not.toHaveBeenCalled();
+    expect(routerReplaceMock).toHaveBeenCalledWith('/(tabs)/profile');
   });
 
   it('shows empty state when there are no photos', () => {
