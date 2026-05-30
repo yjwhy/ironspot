@@ -1,4 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
+import type * as RN from 'react-native';
 
 import { useBrands } from '@/features/map/hooks/useBrands';
 import { useCategories } from '@/features/map/hooks/useCategories';
@@ -11,6 +12,18 @@ import { UploadManualInputScreen } from '../UploadManualInputScreen';
 jest.mock('@/features/map/hooks/useBrands', () => ({ useBrands: jest.fn() }));
 jest.mock('@/features/map/hooks/useCategories', () => ({ useCategories: jest.fn() }));
 jest.mock('@/features/map/hooks/useMachineTemplates', () => ({ useMachineTemplates: jest.fn() }));
+
+// The reference-photo sheet pulls in @gorhom/bottom-sheet + the photos query;
+// stub it to a marker so we can assert it opens without that machinery.
+jest.mock('@/features/photo/components/TemplatePhotoSheet', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Text } = require('react-native') as typeof RN;
+  return {
+    TemplatePhotoSheet: ({ templateId }: { templateId: string }) => (
+      <Text testID={`template-photo-sheet-${templateId}`}>sheet</Text>
+    ),
+  };
+});
 jest.mock('@/features/map/hooks/useSeries', () => ({ useSeries: jest.fn() }));
 
 const mockPush = jest.fn();
@@ -150,6 +163,21 @@ describe('UploadManualInputScreen', () => {
     expect(getByText('등')).toBeTruthy();
     expect(getByTestId('upload-manual-template-group-가슴')).toBeTruthy();
     expect(getByTestId('upload-manual-template-group-등')).toBeTruthy();
+  });
+
+  it('renders a reference-photo button on each template row that does not select the row', () => {
+    const { getByTestId } = render(<UploadManualInputScreen />);
+
+    fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+
+    // The photo button sits next to the template; tapping it opens the preview
+    // sheet instead of selecting the template (which would push to the camera).
+    fireEvent.press(getByTestId('upload-manual-template-photo-tpl-hammer-chest'));
+
+    expect(mockPush).not.toHaveBeenCalled();
+    // The preview sheet opened for that template; the row was not selected/advanced.
+    expect(getByTestId('template-photo-sheet-tpl-hammer-chest')).toBeTruthy();
+    expect(getByTestId('upload-manual-template-option-tpl-hammer-chest')).toBeTruthy();
   });
 
   it('shows a propose-new brand row when the query has no catalog match', () => {
