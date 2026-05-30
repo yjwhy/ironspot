@@ -34,6 +34,9 @@ jest.mock('@/features/map/hooks/useCategories', () => ({
     ],
   }),
 }));
+jest.mock('@/features/map/hooks/useSeries', () => ({
+  useSeries: () => ({ data: [] }),
+}));
 jest.mock('@/features/map/hooks/useMachineTemplates', () => ({
   useMachineTemplates: () => ({
     data: [

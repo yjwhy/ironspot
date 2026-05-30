@@ -3,16 +3,19 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { useBrands } from '@/features/map/hooks/useBrands';
 import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
+import { useSeries } from '@/features/map/hooks/useSeries';
 
 import { MachinePicker, type MachinePickerSelection } from '../MachinePicker';
 
 jest.mock('@/features/map/hooks/useBrands', () => ({ useBrands: jest.fn() }));
 jest.mock('@/features/map/hooks/useCategories', () => ({ useCategories: jest.fn() }));
 jest.mock('@/features/map/hooks/useMachineTemplates', () => ({ useMachineTemplates: jest.fn() }));
+jest.mock('@/features/map/hooks/useSeries', () => ({ useSeries: jest.fn() }));
 
 const mockUseBrands = useBrands as jest.Mock;
 const mockUseCategories = useCategories as jest.Mock;
 const mockUseMachineTemplates = useMachineTemplates as jest.Mock;
+const mockUseSeries = useSeries as jest.Mock;
 
 interface TemplateFixture {
   id: string;
@@ -23,12 +26,14 @@ interface TemplateFixture {
   nameEn: string;
   nameKo: string;
   loadingType: string;
+  seriesId?: string | null;
 }
 
 interface SetupOverrides {
   brands?: { id: string; name: string; nameKo: string }[];
   categories?: { id: string; name: string }[];
   templates?: TemplateFixture[];
+  series?: { id: string; brandId: string; name: string; nameKo: string }[];
 }
 
 function setupQueries(overrides: SetupOverrides = {}) {
@@ -74,8 +79,10 @@ function setupQueries(overrides: SetupOverrides = {}) {
       loadingType: 'plate',
     },
   ];
+  const series = overrides.series ?? [];
   mockUseBrands.mockReturnValue({ data: brands, isLoading: false, isError: false });
   mockUseCategories.mockReturnValue({ data: categories, isLoading: false, isError: false });
+  mockUseSeries.mockReturnValue({ data: series, isLoading: false, isError: false });
   // Phase 5 item 18 pushdown: the hook only fetches once both brandId and
   // categoryId are passed, and the server filters the catalog. Mock that
   // behaviour so the test still asserts "only matching templates render".
@@ -219,6 +226,49 @@ describe('MachinePicker', () => {
       kind: 'freeForm',
       text: 'Hammer Strength MTS Row',
     });
+  });
+
+  it('tags template rows with their series so same-named models stay distinct', () => {
+    setupQueries({
+      series: [
+        { id: 'series-iso', brandId: 'brand-hammer', name: 'Iso-Lateral', nameKo: 'Iso-Lateral' },
+        { id: 'series-select', brandId: 'brand-hammer', name: 'Select', nameKo: 'Select' },
+      ],
+      templates: [
+        {
+          id: 'tpl-iso-chest',
+          brandId: 'brand-hammer',
+          brandName: 'Hammer Strength',
+          brandNameKo: '해머 스트렝스',
+          categoryId: 'cat-chest',
+          nameEn: 'Chest Press',
+          nameKo: '체스트 프레스',
+          loadingType: 'plate',
+          seriesId: 'series-iso',
+        },
+        {
+          id: 'tpl-select-chest',
+          brandId: 'brand-hammer',
+          brandName: 'Hammer Strength',
+          brandNameKo: '해머 스트렝스',
+          categoryId: 'cat-chest',
+          nameEn: 'Chest Press',
+          nameKo: '체스트 프레스',
+          loadingType: 'pin',
+          seriesId: 'series-select',
+        },
+      ],
+    });
+
+    const { getByText, getByTestId } = render(<MachinePicker value={NONE} onChange={jest.fn()} />);
+
+    fireEvent.press(getByTestId('machine-picker-brand-option-brand-hammer'));
+    fireEvent.press(getByTestId('machine-picker-category-chip-cat-chest'));
+
+    // Both rows share the model name "체스트 프레스" but the series tag keeps
+    // them distinguishable.
+    expect(getByText(/\[Iso-Lateral\] 체스트 프레스/)).toBeTruthy();
+    expect(getByText(/\[Select\] 체스트 프레스/)).toBeTruthy();
   });
 
   it('escape hatch link stays visible even when the template list is empty', () => {

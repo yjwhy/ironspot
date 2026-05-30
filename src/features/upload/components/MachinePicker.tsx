@@ -5,12 +5,13 @@ import { Pressable, TextInput, View } from 'react-native';
 import { useBrands } from '@/features/map/hooks/useBrands';
 import { useCategories } from '@/features/map/hooks/useCategories';
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
+import { useSeries } from '@/features/map/hooks/useSeries';
 import { AppText } from '@/shared/components/AppText';
 import { BrandLogo } from '@/shared/components/BrandLogo';
 import { Chip } from '@/shared/components/Chip';
 import { brandShortName, formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
-import { templateDisplayName } from '@/shared/lib/template-display-name';
+import { seriesTaggedDisplayName } from '@/shared/lib/template-display-name';
 import { colors } from '@/shared/theme/tokens';
 
 import { selectedRowClass } from './selectedRowClass';
@@ -46,6 +47,10 @@ export function MachinePicker({ value, onChange }: MachinePickerProps) {
 
   const { data: brands } = useBrands();
   const { data: categories } = useCategories();
+  const { data: series } = useSeries();
+  // Map series_id -> English line name so the row can tag duplicate model
+  // names across a brand's product lines. React Compiler memoises this.
+  const seriesNameById = new Map((series ?? []).map((s) => [s.id, s.name]));
   // Phase 5 item 18: TemplateStep filter pushdown. Hook only fires after both
   // axes are picked so we don't burn a request before the picker has anything
   // to render anyway. staleTime: Infinity per (brandId, categoryId) tuple in
@@ -126,8 +131,8 @@ export function MachinePicker({ value, onChange }: MachinePickerProps) {
             // overflow the picker row width — same rationale as active-filters
             // chip's brandShortName usage.
             brandLabel: brandShortName({ name: t.brandName, nameKo: t.brandNameKo }),
-            displayName: templateDisplayName(t),
-            searchText: `${t.brandName} ${t.brandNameKo} ${t.nameKo} ${t.nameEn}`,
+            displayName: seriesTaggedDisplayName(t, seriesNameById),
+            searchText: `${t.brandName} ${t.brandNameKo} ${t.nameKo} ${t.nameEn} ${t.seriesId ? (seriesNameById.get(t.seriesId) ?? '') : ''}`,
           }))}
           selectedTemplateId={selectedTemplateId}
           query={templateQuery}
