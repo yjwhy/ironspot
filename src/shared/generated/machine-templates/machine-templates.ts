@@ -18,7 +18,12 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ListTemplatesParams, MachineTemplateResponse } from '../model';
+import type {
+  ListTemplatesParams,
+  MachineTemplateResponse,
+  TemplatePhotosParams,
+  TemplatePhotosResponse,
+} from '../model';
 
 import { apiClient } from '../../lib/api-client';
 
@@ -159,6 +164,155 @@ export function useListTemplates<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getListTemplatesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export type templatePhotosResponse200 = {
+  data: TemplatePhotosResponse;
+  status: 200;
+};
+
+export type templatePhotosResponseSuccess = templatePhotosResponse200 & {
+  headers: Headers;
+};
+export type templatePhotosResponse = templatePhotosResponseSuccess;
+
+export const getTemplatePhotosUrl = (templateId: string, params?: TemplatePhotosParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/machine-templates/${templateId}/photos?${stringifiedParams}`
+    : `/api/machine-templates/${templateId}/photos`;
+};
+
+/**
+ * @summary Reference photos for a machine model (curated image + top user photos)
+ */
+export const templatePhotos = async (
+  templateId: string,
+  params?: TemplatePhotosParams,
+  options?: RequestInit,
+): Promise<templatePhotosResponse> => {
+  return apiClient<templatePhotosResponse>(getTemplatePhotosUrl(templateId, params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getTemplatePhotosQueryKey = (templateId: string, params?: TemplatePhotosParams) => {
+  return [`/api/machine-templates/${templateId}/photos`, ...(params ? [params] : [])] as const;
+};
+
+export const getTemplatePhotosQueryOptions = <
+  TData = Awaited<ReturnType<typeof templatePhotos>>,
+  TError = unknown,
+>(
+  templateId: string,
+  params?: TemplatePhotosParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof templatePhotos>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getTemplatePhotosQueryKey(templateId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof templatePhotos>>> = ({ signal }) =>
+    templatePhotos(templateId, params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!templateId, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof templatePhotos>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type TemplatePhotosQueryResult = NonNullable<Awaited<ReturnType<typeof templatePhotos>>>;
+export type TemplatePhotosQueryError = unknown;
+
+export function useTemplatePhotos<
+  TData = Awaited<ReturnType<typeof templatePhotos>>,
+  TError = unknown,
+>(
+  templateId: string,
+  params: undefined | TemplatePhotosParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof templatePhotos>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof templatePhotos>>,
+          TError,
+          Awaited<ReturnType<typeof templatePhotos>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useTemplatePhotos<
+  TData = Awaited<ReturnType<typeof templatePhotos>>,
+  TError = unknown,
+>(
+  templateId: string,
+  params?: TemplatePhotosParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof templatePhotos>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof templatePhotos>>,
+          TError,
+          Awaited<ReturnType<typeof templatePhotos>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useTemplatePhotos<
+  TData = Awaited<ReturnType<typeof templatePhotos>>,
+  TError = unknown,
+>(
+  templateId: string,
+  params?: TemplatePhotosParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof templatePhotos>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Reference photos for a machine model (curated image + top user photos)
+ */
+
+export function useTemplatePhotos<
+  TData = Awaited<ReturnType<typeof templatePhotos>>,
+  TError = unknown,
+>(
+  templateId: string,
+  params?: TemplatePhotosParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof templatePhotos>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getTemplatePhotosQueryOptions(templateId, params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

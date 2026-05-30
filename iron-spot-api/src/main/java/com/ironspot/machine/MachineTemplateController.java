@@ -1,6 +1,7 @@
 package com.ironspot.machine;
 
 import com.ironspot.machine.dto.MachineTemplateResponse;
+import com.ironspot.machine.dto.TemplatePhotosResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -8,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,6 +31,7 @@ import java.util.UUID;
 public class MachineTemplateController {
 
     private final MachineTemplateRepository templateRepository;
+    private final TemplatePhotoService templatePhotoService;
 
     @GetMapping
     @Operation(summary = "List approved machine templates for filter UI + picker", tags = {"machine-templates"})
@@ -44,5 +47,21 @@ public class MachineTemplateController {
         @RequestParam(value = "seriesId", required = false) UUID seriesId
     ) {
         return templateRepository.findAllApprovedDetailed(brandId, categoryId, seriesId);
+    }
+
+    @GetMapping("/{templateId}/photos")
+    @Operation(
+        summary = "Reference photos for a machine model (curated image + top user photos)",
+        tags = {"machine-templates"})
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Reference photos returned"),
+        @ApiResponse(responseCode = "404", description = "Template not found")
+    })
+    public TemplatePhotosResponse templatePhotos(
+        @PathVariable UUID templateId,
+        @Parameter(description = "Max user photos to return (default 5, capped at 10).")
+        @RequestParam(value = "limit", defaultValue = "5") int limit
+    ) {
+        return templatePhotoService.getTemplatePhotos(templateId, limit);
     }
 }

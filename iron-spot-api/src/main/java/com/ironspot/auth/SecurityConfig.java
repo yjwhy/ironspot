@@ -75,6 +75,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/brands").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/machine-templates").permitAll()
+                // V30 reference photos aggregate user-contributed images across gyms;
+                // the photo bytes stay behind the authenticated A3 proxy and this surface
+                // is only reached post-login (registration flow), so the list stays
+                // authenticated. Explicit so a future permitAll can't silently widen it.
+                .requestMatchers(HttpMethod.GET, "/api/machine-templates/*/photos").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/series").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/machines/*/photos").permitAll()
                 // Task 46: gym_machine 신고는 인증 사용자만 가능. anyRequest 가

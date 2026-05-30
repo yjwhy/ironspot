@@ -109,6 +109,16 @@ public class MachineTemplates extends TableImpl<Record> {
      */
     public final TableField<Record, UUID> SERIES_ID = createField(DSL.name("series_id"), SQLDataType.UUID, this, "");
 
+    /**
+     * The column <code>public.machine_templates.reference_image_path</code>.
+     */
+    public final TableField<Record, String> REFERENCE_IMAGE_PATH = createField(DSL.name("reference_image_path"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column <code>public.machine_templates.official_url</code>.
+     */
+    public final TableField<Record, String> OFFICIAL_URL = createField(DSL.name("official_url"), SQLDataType.CLOB, this, "");
+
     private MachineTemplates(Name alias, Table<Record> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

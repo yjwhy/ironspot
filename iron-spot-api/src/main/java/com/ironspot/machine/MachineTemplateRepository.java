@@ -9,6 +9,7 @@ import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.ironspot.jooq.Tables.*;
@@ -18,6 +19,21 @@ import static com.ironspot.jooq.Tables.*;
 public class MachineTemplateRepository {
 
     private final DSLContext dsl;
+
+    /** Curated reference fields for one template (V30). Empty when the template
+     *  id doesn't exist, which the caller maps to 404. */
+    public Optional<TemplateReference> findReference(UUID templateId) {
+        return dsl.select(MACHINE_TEMPLATES.REFERENCE_IMAGE_PATH, MACHINE_TEMPLATES.OFFICIAL_URL)
+            .from(MACHINE_TEMPLATES)
+            .where(MACHINE_TEMPLATES.ID.eq(templateId))
+            .fetchOptional(r -> new TemplateReference(
+                r.get(MACHINE_TEMPLATES.REFERENCE_IMAGE_PATH),
+                r.get(MACHINE_TEMPLATES.OFFICIAL_URL)));
+    }
+
+    /** Curated official image path (template-references bucket) + manufacturer
+     *  page URL. Both nullable until an admin curates them. */
+    public record TemplateReference(String referenceImagePath, String officialUrl) {}
 
     public List<MachineTemplateSummary> findAllApproved() {
         return dsl.select(
