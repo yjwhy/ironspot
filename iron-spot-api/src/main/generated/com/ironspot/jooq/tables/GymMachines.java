@@ -182,7 +182,7 @@ public class GymMachines extends TableImpl<Record> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IDX_GYM_MACHINES_ACTIVE, Indexes.IDX_GYM_MACHINES_PENDING_REVIEW);
+        return Arrays.asList(Indexes.IDX_GYM_MACHINES_ACTIVE, Indexes.IDX_GYM_MACHINES_PENDING_REVIEW, Indexes.IDX_GYM_MACHINES_TEMPLATE);
     }
 
     @Override
