@@ -90,6 +90,30 @@ public class PhotoRepository {
             .fetch(this::toPhotoResponseWithGym);
     }
 
+    // Top user-contributed photos for a template (model), aggregated across
+    // every gym that has registered that template. Powers the reference-photo
+    // sheet ("what does this model look like?"). Ranked owner-verified first,
+    // then upvotes, then recency, so the most trustworthy shot leads. Gym
+    // context is intentionally left null (toPhotoResponse, no gym join): the
+    // sheet identifies the model, not which gym the photo came from.
+    public List<PhotoResponse> findTemplatePhotos(UUID templateId, int limit) {
+        return dsl.select(
+                MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,
+                MACHINE_PHOTOS.PHOTO_URL, MACHINE_PHOTOS.UPVOTE_COUNT, MACHINE_PHOTOS.CREATED_AT,
+                MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT)
+            .from(MACHINE_PHOTOS)
+            .join(GYM_MACHINES).on(GYM_MACHINES.ID.eq(MACHINE_PHOTOS.GYM_MACHINE_ID))
+            .where(GYM_MACHINES.TEMPLATE_ID.eq(templateId))
+            .and(GYM_MACHINES.DELETED_AT.isNull())
+            .and(MACHINE_PHOTOS.IS_BLINDED.isFalse())
+            .orderBy(
+                MACHINE_PHOTOS.VERIFIED_BY_OWNER_AT.desc().nullsLast(),
+                MACHINE_PHOTOS.UPVOTE_COUNT.desc(),
+                MACHINE_PHOTOS.CREATED_AT.desc())
+            .limit(limit)
+            .fetch(this::toPhotoResponse);
+    }
+
     public List<PhotoResponse> findByUserId(UUID userId) {
         return dsl.select(
                 MACHINE_PHOTOS.ID, MACHINE_PHOTOS.GYM_MACHINE_ID, MACHINE_PHOTOS.USER_ID,

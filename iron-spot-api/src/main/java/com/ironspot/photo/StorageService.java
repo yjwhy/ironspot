@@ -29,6 +29,20 @@ public class StorageService {
 
     private static final String BUCKET = "machine-photos";
 
+    // V30: curated template reference images live in a separate PUBLIC bucket.
+    // Unlike user photos (private, served via short-TTL signed URLs), these are
+    // licence-cleared brand product images meant for public display, so a
+    // stable public CDN URL is correct and avoids a second auth proxy.
+    private static final String TEMPLATE_REFERENCE_BUCKET = "template-references";
+
+    /**
+     * Public CDN URL for a curated template reference image. {@code path} is the
+     * bucket-relative key stored in {@code machine_templates.reference_image_path}.
+     */
+    public String templateReferenceUrl(String path) {
+        return supabaseUrl + "/storage/v1/object/public/" + TEMPLATE_REFERENCE_BUCKET + "/" + path;
+    }
+
     /**
      * Security A3 Phase 2: signed-URL TTL was 365 days, which meant a DB
      * leak / backup dump / Sentry capture handed over a year-long bearer
