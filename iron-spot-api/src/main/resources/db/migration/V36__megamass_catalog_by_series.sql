@@ -24,7 +24,7 @@ FROM (VALUES
   ('Leverage'), ('Xpload'), ('Linear Row'), ('Classic'),
   ('Shrug'), ('Swing'), ('X'), ('Chain Drive')
 ) AS s(name)
-JOIN brands b ON b.name = 'MegaMass'
+JOIN brands b ON b.name = 'Megamass'
 ON CONFLICT (brand_id, name) DO NOTHING;
 
 DO $$
@@ -34,14 +34,14 @@ BEGIN
   FROM gym_machines gm
   JOIN machine_templates mt ON mt.id = gm.template_id
   JOIN brands b ON b.id = mt.brand_id
-  WHERE b.name = 'MegaMass';
+  WHERE b.name = 'Megamass';
   IF ref_count > 0 THEN
     RAISE EXCEPTION 'V36 aborted: % gym_machines still reference MegaMass templates', ref_count;
   END IF;
 END $$;
 
 DELETE FROM machine_templates
-WHERE brand_id = (SELECT id FROM brands WHERE name = 'MegaMass');
+WHERE brand_id = (SELECT id FROM brands WHERE name = 'Megamass');
 
 INSERT INTO machine_templates (brand_id, category_id, name_en, name_ko, loading_type, series_id)
 SELECT b.id, c.id, v.name_en, v.name_ko, v.loading::loading_type, s.id
@@ -66,6 +66,6 @@ FROM (VALUES
   ('X',           '어깨', 'X-Shoulder Press',            'X-숄더 프레스',             'plate'),
   ('Chain Drive', '어깨', 'Chain Drive Lateral Raise',   '체인 드라이브 레터럴 레이즈','plate')
 ) AS v(series_name, cat_name, name_en, name_ko, loading)
-JOIN brands b ON b.name = 'MegaMass'
+JOIN brands b ON b.name = 'Megamass'
 JOIN categories c ON c.name = v.cat_name
 JOIN machine_series s ON s.brand_id = b.id AND s.name = v.series_name;
