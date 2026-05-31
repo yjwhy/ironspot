@@ -7,6 +7,7 @@ import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
 import com.ironspot.gym.dto.NaverPlaceResult;
+import com.ironspot.gym.dto.TemplateCountResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,10 @@ public class GymService {
 
     public List<GymWithMachineCountResponse> searchInBounds(GymSearchRequest request) {
         return gymRepository.searchInBounds(request);
+    }
+
+    public List<TemplateCountResponse> templateCountsInBounds(GymSearchRequest request) {
+        return gymRepository.templateCountsInBounds(request);
     }
 
     public Optional<GymDetailResponse> findById(UUID id) {

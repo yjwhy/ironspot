@@ -8,6 +8,7 @@ import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
 import com.ironspot.gym.dto.NaverPlaceResult;
+import com.ironspot.gym.dto.TemplateCountResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -56,6 +57,21 @@ public class GymController {
         @Valid @ModelAttribute @ParameterObject GymSearchRequest request
     ) {
         return gymService.searchInBounds(request);
+    }
+
+    @GetMapping("/template-counts")
+    @Operation(summary = "Count gyms per machine template within map bounds", tags = {"gyms"})
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200", description = "Per-template gym counts returned successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400", description = "Missing or invalid bounds parameters",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public List<TemplateCountResponse> templateCounts(
+        @Valid @ModelAttribute @ParameterObject GymSearchRequest request
+    ) {
+        return gymService.templateCountsInBounds(request);
     }
 
     @GetMapping("/{id}")
