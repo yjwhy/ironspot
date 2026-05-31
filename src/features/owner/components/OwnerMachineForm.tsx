@@ -5,12 +5,13 @@ import { ActivityIndicator, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useMachineTemplates } from '@/features/map/hooks/useMachineTemplates';
+import { useSeries } from '@/features/map/hooks/useSeries';
 import { AppText } from '@/shared/components/AppText';
 import { Button } from '@/shared/components/Button';
 import { getListMachinesQueryKey } from '@/shared/generated/machines/machines';
 import { useCreate, useUpdate } from '@/shared/generated/owner/owner';
 import { captureError } from '@/shared/lib/sentry';
-import { templateDisplayName } from '@/shared/lib/template-display-name';
+import { seriesTaggedDisplayName } from '@/shared/lib/template-display-name';
 
 interface OwnerMachineFormProps {
   gymId: string;
@@ -22,6 +23,7 @@ const MIN_QUANTITY = 1;
 
 export function OwnerMachineForm({ gymId, initial, onDone }: OwnerMachineFormProps) {
   const templatesQuery = useMachineTemplates();
+  const seriesQuery = useSeries();
   const [templateId, setTemplateId] = useState<string | null>(initial?.templateId ?? null);
   const [quantityText, setQuantityText] = useState(String(initial?.quantity ?? 1));
   const createMutation = useCreate();
@@ -72,6 +74,9 @@ export function OwnerMachineForm({ gymId, initial, onDone }: OwnerMachineFormPro
 
   const templates = templatesQuery.data ?? [];
   const selectedTemplate = templates.find((t) => t.id === templateId);
+  // Tag duplicate model names across a brand's product lines (e.g. LEXCO's
+  // five "시티드 체스트 프레스"). React Compiler memoises this.
+  const seriesNameById = new Map((seriesQuery.data ?? []).map((s) => [s.id, s.name]));
 
   return (
     <SafeAreaView className="flex-1 bg-bg-base px-6 py-6 gap-4">
@@ -85,7 +90,7 @@ export function OwnerMachineForm({ gymId, initial, onDone }: OwnerMachineFormPro
           {templates.slice(0, 30).map((template) => (
             <Button
               key={template.id}
-              label={`${template.brandName} ${templateDisplayName(template)}`}
+              label={`${template.brandName} ${seriesTaggedDisplayName(template, seriesNameById)}`}
               variant={templateId === template.id ? 'primary' : 'secondary'}
               onPress={() => {
                 setTemplateId(template.id);
@@ -96,7 +101,7 @@ export function OwnerMachineForm({ gymId, initial, onDone }: OwnerMachineFormPro
         {selectedTemplate ? (
           <AppText className="text-caption text-text-tertiary">
             선택됨: {selectedTemplate.brandName}{' '}
-            {selectedTemplate.nameKo || selectedTemplate.nameEn}
+            {seriesTaggedDisplayName(selectedTemplate, seriesNameById)}
           </AppText>
         ) : null}
       </View>

@@ -38,6 +38,29 @@ export function snakeCaseTemplateDisplayName(template: {
 }
 
 /**
+ * Series-tagged display name for the series-UNAWARE pickers (MachinePicker,
+ * OwnerMachineForm) where a brand can show several identically-named models
+ * across product lines (e.g. LEXCO has a "시티드 체스트 프레스" in Falcon,
+ * Master, Master Pro, Taurus and Master Pro Plate Load). The `[Series]`
+ * prefix is what keeps those rows distinguishable.
+ *
+ * NOT used on the series-FIRST flow (UploadManualInputScreen template step):
+ * the user has already picked the series there, so the tag would be redundant
+ * — that surface keeps {@link templateDisplayName}.
+ *
+ * `seriesNameById` maps machine_series.id -> its English name (from
+ * useSeries()). Templates with no series (series_id NULL) render unchanged.
+ */
+export function seriesTaggedDisplayName(
+  template: { nameKo: string; nameEn: string; seriesId?: string | null },
+  seriesNameById: ReadonlyMap<string, string>,
+): string {
+  const base = templateDisplayName(template);
+  const seriesName = template.seriesId ? seriesNameById.get(template.seriesId) : null;
+  return seriesName ? `[${seriesName}] ${base}` : base;
+}
+
+/**
  * GymMachineResponse-shape picker (custom_name overrides since user-typed
  * direct input wins over the template's canonical name).
  */

@@ -67,6 +67,16 @@ ALTER TABLE machine_templates
 CREATE INDEX IF NOT EXISTS idx_machine_templates_series
   ON machine_templates (series_id) WHERE series_id IS NOT NULL;
 
+-- V31 mirror: per-series template uniqueness. Prod replaced the brand-wide
+-- UNIQUE (brand_id, name_en) with these two partial indexes; the test schema
+-- never had that constraint, so we add the indexes here for parity (series-
+-- less brands stay brand-wide unique; series-linked stay unique per series).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_machine_templates_brand_name_no_series
+  ON machine_templates (brand_id, name_en) WHERE series_id IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_machine_templates_brand_series_name
+  ON machine_templates (brand_id, series_id, name_en) WHERE series_id IS NOT NULL;
+
 -- V30 mirror: curated reference image (template-references bucket key) +
 -- official manufacturer page URL for the model. Both nullable.
 ALTER TABLE machine_templates

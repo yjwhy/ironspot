@@ -18,7 +18,7 @@ import type {
 } from '@/shared/generated/model';
 import { formatBrandLabel } from '@/shared/lib/format-brand-label';
 import { pressedOpacity } from '@/shared/lib/pressable';
-import { templateDisplayName } from '@/shared/lib/template-display-name';
+import { seriesTaggedDisplayName, templateDisplayName } from '@/shared/lib/template-display-name';
 import { colors } from '@/shared/theme/tokens';
 
 import { SearchableList, type SearchableRow } from './SearchableList';
@@ -235,12 +235,17 @@ const UNCATEGORISED_BODY_PART = '기타';
 function toBodyPartRows(
   templates: readonly MachineTemplateResponse[],
   bodyPartById: ReadonlyMap<string, string>,
+  // When the list spans a whole brand (no single series picked), tag each row
+  // with its series so duplicate model names across product lines stay
+  // distinct. When a series was already picked the tag is redundant, so the
+  // caller passes an empty map and rows render the plain name.
+  seriesNameById: ReadonlyMap<string, string>,
 ): SearchableRow[] {
   return templates
     .map(function toRow(template): SearchableRow {
       return {
         id: template.id,
-        label: templateDisplayName(template),
+        label: seriesTaggedDisplayName(template, seriesNameById),
         group: bodyPartById.get(template.categoryId) ?? UNCATEGORISED_BODY_PART,
       };
     })
@@ -304,6 +309,12 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
   );
   const { data: categories = [] } = useCategories();
   const bodyPartById = new Map(categories.map((category) => [category.id, category.name]));
+  // Brand-wide list spans multiple series → tag rows so duplicate model names
+  // stay distinct. A series-filtered list is already unambiguous, so the map
+  // stays empty and rows render the plain name.
+  const { data: allSeries = [] } = useSeries();
+  const seriesNameById =
+    series === null ? new Map(allSeries.map((s) => [s.id, s.name])) : new Map<string, string>();
 
   const matches = filterByFuzzy(templates, query, function getLabels(template) {
     return { primary: template.nameKo, secondary: template.nameEn };
@@ -313,6 +324,7 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
       return m.item;
     }),
     bodyPartById,
+    seriesNameById,
   );
   const selectedRowId = pick?.kind === 'catalog' ? pick.template.id : null;
   const proposeQuery = query.trim();

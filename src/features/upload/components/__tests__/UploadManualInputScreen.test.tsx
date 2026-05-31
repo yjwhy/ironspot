@@ -165,6 +165,53 @@ describe('UploadManualInputScreen', () => {
     expect(getByTestId('upload-manual-template-group-등')).toBeTruthy();
   });
 
+  it('tags brand-wide template rows with their series so duplicate model names stay distinct', () => {
+    mockUseSeries.mockReturnValue({
+      data: [
+        { id: 'series-iso', brandId: 'brand-hammer', name: 'Iso-Lateral', nameKo: 'Iso-Lateral' },
+        { id: 'series-select', brandId: 'brand-hammer', name: 'Select', nameKo: 'Select' },
+      ],
+    });
+    mockUseMachineTemplates.mockImplementation(
+      (params?: { brandId?: string; seriesId?: string }) => {
+        if (params?.seriesId !== undefined) return { data: [] };
+        if (params?.brandId === undefined) return { data: undefined };
+        return {
+          data: [
+            {
+              id: 'tpl-iso-chest',
+              brandId: 'brand-hammer',
+              brandName: 'Hammer Strength',
+              brandNameKo: '해머 스트렝스',
+              categoryId: 'cat-chest',
+              nameEn: 'Chest Press',
+              nameKo: '체스트 프레스',
+              loadingType: 'plate',
+              seriesId: 'series-iso',
+            },
+            {
+              id: 'tpl-select-chest',
+              brandId: 'brand-hammer',
+              brandName: 'Hammer Strength',
+              brandNameKo: '해머 스트렝스',
+              categoryId: 'cat-chest',
+              nameEn: 'Chest Press',
+              nameKo: '체스트 프레스',
+              loadingType: 'pin',
+              seriesId: 'series-select',
+            },
+          ],
+        };
+      },
+    );
+
+    const { getByTestId, getByText } = render(<UploadManualInputScreen />);
+    fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+
+    expect(getByText('[Iso-Lateral] 체스트 프레스')).toBeTruthy();
+    expect(getByText('[Select] 체스트 프레스')).toBeTruthy();
+  });
+
   it('renders a reference-photo button on each template row that does not select the row', () => {
     const { getByTestId } = render(<UploadManualInputScreen />);
 
