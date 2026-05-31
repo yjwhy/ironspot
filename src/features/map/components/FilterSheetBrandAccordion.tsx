@@ -17,12 +17,12 @@ import { colors } from '@/shared/theme/tokens';
 import { FilterSheetMachineRow } from './FilterSheetMachineRow';
 import {
   NO_SERIES_KEY,
+  type AccordionBrandGroup,
   type AccordionSeriesGroup,
-  type BrandGroup,
 } from '../lib/group-templates-by-brand';
 
 interface FilterSheetBrandAccordionProps {
-  groups: readonly BrandGroup[];
+  groups: readonly AccordionBrandGroup[];
   expandedBrandIds: ReadonlySet<string>;
   selectedTemplateIds: readonly string[];
   /**
@@ -132,7 +132,7 @@ function BrandAccordionBody({
 /**
  * Phase 5 item 23 (slice a, polished 2026-05-22): the brand accordion body.
  *
- * Renders the precomputed `BrandGroup[]` — each row a tappable brand header
+ * Renders the precomputed `AccordionBrandGroup[]` — each row a tappable brand header
  * that expands into Series → 운동 부위 sub-sections of machine rows. ScrollView
  * is the canonical container per Q7 — N=24 brand rows fit comfortably, and
  * only the expanded brands render their machine rows.

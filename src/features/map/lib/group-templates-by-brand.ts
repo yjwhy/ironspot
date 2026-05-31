@@ -38,7 +38,7 @@ export interface AccordionSeriesGroup {
   readonly sections: readonly AccordionCategorySection[];
 }
 
-export interface BrandGroup {
+export interface AccordionBrandGroup {
   readonly brand: Brand;
   readonly seriesGroups: readonly AccordionSeriesGroup[];
   readonly totalCount: number;
@@ -122,7 +122,7 @@ export function groupTemplatesByBrand({
   activeCategoryIds,
   searchQuery,
   counts,
-}: GroupTemplatesArgs): readonly BrandGroup[] {
+}: GroupTemplatesArgs): readonly AccordionBrandGroup[] {
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const brandById = new Map(brands.map((b) => [b.id, b]));
   const seriesById = new Map(series.map((s) => [s.id, s]));
@@ -143,7 +143,7 @@ export function groupTemplatesByBrand({
     }
   }
 
-  const groups: BrandGroup[] = [];
+  const groups: AccordionBrandGroup[] = [];
   for (const [brandId, brandTemplates] of templatesByBrand) {
     const brand = brandById.get(brandId);
     if (brand === undefined || brandTemplates.length === 0) continue;
