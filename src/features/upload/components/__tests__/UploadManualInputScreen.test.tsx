@@ -165,51 +165,84 @@ describe('UploadManualInputScreen', () => {
     expect(getByTestId('upload-manual-template-group-등')).toBeTruthy();
   });
 
-  it('tags brand-wide template rows with their series so duplicate model names stay distinct', () => {
+  // Two Hammer series + a brand-wide / per-series template fetcher.
+  function setupMultiSeriesHammer() {
     mockUseSeries.mockReturnValue({
       data: [
         { id: 'series-iso', brandId: 'brand-hammer', name: 'Iso-Lateral', nameKo: 'Iso-Lateral' },
         { id: 'series-select', brandId: 'brand-hammer', name: 'Select', nameKo: 'Select' },
       ],
     });
+    const iso = {
+      id: 'tpl-iso-chest',
+      brandId: 'brand-hammer',
+      brandName: 'Hammer Strength',
+      brandNameKo: '해머 스트렝스',
+      categoryId: 'cat-chest',
+      nameEn: 'Chest Press',
+      nameKo: '체스트 프레스',
+      loadingType: 'plate',
+      seriesId: 'series-iso',
+    };
+    const select = {
+      ...iso,
+      id: 'tpl-select-chest',
+      loadingType: 'pin',
+      seriesId: 'series-select',
+    };
     mockUseMachineTemplates.mockImplementation(
       (params?: { brandId?: string; seriesId?: string }) => {
+        if (params?.seriesId === 'series-iso') return { data: [iso] };
+        if (params?.seriesId === 'series-select') return { data: [select] };
         if (params?.seriesId !== undefined) return { data: [] };
         if (params?.brandId === undefined) return { data: undefined };
-        return {
-          data: [
-            {
-              id: 'tpl-iso-chest',
-              brandId: 'brand-hammer',
-              brandName: 'Hammer Strength',
-              brandNameKo: '해머 스트렝스',
-              categoryId: 'cat-chest',
-              nameEn: 'Chest Press',
-              nameKo: '체스트 프레스',
-              loadingType: 'plate',
-              seriesId: 'series-iso',
-            },
-            {
-              id: 'tpl-select-chest',
-              brandId: 'brand-hammer',
-              brandName: 'Hammer Strength',
-              brandNameKo: '해머 스트렝스',
-              categoryId: 'cat-chest',
-              nameEn: 'Chest Press',
-              nameKo: '체스트 프레스',
-              loadingType: 'pin',
-              seriesId: 'series-select',
-            },
-          ],
-        };
+        return { data: [iso, select] };
       },
     );
+  }
 
+  it('shows a series-selection step for a brand with multiple series', () => {
+    setupMultiSeriesHammer();
+    const { getByTestId, queryByTestId } = render(<UploadManualInputScreen />);
+    fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+
+    expect(getByTestId('upload-manual-series-option-series-iso')).toBeTruthy();
+    expect(getByTestId('upload-manual-series-option-series-select')).toBeTruthy();
+    // Template list not shown yet (user must pick a series or "show all").
+    expect(queryByTestId('upload-manual-template-option-tpl-iso-chest')).toBeNull();
+  });
+
+  it('picking a series narrows to that line and drops the [Series] tag', () => {
+    setupMultiSeriesHammer();
+    const { getByTestId, getByText, queryByText } = render(<UploadManualInputScreen />);
+    fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+    fireEvent.press(getByTestId('upload-manual-series-option-series-iso'));
+
+    expect(getByText('체스트 프레스')).toBeTruthy();
+    expect(queryByText('[Iso-Lateral] 체스트 프레스')).toBeNull();
+  });
+
+  it('"show all" lists every series machine with its [Series] tag', () => {
+    setupMultiSeriesHammer();
     const { getByTestId, getByText } = render(<UploadManualInputScreen />);
     fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+    fireEvent.press(getByTestId('upload-manual-series-show-all'));
 
     expect(getByText('[Iso-Lateral] 체스트 프레스')).toBeTruthy();
     expect(getByText('[Select] 체스트 프레스')).toBeTruthy();
+  });
+
+  it('skips the series step for a single-series brand (straight to templates)', () => {
+    mockUseSeries.mockReturnValue({
+      data: [
+        { id: 'series-iso', brandId: 'brand-hammer', name: 'Iso-Lateral', nameKo: 'Iso-Lateral' },
+      ],
+    });
+    const { getByTestId, queryByTestId } = render(<UploadManualInputScreen />);
+    fireEvent.press(getByTestId('upload-manual-brand-option-brand-hammer'));
+
+    expect(queryByTestId('upload-manual-series-option-series-iso')).toBeNull();
+    expect(getByTestId('upload-manual-template-option-tpl-hammer-chest')).toBeTruthy();
   });
 
   it('renders a reference-photo button on each template row that does not select the row', () => {
