@@ -22,13 +22,15 @@ import { AppText } from '@/shared/components/AppText';
 import type { MachineTemplateResponse } from '@/shared/generated/model';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
-import type { Brand, Category, SearchFilters } from '@/shared/types/database';
+import type { Brand, Category, MapBounds, SearchFilters } from '@/shared/types/database';
 
 import { FilterSheetApplyBar } from './FilterSheetApplyBar';
 import { FilterSheetBrandAccordion } from './FilterSheetBrandAccordion';
 import { FilterSheetSection } from './FilterSheetSection';
 import { FilterSheetSelectionStrip } from './FilterSheetSelectionStrip';
 import { INITIAL_FILTERS } from '../hooks/useFilters';
+import { useSeries } from '../hooks/useSeries';
+import { useTemplateCounts } from '../hooks/useTemplateCounts';
 import { groupTemplatesByBrand } from '../lib/group-templates-by-brand';
 
 const SNAP_POINTS = ['65%', '90%'];
@@ -68,6 +70,12 @@ interface FilterSheetProps {
    */
   onApply: (next: SearchFilters) => void;
   onDismiss?: () => void;
+  /**
+   * Last searched bbox from the map. Drives the per-template "nearby gyms"
+   * badge counts; `null` (no search yet) leaves badges off and shows every
+   * row, so the filter is never empty before the first search.
+   */
+  bounds?: MapBounds | null;
   testID?: string;
 }
 
@@ -123,6 +131,7 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     filters,
     onApply,
     onDismiss,
+    bounds = null,
     testID,
   },
   ref,
@@ -145,16 +154,30 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
     [],
   );
 
+  const { data: series = [] } = useSeries();
+  const { data: templateCounts } = useTemplateCounts(bounds);
+  const countsActive = templateCounts !== undefined;
+
   const brandGroups = useMemo(
     () =>
       groupTemplatesByBrand({
         brands,
         categories,
+        series,
         templates: machineTemplates,
         activeCategoryIds: stagedFilters.categoryIds,
         searchQuery,
+        counts: templateCounts,
       }),
-    [brands, categories, machineTemplates, stagedFilters.categoryIds, searchQuery],
+    [
+      brands,
+      categories,
+      series,
+      machineTemplates,
+      stagedFilters.categoryIds,
+      searchQuery,
+      templateCounts,
+    ],
   );
 
   // Q2 / NL auto-expand: when staged templateIds picked up an externally
@@ -345,6 +368,7 @@ export const FilterSheet = forwardRef<FilterSheetRef, FilterSheetProps>(function
               groups={brandGroups}
               expandedBrandIds={displayedExpandedBrandIds}
               selectedTemplateIds={stagedFilters.templateIds}
+              countsActive={countsActive}
               onToggleExpand={toggleExpand}
               onToggleTemplate={handleToggleTemplate}
             />

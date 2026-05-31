@@ -35,5 +35,5 @@ export function useMapSearch(filters: SearchFilters) {
     }
   }
 
-  return { gyms, isPending, showSearchButton, handleCameraIdle, handleSearch };
+  return { gyms, isPending, showSearchButton, searchBounds, handleCameraIdle, handleSearch };
 }

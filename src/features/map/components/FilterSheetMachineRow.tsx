@@ -53,6 +53,11 @@ export function FilterSheetMachineRow({
         {selected ? <MaterialIcons name="check" size={14} color={colors.bg.elevated} /> : null}
       </View>
       <AppText className="flex-1 text-body-md text-text-primary">{label}</AppText>
+      {template.gymCount > 0 ? (
+        <View className="rounded-full bg-bg-elevated px-2 py-0.5">
+          <AppText className="text-body-sm text-text-secondary">{`${String(template.gymCount)}곳`}</AppText>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
