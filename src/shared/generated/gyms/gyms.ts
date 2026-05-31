@@ -28,6 +28,8 @@ import type {
   NaverPlaceResult,
   SearchParams,
   SearchPlacesParams,
+  TemplateCountResponse,
+  TemplateCountsParams,
 } from '../model';
 
 import { apiClient } from '../../lib/api-client';
@@ -312,6 +314,149 @@ export const useDeleteGym = <TError = unknown, TContext = unknown>(
 ): UseMutationResult<Awaited<ReturnType<typeof deleteGym>>, TError, { id: string }, TContext> => {
   return useMutation(getDeleteGymMutationOptions(options), queryClient);
 };
+export type templateCountsResponse200 = {
+  data: TemplateCountResponse[];
+  status: 200;
+};
+
+export type templateCountsResponseSuccess = templateCountsResponse200 & {
+  headers: Headers;
+};
+export type templateCountsResponse = templateCountsResponseSuccess;
+
+export const getTemplateCountsUrl = (params: TemplateCountsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/gyms/template-counts?${stringifiedParams}`
+    : `/api/gyms/template-counts`;
+};
+
+/**
+ * @summary Count gyms per machine template within map bounds
+ */
+export const templateCounts = async (
+  params: TemplateCountsParams,
+  options?: RequestInit,
+): Promise<templateCountsResponse> => {
+  return apiClient<templateCountsResponse>(getTemplateCountsUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getTemplateCountsQueryKey = (params?: TemplateCountsParams) => {
+  return [`/api/gyms/template-counts`, ...(params ? [params] : [])] as const;
+};
+
+export const getTemplateCountsQueryOptions = <
+  TData = Awaited<ReturnType<typeof templateCounts>>,
+  TError = unknown,
+>(
+  params: TemplateCountsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof templateCounts>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getTemplateCountsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof templateCounts>>> = ({ signal }) =>
+    templateCounts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof templateCounts>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type TemplateCountsQueryResult = NonNullable<Awaited<ReturnType<typeof templateCounts>>>;
+export type TemplateCountsQueryError = unknown;
+
+export function useTemplateCounts<
+  TData = Awaited<ReturnType<typeof templateCounts>>,
+  TError = unknown,
+>(
+  params: TemplateCountsParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof templateCounts>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof templateCounts>>,
+          TError,
+          Awaited<ReturnType<typeof templateCounts>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useTemplateCounts<
+  TData = Awaited<ReturnType<typeof templateCounts>>,
+  TError = unknown,
+>(
+  params: TemplateCountsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof templateCounts>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof templateCounts>>,
+          TError,
+          Awaited<ReturnType<typeof templateCounts>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useTemplateCounts<
+  TData = Awaited<ReturnType<typeof templateCounts>>,
+  TError = unknown,
+>(
+  params: TemplateCountsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof templateCounts>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Count gyms per machine template within map bounds
+ */
+
+export function useTemplateCounts<
+  TData = Awaited<ReturnType<typeof templateCounts>>,
+  TError = unknown,
+>(
+  params: TemplateCountsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof templateCounts>>, TError, TData>>;
+    request?: SecondParameter<typeof apiClient>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getTemplateCountsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
 export type searchResponse200 = {
   data: GymWithMachineCountResponse[];
   status: 200;

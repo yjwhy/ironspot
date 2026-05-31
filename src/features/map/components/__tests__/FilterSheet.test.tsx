@@ -11,6 +11,14 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+jest.mock('../../hooks/useSeries', () => ({
+  useSeries: () => ({ data: [] }),
+}));
+
+jest.mock('../../hooks/useTemplateCounts', () => ({
+  useTemplateCounts: () => ({ data: undefined }),
+}));
+
 jest.mock('@gorhom/bottom-sheet', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const mock = require('@/test/utils/bottom-sheet-mock') as typeof BottomSheetMockModule;
