@@ -7,6 +7,7 @@ import com.ironspot.gym.GymRepository;
 import com.ironspot.gym.NaverSearchService;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
 import com.ironspot.gym.dto.NaverPlaceResult;
+import com.ironspot.search.dsl.Location;
 import com.ironspot.search.dsl.SearchDsl;
 import com.ironspot.search.dto.NlSearchRequest;
 import com.ironspot.search.dto.NlSearchResponse;
@@ -22,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -41,6 +43,10 @@ public class NlSearchService {
     private final NlSearchLogWriter logWriter;
     private final NaverSearchService naverSearchService;
     private final GymRepository gymRepository;
+
+    // Mirrors the 60-char cap applied by NaverSearchService.sanitiseQuery; the
+    // merge keyword is built to fit so its "근처 헬스장" suffix is never truncated.
+    private static final int NAVER_QUERY_MAX_LENGTH = 60;
 
     @Transactional(readOnly = true)
     public NlSearchResponse search(NlSearchRequest req, UserPrincipal principal) {
@@ -71,7 +77,7 @@ public class NlSearchService {
             // filtered queries can't meaningfully match Naver results — emitting
             // them would dilute the "Panatta 머신" intent with random gyms.
             List<UnregisteredPlace> unregistered = isGenericQuery(parsedFilters)
-                ? fetchUnregisteredNaverPlaces(req.query())
+                ? fetchUnregisteredNaverPlaces(validated.location(), location)
                 : List.of();
             return new NlSearchResponse(
                 gyms, interpretation, totalCount, parsedFilters, location, unregistered,
@@ -119,26 +125,45 @@ public class NlSearchService {
             && parsedFilters.templateIds().isEmpty();
     }
 
-    private List<UnregisteredPlace> fetchUnregisteredNaverPlaces(String query) {
-        // Naver call is cached 60s per (normalised) query via Caffeine — see
-        // NaverSearchService.search @Cacheable + application.yml cache config.
-        // Any failure (Naver down, quota exhausted, transport) is swallowed so
-        // the NL search still returns IronSpot results successfully.
+    private List<UnregisteredPlace> fetchUnregisteredNaverPlaces(
+        Location parsedLocation, ResolvedLocation resolved) {
+        // Naver 지역검색 is keyword-only (no coordinate/radius param), so we (1)
+        // key the search off the RESOLVED PLACE — not the raw sentence — so that
+        // "보정동 올리브영 근처" and "보정동 올리브영 주변 2km" issue the SAME Naver
+        // query (the old raw-query path made them different searches → different
+        // results); and (2) geo-filter the results against the resolved centre +
+        // radius so the unregistered list honours the same distance the
+        // registered ST_DWithin search does. Results sorted by distance for a
+        // deterministic order. Naver call is cached 60s via Caffeine; failures
+        // are swallowed so the NL search still returns IronSpot results.
+        String keyword = naverMergeKeyword(parsedLocation);
         List<NaverPlaceResult> naverPlaces;
         try {
-            naverPlaces = naverSearchService.search(query);
+            naverPlaces = naverSearchService.search(keyword);
         } catch (RuntimeException e) {
-            // Security G5: raw user query carries PIPA-sensitive content;
-            // normalise + truncate before it lands in the operator log.
-            log.warn("Naver merge failed for query='{}': {} — returning IronSpot only",
-                SafeEcho.truncate(Normaliser.normalise(query), 50), e.getMessage());
+            log.warn("Naver merge failed for keyword='{}': {} — returning IronSpot only",
+                SafeEcho.truncate(Normaliser.normalise(keyword), 50), e.getMessage());
             return List.of();
         }
         if (naverPlaces.isEmpty()) return List.of();
 
-        List<String> candidateIds = naverPlaces.stream().map(NaverPlaceResult::id).toList();
+        double centerLat = resolved.coordinates().lat();
+        double centerLng = resolved.coordinates().lng();
+        double radiusKm = resolved.radiusKm();
+
+        record Scored(NaverPlaceResult place, double distanceKm) {}
+        List<NaverPlaceResult> withinRadius = naverPlaces.stream()
+            .filter(p -> p.latitude() != null && p.longitude() != null)
+            .map(p -> new Scored(p, GeoDistance.haversineKm(centerLat, centerLng, p.latitude(), p.longitude())))
+            .filter(s -> s.distanceKm() <= radiusKm)
+            .sorted(Comparator.comparingDouble(Scored::distanceKm))
+            .map(Scored::place)
+            .toList();
+        if (withinRadius.isEmpty()) return List.of();
+
+        List<String> candidateIds = withinRadius.stream().map(NaverPlaceResult::id).toList();
         Set<String> registeredIds = gymRepository.findRegisteredNaverPlaceIdsAmong(candidateIds);
-        return naverPlaces.stream()
+        return withinRadius.stream()
             .filter(p -> !registeredIds.contains(p.id()))
             .map(p -> new UnregisteredPlace(
                 p.id(),
@@ -148,6 +173,31 @@ public class NlSearchService {
                 p.longitude()
             ))
             .toList();
+    }
+
+    private String naverMergeKeyword(Location parsedLocation) {
+        // Naver 지역검색 is keyword-only, and empirically the phrase "{place} 근처
+        // 헬스장" is what actually returns nearby gyms: "{place} 헬스장" returns
+        // NOTHING, and the raw user phrasing "{place} 주변 2km 헬스장" also returns
+        // nothing (the literal "주변 2km" tokens break the match) — that mismatch
+        // was the user-reported bug where "주변 2km" yielded fewer results than
+        // "근처". We therefore normalise every variant to "{place} 근처 헬스장" so
+        // any radius phrasing of the same place issues the identical Naver query.
+        // Current-location queries have no name, so fall back to a bare "헬스장"
+        // and let the radius filter drop anything not actually near the user.
+        if (parsedLocation instanceof Location.NamedPlace named) {
+            // NaverSearchService.sanitiseQuery caps the whole query at 60 chars,
+            // and a place name may itself be up to 60 (Location.MAX_NAME_LENGTH).
+            // Trim the name so the load-bearing " 근처 헬스장" suffix always survives
+            // — otherwise a very long name would truncate it off and Naver would
+            // return nothing, the exact failure this normalisation prevents.
+            String suffix = " 근처 헬스장";
+            int maxNameLen = NAVER_QUERY_MAX_LENGTH - suffix.length();
+            String name = named.name();
+            String trimmedName = name.length() > maxNameLen ? name.substring(0, maxNameLen) : name;
+            return trimmedName + suffix;
+        }
+        return "헬스장";
     }
 
     private String translateDslError(String code) {
