@@ -12,12 +12,12 @@ import { toTestSlug } from '@/shared/lib/format';
 import { pressedOpacity } from '@/shared/lib/pressable';
 import { colors } from '@/shared/theme/tokens';
 
+import { toGymResultCardModel } from '../lib/gym-result-card-model';
 import { bottomSheetListItemKey, buildBottomSheetList } from '../lib/sort-bottom-sheet-list';
 import type { GymBottomSheetMode } from '../types';
-import { GymCard } from './GymCard';
 import { GymCardSkeleton } from './GymCardSkeleton';
 import { GymDetail } from './GymDetail';
-import { UnregisteredGymCard } from './UnregisteredGymCard';
+import { GymResultCard } from './GymResultCard';
 import { UnregisteredGymDetail } from './UnregisteredGymDetail';
 
 export type { GymBottomSheetMode };
@@ -275,32 +275,26 @@ function ListMode({ mode, listBottomPad }: { mode: ListMode_Props; listBottomPad
       keyExtractor={bottomSheetListItemKey}
       contentContainerStyle={listContentStyle}
       ItemSeparatorComponent={ListSeparator}
-      renderItem={({ item, index }) =>
-        item.kind === 'gym' ? (
-          <GymCard
-            gym={item.gym}
-            distanceKm={item.distanceKm}
+      renderItem={({ item, index }) => {
+        const isGym = item.kind === 'gym';
+        const testID = isGym
+          ? `gym-card-${toTestSlug(item.gym.name)}`
+          : `unregistered-gym-card-${toTestSlug(item.place.name)}`;
+        return (
+          <GymResultCard
+            model={toGymResultCardModel(item)}
             index={index}
-            thumbnailUrl={item.gym.cover_photo_url}
-            testID={`gym-card-${toTestSlug(item.gym.name)}`}
+            testID={testID}
             onPress={() => {
-              mode.onSelectGym(item.gym.id);
+              if (item.kind === 'gym') {
+                mode.onSelectGym(item.gym.id);
+              } else {
+                mode.onUnregisteredPress?.(item.place);
+              }
             }}
           />
-        ) : (
-          <UnregisteredGymCard
-            naverPlaceId={item.place.naverPlaceId}
-            name={item.place.name}
-            address={item.place.address}
-            distanceKm={item.distanceKm}
-            index={index}
-            testID={`unregistered-gym-card-${toTestSlug(item.place.name)}`}
-            onPress={() => {
-              mode.onUnregisteredPress?.(item.place);
-            }}
-          />
-        )
-      }
+        );
+      }}
     />
   );
 }
