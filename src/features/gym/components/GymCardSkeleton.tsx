@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Card } from '@/shared/components/Card';
 import { Skeleton } from '@/shared/components/Skeleton';
 
-import { GYM_CARD_THUMBNAIL_SIZE } from './GymCard';
+import { GYM_CARD_THUMBNAIL_SIZE } from './GymResultCard';
 
 interface GymCardSkeletonProps {
   testID?: string;

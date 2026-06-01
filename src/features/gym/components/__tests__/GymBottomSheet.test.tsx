@@ -233,19 +233,19 @@ describe('GymBottomSheet (list mode)', () => {
     expect(getByText('Fitness Factory')).toBeTruthy();
     expect(getByText('Strength Gym')).toBeTruthy();
     expect(getByText('강남 새 헬스장')).toBeTruthy();
-    // CTA copy only on the unregistered card.
-    expect(queryAllByText(/첫 등록자 되어 정보 추가하기/)).toHaveLength(1);
+    // "첫 정보 추가하기" CTA shows only on the empty (0-machine) card; both
+    // registered gyms here have machines, so it appears once (the Naver place).
+    expect(queryAllByText(/첫 정보 추가하기/)).toHaveLength(1);
     // Tap unregistered card → callback called with the place.
     fireEvent.press(getByRole('button', { name: /강남 새 헬스장/ }));
     expect(onUnregisteredPress).toHaveBeenCalledWith(nearbyNaverPlace);
   });
 
-  // Phase 5 item 21: launch-initial protection. With far-away registered
-  // gyms and a nearby Naver place, the unregistered card would dominate
-  // the 25% snap and the user would conclude "this app knows nothing
-  // about Gangnam". Lock the registered ones above unregistered regardless
-  // of distance so the first impression carries our actual catalogue.
-  it('renders all registered gyms above unregistered places, even when registered are farther', () => {
+  // Unified-card sort: registered and unregistered render the same card, so
+  // ordering by anything other than the visible axis (distance) would read as
+  // random. A near unregistered place therefore sorts above a far registered
+  // gym; source still drives the tap target, not the order.
+  it('sorts by distance regardless of source, so a near unregistered place ranks above a far registered gym', () => {
     const farRegisteredGym: GymWithMachineCount = {
       ...fitnessFactory,
       id: 'g-far',
@@ -279,8 +279,8 @@ describe('GymBottomSheet (list mode)', () => {
     );
     const cards = getAllByTestId(/^(gym-card|unregistered-gym-card)-/);
     expect(cards).toHaveLength(2);
-    expect(cards[0]).toHaveProp('testID', 'gym-card-far-registered-gym');
-    expect(cards[1]).toHaveProp('testID', 'unregistered-gym-card-강남-가까운-헬스장');
+    expect(cards[0]).toHaveProp('testID', 'unregistered-gym-card-강남-가까운-헬스장'); // ~0.1km
+    expect(cards[1]).toHaveProp('testID', 'gym-card-far-registered-gym'); // ~5km
   });
 
   // Phase 5 item 21: within the registered group, distance still wins —
