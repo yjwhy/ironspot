@@ -63,3 +63,7 @@ coverage/
 
 # macOS Spotlight opt-out marker
 .metadata_never_index
+
+# Env backups (local prod-env copies)
+.env.bak*
+*.env.bak*
