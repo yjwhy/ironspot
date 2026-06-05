@@ -324,6 +324,19 @@ function findTemplateLabelById(
   return template === undefined ? '' : templateDisplayName(template);
 }
 
+// Web image-search query for a model: brand + English model name gives the
+// cleanest gym-equipment results (e.g. "Hammer Strength Lat Pull Down"). Falls
+// back to the Korean name, then the brand alone if the template isn't found.
+function buildTemplateSearchQuery(
+  templates: readonly MachineTemplateResponse[],
+  brand: BrandResponse,
+  templateId: string,
+): string {
+  const template = templates.find((t) => t.id === templateId);
+  const modelName = template === undefined ? '' : template.nameEn || template.nameKo;
+  return `${brand.name} ${modelName}`.trim();
+}
+
 // Trailing "사진" control on a template row. Opens the reference-photo sheet
 // without selecting the row (it renders outside SearchableList's select Pressable).
 const PHOTO_BUTTON_ICON_SIZE = 14;
@@ -433,6 +446,7 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
         <TemplatePhotoSheet
           templateId={previewTemplateId}
           templateLabel={findTemplateLabelById(templates, previewTemplateId)}
+          searchQuery={buildTemplateSearchQuery(templates, brand, previewTemplateId)}
           onClose={function closePreview() {
             setPreviewTemplateId(null);
           }}
