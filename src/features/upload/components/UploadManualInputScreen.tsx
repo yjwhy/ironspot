@@ -58,7 +58,12 @@ type TemplatePick =
   | { kind: 'catalog'; template: MachineTemplateResponse }
   | { kind: 'proposed'; query: string };
 
-type Step = 'discovery' | 'template' | 'name';
+type Step = 'discovery' | 'series' | 'template' | 'name';
+
+// A brand only gets its own series-selection step when it actually markets
+// more than one product line; single-series (or series-less) brands would
+// just show a redundant one-item list, so they skip straight to templates.
+const MIN_SERIES_FOR_STEP = 2;
 
 // ─── Discovery step (brand OR series) ───────────────────────────────────────
 
@@ -215,6 +220,59 @@ function DiscoveryStep({ brands, series, isLoading, pick, onPick }: DiscoverySte
   );
 }
 
+// ─── Series step (only for multi-line brands) ────────────────────────────────
+
+interface SeriesSelectStepProps {
+  brand: BrandResponse;
+  series: readonly SeriesResponse[];
+  onPickSeries: (series: SeriesResponse) => void;
+  onShowAll: () => void;
+}
+
+function SeriesSelectStep({ brand, series, onPickSeries, onShowAll }: SeriesSelectStepProps) {
+  const [query, setQuery] = useState('');
+  const matches = filterByFuzzy(series, query, function getLabels(s) {
+    return { primary: s.name, secondary: s.nameKo };
+  });
+  const rows: SearchableRow[] = matches.map(function toRow(m) {
+    return { id: m.item.id, label: m.item.name };
+  });
+
+  return (
+    <View className="gap-3">
+      <AppText className="text-body font-semibold text-text-primary">
+        {`${formatBrandLabel(brand)} — 어떤 시리즈인가요?`}
+      </AppText>
+      <SearchableList
+        testIDPrefix="upload-manual-series"
+        searchPlaceholder="시리즈 검색"
+        query={query}
+        onChangeQuery={setQuery}
+        rows={rows}
+        selectedRowId={null}
+        onSelectRow={function handleSelect(id) {
+          const picked = series.find((s) => s.id === id);
+          if (picked !== undefined) onPickSeries(picked);
+        }}
+        emptyMessage="시리즈가 없어요"
+        proposeNew={null}
+      />
+      <Pressable
+        testID="upload-manual-series-show-all"
+        accessibilityRole="button"
+        accessibilityLabel="시리즈를 모르겠어요, 전체 머신에서 찾기"
+        onPress={onShowAll}
+        style={pressedOpacity}
+        className="self-start py-2"
+      >
+        <AppText className="text-body-sm text-accent underline">
+          시리즈를 모르겠어요 · 전체 머신에서 찾기
+        </AppText>
+      </Pressable>
+    </View>
+  );
+}
+
 // ─── Template step ──────────────────────────────────────────────────────────
 
 interface TemplateStepProps {
@@ -264,6 +322,19 @@ function findTemplateLabelById(
 ): string {
   const template = templates.find((t) => t.id === templateId);
   return template === undefined ? '' : templateDisplayName(template);
+}
+
+// Web image-search query for a model: brand + English model name gives the
+// cleanest gym-equipment results (e.g. "Hammer Strength Lat Pull Down"). Falls
+// back to the Korean name, then the brand alone if the template isn't found.
+function buildTemplateSearchQuery(
+  templates: readonly MachineTemplateResponse[],
+  brand: BrandResponse,
+  templateId: string,
+): string {
+  const template = templates.find((t) => t.id === templateId);
+  const modelName = template === undefined ? '' : template.nameEn || template.nameKo;
+  return `${brand.name} ${modelName}`.trim();
 }
 
 // Trailing "사진" control on a template row. Opens the reference-photo sheet
@@ -375,6 +446,7 @@ function TemplateStep({ brand, series, pick, onPick }: TemplateStepProps) {
         <TemplatePhotoSheet
           templateId={previewTemplateId}
           templateLabel={findTemplateLabelById(templates, previewTemplateId)}
+          searchQuery={buildTemplateSearchQuery(templates, brand, previewTemplateId)}
           onClose={function closePreview() {
             setPreviewTemplateId(null);
           }}
@@ -541,16 +613,45 @@ export function UploadManualInputScreen() {
   const [template, setTemplate] = useState<TemplatePick | null>(null);
   const [freeFormName, setFreeFormName] = useState('');
 
+  function seriesForBrand(brandId: string): SeriesResponse[] {
+    return series.filter((s) => s.brandId === brandId);
+  }
+
   function handleEntityPick(next: EntityPick) {
     setEntity(next);
     // Catalog/proposed swap should clear any stale template selection on
     // the (rare) flow back-into-discovery → re-pick path.
     setTemplate(null);
     setFreeFormName('');
-    // Auto-advance on pick so the user never has to scroll past a long list
-    // to reach a separate "다음" button: brand or series → its template
-    // list (filtered by series when present), proposed → free-form name step.
-    setStep(next.kind === 'proposed' ? 'name' : 'template');
+    // Auto-advance on pick. Proposed → free-form name. A series pick (from the
+    // discovery search) jumps straight to that line's templates. A brand pick
+    // goes to its series-selection step when the brand has multiple lines,
+    // otherwise straight to the (single-line) template list.
+    if (next.kind === 'proposed') {
+      setStep('name');
+      return;
+    }
+    if (next.kind === 'brand') {
+      const lines = seriesForBrand(next.brand.id);
+      setStep(lines.length >= MIN_SERIES_FOR_STEP ? 'series' : 'template');
+      return;
+    }
+    setStep('template');
+  }
+
+  // Series-selection step: picking a line narrows the template list to it.
+  function handleSeriesStepPick(next: SeriesResponse) {
+    if (entity?.kind !== 'brand') return;
+    setEntity({ kind: 'series', series: next, brand: entity.brand });
+    setTemplate(null);
+    setFreeFormName('');
+    setStep('template');
+  }
+
+  // "I don't know the series" escape: keep the brand pick and show every line's
+  // machines in one body-part-grouped list (rows carry their [Series] tag).
+  function handleShowAllSeries() {
+    setStep('template');
   }
 
   function handleTemplatePick(next: TemplatePick) {
@@ -567,9 +668,21 @@ export function UploadManualInputScreen() {
   }
 
   function handleRevertEntity() {
-    setEntity(null);
     setTemplate(null);
     setFreeFormName('');
+    // From a series pick under a multi-line brand, step back to that brand's
+    // series selection (not all the way to discovery) so the user can re-pick
+    // a sibling line without re-finding the brand.
+    if (
+      entity !== null &&
+      entity.kind === 'series' &&
+      seriesForBrand(entity.brand.id).length >= MIN_SERIES_FOR_STEP
+    ) {
+      setEntity({ kind: 'brand', brand: entity.brand });
+      setStep('series');
+      return;
+    }
+    setEntity(null);
     setStep('discovery');
   }
 
@@ -630,6 +743,15 @@ export function UploadManualInputScreen() {
           isLoading={brandsLoading || seriesLoading}
           pick={entity}
           onPick={handleEntityPick}
+        />
+      ) : null}
+
+      {step === 'series' && entity !== null && entity.kind === 'brand' ? (
+        <SeriesSelectStep
+          brand={entity.brand}
+          series={seriesForBrand(entity.brand.id)}
+          onPickSeries={handleSeriesStepPick}
+          onShowAll={handleShowAllSeries}
         />
       ) : null}
 

@@ -333,6 +333,7 @@ export function MapScreen() {
           categoriesError={categoriesError}
           machineTemplatesError={machineTemplatesError}
           filters={filters}
+          bounds={filterSearch.searchBounds}
           onApply={setAllFilters}
         />
 
