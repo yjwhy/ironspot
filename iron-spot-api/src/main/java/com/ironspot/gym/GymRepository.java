@@ -4,6 +4,7 @@ import com.ironspot.gym.dto.CreateGymRequest;
 import com.ironspot.gym.dto.GymDetailResponse;
 import com.ironspot.gym.dto.GymSearchRequest;
 import com.ironspot.gym.dto.GymWithMachineCountResponse;
+import com.ironspot.gym.dto.TemplateCountResponse;
 import com.ironspot.search.dsl.SearchScope;
 import com.ironspot.jooq.tables.Brands;
 import com.ironspot.jooq.tables.GymMachines;
@@ -154,6 +155,33 @@ public class GymRepository {
                     r.get(g.COVER_PHOTO_URL)
                 );
             });
+    }
+
+    /**
+     * Map filter badges: per machine template, the number of distinct gyms
+     * within the bbox that hold it (active gym_machines only). Reuses the same
+     * ST_Within(ST_MakeEnvelope) bbox predicate as {@link #searchInBounds} so
+     * the counts line up with what the gym search returns. Templates with no
+     * gym in bounds are simply absent from the result. Free-form gym_machines
+     * (template_id NULL) are excluded.
+     */
+    public List<TemplateCountResponse> templateCountsInBounds(GymSearchRequest req) {
+        Gyms g = GYMS.as("g");
+        GymMachines gm = GYM_MACHINES.as("gm");
+
+        Condition spatialCond = DSL.condition(
+            "ST_Within(g.location::geometry, ST_MakeEnvelope({0}, {1}, {2}, {3}, 4326))",
+            DSL.val(req.getMinLng()), DSL.val(req.getMinLat()),
+            DSL.val(req.getMaxLng()), DSL.val(req.getMaxLat()));
+
+        return dsl.select(gm.TEMPLATE_ID, DSL.countDistinct(g.ID))
+            .from(gm)
+            .join(g).on(g.ID.eq(gm.GYM_ID))
+            .where(gm.DELETED_AT.isNull())
+            .and(gm.TEMPLATE_ID.isNotNull())
+            .and(spatialCond)
+            .groupBy(gm.TEMPLATE_ID)
+            .fetch(r -> new TemplateCountResponse(r.value1(), r.value2().longValue()));
     }
 
     public Optional<UUID> findIdByNaverPlaceId(String naverPlaceId) {

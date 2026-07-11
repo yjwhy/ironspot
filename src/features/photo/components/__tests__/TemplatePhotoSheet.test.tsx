@@ -62,7 +62,12 @@ function mockQuery(state: { isPending?: boolean; isError?: boolean; data?: unkno
 
 function renderSheet() {
   return render(
-    <TemplatePhotoSheet templateId="tpl-1" templateLabel="랫 풀다운" onClose={jest.fn()} />,
+    <TemplatePhotoSheet
+      templateId="tpl-1"
+      templateLabel="랫 풀다운"
+      searchQuery="Hammer Strength Lat Pull Down"
+      onClose={jest.fn()}
+    />,
   );
 }
 
@@ -81,6 +86,21 @@ describe('TemplatePhotoSheet', () => {
     mockQuery({ data: { templateId: 'tpl-1', userPhotos: [], hasAny: false } });
     const { getByText } = renderSheet();
     expect(getByText('아직 등록된 사진이 없어요')).toBeTruthy();
+  });
+
+  it('always offers a web image-search link, even when there are no photos', () => {
+    mockQuery({ data: { templateId: 'tpl-1', userPhotos: [], hasAny: false } });
+    const { getByText } = renderSheet();
+    expect(getByText('웹에서 이미지 검색')).toBeTruthy();
+  });
+
+  it('opens a Google image search built from the search query', () => {
+    mockQuery({ data: { templateId: 'tpl-1', userPhotos: [], hasAny: false } });
+    const { getByText } = renderSheet();
+    fireEvent.press(getByText('웹에서 이미지 검색'));
+    expect(mockOpenBrowser).toHaveBeenCalledWith(
+      'https://www.google.com/search?tbm=isch&q=Hammer%20Strength%20Lat%20Pull%20Down',
+    );
   });
 
   it('shows an error note on query error', () => {

@@ -15,4 +15,6 @@ export const mapKeys = {
     ] as const,
   gymSearch: (bounds: MapBounds | null, filters: SearchFilters) =>
     [...mapKeys.all, 'search', bounds, filters] as const,
+  templateCounts: (bounds: MapBounds | null) =>
+    [...mapKeys.all, 'template-counts', bounds] as const,
 };

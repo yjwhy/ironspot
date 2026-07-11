@@ -22,6 +22,12 @@ interface TemplatePhotoSheetProps {
   templateId: string;
   /** Model name shown as the sheet title (e.g. "랫 풀다운"). */
   templateLabel: string;
+  /**
+   * Free-text used to build the "웹에서 이미지 검색" link (e.g.
+   * "Hammer Strength Lat Pull Down"). Brand + English model name gives the
+   * cleanest gym-equipment image results.
+   */
+  searchQuery: string;
   onClose: () => void;
 }
 
@@ -37,7 +43,17 @@ const PHOTO_STYLE = {
   borderRadius: PHOTO_BORDER_RADIUS,
 } as const;
 
-async function openManufacturerSite(url: string): Promise<void> {
+// Google Images search for the model. Zero per-model curation: we already
+// know the brand + model name, so we build the query on the fly. A search
+// link (not a hosted image) keeps this licence-clean and always available,
+// even for models with no curated image and no user photo yet.
+const IMAGE_SEARCH_BASE_URL = 'https://www.google.com/search?tbm=isch&q=';
+
+function buildImageSearchUrl(query: string): string {
+  return IMAGE_SEARCH_BASE_URL + encodeURIComponent(query);
+}
+
+async function openExternalUrl(url: string): Promise<void> {
   try {
     await WebBrowser.openBrowserAsync(url);
   } catch {
@@ -64,7 +80,12 @@ export function TemplatePhotoSheet(props: TemplatePhotoSheetProps) {
   );
 }
 
-function TemplatePhotoSheetInner({ templateId, templateLabel, onClose }: TemplatePhotoSheetProps) {
+function TemplatePhotoSheetInner({
+  templateId,
+  templateLabel,
+  searchQuery,
+  onClose,
+}: TemplatePhotoSheetProps) {
   const ref = useRef<React.ComponentRef<typeof BottomSheetModal>>(null);
   const query = useTemplatePhotos(templateId, undefined, {
     query: { staleTime: Number.POSITIVE_INFINITY },
@@ -100,6 +121,15 @@ function TemplatePhotoSheetInner({ templateId, templateLabel, onClose }: Templat
           isPending={query.isPending}
           isError={query.isError}
           data={query.data?.data}
+        />
+        {/* Always available, even with no curated image and no user photo:
+            the universal "what does this look like?" fallback. */}
+        <Button
+          label="웹에서 이미지 검색"
+          variant="secondary"
+          onPress={function handleSearchWeb() {
+            void openExternalUrl(buildImageSearchUrl(searchQuery));
+          }}
         />
       </BottomSheetScrollView>
     </BottomSheetModal>
@@ -152,7 +182,7 @@ function TemplatePhotoBody({ isPending, isError, data }: TemplatePhotoBodyProps)
           label="제조사 사이트에서 보기"
           variant="secondary"
           onPress={function handleOpenManufacturer() {
-            void openManufacturerSite(officialUrl);
+            void openExternalUrl(officialUrl);
           }}
         />
       ) : null}

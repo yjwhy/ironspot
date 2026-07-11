@@ -261,7 +261,7 @@ class NlSearchControllerIT extends IntegrationTestBase {
             List.of(),  // empty filters = generic query
             null
         ));
-        // Naver returns 2 places, neither registered in IronSpot.
+        // Naver returns 2 places (within the 5km radius of SEED), neither registered.
         given(naverSearchService.search(anyString())).willReturn(List.of(
             new NaverPlaceResult("naver-id-101", "강남헬스클럽", "서울 강남구 역삼동 100",
                 "강남구 역삼동 100-1", 37.4990, 127.0290, null, "체육시설"),
