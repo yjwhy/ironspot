@@ -36,13 +36,13 @@ describe('buildBottomSheetList', () => {
     expect(buildBottomSheetList(USER_LOCATION, [], [])).toEqual([]);
   });
 
-  it('places registered gyms above unregistered places even when registered are farther', () => {
+  it('sorts purely by distance, so a near unregistered place outranks a far registered gym', () => {
     const farGym = makeGym('g-far', 'Far Gym', 37.5547, 126.9707); // ~5km
     const nearPlace = makePlace('np-near', 'Near Place', 37.4985, 127.028); // ~0.1km
     const result = buildBottomSheetList(USER_LOCATION, [farGym], [nearPlace]);
-    expect(result.map((i) => i.kind)).toEqual(['gym', 'unregistered']);
-    expect(result[0]).toMatchObject({ kind: 'gym', gym: { id: 'g-far' } });
-    expect(result[1]).toMatchObject({ kind: 'unregistered', place: { naverPlaceId: 'np-near' } });
+    expect(result.map((i) => i.kind)).toEqual(['unregistered', 'gym']);
+    expect(result[0]).toMatchObject({ kind: 'unregistered', place: { naverPlaceId: 'np-near' } });
+    expect(result[1]).toMatchObject({ kind: 'gym', gym: { id: 'g-far' } });
   });
 
   it('sorts registered gyms by distance among themselves', () => {
@@ -62,7 +62,7 @@ describe('buildBottomSheetList', () => {
     ]);
   });
 
-  it('keeps the kind-first order even when a registered gym is exactly co-located with an unregistered place', () => {
+  it('keeps the registered gym before a co-located unregistered place (stable sort on equal distance)', () => {
     const sameCoord = { latitude: 37.4985, longitude: 127.028 };
     const gym = makeGym('g-1', 'Gym', sameCoord.latitude, sameCoord.longitude);
     const place = makePlace('np-1', 'Place', sameCoord.latitude, sameCoord.longitude);

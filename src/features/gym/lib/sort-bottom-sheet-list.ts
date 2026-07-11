@@ -3,9 +3,10 @@ import type { Coordinate } from '@/shared/hooks/useCurrentLocation';
 import { haversineKm } from '@/shared/lib/geo';
 import type { GymWithMachineCount } from '@/shared/types/database';
 
-// Discriminated union over the two card kinds the bottom sheet renders.
-// `kind` is the sort priority axis; the discriminator stays a single
-// closed set so new kinds force a compile error in KIND_RANK below.
+// Discriminated union over the two list-item sources. `kind` drives the tap
+// target (gym detail vs. register flow) and the view-model mapping, not the
+// sort order. The bottom sheet and `toGymResultCardModel` both switch on it
+// exhaustively, so adding a kind surfaces as a compile error at those sites.
 export type BottomSheetListItem =
   | { readonly kind: 'gym'; readonly gym: GymWithMachineCount; readonly distanceKm: number }
   | {
@@ -14,29 +15,18 @@ export type BottomSheetListItem =
       readonly distanceKm: number;
     };
 
-// Phase 5 item 21 sort policy. Registered gyms (kind: 'gym') always come
-// before unregistered Naver places (kind: 'unregistered'); within each
-// group cards are ordered by distance ascending. Using a Record<kind, rank>
-// makes the sort policy explicit and forces a TypeScript error if a third
-// `kind` variant is ever added without updating the rank table.
-const KIND_RANK: Record<BottomSheetListItem['kind'], number> = {
-  gym: 0,
-  unregistered: 1,
-};
-
 export function bottomSheetListItemKey(item: BottomSheetListItem): string {
   return item.kind === 'gym' ? `gym:${item.gym.id}` : `naver:${item.place.naverPlaceId}`;
 }
 
 // Builds the bottom sheet list from registered gyms + unregistered Naver
-// places, applying the Phase 5 item 21 sort policy (kind-first, distance-second).
+// places, sorted by distance ascending.
 //
-// Trade-off: a far registered gym ranks ahead of a near unregistered place,
-// which breaks pure-distance expectation. Map markers preserve the spatial
-// signal, and as registered density grows the Naver merge backend drops
-// already-registered IDs out of `unregisteredPlaces`, so the kind-first
-// branch naturally fires less often and the order converges to pure
-// distance sort.
+// The list now renders one unified card design (GymResultCard) regardless of
+// source, so an earlier kind-first sort (registered gyms before Naver places)
+// would read as a random order on visually-identical cards. Distance is the
+// only axis the user can see, so it is the only axis we sort on. Source still
+// drives the tap target (gym detail vs. register flow), not the ordering.
 export function buildBottomSheetList(
   userLocation: Coordinate,
   gyms: readonly GymWithMachineCount[],
@@ -58,7 +48,5 @@ export function buildBottomSheetList(
       longitude: place.longitude,
     }),
   }));
-  return [...gymItems, ...placeItems].sort(
-    (a, b) => KIND_RANK[a.kind] - KIND_RANK[b.kind] || a.distanceKm - b.distanceKm,
-  );
+  return [...gymItems, ...placeItems].sort((a, b) => a.distanceKm - b.distanceKm);
 }

@@ -180,6 +180,66 @@ class NlSearchServiceTest {
         verify(emptyResultReporter).reportIfEmpty(eq("아무 검색"), eq(null));
     }
 
+    @Test
+    void namedPlaceMergeKeysOffResolvedPlaceAndFiltersByRadius() {
+        // The user's bug: "보정동 올리브영 근처" vs "...주변 2km" returned different
+        // Naver merges because the raw sentence was the keyword. The merge must
+        // (1) key off the resolved place ("보정동 올리브영 헬스장"), and (2) drop
+        // Naver hits outside the resolved radius.
+        NlSearchRequest req = new NlSearchRequest("보정동 올리브영 주변 2km 헬스장", 37.0, 127.5);
+        SearchDsl dsl = new SearchDsl(
+            new Location.NamedPlace("보정동 올리브영", null, 1.0),
+            List.of(),
+            null
+        );
+        ValidatedSearch validated = new ValidatedSearch(dsl.location(), List.of());
+        ResolvedLocation resolved = new ResolvedLocation(new Coordinates(37.5, 127.0), 1.0);
+
+        when(llmClient.parse(any())).thenReturn(dsl);
+        when(dslValidator.validate(dsl)).thenReturn(validated);
+        when(locationResolver.resolve(dsl.location(), 37.0, 127.5)).thenReturn(resolved);
+        when(sqlBuilder.execute(resolved, List.of())).thenReturn(List.of());
+        when(interpretationFormatter.format(dsl)).thenReturn("보정동 올리브영 1km 이내");
+        // Keyword normalises to "{place} 근처 헬스장", NOT the raw sentence.
+        when(naverSearchService.search("보정동 올리브영 근처 헬스장")).thenReturn(List.of(
+            new com.ironspot.gym.dto.NaverPlaceResult(
+                "near-1", "가까운짐", "road near", "addr", 37.505, 127.0, null, null), // ~0.55km → kept
+            new com.ironspot.gym.dto.NaverPlaceResult(
+                "far-1", "먼짐", "road far", "addr", 37.52, 127.0, null, null) // ~2.2km → dropped (radius 1km)
+        ));
+        when(gymRepository.findRegisteredNaverPlaceIdsAmong(any())).thenReturn(java.util.Set.of());
+
+        NlSearchResponse response = service.search(req, principal);
+
+        assertThat(response.unregisteredPlaces())
+            .extracting(com.ironspot.search.dto.UnregisteredPlace::naverPlaceId)
+            .containsExactly("near-1");
+    }
+
+    @Test
+    void mergeKeywordKeepsSuffixWithinNaverQueryCapForLongPlaceNames() {
+        // A place name at the 60-char limit must not push the load-bearing
+        // "근처 헬스장" suffix past Naver's 60-char query cap (which would truncate
+        // it off and return nothing).
+        String longName = "가".repeat(60);
+        NlSearchRequest req = new NlSearchRequest("q", 37.0, 127.5);
+        SearchDsl dsl = new SearchDsl(new Location.NamedPlace(longName, null, 1.0), List.of(), null);
+        ValidatedSearch validated = new ValidatedSearch(dsl.location(), List.of());
+        ResolvedLocation resolved = new ResolvedLocation(new Coordinates(37.5, 127.0), 1.0);
+
+        when(llmClient.parse(any())).thenReturn(dsl);
+        when(dslValidator.validate(dsl)).thenReturn(validated);
+        when(locationResolver.resolve(dsl.location(), 37.0, 127.5)).thenReturn(resolved);
+        when(sqlBuilder.execute(resolved, List.of())).thenReturn(List.of());
+        when(interpretationFormatter.format(dsl)).thenReturn("x");
+        org.mockito.ArgumentCaptor<String> keyword = org.mockito.ArgumentCaptor.forClass(String.class);
+        when(naverSearchService.search(keyword.capture())).thenReturn(List.of());
+
+        service.search(req, principal);
+
+        assertThat(keyword.getValue()).hasSizeLessThanOrEqualTo(60).endsWith("근처 헬스장");
+    }
+
     private GymWithMachineCountResponse sampleGym() {
         return new GymWithMachineCountResponse(
             UUID.randomUUID(), "Gym", "Addr", 37.5, 127.0,
