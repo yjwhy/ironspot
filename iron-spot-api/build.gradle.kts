@@ -103,7 +103,7 @@ dependencies {
     // Spring Boot 3.x's `WebClientCustomizer` in its auto-config, which Spring Boot 4 reorganised
     // away. We init Sentry manually in SentryConfig and bridge unhandled exceptions through
     // GlobalExceptionHandler. Revisit when Sentry ships a Spring Boot 4 starter.
-    implementation("io.sentry:sentry:8.42.0")
+    implementation("io.sentry:sentry:8.48.0")
     // Structured JSON encoder for Logback — used in prod profile via logback-spring.xml.
     implementation("net.logstash.logback:logstash-logback-encoder:9.0")
 
