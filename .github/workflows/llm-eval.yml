@@ -47,7 +47,7 @@ jobs:
     # alone because we use `if: always()` on the report job to handle the
     # post-failure path.
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
 
       # Kotlin DSL embedded in Gradle 9.x cannot parse Java 25 version strings — same
       # workaround as api-ci.yml: run the Gradle daemon on Java 24 while the build
