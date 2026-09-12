@@ -10,11 +10,11 @@
 # silently — a malicious or buggy push would land on the next deploy.
 # Dependabot's `docker` ecosystem (added in K6) keeps these digests
 # current with weekly PRs.
-FROM eclipse-temurin:25-jdk-alpine@sha256:5ecfde8e5ecde5954ea3721155b345ef56c1d579b940c761318ad4c05959a151 AS jdk25
+FROM eclipse-temurin:25-jdk-alpine@sha256:09349d79941fd53bb3d487b393ca118d8853c08c09193f416fe6a8718df9e732 AS jdk25
 
 # Builder: Java 24 base for Gradle daemon, with JDK 25 mounted at /opt/jdk25 so the
 # toolchain (configured in build.gradle.kts for Java 25) can find it.
-FROM eclipse-temurin:25-jdk-alpine@sha256:5ecfde8e5ecde5954ea3721155b345ef56c1d579b940c761318ad4c05959a151 AS builder
+FROM eclipse-temurin:25-jdk-alpine@sha256:09349d79941fd53bb3d487b393ca118d8853c08c09193f416fe6a8718df9e732 AS builder
 WORKDIR /build
 
 COPY --from=jdk25 /opt/java/openjdk /opt/jdk25
@@ -49,7 +49,7 @@ COPY src ./src
 RUN ./gradlew --no-daemon bootJar -x generateJooq -x test
 
 # Runtime: slim JRE-only image. Same target as the original Dockerfile.
-FROM eclipse-temurin:25-jre-alpine@sha256:28db6fdf60e38945e43d840c0333aeaec66c15943070104f7586fd3c9d1665b0 AS runtime
+FROM eclipse-temurin:25-jre-alpine@sha256:3137541deb3cac6626b5d9a4a2187bc0d6a34312f858bd2c67dd01e732e6b682 AS runtime
 WORKDIR /app
 
 # Security task #18: run as a non-root user. eclipse-temurin alpine images default
