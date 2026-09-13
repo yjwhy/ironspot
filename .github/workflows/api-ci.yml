@@ -15,7 +15,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
       # Kotlin DSL (embedded in Gradle 8.x) cannot parse Java 25 version strings.
       # Workaround: run the Gradle daemon on Java 24 (via JAVA_HOME override below)
       # while the build toolchain still compiles sources with Java 25.
@@ -29,7 +29,7 @@ jobs:
         with:
           java-version: '25'
           distribution: 'temurin'
-      - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
         with:
           # Security L3: verify gradle-wrapper.jar against gradle.org's
           # known-good SHA list. A poisoned wrapper would otherwise run
@@ -47,7 +47,7 @@ jobs:
 
       - name: Setup pnpm
         if: ${{ !cancelled() }}
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6
         with:
           version: 10.33.0
 
