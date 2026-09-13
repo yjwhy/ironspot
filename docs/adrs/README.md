@@ -33,6 +33,7 @@
 | [0025](./0025-naver-maps-client-id-is-public.md)   | Naver Maps `client_id`는 public 식별자 — 비밀이 아니므로 EAS secret으로 옮길 필요 없음 (Security K4 misclassified)               | Accepted           |
 | [0026](./0026-jooq-over-jpa.md)                    | 데이터 접근은 JPA/Hibernate 대신 jOOQ (PostGIS 공간 쿼리 + NL→SQL 동적 쿼리 적합성)                                              | Accepted           |
 | [0027](./0027-nativewind-styling.md)               | 스타일링은 NativeWind (Tailwind for RN) — 디자인 토큰 집중 + 커스텀 컴포넌트 방침과 정합                                         | Accepted           |
+| [0028](./0028-tanstack-query-server-state.md)      | 서버 상태 관리는 TanStack Query — 캐시/재검증 표준화 + Phase 전환 시 훅 계층 유지                                                | Accepted           |
 
 ## 포맷
 
