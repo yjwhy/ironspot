@@ -32,6 +32,7 @@
 | [0024](./0024-accordion-filter-supersedes-0022.md) | Brand-first accordion 필터 UI — 24 brands accordion + 운동 부위 chip row + global search (Phase 5 item 22 의 281 templates 대응) | Accepted           |
 | [0025](./0025-naver-maps-client-id-is-public.md)   | Naver Maps `client_id`는 public 식별자 — 비밀이 아니므로 EAS secret으로 옮길 필요 없음 (Security K4 misclassified)               | Accepted           |
 | [0026](./0026-jooq-over-jpa.md)                    | 데이터 접근은 JPA/Hibernate 대신 jOOQ (PostGIS 공간 쿼리 + NL→SQL 동적 쿼리 적합성)                                              | Accepted           |
+| [0027](./0027-nativewind-styling.md)               | 스타일링은 NativeWind (Tailwind for RN) — 디자인 토큰 집중 + 커스텀 컴포넌트 방침과 정합                                         | Accepted           |
 
 ## 포맷
 
