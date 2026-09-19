@@ -6,7 +6,7 @@ buildscript {
         classpath("org.jooq:jooq-codegen:3.21.7")
         classpath("org.testcontainers:testcontainers:1.21.4")
         classpath("org.testcontainers:postgresql:1.21.4")
-        classpath("org.postgresql:postgresql:42.7.11")
+        classpath("org.postgresql:postgresql:42.7.13")
         classpath("org.slf4j:slf4j-nop:2.0.18")
     }
 }
