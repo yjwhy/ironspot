@@ -61,7 +61,7 @@ dependencies {
     implementation("org.jooq:jooq:3.21.7")
 
     // OpenAPI (SpringDoc) — 3.x required for Spring Boot 4.x / Spring Framework 7.x
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 
     // JWT — Supabase Auth token validation via JWKS (ES256 asymmetric keys).
     // Supabase auto-migrated all projects from legacy HS256 shared secret to ECC P-256
