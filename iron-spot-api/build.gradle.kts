@@ -6,14 +6,14 @@ buildscript {
         classpath("org.jooq:jooq-codegen:3.21.7")
         classpath("org.testcontainers:testcontainers:1.21.4")
         classpath("org.testcontainers:postgresql:1.21.4")
-        classpath("org.postgresql:postgresql:42.7.11")
+        classpath("org.postgresql:postgresql:42.7.13")
         classpath("org.slf4j:slf4j-nop:2.0.18")
     }
 }
 
 plugins {
     java
-    id("org.springframework.boot") version "4.1.0"
+    id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -103,7 +103,7 @@ dependencies {
     // Spring Boot 3.x's `WebClientCustomizer` in its auto-config, which Spring Boot 4 reorganised
     // away. We init Sentry manually in SentryConfig and bridge unhandled exceptions through
     // GlobalExceptionHandler. Revisit when Sentry ships a Spring Boot 4 starter.
-    implementation("io.sentry:sentry:8.48.0")
+    implementation("io.sentry:sentry:8.55.0")
     // Structured JSON encoder for Logback — used in prod profile via logback-spring.xml.
     implementation("net.logstash.logback:logstash-logback-encoder:9.0")
 
