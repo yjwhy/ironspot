@@ -3,7 +3,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("org.jooq:jooq-codegen:3.21.8")
+        classpath("org.jooq:jooq-codegen:3.21.9")
         classpath("org.testcontainers:testcontainers:1.21.4")
         classpath("org.testcontainers:postgresql:1.21.4")
         classpath("org.postgresql:postgresql:42.7.13")
@@ -58,7 +58,7 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine")
 
     // JOOQ — pin to match generated code version
-    implementation("org.jooq:jooq:3.21.8")
+    implementation("org.jooq:jooq:3.21.9")
 
     // OpenAPI (SpringDoc) — 3.x required for Spring Boot 4.x / Spring Framework 7.x
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
