@@ -29,7 +29,7 @@ jobs:
         with:
           java-version: '25'
           distribution: 'temurin'
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
         with:
           # Security L3: verify gradle-wrapper.jar against gradle.org's
           # known-good SHA list. A poisoned wrapper would otherwise run
@@ -53,7 +53,7 @@ jobs:
 
       - name: Setup Node
         if: ${{ !cancelled() }}
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version: 22
           cache: pnpm
