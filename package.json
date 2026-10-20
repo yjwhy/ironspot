@@ -92,7 +92,7 @@
     "orval": "^8.9.1",
     "prettier": "^3.9.8",
     "tailwindcss": "^3.4.17",
-    "ts-jest": "^29.4.11",
+    "ts-jest": "^29.4.15",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.63.0"
   },
