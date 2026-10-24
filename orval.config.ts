@@ -19,10 +19,11 @@ export default defineConfig({
           path: 'src/shared/lib/api-client.ts',
           name: 'apiClient',
         },
-        query: {
-          useQuery: true,
-          useMutation: true,
-        },
+        // `query.useQuery`/`useMutation` were redundant: orval already emits
+        // query hooks for GET and mutation hooks for the other verbs by
+        // default, so removing them regenerates the client byte-identically
+        // on v8.9.1. They also break the verb split on v8.22+, so dropping
+        // them now unblocks the orval upgrade.
       },
     },
   },
