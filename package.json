@@ -104,5 +104,10 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "undici@7": "7.30.1"
+    }
   }
 }
