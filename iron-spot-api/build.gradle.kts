@@ -61,7 +61,7 @@ dependencies {
     implementation("org.jooq:jooq:3.21.9")
 
     // OpenAPI (SpringDoc) — 3.x required for Spring Boot 4.x / Spring Framework 7.x
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
 
     // JWT — Supabase Auth token validation via JWKS (ES256 asymmetric keys).
     // Supabase auto-migrated all projects from legacy HS256 shared secret to ECC P-256
@@ -103,7 +103,7 @@ dependencies {
     // Spring Boot 3.x's `WebClientCustomizer` in its auto-config, which Spring Boot 4 reorganised
     // away. We init Sentry manually in SentryConfig and bridge unhandled exceptions through
     // GlobalExceptionHandler. Revisit when Sentry ships a Spring Boot 4 starter.
-    implementation("io.sentry:sentry:8.61.1")
+    implementation("io.sentry:sentry:8.62.0")
     // Structured JSON encoder for Logback — used in prod profile via logback-spring.xml.
     implementation("net.logstash.logback:logstash-logback-encoder:9.0")
 
