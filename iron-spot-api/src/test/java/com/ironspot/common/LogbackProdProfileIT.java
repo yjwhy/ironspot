@@ -2,13 +2,18 @@ package com.ironspot.common;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.logging.LoggingInitializationContext;
+import org.springframework.boot.logging.LoggingSystem;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.StandardEnvironment;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
@@ -23,6 +28,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LogbackProdProfileIT extends IntegrationTestBase {
 
     private static final Logger log = LoggerFactory.getLogger(LogbackProdProfileIT.class);
+
+    // Logback is a JVM-global singleton, initialized once by whichever test context starts
+    // first in the shared test JVM. Every other IT runs under the default (non-prod) profile,
+    // so logback-spring.xml's `!prod` branch (Spring Boot's plain-text base.xml console
+    // appender) wins that first init. Spring Boot 4.1.2 no longer re-applies the logback
+    // configuration when this prod-profile context starts afterwards, so without this hook the
+    // marker below is emitted as plain text and the JSON assertions fail, even though the prod
+    // profile itself is correct (this class passes in isolation). Re-apply the real prod config
+    // from logback-spring.xml so the test validates the shipped config regardless of ordering.
+    @BeforeEach
+    void applyProdLogbackConfig() {
+        ConfigurableEnvironment prodEnvironment = new StandardEnvironment();
+        prodEnvironment.setActiveProfiles("prod");
+        LoggingSystem loggingSystem = LoggingSystem.get(getClass().getClassLoader());
+        loggingSystem.initialize(
+            new LoggingInitializationContext(prodEnvironment), "classpath:logback-spring.xml", null);
+    }
 
     @Test
     void prodProfileEmitsValidJsonLogLine(CapturedOutput output) throws Exception {
