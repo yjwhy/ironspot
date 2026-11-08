@@ -39,9 +39,14 @@ class LogbackProdProfileIT extends IntegrationTestBase {
     // from logback-spring.xml so the test validates the shipped config regardless of ordering.
     @BeforeEach
     void applyProdLogbackConfig() {
+        // A preceding non-prod context can leave LoggingSystem.SYSTEM_PROPERTY pointing at the
+        // no-op system, which makes LoggingSystem.get(...).initialize(...) silently do nothing.
+        // Clear it so get() re-detects the real Logback system from the classpath.
+        System.clearProperty(LoggingSystem.SYSTEM_PROPERTY);
         ConfigurableEnvironment prodEnvironment = new StandardEnvironment();
         prodEnvironment.setActiveProfiles("prod");
         LoggingSystem loggingSystem = LoggingSystem.get(getClass().getClassLoader());
+        loggingSystem.beforeInitialize();
         loggingSystem.initialize(
             new LoggingInitializationContext(prodEnvironment), "classpath:logback-spring.xml", null);
     }
