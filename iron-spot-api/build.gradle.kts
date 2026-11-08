@@ -13,7 +13,7 @@ buildscript {
 
 plugins {
     java
-    id("org.springframework.boot") version "4.1.1"
+    id("org.springframework.boot") version "4.1.2"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -154,6 +154,27 @@ tasks.withType<Test> {
     }
     // EVAL_RUN must come from process env only.
     System.getenv("EVAL_RUN")?.let { environment("EVAL_RUN", it) }
+}
+
+// Logback is a JVM-global singleton, initialized once by the first test context in a JVM. Every
+// IT except LogbackProdProfileIT runs under the default (non-prod) profile, so in the shared
+// `test` JVM the plain-text base.xml console appender wins that first init; Spring Boot 4.1.2 then
+// does not re-apply the prod config when LogbackProdProfileIT's prod context starts, so its JSON
+// assertions see plain text. The prod profile itself is correct (the class passes in isolation),
+// so run it in its own JVM where the prod profile is the first and only Logback init. This is
+// order-independent across platforms, unlike re-initializing the shared JVM's Logback in-test.
+val logbackProdProfileTest = tasks.register<Test>("logbackProdProfileTest") {
+    description = "Runs LogbackProdProfileIT in an isolated JVM so the prod Logback config applies."
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    filter { includeTestsMatching("com.ironspot.common.LogbackProdProfileIT") }
+    shouldRunAfter(tasks.named("test"))
+}
+
+tasks.named<Test>("test") {
+    // Excluded from the shared JVM; run in isolation by logbackProdProfileTest (see above).
+    filter { excludeTestsMatching("com.ironspot.common.LogbackProdProfileIT") }
+    finalizedBy(logbackProdProfileTest)
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
