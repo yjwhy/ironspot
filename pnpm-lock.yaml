@@ -158,8 +158,8 @@ importers:
         specifier: 0.5.1
         version: 0.5.1(@babel/core@7.29.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       zod:
-        specifier: ^3.24.1
-        version: 3.25.76
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@testing-library/react-native':
         specifier: ^13.0.1
@@ -208,7 +208,7 @@ importers:
         version: 17.0.5
       orval:
         specifier: ^8.43.0
-        version: 8.43.0(@tanstack/react-query@5.99.2(react@19.1.0))(prettier@3.9.8)(typedoc-plugin-markdown@4.11.0(typedoc@0.28.19(typescript@5.9.3)))(typedoc@0.28.19(typescript@5.9.3))(typescript@5.9.3)(zod@3.25.76)
+        version: 8.43.0(@tanstack/react-query@5.99.2(react@19.1.0))(prettier@3.9.8)(typedoc-plugin-markdown@4.11.0(typedoc@0.28.19(typescript@5.9.3)))(typedoc@0.28.19(typescript@5.9.3))(typescript@5.9.3)(zod@4.6.7)
       prettier:
         specifier: ^3.9.8
         version: 3.9.8
@@ -11907,10 +11907,10 @@ snapshots:
       - '@faker-js/faker'
       - '@modelcontextprotocol/server'
 
-  '@orval/hono@8.43.0(typescript@5.9.3)(zod@3.25.76)':
+  '@orval/hono@8.43.0(typescript@5.9.3)(zod@4.6.7)':
     dependencies:
       '@orval/core': 8.43.0
-      '@orval/zod': 8.43.0(zod@3.25.76)
+      '@orval/zod': 8.43.0(zod@4.6.7)
     optionalDependencies:
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -11918,11 +11918,11 @@ snapshots:
       - '@modelcontextprotocol/server'
       - zod
 
-  '@orval/mcp@8.43.0(zod@3.25.76)':
+  '@orval/mcp@8.43.0(zod@4.6.7)':
     dependencies:
       '@orval/core': 8.43.0
       '@orval/fetch': 8.43.0
-      '@orval/zod': 8.43.0(zod@3.25.76)
+      '@orval/zod': 8.43.0(zod@4.6.7)
     transitivePeerDependencies:
       - '@faker-js/faker'
       - zod
@@ -11967,12 +11967,12 @@ snapshots:
       - '@faker-js/faker'
       - '@modelcontextprotocol/server'
 
-  '@orval/zod@8.43.0(zod@3.25.76)':
+  '@orval/zod@8.43.0(zod@4.6.7)':
     dependencies:
       '@orval/core': 8.43.0
       jsesc: 3.1.0
     optionalDependencies:
-      zod: 3.25.76
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@faker-js/faker'
       - '@modelcontextprotocol/server'
@@ -16339,7 +16339,7 @@ snapshots:
       strip-ansi: 5.2.0
       wcwidth: 1.0.1
 
-  orval@8.43.0(@tanstack/react-query@5.99.2(react@19.1.0))(prettier@3.9.8)(typedoc-plugin-markdown@4.11.0(typedoc@0.28.19(typescript@5.9.3)))(typedoc@0.28.19(typescript@5.9.3))(typescript@5.9.3)(zod@3.25.76):
+  orval@8.43.0(@tanstack/react-query@5.99.2(react@19.1.0))(prettier@3.9.8)(typedoc-plugin-markdown@4.11.0(typedoc@0.28.19(typescript@5.9.3)))(typedoc@0.28.19(typescript@5.9.3))(typescript@5.9.3)(zod@4.6.7):
     dependencies:
       '@commander-js/extra-typings': 15.0.0(commander@15.0.0)
       '@orval/angular': 8.43.0
@@ -16347,14 +16347,14 @@ snapshots:
       '@orval/core': 8.43.0
       '@orval/effect': 8.43.0
       '@orval/fetch': 8.43.0
-      '@orval/hono': 8.43.0(typescript@5.9.3)(zod@3.25.76)
-      '@orval/mcp': 8.43.0(zod@3.25.76)
+      '@orval/hono': 8.43.0(typescript@5.9.3)(zod@4.6.7)
+      '@orval/mcp': 8.43.0(zod@4.6.7)
       '@orval/mock': 8.43.0
       '@orval/pinia-colada': 8.43.0
       '@orval/query': 8.43.0(@tanstack/react-query@5.99.2(react@19.1.0))
       '@orval/solid-start': 8.43.0
       '@orval/swr': 8.43.0
-      '@orval/zod': 8.43.0(zod@3.25.76)
+      '@orval/zod': 8.43.0(zod@4.6.7)
       '@scalar/json-magic': 0.15.7
       '@scalar/openapi-parser': 0.29.16
       '@scalar/openapi-types': 0.9.7

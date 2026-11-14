@@ -13,10 +13,10 @@ import { scrubBreadcrumb, scrubErrorEvent } from './sentry-scrub';
 // the first capture.
 const rawDSN: unknown = process.env.EXPO_PUBLIC_SENTRY_DSN;
 const dsnInput = typeof rawDSN === 'string' && rawDSN.length > 0 ? rawDSN : undefined;
-const dsnParse = z.string().url().optional().safeParse(dsnInput);
+const dsnParse = z.url().optional().safeParse(dsnInput);
 if (!dsnParse.success) {
   throw new Error(
-    `Invalid EXPO_PUBLIC_SENTRY_DSN: ${dsnParse.error.errors.map((e) => e.message).join(', ')}`,
+    `Invalid EXPO_PUBLIC_SENTRY_DSN: ${dsnParse.error.issues.map((e) => e.message).join(', ')}`,
   );
 }
 const DSN = dsnParse.data;
