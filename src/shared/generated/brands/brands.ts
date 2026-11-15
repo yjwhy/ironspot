@@ -93,6 +93,7 @@ export const getListBrandsQueryOptions = <
 export type ListBrandsQueryResult = NonNullable<Awaited<ReturnType<typeof listBrands>>>;
 export type ListBrandsQueryError = unknown;
 
+/** @summary List all brands */
 export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> &
@@ -108,6 +109,7 @@ export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TE
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List all brands */
 export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>> &
@@ -123,6 +125,7 @@ export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TE
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List all brands */
 export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>;
@@ -130,10 +133,7 @@ export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TE
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary List all brands
- */
-
+/** @summary List all brands */
 export function useListBrands<TData = Awaited<ReturnType<typeof listBrands>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBrands>>, TError, TData>>;

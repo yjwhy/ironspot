@@ -155,7 +155,6 @@ export function useGetDashboardData<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
 export function useGetDashboardData<
   TData = Awaited<ReturnType<typeof getDashboardData>>,
   TError = unknown,

@@ -114,6 +114,7 @@ export const getListTemplatesQueryOptions = <
 export type ListTemplatesQueryResult = NonNullable<Awaited<ReturnType<typeof listTemplates>>>;
 export type ListTemplatesQueryError = unknown;
 
+/** @summary List approved machine templates for filter UI + picker */
 export function useListTemplates<
   TData = Awaited<ReturnType<typeof listTemplates>>,
   TError = unknown,
@@ -133,6 +134,7 @@ export function useListTemplates<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List approved machine templates for filter UI + picker */
 export function useListTemplates<
   TData = Awaited<ReturnType<typeof listTemplates>>,
   TError = unknown,
@@ -152,6 +154,7 @@ export function useListTemplates<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List approved machine templates for filter UI + picker */
 export function useListTemplates<
   TData = Awaited<ReturnType<typeof listTemplates>>,
   TError = unknown,
@@ -163,10 +166,7 @@ export function useListTemplates<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary List approved machine templates for filter UI + picker
- */
-
+/** @summary List approved machine templates for filter UI + picker */
 export function useListTemplates<
   TData = Awaited<ReturnType<typeof listTemplates>>,
   TError = unknown,
@@ -262,6 +262,7 @@ export const getTemplatePhotosQueryOptions = <
 export type TemplatePhotosQueryResult = NonNullable<Awaited<ReturnType<typeof templatePhotos>>>;
 export type TemplatePhotosQueryError = unknown;
 
+/** @summary Reference photos for a machine model (curated image + top user photos) */
 export function useTemplatePhotos<
   TData = Awaited<ReturnType<typeof templatePhotos>>,
   TError = unknown,
@@ -282,6 +283,7 @@ export function useTemplatePhotos<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Reference photos for a machine model (curated image + top user photos) */
 export function useTemplatePhotos<
   TData = Awaited<ReturnType<typeof templatePhotos>>,
   TError = unknown,
@@ -302,6 +304,7 @@ export function useTemplatePhotos<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Reference photos for a machine model (curated image + top user photos) */
 export function useTemplatePhotos<
   TData = Awaited<ReturnType<typeof templatePhotos>>,
   TError = unknown,
@@ -314,10 +317,7 @@ export function useTemplatePhotos<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary Reference photos for a machine model (curated image + top user photos)
- */
-
+/** @summary Reference photos for a machine model (curated image + top user photos) */
 export function useTemplatePhotos<
   TData = Awaited<ReturnType<typeof templatePhotos>>,
   TError = unknown,

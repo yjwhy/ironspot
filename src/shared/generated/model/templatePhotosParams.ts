@@ -7,8 +7,6 @@
  */
 
 export type TemplatePhotosParams = {
-  /**
-   * Max user photos to return (default 5, capped at 10).
-   */
+  /** Max user photos to return (default 5, capped at 10). */
   limit?: number;
 };

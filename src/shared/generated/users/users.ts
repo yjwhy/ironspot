@@ -32,6 +32,35 @@ import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+const getHeaders = (
+  ...sources: (RequestInit['headers'] | Record<string, string | undefined>)[]
+) => {
+  const seen = new Set<string>();
+  const layers: [string, string | readonly string[]][][] = [];
+  for (const source of sources.reverse()) {
+    if (!source) continue;
+    const entries =
+      source instanceof Headers
+        ? source.entries()
+        : Symbol.iterator in source
+          ? Array.from(
+              source as Iterable<Iterable<string>>,
+              (entry) => Array.from(entry) as [string, string],
+            )
+          : Object.entries<string | readonly string[] | undefined>(source);
+    const layer: [string, string | readonly string[]][] = [];
+    for (const [name, value] of entries) {
+      if (value !== undefined && !seen.has(name.toLowerCase())) layer.push([name, value]);
+    }
+    for (const [name] of layer) seen.add(name.toLowerCase());
+    layers.push(layer);
+  }
+  return Object.fromEntries(layers.reverse().flat()) as Extract<
+    RequestInit['headers'],
+    Record<string, unknown>
+  >;
+};
+
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
   const result = { queryKey } as T & { queryKey: K };
   for (const key of Object.keys(query)) {
@@ -99,6 +128,7 @@ export const getGetMeQueryOptions = <
 export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>;
 export type GetMeQueryError = unknown;
 
+/** @summary Get current user profile */
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> &
@@ -114,6 +144,7 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unk
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Get current user profile */
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>> &
@@ -129,6 +160,7 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unk
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Get current user profile */
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>;
@@ -136,10 +168,7 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unk
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary Get current user profile
- */
-
+/** @summary Get current user profile */
 export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>>;
@@ -177,29 +206,10 @@ export const updateMe = async (
   updateUserRequest: UpdateUserRequest,
   options?: Parameters<typeof apiClient>[1],
 ): Promise<updateMeResponse> => {
-  const getHeaders = (
-    h?: NonNullable<RequestInit['headers']>,
-  ): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(
-          h as Iterable<Iterable<string>>,
-          (entry) => Array.from(entry) as [string, string],
-        ),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
   return apiClient<updateMeResponse>(getUpdateMeUrl(), {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(updateUserRequest),
   });
 };
@@ -244,9 +254,7 @@ export type UpdateMeMutationBody = UpdateUserRequest;
 export type UpdateMeMutationError = unknown;
 export type UpdateMeMutationVariables = { data: UpdateUserRequest };
 
-/**
- * @summary Update current user nickname
- */
+/** @summary Update current user nickname */
 export const useUpdateMe = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
@@ -318,6 +326,7 @@ export type DeleteMeMutationResult = NonNullable<Awaited<ReturnType<typeof delet
 export type DeleteMeMutationError = unknown;
 
 /**
+ * Security A4: marks the account as pending deletion. The grace window (default 7 days, configurable via ironspot.account-deletion.grace-window-days) lets the user log back in and POST /api/users/me/cancel-deletion to abort. Content anonymisation runs at the end of the grace window via AccountDeletionFinaliserJob — not immediately, so a stolen-token attacker cannot nuke the account before the real user notices.
  * @summary Request account deletion (starts 7-day grace window)
  */
 export const useDeleteMe = <TError = unknown, TContext = unknown>(
@@ -351,29 +360,10 @@ export const recordConsent = async (
   recordConsentRequest: RecordConsentRequest,
   options?: Parameters<typeof apiClient>[1],
 ): Promise<recordConsentResponse> => {
-  const getHeaders = (
-    h?: NonNullable<RequestInit['headers']>,
-  ): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(
-          h as Iterable<Iterable<string>>,
-          (entry) => Array.from(entry) as [string, string],
-        ),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
   return apiClient<recordConsentResponse>(getRecordConsentUrl(), {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(recordConsentRequest),
   });
 };
@@ -419,6 +409,7 @@ export type RecordConsentMutationError = unknown;
 export type RecordConsentMutationVariables = { data: RecordConsentRequest };
 
 /**
+ * Called by the app right after OAuth success when the user has actively checked the consent boxes on LoginScreen. Writes the policy version + timestamp to users.consent_accepted_at / consent_version. Idempotent: a later call overwrites with the newer version.
  * @summary Record PIPA active-consent (security #17)
  */
 export const useRecordConsent = <TError = unknown, TContext = unknown>(
@@ -499,6 +490,7 @@ export type CancelMyDeletionMutationResult = NonNullable<
 export type CancelMyDeletionMutationError = unknown;
 
 /**
+ * Security A4: clears users.deleted_at so the account becomes fully active again. Returns 410 Gone if the grace window has already expired and the row has been finalised — the content is anonymised at that point and there is nothing left to revive.
  * @summary Cancel a pending account deletion (within the grace window)
  */
 export const useCancelMyDeletion = <TError = unknown, TContext = unknown>(
@@ -569,6 +561,7 @@ export const getGetMyVotesQueryOptions = <
 export type GetMyVotesQueryResult = NonNullable<Awaited<ReturnType<typeof getMyVotes>>>;
 export type GetMyVotesQueryError = unknown;
 
+/** @summary List photos the current user has upvoted (most recently voted first) */
 export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>> &
@@ -584,6 +577,7 @@ export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TE
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List photos the current user has upvoted (most recently voted first) */
 export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>> &
@@ -599,6 +593,7 @@ export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TE
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List photos the current user has upvoted (most recently voted first) */
 export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>;
@@ -606,10 +601,7 @@ export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TE
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary List photos the current user has upvoted (most recently voted first)
- */
-
+/** @summary List photos the current user has upvoted (most recently voted first) */
 export function useGetMyVotes<TData = Awaited<ReturnType<typeof getMyVotes>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyVotes>>, TError, TData>>;
@@ -680,6 +672,7 @@ export const getGetMyPhotosQueryOptions = <
 export type GetMyPhotosQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPhotos>>>;
 export type GetMyPhotosQueryError = unknown;
 
+/** @summary List photos uploaded by the current user (newest first, excludes blinded) */
 export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>> &
@@ -695,6 +688,7 @@ export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, 
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List photos uploaded by the current user (newest first, excludes blinded) */
 export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>> &
@@ -710,6 +704,7 @@ export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, 
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List photos uploaded by the current user (newest first, excludes blinded) */
 export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>;
@@ -717,10 +712,7 @@ export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, 
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary List photos uploaded by the current user (newest first, excludes blinded)
- */
-
+/** @summary List photos uploaded by the current user (newest first, excludes blinded) */
 export function useGetMyPhotos<TData = Awaited<ReturnType<typeof getMyPhotos>>, TError = unknown>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyPhotos>>, TError, TData>>;
