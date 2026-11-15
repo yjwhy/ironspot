@@ -83,16 +83,27 @@ export const upload = async (
   params?: UploadParams,
   options?: Parameters<typeof apiClient>[1],
 ): Promise<uploadResponse> => {
-  const formData = new FormData();
-  if (uploadBody?.image !== undefined) {
-    formData.append(`image`, uploadBody.image);
-  }
+  const formData =
+    uploadBody === undefined
+      ? undefined
+      : (() => {
+          const formData = new FormData();
+          if (uploadBody?.image !== undefined) {
+            formData.append(`image`, uploadBody.image);
+          }
+          return formData;
+        })();
 
-  return apiClient<uploadResponse>(getUploadUrl(params), {
+  const requestInit: { body?: unknown } & NonNullable<Parameters<typeof apiClient>[1]> = {
     ...options,
     method: 'POST',
-    body: formData,
-  });
+  };
+  if (formData === undefined) {
+    delete requestInit.body;
+  } else {
+    requestInit.body = formData;
+  }
+  return apiClient<uploadResponse>(getUploadUrl(params), requestInit);
 };
 
 export const getUploadMutationKey = () => ['upload'] as const;
@@ -135,9 +146,7 @@ export type UploadMutationBody = UploadBody | undefined;
 export type UploadMutationError = unknown;
 export type UploadMutationVariables = { data?: UploadBody; params?: UploadParams };
 
-/**
- * @summary Upload a machine photo
- */
+/** @summary Upload a machine photo */
 export const useUpload = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
@@ -179,16 +188,27 @@ export const analyzeForOcrOnly = async (
   analyzeForOcrOnlyBody?: AnalyzeForOcrOnlyBody,
   options?: Parameters<typeof apiClient>[1],
 ): Promise<analyzeForOcrOnlyResponse> => {
-  const formData = new FormData();
-  if (analyzeForOcrOnlyBody?.image !== undefined) {
-    formData.append(`image`, analyzeForOcrOnlyBody.image);
-  }
+  const formData =
+    analyzeForOcrOnlyBody === undefined
+      ? undefined
+      : (() => {
+          const formData = new FormData();
+          if (analyzeForOcrOnlyBody?.image !== undefined) {
+            formData.append(`image`, analyzeForOcrOnlyBody.image);
+          }
+          return formData;
+        })();
 
-  return apiClient<analyzeForOcrOnlyResponse>(getAnalyzeForOcrOnlyUrl(), {
+  const requestInit: { body?: unknown } & NonNullable<Parameters<typeof apiClient>[1]> = {
     ...options,
     method: 'POST',
-    body: formData,
-  });
+  };
+  if (formData === undefined) {
+    delete requestInit.body;
+  } else {
+    requestInit.body = formData;
+  }
+  return apiClient<analyzeForOcrOnlyResponse>(getAnalyzeForOcrOnlyUrl(), requestInit);
 };
 
 export const getAnalyzeForOcrOnlyMutationKey = () => ['analyzeForOcrOnly'] as const;
@@ -237,6 +257,7 @@ export type AnalyzeForOcrOnlyMutationError = unknown;
 export type AnalyzeForOcrOnlyMutationVariables = { data?: AnalyzeForOcrOnlyBody };
 
 /**
+ * Two-photo capture flow: the label image is used only for Vision OCR + brand-anchored matching, then discarded. The caller then captures the whole-machine photo and posts it through the regular /api/photos/upload endpoint.
  * @summary Analyse a label photo for OCR suggestions without storing it
  */
 export const useAnalyzeForOcrOnly = <TError = unknown, TContext = unknown>(
@@ -319,6 +340,7 @@ export const getListPhotosQueryOptions = <
 export type ListPhotosQueryResult = NonNullable<Awaited<ReturnType<typeof listPhotos>>>;
 export type ListPhotosQueryError = unknown;
 
+/** @summary List photos for a gym machine */
 export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = unknown>(
   gymMachineId: string,
   options: {
@@ -335,6 +357,7 @@ export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TE
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List photos for a gym machine */
 export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = unknown>(
   gymMachineId: string,
   options?: {
@@ -351,6 +374,7 @@ export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TE
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List photos for a gym machine */
 export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = unknown>(
   gymMachineId: string,
   options?: {
@@ -359,10 +383,7 @@ export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TE
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary List photos for a gym machine
- */
-
+/** @summary List photos for a gym machine */
 export function useListPhotos<TData = Awaited<ReturnType<typeof listPhotos>>, TError = unknown>(
   gymMachineId: string,
   options?: {
@@ -447,9 +468,7 @@ export type DeletePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof de
 export type DeletePhotoMutationError = unknown;
 export type DeletePhotoMutationVariables = { id: string };
 
-/**
- * @summary Delete own photo
- */
+/** @summary Delete own photo */
 export const useDeletePhoto = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<

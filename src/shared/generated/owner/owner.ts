@@ -40,6 +40,35 @@ import { apiClient } from '../../lib/api-client';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+const getHeaders = (
+  ...sources: (RequestInit['headers'] | Record<string, string | undefined>)[]
+) => {
+  const seen = new Set<string>();
+  const layers: [string, string | readonly string[]][][] = [];
+  for (const source of sources.reverse()) {
+    if (!source) continue;
+    const entries =
+      source instanceof Headers
+        ? source.entries()
+        : Symbol.iterator in source
+          ? Array.from(
+              source as Iterable<Iterable<string>>,
+              (entry) => Array.from(entry) as [string, string],
+            )
+          : Object.entries<string | readonly string[] | undefined>(source);
+    const layer: [string, string | readonly string[]][] = [];
+    for (const [name, value] of entries) {
+      if (value !== undefined && !seen.has(name.toLowerCase())) layer.push([name, value]);
+    }
+    for (const [name] of layer) seen.add(name.toLowerCase());
+    layers.push(layer);
+  }
+  return Object.fromEntries(layers.reverse().flat()) as Extract<
+    RequestInit['headers'],
+    Record<string, unknown>
+  >;
+};
+
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
   const result = { queryKey } as T & { queryKey: K };
   for (const key of Object.keys(query)) {
@@ -77,29 +106,10 @@ export const update = async (
   ownerUpdateMachineRequest: OwnerUpdateMachineRequest,
   options?: Parameters<typeof apiClient>[1],
 ): Promise<updateResponse> => {
-  const getHeaders = (
-    h?: NonNullable<RequestInit['headers']>,
-  ): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(
-          h as Iterable<Iterable<string>>,
-          (entry) => Array.from(entry) as [string, string],
-        ),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
   return apiClient<updateResponse>(getUpdateUrl(id), {
     ...options,
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(ownerUpdateMachineRequest),
   });
 };
@@ -144,9 +154,7 @@ export type UpdateMutationBody = OwnerUpdateMachineRequest;
 export type UpdateMutationError = unknown;
 export type UpdateMutationVariables = { id: string; data: OwnerUpdateMachineRequest };
 
-/**
- * @summary Update template/quantity on an owned gym_machine
- */
+/** @summary Update template/quantity on an owned gym_machine */
 export const useUpdate = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
@@ -233,9 +241,7 @@ export type _DeleteMutationResult = NonNullable<Awaited<ReturnType<typeof _delet
 export type _DeleteMutationError = unknown;
 export type _DeleteMutationVariables = { id: string };
 
-/**
- * @summary Soft-delete an owned gym_machine
- */
+/** @summary Soft-delete an owned gym_machine */
 export const useDelete = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
@@ -277,29 +283,10 @@ export const dispose = async (
   ownerDispositionRequest: OwnerDispositionRequest,
   options?: Parameters<typeof apiClient>[1],
 ): Promise<disposeResponse> => {
-  const getHeaders = (
-    h?: NonNullable<RequestInit['headers']>,
-  ): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(
-          h as Iterable<Iterable<string>>,
-          (entry) => Array.from(entry) as [string, string],
-        ),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
   return apiClient<disposeResponse>(getDisposeUrl(id), {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(ownerDispositionRequest),
   });
 };
@@ -344,9 +331,7 @@ export type DisposeMutationBody = OwnerDispositionRequest;
 export type DisposeMutationError = unknown;
 export type DisposeMutationVariables = { id: string; data: OwnerDispositionRequest };
 
-/**
- * @summary Owner disposition (actioned / dismissed) on a queue report
- */
+/** @summary Owner disposition (actioned / dismissed) on a queue report */
 export const useDispose = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
@@ -433,9 +418,7 @@ export type VerifyMutationResult = NonNullable<Awaited<ReturnType<typeof verify>
 export type VerifyMutationError = unknown;
 export type VerifyMutationVariables = { id: string };
 
-/**
- * @summary Mark a photo as verified by owner
- */
+/** @summary Mark a photo as verified by owner */
 export const useVerify = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
@@ -478,16 +461,27 @@ export const uploadGymCoverPhoto = async (
   uploadGymCoverPhotoBody?: UploadGymCoverPhotoBody,
   options?: Parameters<typeof apiClient>[1],
 ): Promise<uploadGymCoverPhotoResponse> => {
-  const formData = new FormData();
-  if (uploadGymCoverPhotoBody?.image !== undefined) {
-    formData.append(`image`, uploadGymCoverPhotoBody.image);
-  }
+  const formData =
+    uploadGymCoverPhotoBody === undefined
+      ? undefined
+      : (() => {
+          const formData = new FormData();
+          if (uploadGymCoverPhotoBody?.image !== undefined) {
+            formData.append(`image`, uploadGymCoverPhotoBody.image);
+          }
+          return formData;
+        })();
 
-  return apiClient<uploadGymCoverPhotoResponse>(getUploadGymCoverPhotoUrl(gymId), {
+  const requestInit: { body?: unknown } & NonNullable<Parameters<typeof apiClient>[1]> = {
     ...options,
     method: 'POST',
-    body: formData,
-  });
+  };
+  if (formData === undefined) {
+    delete requestInit.body;
+  } else {
+    requestInit.body = formData;
+  }
+  return apiClient<uploadGymCoverPhotoResponse>(getUploadGymCoverPhotoUrl(gymId), requestInit);
 };
 
 export const getUploadGymCoverPhotoMutationKey = () => ['uploadGymCoverPhoto'] as const;
@@ -539,6 +533,7 @@ export type UploadGymCoverPhotoMutationVariables = {
 };
 
 /**
+ * Owner-only. Reuses the standard Vision SafeSearch + face-PII gate, but skips OCR + machine-binding. SafeSearch QUEUE_FOR_ADMIN is rejected here (stricter than machine photos) because the cover is immediately public.
  * @summary Upload or replace the gym's cover photo
  */
 export const useUploadGymCoverPhoto = <TError = unknown, TContext = unknown>(
@@ -634,6 +629,7 @@ export type DeleteGymCoverPhotoMutationError = unknown;
 export type DeleteGymCoverPhotoMutationVariables = { gymId: string };
 
 /**
+ * Owner-only. Idempotent — returns 204 even if no cover was set.
  * @summary Clear the gym's cover photo
  */
 export const useDeleteGymCoverPhoto = <TError = unknown, TContext = unknown>(
@@ -676,29 +672,10 @@ export const create = async (
   ownerCreateMachineRequest: OwnerCreateMachineRequest,
   options?: Parameters<typeof apiClient>[1],
 ): Promise<createResponse> => {
-  const getHeaders = (
-    h?: NonNullable<RequestInit['headers']>,
-  ): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(
-          h as Iterable<Iterable<string>>,
-          (entry) => Array.from(entry) as [string, string],
-        ),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
   return apiClient<createResponse>(getCreateUrl(), {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    headers: getHeaders({ 'Content-Type': 'application/json' }, options?.headers),
     body: JSON.stringify(ownerCreateMachineRequest),
   });
 };
@@ -743,9 +720,7 @@ export type CreateMutationBody = OwnerCreateMachineRequest;
 export type CreateMutationError = unknown;
 export type CreateMutationVariables = { data: OwnerCreateMachineRequest };
 
-/**
- * @summary Create a gym_machine in the owner's gym
- */
+/** @summary Create a gym_machine in the owner's gym */
 export const useCreate = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
@@ -799,16 +774,27 @@ export const claim = async (
   claimBody?: ClaimBody,
   options?: Parameters<typeof apiClient>[1],
 ): Promise<claimResponse> => {
-  const formData = new FormData();
-  if (claimBody?.image !== undefined) {
-    formData.append(`image`, claimBody.image);
-  }
+  const formData =
+    claimBody === undefined
+      ? undefined
+      : (() => {
+          const formData = new FormData();
+          if (claimBody?.image !== undefined) {
+            formData.append(`image`, claimBody.image);
+          }
+          return formData;
+        })();
 
-  return apiClient<claimResponse>(getClaimUrl(params), {
+  const requestInit: { body?: unknown } & NonNullable<Parameters<typeof apiClient>[1]> = {
     ...options,
     method: 'POST',
-    body: formData,
-  });
+  };
+  if (formData === undefined) {
+    delete requestInit.body;
+  } else {
+    requestInit.body = formData;
+  }
+  return apiClient<claimResponse>(getClaimUrl(params), requestInit);
 };
 
 export const getClaimMutationKey = () => ['claim'] as const;
@@ -850,9 +836,7 @@ export type ClaimMutationBody = ClaimBody | undefined;
 export type ClaimMutationError = unknown;
 export type ClaimMutationVariables = { params: ClaimParams; data?: ClaimBody };
 
-/**
- * @summary Claim ownership of a gym via 사업자등록증 OCR
- */
+/** @summary Claim ownership of a gym via 사업자등록증 OCR */
 export const useClaim = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
@@ -939,6 +923,7 @@ export const getQueueQueryOptions = <TData = Awaited<ReturnType<typeof queue>>, 
 export type QueueQueryResult = NonNullable<Awaited<ReturnType<typeof queue>>>;
 export type QueueQueryError = unknown;
 
+/** @summary List the owner's pending moderation queue (24h first-look) */
 export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unknown>(
   params: undefined | QueueParams,
   options: {
@@ -955,6 +940,7 @@ export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unk
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List the owner's pending moderation queue (24h first-look) */
 export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unknown>(
   params?: QueueParams,
   options?: {
@@ -971,6 +957,7 @@ export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unk
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List the owner's pending moderation queue (24h first-look) */
 export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unknown>(
   params?: QueueParams,
   options?: {
@@ -979,10 +966,7 @@ export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unk
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary List the owner's pending moderation queue (24h first-look)
- */
-
+/** @summary List the owner's pending moderation queue (24h first-look) */
 export function useQueue<TData = Awaited<ReturnType<typeof queue>>, TError = unknown>(
   params?: QueueParams,
   options?: {

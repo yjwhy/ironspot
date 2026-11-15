@@ -93,6 +93,7 @@ export const getListCategoriesQueryOptions = <
 export type ListCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listCategories>>>;
 export type ListCategoriesQueryError = unknown;
 
+/** @summary List all categories */
 export function useListCategories<
   TData = Awaited<ReturnType<typeof listCategories>>,
   TError = unknown,
@@ -111,6 +112,7 @@ export function useListCategories<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List all categories */
 export function useListCategories<
   TData = Awaited<ReturnType<typeof listCategories>>,
   TError = unknown,
@@ -129,6 +131,7 @@ export function useListCategories<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List all categories */
 export function useListCategories<
   TData = Awaited<ReturnType<typeof listCategories>>,
   TError = unknown,
@@ -139,10 +142,7 @@ export function useListCategories<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary List all categories
- */
-
+/** @summary List all categories */
 export function useListCategories<
   TData = Awaited<ReturnType<typeof listCategories>>,
   TError = unknown,

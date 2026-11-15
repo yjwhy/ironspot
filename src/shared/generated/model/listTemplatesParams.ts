@@ -7,16 +7,10 @@
  */
 
 export type ListTemplatesParams = {
-  /**
-   * Restrict to templates of this brand.
-   */
+  /** Restrict to templates of this brand. */
   brandId?: string;
-  /**
-   * Restrict to templates of this category (운동 부위).
-   */
+  /** Restrict to templates of this category (운동 부위). */
   categoryId?: string;
-  /**
-   * Restrict to templates of this product-line series (V27).
-   */
+  /** Restrict to templates of this product-line series (V27). */
   seriesId?: string;
 };

@@ -86,9 +86,7 @@ export type UpvotePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof up
 export type UpvotePhotoMutationError = unknown;
 export type UpvotePhotoMutationVariables = { photoId: string };
 
-/**
- * @summary Upvote a photo
- */
+/** @summary Upvote a photo */
 export const useUpvotePhoto = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
@@ -180,9 +178,7 @@ export type RemoveUpvotePhotoMutationResult = NonNullable<
 export type RemoveUpvotePhotoMutationError = unknown;
 export type RemoveUpvotePhotoMutationVariables = { photoId: string };
 
-/**
- * @summary Remove upvote from a photo
- */
+/** @summary Remove upvote from a photo */
 export const useRemoveUpvotePhoto = <TError = unknown, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<

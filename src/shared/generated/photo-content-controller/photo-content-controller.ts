@@ -135,7 +135,6 @@ export function useContent<TData = Awaited<ReturnType<typeof content>>, TError =
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
 export function useContent<TData = Awaited<ReturnType<typeof content>>, TError = unknown>(
   photoId: string,
   options?: {
