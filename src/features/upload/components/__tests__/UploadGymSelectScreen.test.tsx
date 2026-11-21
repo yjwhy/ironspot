@@ -153,7 +153,7 @@ function makeUseQueryResult(
     refetch: jest.fn(),
     promise: Promise.resolve(undefined as unknown as GymWithMachineCount[]),
     ...overrides,
-  } as ReturnType<typeof useGymSearch>;
+  } as unknown as ReturnType<typeof useGymSearch>;
 }
 
 function makeGymMachinesResult(
@@ -184,7 +184,7 @@ function makeGymMachinesResult(
     refetch: jest.fn(),
     promise: Promise.resolve(undefined as unknown as GymMachineWithDetails[]),
     ...overrides,
-  } as ReturnType<typeof useGymMachines>;
+  } as unknown as ReturnType<typeof useGymMachines>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
