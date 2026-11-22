@@ -57,7 +57,7 @@
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
     "ky": "^2.0.2",
-    "nativewind": "^4.1.23",
+    "nativewind": "^4.2.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-error-boundary": "^5.0.0",
