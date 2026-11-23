@@ -24,7 +24,9 @@ export default function TabLayout() {
           name="index"
           options={{
             tabBarLabel: '지도',
-            tabBarIcon: ({ color, size }) => <MaterialIcons name="map" size={size} color={color} />,
+            tabBarIcon: ({ color, size }) => (
+              <MaterialIcons name="map" size={size} color={color as string} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -33,7 +35,7 @@ export default function TabLayout() {
             tabBarLabel: '마이',
             tabBarIcon: ({ color, size }) => (
               <View>
-                <MaterialIcons name="person" size={size} color={color} />
+                <MaterialIcons name="person" size={size} color={color as string} />
                 {showDot ? (
                   <View
                     testID="profile-tab-pending-dot"

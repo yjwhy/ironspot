@@ -81,6 +81,7 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   // index (the closure captures only stable values, never `mode`).
   const snapIndex = snapIndexForMode(mode.type);
   const snapIndexRef = useRef(snapIndex);
+  // eslint-disable-next-line react-hooks/refs -- intentional: the empty-deps focus-effect closure reads this ref to always snap to the latest mode's index (see comment above)
   snapIndexRef.current = snapIndex;
   // True only once the focus effect has presented AND completed its initial
   // (delayed) snap — gorhom v5 ignores snapToIndex before the modal commits its

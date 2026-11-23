@@ -65,6 +65,7 @@ export function useBottomSheetMode({
   useEffect(
     function clearStaleSelectedGym() {
       if (selectedGymId !== null && selectedGym === null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- drop a selection that is no longer present in the current results
         setSelectedGymId(null);
       }
     },
@@ -80,6 +81,7 @@ export function useBottomSheetMode({
         (p) => p.naverPlaceId === selectedUnregisteredPlace.naverPlaceId,
       );
       if (!stillPresent) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- drop a selection that is no longer present in the current results
         setSelectedUnregisteredPlace(null);
       }
     },

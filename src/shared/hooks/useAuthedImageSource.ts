@@ -21,6 +21,7 @@ export function useAuthedImageSource(contentPath: string | null | undefined): Im
   useEffect(
     function resolveAuthedSource() {
       if (!contentPath) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset to the placeholder when no proxy path; the async branch below sets the real source
         setSource(null);
         return;
       }

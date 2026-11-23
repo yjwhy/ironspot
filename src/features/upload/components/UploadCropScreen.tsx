@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-deprecated --
+ * gesture-handler v3 deprecates the `Gesture` builder API in favour of the hook
+ * API (usePanGesture, etc.). The hook API has inverted callback semantics
+ * (onEnd → onDeactivate, the success arg → event.canceled) that cannot be
+ * verified without an on-device run, so the migration is deferred to a
+ * device-verified gesture pass. TODO(expo-58): migrate to the hook API and
+ * remove this directive once validated on device.
+ */
 import { toast } from 'burnt';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { useLocalSearchParams, useRouter } from 'expo-router';

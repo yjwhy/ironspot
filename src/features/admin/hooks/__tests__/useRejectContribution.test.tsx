@@ -52,6 +52,7 @@ describe('useRejectContribution', () => {
       result.current.confirmAndReject();
     });
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- asserting on a mocked RN API, not invoking the method
     expect(Alert.alert).toHaveBeenCalled();
     expect(mutate).toHaveBeenCalledWith({ id: 'gm-1' });
   });

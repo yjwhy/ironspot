@@ -1,3 +1,12 @@
+/* eslint-disable @typescript-eslint/no-deprecated --
+ * gesture-handler v3 deprecates the `Gesture` builder API in favour of the hook
+ * API (usePinchGesture/usePanGesture/useTapGesture/useExclusiveGestures/
+ * useSimultaneousGestures). The hook API has inverted callback semantics
+ * (onEnd → onDeactivate, the success arg → event.canceled) that cannot be
+ * verified without an on-device run, so the migration is deferred to a
+ * device-verified gesture pass. TODO(expo-58): migrate to the hook API and
+ * remove this directive once validated on device.
+ */
 import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';

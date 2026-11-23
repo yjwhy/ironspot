@@ -189,6 +189,7 @@ function NaverGymRegistrationPanel({ onClose, initialQuery }: NaverGymRegistrati
   useEffect(
     function syncInitialQueryOnce() {
       if (initialQuery !== undefined && initialQuery !== '') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time deep-link query sync on mount; later edits stay user-driven
         setQuery(initialQuery);
       }
     },

@@ -64,11 +64,10 @@ describe('BrandLogo', () => {
       const { getByTestId } = render(
         <BrandLogo brandId="b-size" brandName="X" brandNameKo="엑" size={size} testID="logo" />,
       );
-      /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
       const style = getByTestId('logo').props.style as { width: number; height: number };
       expect(style.width).toBe(width);
       expect(style.height).toBe(height);
-      /* eslint-enable @typescript-eslint/no-unsafe-member-access */
     },
   );
 });
