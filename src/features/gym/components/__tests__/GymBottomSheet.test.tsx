@@ -9,9 +9,16 @@ import type * as BottomSheetMockModule from '@/test/utils/bottom-sheet-mock';
 import { useGymMachines } from '../../hooks/useGymMachines';
 import { GymBottomSheet, snapIndexForMode } from '../GymBottomSheet';
 
-jest.mock('@react-navigation/bottom-tabs', () => ({
-  useBottomTabBarHeight: jest.fn(() => 83),
-}));
+// GymBottomSheet reads BottomTabBarHeightContext directly (react-navigation v7's
+// useBottomTabBarHeight throws without a provider). A context defaulting to 83
+// reproduces the tab-bar height the component expects at the mid detent.
+jest.mock('@react-navigation/bottom-tabs', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const ReactModule = require('react') as typeof ReactType;
+  return {
+    BottomTabBarHeightContext: ReactModule.createContext(83),
+  };
+});
 
 // Stand-in for expo-router's useFocusEffect: behaves like useEffect with [] so the
 // "present + snap on mount" branch fires in unit tests where no navigation container
