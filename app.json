@@ -7,13 +7,16 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFBEB"
-    },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFBEB"
+        }
+      ],
       "expo-font",
       [
         "expo-location",
@@ -46,7 +49,8 @@
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": false
+            "usesCleartextTraffic": false,
+            "extraMavenRepos": ["https://repository.map.naver.com/archive/maven"]
           }
         }
       ],
