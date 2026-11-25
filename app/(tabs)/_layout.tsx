@@ -25,7 +25,11 @@ export default function TabLayout() {
           options={{
             tabBarLabel: '지도',
             tabBarIcon: ({ color, size }) => (
-              <MaterialIcons name="map" size={size} color={color as string} />
+              <MaterialIcons
+                name="map"
+                size={size}
+                color={typeof color === 'string' ? color : undefined}
+              />
             ),
           }}
         />
@@ -35,7 +39,11 @@ export default function TabLayout() {
             tabBarLabel: '마이',
             tabBarIcon: ({ color, size }) => (
               <View>
-                <MaterialIcons name="person" size={size} color={color as string} />
+                <MaterialIcons
+                  name="person"
+                  size={size}
+                  color={typeof color === 'string' ? color : undefined}
+                />
                 {showDot ? (
                   <View
                     testID="profile-tab-pending-dot"
