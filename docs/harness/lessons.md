@@ -185,9 +185,16 @@ Mounting a global `<OfflineBanner />` as a sibling of `<Stack>` in `app/_layout.
 
 ---
 
-### 2026-11-24 / Expo SDK 58 — react-native-mmkv 4 needs nitro-modules pinned to its exact devDependency
+### 2026-11-24 / Expo SDK 58 — react-native-nitro-modules must satisfy BOTH mmkv's ABI and RN 0.88's iOS JSI hook (use 0.37.2, not mmkv's devDep)
 
-`react-native-mmkv` 4.3.2 ships nitrogen-generated C++ bindings compiled against a specific `react-native-nitro-modules` version (its own devDependency, 0.35.9). A looser range like `^0.32.0` resolves to 0.32.2, whose `margelo::nitro::JHybridObject` lacks the `CxxPart` member the generated code references, and `:react-native-mmkv:buildCMakeDebug` fails with `no member named 'CxxPart' in 'margelo::nitro::JHybridObject'`. **Pin `react-native-nitro-modules` to the exact version mmkv was generated against** (check `node_modules/react-native-mmkv/package.json` devDependencies). After changing it: `pnpm install`, then `expo prebuild --clean --platform android`, then clear stale CMake caches (`rm -rf node_modules/react-native-mmkv/android/.cxx node_modules/react-native-mmkv/android/build`) before rebuilding.
+`react-native-mmkv` 4.3.2 (used via nitro) pulls two conflicting-looking constraints on `react-native-nitro-modules`, and the naive pick (mmkv's own devDependency, 0.35.9) passes Android but crashes iOS at runtime. Both must be satisfied by one version:
+
+1. **Android ABI (`CxxPart`):** mmkv 4.3.2's nitrogen-generated C++ references `margelo::nitro::JHybridObject::CxxPart`, which 0.32.2 lacks → `:react-native-mmkv:buildCMakeDebug` fails with `no member named 'CxxPart'`. `CxxPart` exists in 0.35.x and is retained in 0.37.x.
+2. **iOS JSI hook (RN 0.88):** React Native 0.88 calls the two-argument iOS selector `installJSIBindingsWithRuntime:callInvoker:`. nitro < 0.36.2 implements only the one-arg `installJSIBindingsWithRuntime:`, so nitro's installer never runs and the app red-boxes at runtime with `Failed to install Nitro: installJSIBindingsWithRuntime: was not called` (chain: `useRecentSearches → createMMKV → NitroModules.install()`). This is iOS-only and runtime-only — the JS trio, the Android build, and the Android runtime all stay green, so only an on-device iOS launch catches it.
+
+**Resolution: pin `react-native-nitro-modules` to 0.37.2** (has `CxxPart` for Android AND the two-arg hook for iOS). Do NOT just match `node_modules/react-native-mmkv/package.json` devDependencies — that is 0.35.9 and is too old for RN 0.88 iOS. Dead ends that look plausible but are NOT the fix: `expo-build-properties` `ios.usePrecompiledModules: false` and `ios.buildReactNativeFromSource: true` (the error is the nitro version, not precompilation). After bumping: `pnpm install`, `expo prebuild --clean`, clear stale CMake caches (`rm -rf node_modules/react-native-mmkv/android/.cxx node_modules/react-native-{mmkv,nitro-modules}/android/build`), rebuild both platforms.
+
+**`.DS_Store` breaks Android prefab:** an Android CMake build can fail at `:<module>:configureCMakeDebug` with `com.google.prefab.api.MissingPlatformIDException: … /prefab/modules/reactnative/libs/.DS_Store does not contain a platform ID`. A macOS `.DS_Store` landed in the react-android Gradle transform cache and prefab tried to read it as a platform artifact. Fix: `find ~/.gradle/caches -name .DS_Store -delete` and rebuild. Not a dependency problem — it masquerades as one.
 
 ---
 
