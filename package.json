@@ -110,7 +110,9 @@
   },
   "pnpm": {
     "overrides": {
-      "zod-validation-error": "^4.0.1"
+      "zod-validation-error": "^4.0.1",
+      "glob@10": "^14.0.2",
+      "glob@13": "^14.0.2"
     }
   }
 }
