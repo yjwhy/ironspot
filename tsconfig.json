@@ -7,7 +7,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["jest", "node", "react"],
+    "types": ["jest", "node", "react", "expo/types"],
     "paths": {
       "@/*": ["./src/*"]
     }
