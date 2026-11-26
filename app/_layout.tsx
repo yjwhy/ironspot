@@ -1,7 +1,7 @@
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
+import { hideAsync, preventAutoHideAsync } from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -22,7 +22,7 @@ initSentry();
 
 // Expo convention: keep the native splash screen visible until fonts load
 // (or fail to load), then hide it from the effect below.
-void SplashScreen.preventAutoHideAsync();
+void preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
@@ -37,7 +37,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsReady) {
-      void SplashScreen.hideAsync();
+      void hideAsync();
     }
   }, [fontsReady]);
 

@@ -9,6 +9,7 @@ export function useMarkerReveal(gyms: readonly GymWithMachineCount[]) {
   useEffect(
     function staggerRevealMarkers() {
       if (gyms.length === 0) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset before staggering markers back in via the timers below
         setVisibleMarkerIds([]);
         return;
       }

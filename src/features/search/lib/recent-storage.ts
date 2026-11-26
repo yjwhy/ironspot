@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/react-native';
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 import { z } from 'zod';
 
 import { RECENT_HISTORY_MAX } from '../constants';
@@ -26,7 +26,7 @@ const RECENT_QUERY_MAX_CHARS = 80;
  */
 const RECENT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-const recentStorage = new MMKV({ id: 'search-recent' });
+const recentStorage = createMMKV({ id: 'search-recent' });
 
 const RecentEntrySchema = z.object({
   query: z.string().min(1).max(RECENT_QUERY_MAX_CHARS),
@@ -85,5 +85,5 @@ export function writeRecent(entries: readonly RecentEntry[]): void {
 }
 
 export function clearRecent(): void {
-  recentStorage.delete(RECENT_KEY);
+  recentStorage.remove(RECENT_KEY);
 }
