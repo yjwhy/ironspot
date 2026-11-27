@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react-native';
-import * as SplashScreen from 'expo-splash-screen';
+import { hideAsync, preventAutoHideAsync } from 'expo-splash-screen';
 import type { ComponentProps, ReactNode } from 'react';
 import type * as ReactNativeModule from 'react-native';
 import { Text, View } from 'react-native';
@@ -62,8 +62,8 @@ jest.mock('@/shared/lib/query-client', () => ({
 
 jest.mock('../../global.css', () => ({}), { virtual: true });
 
-const mockedHideAsync = SplashScreen.hideAsync as jest.Mock;
-const mockedPreventAutoHide = SplashScreen.preventAutoHideAsync as jest.Mock;
+const mockedHideAsync = hideAsync as jest.Mock;
+const mockedPreventAutoHide = preventAutoHideAsync as jest.Mock;
 const mockedUseAppFonts = useAppFonts as unknown as jest.Mock;
 
 // preventAutoHideAsync runs at module load time (top-level side effect),

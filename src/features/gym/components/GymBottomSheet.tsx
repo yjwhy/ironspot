@@ -1,8 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { BottomSheetFlatList, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useContext, useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/AppText';
@@ -65,8 +65,13 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   // is mounted inside the Tab.Screen) — calling them from ListMode crashes
   // because BottomSheetView is portaled out of the tab navigator tree and
   // loses the bottom-tab context. We thread the values down as a prop.
-  const tabBarHeight = useBottomTabBarHeight();
-  // `useBottomTabBarHeight()` already includes the safe-area home-indicator
+  // react-navigation v7's `useBottomTabBarHeight()` throws when the
+  // BottomTabBarHeightContext is absent (the v6 hook returned a near-zero value
+  // instead). Because the gorhom portal can strip that context, we read the
+  // context directly and fall back to 0, preserving the v6-tolerant behavior the
+  // floor below was written against.
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  // The context value already includes the safe-area home-indicator
   // strip on devices that have one (iPhone Plus reports ~83pt = 49 tab +
   // 34 safe-area), so we must NOT add `safeAreaInsets.bottom` on top —
   // doing that overshoots by ~34pt and leaves a visible map strip
@@ -81,6 +86,7 @@ export function GymBottomSheet({ mode }: GymBottomSheetProps) {
   // index (the closure captures only stable values, never `mode`).
   const snapIndex = snapIndexForMode(mode.type);
   const snapIndexRef = useRef(snapIndex);
+  // eslint-disable-next-line react-hooks/refs -- intentional: the empty-deps focus-effect closure reads this ref to always snap to the latest mode's index (see comment above)
   snapIndexRef.current = snapIndex;
   // True only once the focus effect has presented AND completed its initial
   // (delayed) snap — gorhom v5 ignores snapToIndex before the modal commits its

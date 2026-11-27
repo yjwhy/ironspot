@@ -15,6 +15,7 @@ export function useMapSearch(filters: SearchFilters) {
   useEffect(
     function triggerInitialSearch() {
       if (bounds !== null && searchBounds === null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot initial-search sync, guarded by searchBounds === null
         setSearchBounds(bounds);
       }
     },
