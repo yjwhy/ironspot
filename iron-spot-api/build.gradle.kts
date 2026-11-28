@@ -58,7 +58,7 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine")
 
     // JOOQ — pin to match generated code version
-    implementation("org.jooq:jooq:3.21.9")
+    implementation("org.jooq:jooq:3.21.10")
 
     // OpenAPI (SpringDoc) — 3.x required for Spring Boot 4.x / Spring Framework 7.x
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
